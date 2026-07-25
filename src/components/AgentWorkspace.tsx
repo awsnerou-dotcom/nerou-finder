@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Property, Lead, LeadStatus, User, PropertyType, TransactionType, VerificationStatus, LocationItem, AgentType, getEffectiveAgentType, SubscriptionPlan, Organization } from "../types.js";
+import { Property, Lead, LeadStatus, User, PropertyType, TransactionType, VerificationStatus, LocationItem, AgentType, getEffectiveAgentType, SubscriptionPlan, Organization, DocumentType, DocumentStatus } from "../types.js";
 import {
   TrendingUp,
   Briefcase,
@@ -111,6 +111,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [agencyOrg, setAgencyOrg] = useState<Organization | null>(null);
 
+  // Qatar regulation gate (INDEPENDENT_AGENT only): a listing cannot go live until this
+  // agent's Agency Authorization Letter (the licensed agency/brokerage they operate under)
+  // is APPROVED. "NOT_SUBMITTED" means no such document exists yet at all.
+  const [authLetterStatus, setAuthLetterStatus] = useState<DocumentStatus | "NOT_SUBMITTED" | null>(null);
+
   // Local toast state
   const [toastMessage, setToastMessage] = useState<string>("");
 
@@ -178,6 +183,26 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       .catch(e => console.error("Error loading agency organization:", e));
   }, [effectiveAgentType, agent.orgId]);
 
+  // INDEPENDENT_AGENT: fetch this agent's own verification documents so we can proactively
+  // warn them (before they ever submit a listing) that publication is blocked until their
+  // Agency Authorization Letter is APPROVED - mirrors the same check server-side.
+  useEffect(() => {
+    if (effectiveAgentType !== AgentType.INDEPENDENT_AGENT) return;
+    const token = localStorage.getItem("token");
+    const headers: HeadersInit = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    fetch("/api/verification-documents/mine", { headers })
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (!data) return;
+        const authLetter = (data.documents || []).find(
+          (d: any) => d.documentType === DocumentType.AGENCY_AUTHORIZATION_LETTER
+        );
+        setAuthLetterStatus(authLetter ? authLetter.status : "NOT_SUBMITTED");
+      })
+      .catch(e => console.error("Error loading verification documents:", e));
+  }, [effectiveAgentType, agent.id]);
+
   const fetchLeadsAndProperties = async () => {
     try {
       // Fetch leads assigned to this agent
@@ -185,15 +210,13 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       const leadsData = await leadsRes.json();
       setLeads(leadsData);
 
-      // Fetch properties uploaded/assigned to this agent (requires an org affiliation)
-      if (agent.orgId) {
-        const propRes = await fetch(`/api/properties?orgId=${agent.orgId}`);
-        const propData = await propRes.json();
-        const agentProperties = propData.filter((p: Property) => p.agentId === agent.id);
-        setProperties(agentProperties);
-      } else {
-        setProperties([]);
-      }
+      // Fetch properties uploaded/assigned to this agent. AGENCY_AGENT listings are scoped
+      // by their agency's orgId; INDEPENDENT_AGENT has no orgId, so fetch broadly and rely
+      // on the agentId filter below.
+      const propRes = await fetch(agent.orgId ? `/api/properties?orgId=${agent.orgId}` : "/api/properties");
+      const propData = await propRes.json();
+      const agentProperties = propData.filter((p: Property) => p.agentId === agent.id);
+      setProperties(agentProperties);
     } catch (err) {
       console.error("Failed to load agent workspace details", err);
     }
@@ -318,7 +341,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const handleAddListing = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!listingTitle || !listingPrice || !listingDesc) return;
-    if (!agent.orgId) {
+    // AGENCY_AGENT listings must always carry their agency's orgId. INDEPENDENT_AGENT has no
+    // orgId by definition and lists under their own account instead (see FIX A: publication
+    // gate below), so this affiliation check only applies to AGENCY_AGENT.
+    if (effectiveAgentType === AgentType.AGENCY_AGENT && !agent.orgId) {
       setToastMessage(isRtl ? "يجب أن تنضم إلى مكتب عقاري لتتمكن من إضافة عقارات." : "You must be affiliated with an agency before you can list properties.");
       setTimeout(() => setToastMessage(""), 5000);
       return;
@@ -374,8 +400,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         setToastMessage(isRtl ? "تمت إضافة العقار بنجاح وبانتظار المراجعة والتوثيق!" : "Property listing successfully created and pending review/approval!");
         setTimeout(() => setToastMessage(""), 4000);
       } else {
-        setToastMessage(isRtl ? "تعذر إضافة العقار. يرجى المحاولة مرة أخرى." : "Failed to add the property listing. Please try again.");
-        setTimeout(() => setToastMessage(""), 5000);
+        // Surface the backend's exact error (e.g. the Agency Authorization Letter gate for
+        // INDEPENDENT_AGENT) instead of a generic message, so the agent knows exactly what's missing.
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "تعذر إضافة العقار. يرجى المحاولة مرة أخرى." : "Failed to add the property listing. Please try again."));
+        setTimeout(() => setToastMessage(""), 6000);
       }
     } catch (err) {
       console.error("Failed to add property listing", err);
@@ -680,6 +709,20 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             </button>
           </div>
 
+          {/* Qatar regulation gate: INDEPENDENT_AGENT listings cannot go live until their
+              Agency Authorization Letter is APPROVED. Warn proactively, before submission,
+              rather than only surfacing this after a failed publish attempt. */}
+          {effectiveAgentType === AgentType.INDEPENDENT_AGENT && authLetterStatus !== null && authLetterStatus !== DocumentStatus.APPROVED && (
+            <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+              <AlertTriangle size={16} className="shrink-0" />
+              <span>
+                {isRtl
+                  ? `يجب اعتماد "خطاب تفويض المكتب العقاري" الخاص بك قبل أن تتمكن من نشر عقاراتك للعامة. الحالة الحالية: ${authLetterStatus}. يمكنك إدارة مستنداتك من تبويب "التوثيق".`
+                  : `Your Agency Authorization Letter must be approved before your listings can go live to the public. Current status: ${authLetterStatus}. Manage this under the "Verification" tab.`}
+              </span>
+            </div>
+          )}
+
           {isAddingListing && (
             <form onSubmit={handleAddListing} className="bg-white p-5 rounded-xl border border-[#bf9b30]/30 space-y-4 animate-in fade-in duration-200 text-xs">
               <h5 className="font-serif text-sm font-bold text-[#1a1918] border-b border-[#f2ede8] pb-2">
@@ -938,7 +981,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   <h5 className="text-xs font-bold text-[#1a1918] truncate">{isRtl ? prop.titleAr : prop.title}</h5>
                   <p className="text-[10px] text-[#6e6b66]">{prop.district}, {prop.city}</p>
                   <p className="text-xs font-bold text-[#bf9b30]">{prop.price.toLocaleString()} QAR</p>
-                  <BoostButton propertyId={prop.id} isRtl={isRtl} />
+                  {/* AGENCY_AGENT never self-triggers a boost - their agency admin does it on
+                      their behalf from AgencyWorkspace, billed to the agency ledger. */}
+                  {effectiveAgentType !== AgentType.AGENCY_AGENT && (
+                    <BoostButton propertyId={prop.id} isRtl={isRtl} />
+                  )}
                 </div>
               </div>
             ))}

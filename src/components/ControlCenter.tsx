@@ -690,9 +690,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       if (res.ok) {
         fetchControlContext();
         onRefreshAll();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        showToast(d.error || "Failed to update property verification status.");
       }
     } catch (err) {
       console.error(err);
+      showToast("Failed to update property verification status.");
     }
   };
 

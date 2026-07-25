@@ -47,7 +47,8 @@ import {
   Invitation,
   Organization,
   AgentType,
-  ApplicationStatus
+  ApplicationStatus,
+  getEffectiveAgentType
 } from "./src/types.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
@@ -1023,6 +1024,31 @@ app.post("/api/properties", authMiddleware, (req, res) => {
   const actorId = authReq.user?.id || "unknown";
   const actorName = authReq.user?.fullName || "Agent";
   const actorRole = authReq.user?.role || UserRole.AGENT;
+  const actor = db.users.find(u => u.id === actorId);
+
+  // Qatar regulation gate: an INDEPENDENT_AGENT must declare (and have approved) the
+  // licensed agency/brokerage they operate under before any listing of theirs can go
+  // live. AGENCY_AGENT and org admins are not subject to this - they're covered by
+  // their organization's own verification. Applies on both create and edit, since edit
+  // can carry a listingStatus straight from the client.
+  const requestedListingStatus = propData.listingStatus;
+  if (
+    actor &&
+    actor.role === UserRole.AGENT &&
+    getEffectiveAgentType(actor) === AgentType.INDEPENDENT_AGENT &&
+    requestedListingStatus === ListingStatus.PUBLISHED
+  ) {
+    if (!db.verificationDocuments) db.verificationDocuments = [];
+    const authLetter = db.verificationDocuments.find(
+      d => d.userId === actor.id && d.documentType === DocumentType.AGENCY_AUTHORIZATION_LETTER
+    );
+    if (!authLetter || authLetter.status !== DocumentStatus.APPROVED) {
+      const currentState = !authLetter ? "NOT_SUBMITTED" : authLetter.status;
+      return res.status(403).json({
+        error: `You must have your Agency Authorization Letter approved before publishing listings. Current status: ${currentState}.`
+      });
+    }
+  }
 
   let qualityScore = 70; // Base score
   if (propData.description && propData.description.length > 100) qualityScore += 10;
@@ -1099,7 +1125,9 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       ],
       videoUrl: propData.videoUrl,
       agentId: actorId, // Link automatically to logged-in user
-      orgId: propData.orgId || "org-agency-1",
+      // An INDEPENDENT_AGENT has no orgId by design - do not fall back to a hardcoded
+      // organization, or every independently-listed property would be silently misattributed.
+      orgId: propData.orgId || actor?.orgId || undefined,
       projectId: propData.projectId,
       verificationStatus: VerificationStatus.PENDING,
       listingStatus: ListingStatus.PENDING_REVIEW,
@@ -1215,6 +1243,26 @@ app.post("/api/admin/properties/verify", (req, res) => {
   const db = readDb();
   const idx = db.properties.findIndex(p => p.id === propertyId);
   if (idx === -1) return res.status(404).json({ error: "Property not found" });
+
+  // Qatar regulation gate: this is the real point a listing goes live (agents never send
+  // listingStatus directly - admin approval is what flips it to PUBLISHED). Block publication
+  // if the property's own agent is an INDEPENDENT_AGENT without an APPROVED Agency
+  // Authorization Letter, even if the property itself otherwise checks out.
+  if (status === VerificationStatus.APPROVED) {
+    const propertyAgent = db.users.find(u => u.id === db.properties[idx].agentId);
+    if (propertyAgent && propertyAgent.role === UserRole.AGENT && getEffectiveAgentType(propertyAgent) === AgentType.INDEPENDENT_AGENT) {
+      if (!db.verificationDocuments) db.verificationDocuments = [];
+      const authLetter = db.verificationDocuments.find(
+        d => d.userId === propertyAgent.id && d.documentType === DocumentType.AGENCY_AUTHORIZATION_LETTER
+      );
+      if (!authLetter || authLetter.status !== DocumentStatus.APPROVED) {
+        const currentState = !authLetter ? "NOT_SUBMITTED" : authLetter.status;
+        return res.status(403).json({
+          error: `This listing's agent has not had their Agency Authorization Letter approved (current status: ${currentState}). The listing cannot be published until that is resolved.`
+        });
+      }
+    }
+  }
 
   db.properties[idx].verificationStatus = status;
   if (status === VerificationStatus.APPROVED) {
@@ -2377,12 +2425,14 @@ app.post("/api/ad-charges", authMiddleware, (req, res) => {
   if (![UserRole.AGENT, UserRole.AGENCY_ADMIN, UserRole.DEVELOPER_ADMIN].includes(actor.role as UserRole)) {
     return res.status(403).json({ error: "Only agents, agency admins, or developer admins can activate ad boosts." });
   }
-  if (!actor.orgId) return res.status(400).json({ error: "No organization associated with this account." });
 
-  const org = db.organizations.find(o => o.id === actor.orgId);
-  if (!org) return res.status(404).json({ error: "Organization not found." });
-  if (org.subscriptionStatus !== "ACTIVE") {
-    return res.status(403).json({ error: "An active subscription is required to activate self-service ad boosts." });
+  const isAgent = actor.role === UserRole.AGENT;
+  const effectiveAgentType = isAgent ? getEffectiveAgentType(actor) : undefined;
+
+  // AGENCY_AGENT never self-triggers a boost - their agency admin does it on their behalf
+  // (billed to the agency ledger), so reject outright before any other checks.
+  if (isAgent && effectiveAgentType === AgentType.AGENCY_AGENT) {
+    return res.status(403).json({ error: "Ask your agency administrator to boost this listing." });
   }
 
   const { propertyId, type } = req.body as { propertyId: string; type: AdChargeType };
@@ -2391,27 +2441,57 @@ app.post("/api/ad-charges", authMiddleware, (req, res) => {
   }
 
   const property = db.properties.find(p => p.id === propertyId);
-  if (!property || property.orgId !== org.id) {
-    return res.status(403).json({ error: "You may only boost listings that belong to your own organization." });
+  if (!property) return res.status(404).json({ error: "Property not found." });
+
+  // Billing owner key for the ad-charges ledger: a real Organization.id for org-billed
+  // accounts (AGENCY_ADMIN / DEVELOPER_ADMIN, or an AGENCY_AGENT - though that's rejected
+  // above), or the agent's own User.id as a stand-in "billing owner" key for a self-serve
+  // INDEPENDENT_AGENT charge, since they carry their own subscription instead of an org's.
+  let billingOwnerId: string;
+  let subscriptionStatus: string | undefined;
+  let subscriptionPlanId: string | undefined;
+
+  if (isAgent && effectiveAgentType === AgentType.INDEPENDENT_AGENT) {
+    if (property.agentId !== actor.id) {
+      return res.status(403).json({ error: "You may only boost your own listings." });
+    }
+    billingOwnerId = actor.id;
+    subscriptionStatus = actor.subscriptionStatus;
+    subscriptionPlanId = actor.subscriptionPlanId;
+  } else {
+    if (!actor.orgId) return res.status(400).json({ error: "No organization associated with this account." });
+
+    const org = db.organizations.find(o => o.id === actor.orgId);
+    if (!org) return res.status(404).json({ error: "Organization not found." });
+    if (property.orgId !== org.id) {
+      return res.status(403).json({ error: "You may only boost listings that belong to your own organization." });
+    }
+    billingOwnerId = org.id;
+    subscriptionStatus = org.subscriptionStatus;
+    subscriptionPlanId = org.subscriptionPlanId;
+  }
+
+  if (subscriptionStatus !== "ACTIVE") {
+    return res.status(403).json({ error: "An active subscription is required to activate self-service ad boosts." });
   }
 
   if (!db.adCharges) db.adCharges = [];
   const currentPeriod = getCurrentBillingPeriod();
 
-  const hasUnsettledPastPeriod = db.adCharges.some(c => c.orgId === org.id && c.billingPeriod !== currentPeriod && !c.settled);
+  const hasUnsettledPastPeriod = db.adCharges.some(c => c.orgId === billingOwnerId && c.billingPeriod !== currentPeriod && !c.settled);
   if (hasUnsettledPastPeriod) {
     return res.status(403).json({ error: "You have an unsettled ad billing period from a previous month. Please contact support to settle it before activating new boosts." });
   }
 
-  const cap = db.aiConfig?.adBoostCaps?.[org.subscriptionPlanId] ?? DEFAULT_BOOST_CAP_FALLBACK;
-  const usedThisPeriod = db.adCharges.filter(c => c.orgId === org.id && c.billingPeriod === currentPeriod).length;
+  const cap = db.aiConfig?.adBoostCaps?.[subscriptionPlanId || ""] ?? DEFAULT_BOOST_CAP_FALLBACK;
+  const usedThisPeriod = db.adCharges.filter(c => c.orgId === billingOwnerId && c.billingPeriod === currentPeriod).length;
   if (usedThisPeriod >= cap) {
     return res.status(403).json({ error: `Monthly self-service boost cap (${cap}) reached for your plan this billing period.` });
   }
 
   const charge: AdCharge = {
     id: `adc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-    orgId: org.id,
+    orgId: billingOwnerId,
     propertyId,
     type,
     amount: AD_CHARGE_PRICES[type],
@@ -2440,8 +2520,10 @@ app.get("/api/ad-charges", authMiddleware, (req, res) => {
     const { orgId } = req.query;
     if (orgId) charges = charges.filter(c => c.orgId === orgId);
   } else {
-    if (!actor.orgId) return res.json([]);
-    charges = charges.filter(c => c.orgId === actor.orgId);
+    // INDEPENDENT_AGENT has no orgId - their own charges are keyed by their User.id instead
+    // (see POST /api/ad-charges), so fall back to that as the ledger lookup key.
+    const billingOwnerId = actor.orgId || actor.id;
+    charges = charges.filter(c => c.orgId === billingOwnerId);
   }
 
   res.json(charges);
