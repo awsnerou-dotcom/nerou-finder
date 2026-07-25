@@ -486,7 +486,7 @@ app.post("/api/auth/login", authRateLimiter, (req, res) => {
   const db = readDb();
   const user = db.users.find(u => u.email === email);
   if (!user) {
-    return res.status(404).json({ error: "User not found. Try 'agent1@nerou.com' or 'platform_admin@nerou.com'." });
+    return res.status(404).json({ error: "User not found." });
   }
   // Validate password if it is set in user record
   if (user.password) {

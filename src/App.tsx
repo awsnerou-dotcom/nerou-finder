@@ -269,29 +269,6 @@ export default function App() {
     }
   };
 
-  const handleQuickLogin = async (email: string) => {
-    setAuthLoading(true);
-    setAuthError("");
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        handleSetUser(data.user, data.token);
-        setIsLoginOpen(false);
-      } else {
-        setAuthError(data.error);
-      }
-    } catch (err) {
-      setAuthError("Failed to execute quick login.");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
   const handleLogout = () => {
     handleSetUser(null);
   };
@@ -547,53 +524,6 @@ export default function App() {
                 <p className="text-xs text-[#6e6b66]">
                   {isRtl ? "سجل دخولك لإدارة محفظتك العقارية والعملاء" : "Access your active agency inventory, leads & workspace"}
                 </p>
-              </div>
-
-              {/* DEMO SHORTCUT SHORTCUTS */}
-              <div className="space-y-2.5">
-                <span className="text-[10px] font-bold text-[#6e6b66] uppercase tracking-wider block">
-                  {isRtl ? "دخول سريع للتجربة (نقرة واحدة)" : "Quick Demo Access (One-Click Bypass)"}
-                </span>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleQuickLogin("platform_admin@nerou.com")}
-                    className="p-2.5 bg-[#fdfcfb] hover:bg-[#bf9b30]/10 border border-[#bf9b30]/40 rounded-lg text-left text-xs transition-all flex flex-col justify-between group"
-                  >
-                    <span className="font-bold text-[#1c1a17] group-hover:text-[#bf9b30]">Platform Admin</span>
-                    <span className="text-[9px] text-[#6e6b66]">Global Oversight Suite</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleQuickLogin("agency_admin@nerou.com")}
-                    className="p-2.5 bg-[#fdfcfb] hover:bg-[#bf9b30]/10 border border-[#bf9b30]/40 rounded-lg text-left text-xs transition-all flex flex-col justify-between group"
-                  >
-                    <span className="font-bold text-[#1c1a17] group-hover:text-[#bf9b30]">Agency Admin</span>
-                    <span className="text-[9px] text-[#6e6b66]">Elite Gulf Enterprise</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleQuickLogin("developer_admin@nerou.com")}
-                    className="p-2.5 bg-[#fdfcfb] hover:bg-[#bf9b30]/10 border border-[#bf9b30]/40 rounded-lg text-left text-xs transition-all flex flex-col justify-between group"
-                  >
-                    <span className="font-bold text-[#1c1a17] group-hover:text-[#bf9b30]">Developer Admin</span>
-                    <span className="text-[9px] text-[#6e6b66]">Al Shamal Master Dev</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleQuickLogin("agent1@nerou.com")}
-                    className="p-2.5 bg-[#fdfcfb] hover:bg-[#bf9b30]/10 border border-[#bf9b30]/40 rounded-lg text-left text-xs transition-all flex flex-col justify-between group"
-                  >
-                    <span className="font-bold text-[#1c1a17] group-hover:text-[#bf9b30]">Agent Faisal</span>
-                    <span className="text-[9px] text-[#6e6b66]">Premium Listing Hub</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-[#e6e2de]"></div>
-                <span className="flex-shrink mx-3 text-[10px] text-[#a8a4a0] uppercase tracking-widest">{isRtl ? "أو سجل بياناتك" : "Or Sign In Form"}</span>
-                <div className="flex-grow border-t border-[#e6e2de]"></div>
               </div>
 
               {/* Error Box */}
