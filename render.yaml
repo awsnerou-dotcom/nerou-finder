@@ -4,8 +4,12 @@ services:
     runtime: node
     plan: starter
     region: singapore
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npm start
+    disk:
+      name: uploads
+      mountPath: /opt/render/project/src/assets/uploads
+      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
