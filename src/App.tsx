@@ -350,27 +350,23 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#fcfbfa] text-[#1a1918] font-sans flex flex-col justify-between">
       
-      {/* Top Banner AI grounder indicator */}
-      <div className="bg-[#1c1a17] text-[#bf9b30] py-2 px-4 text-center text-xs font-medium tracking-wide flex items-center justify-center gap-2 border-b border-[#33302a]">
-        <Sparkles size={14} className="animate-pulse" />
-        <span>
-          {isRtl
-            ? "محرك نيرو فايند بالذكاء الاصطناعي نشط وجاهز للاستخدام"
-            : "Nerou Find AI Search Engine Grounding Active"}
-        </span>
-      </div>
-
       {/* Main Header */}
-      <header className="bg-white border-b border-[#e6e2de] sticky top-0 z-40">
+      <header className="bg-white/95 backdrop-blur-sm border-b border-[#e6e2de] shadow-[0_1px_0_0_rgba(191,155,48,0.18)] sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-          
-          {/* Brand Logo */}
-          <div
-            className="flex items-center gap-2 select-none cursor-pointer"
-            onClick={() => setViewMode("MARKETPLACE")}
-          >
-            <span className="font-serif text-lg tracking-[0.2em] text-[#1a1918] font-semibold">NEROU</span>
-            <span className="font-serif text-lg tracking-wider text-[#bf9b30] font-bold">FINDER</span>
+
+          {/* Brand Logo + AI badge */}
+          <div className="flex items-center gap-3">
+            <div
+              className="flex items-center gap-2 select-none cursor-pointer"
+              onClick={() => setViewMode("MARKETPLACE")}
+            >
+              <span className="font-serif text-lg tracking-[0.2em] text-[#1a1918] font-semibold">NEROU</span>
+              <span className="font-serif text-lg tracking-wider text-[#bf9b30] font-bold">FINDER</span>
+            </div>
+            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-[#fdfcfb] to-[#f8f2e0] border border-[#bf9b30]/40 rounded-full text-[10px] font-semibold text-[#8c6d1d] tracking-wide">
+              <Sparkles size={11} className="text-[#bf9b30] animate-pulse" />
+              <span>{isRtl ? "الذكاء الاصطناعي نشط" : "AI-Powered Search"}</span>
+            </div>
           </div>
 
           {/* Nav Controls */}
