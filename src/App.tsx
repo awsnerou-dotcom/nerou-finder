@@ -5,10 +5,10 @@
 
 import React, { useState, useEffect, Suspense, lazy } from "react";
 import VisitorExperience from "./components/VisitorExperience.js";
-import HeroBackground3D from "./components/HeroBackground3D.js";
+import CinematicSkyline from "./components/CinematicSkyline.js";
 import CookieConsent from "./components/CookieConsent.js";
 import { trackEvent } from "./lib/analytics.js";
-import { User, UserRole, Organization, OrganizationType, VerificationStatus, TransactionType } from "./types.js";
+import { User, UserRole, Organization, OrganizationType, VerificationStatus, TransactionType, ApplicationStatus, AgentType, getEffectiveAgentType } from "./types.js";
 import { useCurrency, CURRENCIES, CurrencyCode } from "./currencyContext.js";
 import {
   Globe,
@@ -31,6 +31,7 @@ const AgentWorkspace = lazy(() => import("./components/AgentWorkspace.js"));
 const AgencyWorkspace = lazy(() => import("./components/AgencyWorkspace.js"));
 const DeveloperWorkspace = lazy(() => import("./components/DeveloperWorkspace.js"));
 const ControlCenter = lazy(() => import("./components/ControlCenter.js"));
+const OnboardingStatusView = lazy(() => import("./components/OnboardingStatusView.js"));
 
 const DashboardLoader = ({ isRtl }: { isRtl: boolean }) => (
   <div className="text-center py-12 bg-white rounded-xl border border-[#e6e2de]">
@@ -286,6 +287,26 @@ export default function App() {
   // Determine which workspace interface to render based on user role
   const renderDashboard = () => {
     if (!currentUser) return null;
+
+    // FIX3: onboarding approval-gate. Only AGENCY_ADMIN/DEVELOPER_ADMIN and INDEPENDENT_AGENT
+    // signups are gated by applicationStatus - AGENCY_AGENT is ACTIVE from signup and governed
+    // instead by their agency's live subscription (see AgentWorkspace's own banner for that).
+    // CRITICAL: undefined applicationStatus always means grandfathered/active - never gate on it.
+    const isGatedRole =
+      currentUser.role === UserRole.AGENCY_ADMIN ||
+      currentUser.role === UserRole.DEVELOPER_ADMIN ||
+      (currentUser.role === UserRole.AGENT && getEffectiveAgentType(currentUser) === AgentType.INDEPENDENT_AGENT);
+    const isGated = !!currentUser.applicationStatus && currentUser.applicationStatus !== ApplicationStatus.ACTIVE && isGatedRole;
+
+    if (isGated) {
+      return (
+        <OnboardingStatusView
+          user={currentUser}
+          org={currentOrg}
+          isRtl={isRtl}
+        />
+      );
+    }
 
     switch (currentUser.role) {
       case UserRole.AGENT:
@@ -601,7 +622,7 @@ export default function App() {
             </button>
 
             <div className="bg-[#1c1a17] relative overflow-hidden text-center py-8 px-6 space-y-1.5">
-              <HeroBackground3D />
+              <CinematicSkyline />
               <div className="relative z-10">
                 <span className="font-serif text-xl tracking-[0.2em] font-semibold text-white">NEROU</span>
                 <span className="font-serif text-xl tracking-wider font-bold text-[#bf9b30] ml-1.5">FINDER</span>
@@ -721,7 +742,7 @@ export default function App() {
             </button>
 
             <div className="bg-[#1c1a17] relative overflow-hidden text-center py-8 px-6 space-y-1.5">
-              <HeroBackground3D />
+              <CinematicSkyline />
               <div className="relative z-10">
                 <span className="font-serif text-xl tracking-[0.2em] font-semibold text-white">NEROU</span>
                 <span className="font-serif text-xl tracking-wider font-bold text-[#bf9b30] ml-1.5">FINDER</span>

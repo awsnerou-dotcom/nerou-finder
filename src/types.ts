@@ -20,6 +20,26 @@ export enum VerificationStatus {
   SUSPENDED = "SUSPENDED"
 }
 
+// Splits AGENT accounts into agents affiliated with an agency (invited, no personal
+// subscription) vs. independent agents (self-signed-up, carry their own subscription).
+export enum AgentType {
+  INDEPENDENT_AGENT = "INDEPENDENT_AGENT",
+  AGENCY_AGENT = "AGENCY_AGENT"
+}
+
+// Signup-forward onboarding/approval pipeline. Only meaningful for new-signup AGENT
+// (INDEPENDENT_AGENT only), AGENCY_ADMIN, and DEVELOPER_ADMIN accounts - REGISTERED/VISITOR
+// and AGENCY_AGENT accounts never get gated by this. IMPORTANT: undefined always means
+// "grandfathered / fully active" for accounts created before this pipeline existed - never
+// treat undefined as "not yet approved".
+export enum ApplicationStatus {
+  PENDING_APPROVAL = "PENDING_APPROVAL",
+  AWAITING_PAYMENT = "AWAITING_PAYMENT",
+  AWAITING_DOCUMENTS = "AWAITING_DOCUMENTS",
+  UNDER_VERIFICATION = "UNDER_VERIFICATION",
+  ACTIVE = "ACTIVE"
+}
+
 export enum TransactionType {
   FOR_SALE = "FOR_SALE",
   FOR_RENT = "FOR_RENT",
@@ -105,6 +125,24 @@ export interface User {
   createdDate: string;
   password?: string;
   isExpat?: boolean; // Determines whether PASSPORT is a required verification document for AGENT role
+  agentType?: AgentType; // Only meaningful when role === UserRole.AGENT
+  applicationStatus?: ApplicationStatus; // Onboarding pipeline state - undefined means grandfathered/active
+  // Independent-agent subscription fields (same shape as Organization's equivalents below).
+  // Only meaningful for an AGENT whose effective AgentType is INDEPENDENT_AGENT - an
+  // AGENCY_AGENT's access is governed entirely by their agency Organization's subscription.
+  subscriptionPlanId?: string;
+  subscriptionExpiry?: string;
+  subscriptionStatus?: "ACTIVE" | "SUSPENDED" | "CANCELLED" | "PENDING_APPROVAL";
+  subscriptionActivationMethod?: "MANUAL" | "BANK_TRANSFER" | "INVOICE" | "OTHER";
+  subscriptionNotes?: string;
+}
+
+// Resolves an AGENT's effective type defensively: existing accounts created before
+// AgentType existed have agentType === undefined, so we derive it from orgId rather
+// than treating undefined as an error or defaulting everyone to one fixed value.
+export function getEffectiveAgentType(user: { role: UserRole; orgId?: string; agentType?: AgentType }): AgentType {
+  if (user.agentType) return user.agentType;
+  return user.orgId ? AgentType.AGENCY_AGENT : AgentType.INDEPENDENT_AGENT;
 }
 
 export interface Organization {

@@ -22,7 +22,10 @@ import {
   JobListing,
   PressRelease,
   PartnershipRequest,
-  LocationItem
+  LocationItem,
+  ApplicationStatus,
+  AgentType,
+  getEffectiveAgentType
 } from "../types.js";
 import {
   ShieldAlert,
@@ -80,6 +83,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     | "reviews"
     | "locations"
     | "ad_billing"
+    | "applications"
   >("overview");
 
   // Collapsible sidebar navigation: which grouped sections are expanded
@@ -171,6 +175,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   const [subStatus, setSubStatus] = useState<"ACTIVE" | "SUSPENDED" | "CANCELLED" | "PENDING_APPROVAL">("ACTIVE");
   const [subNotes, setSubNotes] = useState<string>("");
   const [subActivationMethod, setSubActivationMethod] = useState<"MANUAL" | "BANK_TRANSFER" | "INVOICE" | "OTHER">("MANUAL");
+
+  // New Applications (FIX3 onboarding pipeline) - inline "Confirm Payment" form state
+  const [confirmingAppId, setConfirmingAppId] = useState<string>("");
+  const [appPlanId, setAppPlanId] = useState<string>("");
+  const [appExpiryDate, setAppExpiryDate] = useState<string>("");
+  const [appActivationMethod, setAppActivationMethod] = useState<"MANUAL" | "BANK_TRANSFER" | "INVOICE" | "OTHER">("MANUAL");
+  const [appNotes, setAppNotes] = useState<string>("");
 
   // Legal CMS edit states
   const [selectedLegalDoc, setSelectedLegalDoc] = useState<LegalDocument | null>(null);
@@ -1030,6 +1041,86 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     }
   };
 
+  // New Applications pipeline (FIX3): move a PENDING_APPROVAL applicant to AWAITING_PAYMENT.
+  const handleMoveToAwaitingPayment = async (userId: string) => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch(`/api/admin/users/${userId}/application-status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: "AWAITING_PAYMENT" })
+      });
+      if (res.ok) {
+        showToast(isRtl ? "تم نقل الطلب إلى انتظار الدفع." : "Application moved to Awaiting Payment.");
+        fetchControlContext();
+        onRefreshAll();
+      } else {
+        const d = await res.json();
+        showToast(d.error || "Failed to update application status.");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to update application status.");
+    }
+  };
+
+  // New Applications pipeline (FIX3): confirm subscription payment for an AWAITING_PAYMENT
+  // applicant - routes to the Organization endpoint if they have an org (AGENCY_ADMIN /
+  // DEVELOPER_ADMIN), or the User endpoint if not (INDEPENDENT_AGENT).
+  const handleConfirmApplicationPayment = async (app: User) => {
+    if (!appPlanId || !appExpiryDate) {
+      showToast(isRtl ? "يرجى اختيار الخطة وتاريخ الانتهاء." : "Please select a plan and expiry date.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token") || "";
+      const endpoint = app.orgId
+        ? "/api/admin/organizations/subscription"
+        : `/api/admin/users/${app.id}/subscription`;
+      const payload: any = {
+        planId: appPlanId,
+        startDate: new Date().toISOString().split("T")[0],
+        expiryDate: appExpiryDate,
+        status: "ACTIVE",
+        notes: appNotes,
+        activationMethod: appActivationMethod,
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
+        actorRole: "PLATFORM_ADMIN"
+      };
+      if (app.orgId) payload.orgId = app.orgId;
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        showToast(isRtl ? "تم تأكيد الدفع وتفعيل الاشتراك بنجاح!" : "Payment confirmed and subscription activated!");
+        setConfirmingAppId("");
+        setAppPlanId("");
+        setAppExpiryDate("");
+        setAppNotes("");
+        setAppActivationMethod("MANUAL");
+        fetchControlContext();
+        onRefreshAll();
+      } else {
+        const d = await res.json();
+        showToast(d.error || "Failed to confirm subscription payment.");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to confirm subscription payment.");
+    }
+  };
+
   const handleSavePress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pressTitle || !pressContent) return;
@@ -1083,6 +1174,9 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   const pendingUsers = users.filter(u => u.verificationStatus === VerificationStatus.PENDING);
   const pendingCampaigns = campaigns.filter(c => c.status === "PENDING_REVIEW");
   const pendingDocuments = verificationDocs.filter(d => d.status === "PENDING");
+  // FIX3: onboarding pipeline applicants - undefined applicationStatus means grandfathered/active,
+  // so it must never show up here; only users explicitly sitting at a non-ACTIVE status do.
+  const pendingApplications = users.filter(u => u.applicationStatus && u.applicationStatus !== ApplicationStatus.ACTIVE);
 
   // Group submitted verification documents by applicant (AGENT user or AGENCY/DEVELOPER org)
   const documentApplicantGroups: { key: string; applicantName: string; applicantEmail: string; context: string; docs: any[] }[] = [];
@@ -1122,6 +1216,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           id: "verifications",
           label: { en: "Verifications Queue", ar: "طلبات التوثيق" },
           badge: pendingProperties.length + pendingOrgs.length + pendingUsers.length + pendingDocuments.length
+        },
+        {
+          id: "applications",
+          label: { en: "New Applications", ar: "طلبات الانضمام الجديدة" },
+          badge: pendingApplications.length
         }
       ]
     },
@@ -1715,6 +1814,141 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* NEW APPLICATIONS SUB-TAB (FIX3: onboarding approval-gate pipeline) */}
+          {activeSubTab === "applications" && (
+            <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+              <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center justify-between">
+                <h4 className="font-serif text-sm font-semibold text-[#1a1918]">
+                  {isRtl ? "طلبات الانضمام الجديدة" : "New Applications Pipeline"}
+                </h4>
+                <span className="text-[10px] text-[#6e6b66]">
+                  {pendingApplications.length} {isRtl ? "قيد المعالجة" : "in progress"}
+                </span>
+              </div>
+              {pendingApplications.length === 0 ? (
+                <p className="p-8 text-center text-[#6e6b66] text-xs">
+                  {isRtl ? "لا توجد طلبات انضمام قيد الانتظار حالياً." : "No pending applications right now."}
+                </p>
+              ) : (
+                <div className="divide-y divide-[#f2ede8] text-xs">
+                  {pendingApplications.map(app => {
+                    const appOrg = organizations.find(o => o.id === app.orgId);
+                    const effType = app.role === UserRole.AGENT ? getEffectiveAgentType(app) : undefined;
+                    const isConfirming = confirmingAppId === app.id;
+                    return (
+                      <div key={app.id} className="p-4 space-y-3">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-[#1a1918]">{app.fullName}</span>
+                              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#f2ede8] text-[#6e6b66]">
+                                {app.role}{effType ? ` / ${effType}` : ""}
+                              </span>
+                              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700">
+                                {app.applicationStatus}
+                              </span>
+                            </div>
+                            <p className="text-[#6e6b66]">{app.email}{appOrg ? ` • ${appOrg.name}` : ""}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {app.applicationStatus === ApplicationStatus.PENDING_APPROVAL && (
+                              <button
+                                onClick={() => handleMoveToAwaitingPayment(app.id)}
+                                className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer"
+                              >
+                                {isRtl ? "نقل إلى انتظار الدفع" : "Move to Awaiting Payment"}
+                              </button>
+                            )}
+                            {app.applicationStatus === ApplicationStatus.AWAITING_PAYMENT && (
+                              <button
+                                onClick={() => {
+                                  if (isConfirming) {
+                                    setConfirmingAppId("");
+                                    return;
+                                  }
+                                  setConfirmingAppId(app.id);
+                                  setAppPlanId((appOrg ? appOrg.subscriptionPlanId : app.subscriptionPlanId) || "");
+                                  setAppExpiryDate(new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().split("T")[0]);
+                                  setAppActivationMethod("MANUAL");
+                                  setAppNotes("");
+                                }}
+                                className="px-3 py-1.5 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] text-[#1a1918] font-semibold rounded-lg cursor-pointer"
+                              >
+                                {isConfirming ? (isRtl ? "إغلاق النموذج" : "Close Form") : (isRtl ? "تأكيد الدفع" : "Confirm Payment")}
+                              </button>
+                            )}
+                            {(app.applicationStatus === ApplicationStatus.AWAITING_DOCUMENTS || app.applicationStatus === ApplicationStatus.UNDER_VERIFICATION) && (
+                              <span className="text-[10px] text-[#6e6b66] italic">
+                                {isRtl ? "راجع المستندات من طابور التوثيق" : "Review documents in Verifications Queue"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {isConfirming && app.applicationStatus === ApplicationStatus.AWAITING_PAYMENT && (
+                          <div className="bg-[#fbfaf8] border border-[#e6e2de] rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "الخطة" : "Plan"}</label>
+                              <select
+                                value={appPlanId}
+                                onChange={(e) => setAppPlanId(e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg text-xs"
+                              >
+                                <option value="">-- {isRtl ? "اختر خطة" : "Select Plan"} --</option>
+                                {plans.map(p => (
+                                  <option key={p.id} value={p.id}>{p.name} ({p.priceMonthly} QAR/mo)</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "تاريخ الانتهاء" : "Expiry Date"}</label>
+                              <input
+                                type="date"
+                                value={appExpiryDate}
+                                onChange={(e) => setAppExpiryDate(e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg text-xs font-mono"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "طريقة الدفع" : "Activation Method"}</label>
+                              <select
+                                value={appActivationMethod}
+                                onChange={(e) => setAppActivationMethod(e.target.value as any)}
+                                className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg text-xs"
+                              >
+                                <option value="MANUAL">MANUAL</option>
+                                <option value="BANK_TRANSFER">BANK_TRANSFER</option>
+                                <option value="INVOICE">INVOICE</option>
+                                <option value="OTHER">OTHER</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "ملاحظات" : "Notes"}</label>
+                              <input
+                                type="text"
+                                value={appNotes}
+                                onChange={(e) => setAppNotes(e.target.value)}
+                                className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg text-xs"
+                              />
+                            </div>
+                            <div className="md:col-span-2 flex justify-end">
+                              <button
+                                onClick={() => handleConfirmApplicationPayment(app)}
+                                className="px-4 py-2 bg-[#1a1918] hover:bg-[#bf9b30] text-white font-bold rounded-lg cursor-pointer"
+                              >
+                                {isRtl ? "تأكيد وتفعيل الاشتراك" : "Confirm & Activate Subscription"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

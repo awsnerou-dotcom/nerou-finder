@@ -45,7 +45,9 @@ import {
   DEFAULT_BOOST_CAP_FALLBACK,
   JobApplication,
   Invitation,
-  Organization
+  Organization,
+  AgentType,
+  ApplicationStatus
 } from "./src/types.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
@@ -636,6 +638,10 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
 
   let orgId: string | undefined = undefined;
   let effectiveRole = role;
+  // Onboarding approval-gate pipeline state (FIX3). Left undefined for REGISTERED/VISITOR
+  // and for any role that doesn't go through the gate - undefined is always treated as
+  // "grandfathered / active" everywhere this field is read.
+  let applicationStatus: ApplicationStatus | undefined;
 
   // If signing up via a team invitation, honor the invited org + role instead of the form's own selection
   let consumedInvitation: Invitation | undefined;
@@ -672,6 +678,10 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
       createdDate: new Date().toISOString()
     };
     db.organizations.push(newOrg);
+    // A brand-new AGENCY_ADMIN/DEVELOPER_ADMIN signup (this is the only way these roles sign
+    // up today - there is no admin invite flow for them) must clear the onboarding pipeline
+    // before getting full workspace access.
+    applicationStatus = ApplicationStatus.PENDING_APPROVAL;
     logAudit("system", "System", UserRole.PLATFORM_ADMIN, "REGISTER_ORGANIZATION", orgId, "Organization", { name: newOrg.name });
 
     // Send transactional email log for subscription request
@@ -688,6 +698,15 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
   // Agents signing up without an invitation remain unaffiliated (orgId undefined) until they
   // either receive/accept an agency invite or an agency admin links them manually.
 
+  // FIX1/FIX3: split AGENT signups into INDEPENDENT_AGENT (self-signup, no invite - gated by
+  // the onboarding pipeline, carries their own subscription) vs AGENCY_AGENT (invited by an
+  // agency - immediately ACTIVE, access instead governed live by their agency's subscription).
+  let agentType: AgentType | undefined;
+  if (effectiveRole === UserRole.AGENT) {
+    agentType = consumedInvitation ? AgentType.AGENCY_AGENT : AgentType.INDEPENDENT_AGENT;
+    applicationStatus = consumedInvitation ? ApplicationStatus.ACTIVE : ApplicationStatus.PENDING_APPROVAL;
+  }
+
   const userId = `user-${Date.now()}`;
   const hashedPassword = bcrypt.hashSync(password || "nerou123", 10);
   const newUser = {
@@ -699,6 +718,8 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
     whatsapp: phone,
     role: effectiveRole || UserRole.AGENT,
     orgId,
+    agentType,
+    applicationStatus,
     avatarUrl: `https://images.unsplash.com/photo-${effectiveRole === UserRole.AGENT ? "1560250097-0b93528c311a" : "1472099645785-5658abf4ff4e"}?auto=format&fit=crop&w=200&h=200&q=80`,
     bio: effectiveRole === UserRole.AGENT ? "Professional real estate specialist." : "Administrator account.",
     languages: ["English", "Arabic"],
@@ -1790,6 +1811,15 @@ app.post("/api/admin/organizations/subscription", (req, res) => {
   db.organizations[idx].subscriptionNotes = notes;
   db.organizations[idx].subscriptionActivationMethod = activationMethod;
 
+  // Onboarding pipeline (FIX3): confirming an ACTIVE subscription for an org that's still
+  // AWAITING_PAYMENT unblocks its admin to move on to document submission.
+  if (status === "ACTIVE") {
+    const orgAdmin = db.users.find(u => u.orgId === orgId && (u.role === UserRole.AGENCY_ADMIN || u.role === UserRole.DEVELOPER_ADMIN));
+    if (orgAdmin && orgAdmin.applicationStatus === ApplicationStatus.AWAITING_PAYMENT) {
+      orgAdmin.applicationStatus = ApplicationStatus.AWAITING_DOCUMENTS;
+    }
+  }
+
   writeDb(db);
 
   // Trigger outbound mock email log if subscription is approved and active
@@ -1820,6 +1850,75 @@ app.post("/api/admin/organizations/subscription", (req, res) => {
   );
 
   res.json({ success: true, organization: db.organizations[idx] });
+});
+
+// MANUALLY CONFIRM/OVERRIDE AN INDEPENDENT AGENT'S SUBSCRIPTION - mirrors the Organization
+// subscription endpoint above, for AGENT accounts with no orgId (INDEPENDENT_AGENT).
+app.post("/api/admin/users/:id/subscription", (req, res) => {
+  const { id } = req.params;
+  const { planId, expiryDate, status, notes, activationMethod, actorId, actorName, actorRole } = req.body;
+  const db = readDb();
+  const idx = db.users.findIndex(u => u.id === id);
+  if (idx === -1) return res.status(404).json({ error: "User not found" });
+
+  const user = db.users[idx];
+  user.subscriptionPlanId = planId;
+  user.subscriptionExpiry = expiryDate;
+  user.subscriptionStatus = status;
+  user.subscriptionActivationMethod = activationMethod;
+  user.subscriptionNotes = notes;
+
+  // Onboarding pipeline (FIX3): confirming an ACTIVE subscription for an agent still
+  // AWAITING_PAYMENT unblocks them to move on to document submission.
+  if (status === "ACTIVE" && user.applicationStatus === ApplicationStatus.AWAITING_PAYMENT) {
+    user.applicationStatus = ApplicationStatus.AWAITING_DOCUMENTS;
+  }
+
+  writeDb(db);
+
+  logAudit(
+    actorId || "admin",
+    actorName || "Admin",
+    actorRole || UserRole.PLATFORM_ADMIN,
+    "CONFIRM_AGENT_SUBSCRIPTION",
+    id,
+    "User",
+    { planId, status, activationMethod }
+  );
+
+  res.json({ success: true, user });
+});
+
+// Manually nudge a user's onboarding applicationStatus (e.g. PENDING_APPROVAL -> AWAITING_PAYMENT).
+// Generic on purpose - used for any manual status transition an admin needs, not just one step.
+app.patch("/api/admin/users/:id/application-status", (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const authReq = req as AuthenticatedRequest;
+
+  const validStatuses: string[] = Object.values(ApplicationStatus);
+  if (!status || !validStatuses.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${validStatuses.join(", ")}` });
+  }
+
+  const db = readDb();
+  const idx = db.users.findIndex(u => u.id === id);
+  if (idx === -1) return res.status(404).json({ error: "User not found" });
+
+  db.users[idx].applicationStatus = status;
+  writeDb(db);
+
+  logAudit(
+    authReq.user?.id || "admin",
+    authReq.user?.fullName || "Admin",
+    (authReq.user?.role as UserRole) || UserRole.PLATFORM_ADMIN,
+    "UPDATE_APPLICATION_STATUS",
+    id,
+    "User",
+    { status }
+  );
+
+  res.json({ success: true, user: db.users[idx] });
 });
 
 // Admin verification of Agents/Organizations
@@ -1909,6 +2008,18 @@ function recomputeAccountVerification(db: DatabaseState, context: VerificationCo
   const allApproved = required.every(type => ownDocs.some(d => d.documentType === type && d.status === DocumentStatus.APPROVED));
 
   owner.verificationStatus = allApproved ? VerificationStatus.APPROVED : VerificationStatus.PENDING;
+
+  // Onboarding pipeline (FIX3): once all required documents are APPROVED, an applicant sitting
+  // at UNDER_VERIFICATION graduates to ACTIVE. Actor resolution mirrors document ownership:
+  // the agent themself for AGENT context, or the org's admin user for AGENCY/DEVELOPER context.
+  if (allApproved) {
+    const actingUser = isAgent
+      ? db.users.find(u => u.id === userId)
+      : db.users.find(u => u.orgId === orgId && (u.role === UserRole.AGENCY_ADMIN || u.role === UserRole.DEVELOPER_ADMIN));
+    if (actingUser && actingUser.applicationStatus === ApplicationStatus.UNDER_VERIFICATION) {
+      actingUser.applicationStatus = ApplicationStatus.ACTIVE;
+    }
+  }
 }
 
 function generateDocumentReviewEmailHtml(name: string, documentType: string, status: string, rejectionReason?: string): string {
@@ -1992,6 +2103,18 @@ app.post("/api/verification-documents", authMiddleware, (req, res) => {
   // what makes PASSPORT part of the AGENT required checklist going forward.
   if (context === "AGENT" && documentType === DocumentType.PASSPORT) {
     actor.isExpat = true;
+  }
+
+  // Onboarding pipeline (FIX3): once every required document type has been submitted (PENDING
+  // review or later counts - they don't need to be APPROVED yet, just present), an applicant
+  // sitting at AWAITING_DOCUMENTS moves on to UNDER_VERIFICATION. `actor` is already the correct
+  // party to bump in both cases: the agent themself for AGENT context, or the org admin who is
+  // the only one able to submit AGENCY/DEVELOPER documents.
+  const requiredForBump = getRequiredDocumentTypes(context, actor.isExpat);
+  const ownDocsAfterSubmit = db.verificationDocuments.filter(d => (context === "AGENT" ? d.userId === userId : d.orgId === orgId));
+  const allSubmitted = requiredForBump.every(type => ownDocsAfterSubmit.some(d => d.documentType === type));
+  if (allSubmitted && actor.applicationStatus === ApplicationStatus.AWAITING_DOCUMENTS) {
+    actor.applicationStatus = ApplicationStatus.UNDER_VERIFICATION;
   }
 
   writeDb(db);

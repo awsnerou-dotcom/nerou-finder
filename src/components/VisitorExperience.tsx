@@ -60,7 +60,7 @@ import SupportTicketsView from "./SupportTicketsView.js";
 import PressView from "./PressView.js";
 import PartnershipsView from "./PartnershipsView.js";
 import PlansPricingView from "./PlansPricingView.js";
-import HeroBackground3D from "./HeroBackground3D.js";
+import CinematicSkyline from "./CinematicSkyline.js";
 
 interface VisitorExperienceProps {
   isRtl: boolean;
@@ -648,7 +648,7 @@ export default function VisitorExperience({
       
       {/* Unified luxury panel: category navigation + AI search share one continuous dark/gold surface */}
       <div className="bg-[#1c1a17] rounded-xl border border-[#33302a] shadow-sm relative overflow-hidden">
-        <HeroBackground3D />
+        <CinematicSkyline />
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <Sparkles size={160} />
         </div>

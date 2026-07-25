@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Property, Lead, LeadStatus, User, PropertyType, TransactionType, VerificationStatus, LocationItem } from "../types.js";
+import { Property, Lead, LeadStatus, User, PropertyType, TransactionType, VerificationStatus, LocationItem, AgentType, getEffectiveAgentType, SubscriptionPlan, Organization } from "../types.js";
 import {
   TrendingUp,
   Briefcase,
@@ -21,7 +21,9 @@ import {
   UserCheck,
   Building,
   Image as ImageIcon,
-  Loader2
+  Loader2,
+  AlertTriangle,
+  CreditCard
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -98,7 +100,16 @@ const compressImage = (file: File): Promise<File> => {
 export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWorkspaceProps) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "properties" | "verification" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "properties" | "verification" | "subscription" | "profile">("dashboard");
+
+  // FIX1: derive the agent's effective type defensively - existing accounts created before
+  // AgentType existed have agentType === undefined, so fall back to orgId-based inference
+  // rather than treating undefined as an error.
+  const effectiveAgentType = getEffectiveAgentType(agent);
+
+  // Subscription tab data (INDEPENDENT_AGENT only) & agency subscription banner (AGENCY_AGENT only)
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [agencyOrg, setAgencyOrg] = useState<Organization | null>(null);
 
   // Local toast state
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -144,6 +155,28 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       })
       .catch(e => console.error("Error loading locations:", e));
   }, [agent.id]);
+
+  // INDEPENDENT_AGENT: load subscription plan catalog so we can resolve the plan name for display.
+  useEffect(() => {
+    if (effectiveAgentType !== AgentType.INDEPENDENT_AGENT) return;
+    fetch("/api/plans")
+      .then(res => res.json())
+      .then(data => setPlans(data || []))
+      .catch(e => console.error("Error loading subscription plans:", e));
+  }, [effectiveAgentType]);
+
+  // AGENCY_AGENT: access is governed live by the agency's subscription status, not a static
+  // per-user field - fetch the agency org so we can surface a banner if it isn't ACTIVE.
+  useEffect(() => {
+    if (effectiveAgentType !== AgentType.AGENCY_AGENT || !agent.orgId) return;
+    fetch("/api/organizations")
+      .then(res => res.json())
+      .then((orgs: Organization[]) => {
+        const matched = orgs.find(o => o.id === agent.orgId);
+        if (matched) setAgencyOrg(matched);
+      })
+      .catch(e => console.error("Error loading agency organization:", e));
+  }, [effectiveAgentType, agent.orgId]);
 
   const fetchLeadsAndProperties = async () => {
     try {
@@ -395,6 +428,16 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
+          {/* FIX1: Subscription tab only applies to INDEPENDENT_AGENT - an AGENCY_AGENT rides on
+              their agency's subscription and never sees a self-serve subscription tab at all. */}
+          {effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
+            <button
+              onClick={() => setActiveTab("subscription")}
+              className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "subscription" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            >
+              {isRtl ? "الاشتراك" : "Subscription"}
+            </button>
+          )}
           <button
             onClick={() => setActiveTab("profile")}
             className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "profile" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
@@ -404,8 +447,67 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         </div>
       </div>
 
+      {/* AGENCY_AGENT: access is governed live by the agency's subscription, not a static
+          per-user field - show a non-blocking banner (not a full-screen block) when it lapses. */}
+      {effectiveAgentType === AgentType.AGENCY_AGENT && agencyOrg && agencyOrg.subscriptionStatus && agencyOrg.subscriptionStatus !== "ACTIVE" && (
+        <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+          <AlertTriangle size={16} className="shrink-0" />
+          <span>
+            {isRtl
+              ? "اشتراك مكتبك العقاري غير مفعل حالياً. يرجى التواصل مع مدير المكتب لتفعيله."
+              : "Your agency's subscription is not currently active. Contact your agency administrator."}
+          </span>
+        </div>
+      )}
+
       {/* VERIFICATION TAB */}
       {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} />}
+
+      {/* SUBSCRIPTION TAB (INDEPENDENT_AGENT only) */}
+      {activeTab === "subscription" && effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
+        <div className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4 text-xs max-w-xl">
+          <h4 className="font-serif text-sm font-semibold text-[#1a1918] border-b border-[#f2ede8] pb-3 flex items-center gap-2">
+            <CreditCard size={16} className="text-[#bf9b30]" />
+            {isRtl ? "بيانات اشتراكك كوكيل مستقل" : "Your Independent Agent Subscription"}
+          </h4>
+          {(() => {
+            const plan = plans.find(p => p.id === agent.subscriptionPlanId);
+            const status = agent.subscriptionStatus || "PENDING_APPROVAL";
+            const statusColor =
+              status === "ACTIVE" ? "text-emerald-600" :
+              (status === "SUSPENDED" || status === "CANCELLED") ? "text-red-600" : "text-amber-600";
+            return (
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-[#6e6b66]">{isRtl ? "الخطة الحالية" : "Current Plan"}</span>
+                  <span className="font-bold text-[#1a1918]">{plan?.name || (isRtl ? "لم يتم تحديد خطة بعد" : "No plan selected yet")}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#6e6b66]">{isRtl ? "حالة الاشتراك" : "Subscription Status"}</span>
+                  <span className={`font-bold ${statusColor}`}>{status}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#6e6b66]">{isRtl ? "تاريخ الانتهاء" : "Expiry Date"}</span>
+                  <span className="font-bold text-[#1a1918]">
+                    {agent.subscriptionExpiry ? new Date(agent.subscriptionExpiry).toLocaleDateString() : "-"}
+                  </span>
+                </div>
+                {agent.subscriptionNotes && (
+                  <div className="pt-3 border-t border-[#f2ede8]">
+                    <span className="text-[#6e6b66] block mb-1">{isRtl ? "ملاحظات الإدارة" : "Admin Notes"}</span>
+                    <p className="text-[#1a1918]">{agent.subscriptionNotes}</p>
+                  </div>
+                )}
+                <p className="text-[10px] text-[#6e6b66] pt-3 border-t border-[#f2ede8]">
+                  {isRtl
+                    ? "يقوم فريق نيرو فايندر بتفعيل خطة اشتراكك بعد التواصل معك وتأكيد الدفع. لا حاجة لإجراء أي دفع ذاتي من هنا."
+                    : "Your plan and payment are activated by the Nerou Finder team after they contact you and confirm payment. No self-service payment is required here."}
+                </p>
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* DASHBOARD TAB */}
       {activeTab === "dashboard" && (
