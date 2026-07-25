@@ -30,7 +30,18 @@ import {
   SupportTicket,
   JobListing,
   PressRelease,
-  PartnershipRequest
+  PartnershipRequest,
+  DocumentType,
+  DocumentStatus,
+  VerificationDocument,
+  VerificationContext,
+  REQUIRED_DOCUMENTS_BY_CONTEXT,
+  getRequiredDocumentTypes,
+  AdCharge,
+  AdChargeType,
+  AD_CHARGE_PRICES,
+  DEFAULT_MONTHLY_BOOST_CAPS,
+  DEFAULT_BOOST_CAP_FALLBACK
 } from "./src/types.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
@@ -1548,6 +1559,289 @@ app.post("/api/admin/verify-user", (req, res) => {
   res.json({ success: true, user: db.users[idx] });
 });
 
+// -----------------------------------------------------------------------------
+// DOCUMENT VERIFICATION SYSTEM
+// -----------------------------------------------------------------------------
+
+const ALL_DOCUMENT_TYPES_BY_CONTEXT: Record<VerificationContext, DocumentType[]> = {
+  AGENT: [...REQUIRED_DOCUMENTS_BY_CONTEXT.AGENT, DocumentType.PASSPORT],
+  AGENCY: REQUIRED_DOCUMENTS_BY_CONTEXT.AGENCY,
+  DEVELOPER: REQUIRED_DOCUMENTS_BY_CONTEXT.DEVELOPER
+};
+
+function getVerificationContextForUser(user: { role: string }): VerificationContext | null {
+  if (user.role === UserRole.AGENT) return "AGENT";
+  if (user.role === UserRole.AGENCY_ADMIN) return "AGENCY";
+  if (user.role === UserRole.DEVELOPER_ADMIN) return "DEVELOPER";
+  return null;
+}
+
+function getDocumentOwnerContact(db: DatabaseState, doc: VerificationDocument): { email: string; name: string } | null {
+  if (doc.context === "AGENT") {
+    const u = db.users.find(u => u.id === doc.userId);
+    return u ? { email: u.email, name: u.fullName } : null;
+  }
+  const o = db.organizations.find(o => o.id === doc.orgId);
+  return o ? { email: o.email, name: o.name } : null;
+}
+
+// Recomputes the owning User/Organization's overall verificationStatus from its
+// document checklist. Only flips between PENDING/APPROVED - a manually-set
+// SUSPENDED status (from the existing account-level verify endpoints) is left alone.
+function recomputeAccountVerification(db: DatabaseState, context: VerificationContext, userId?: string, orgId?: string) {
+  if (!db.verificationDocuments) db.verificationDocuments = [];
+  const isAgent = context === "AGENT";
+  const owner: { verificationStatus: VerificationStatus; isExpat?: boolean } | undefined =
+    isAgent ? db.users.find(u => u.id === userId) : db.organizations.find(o => o.id === orgId);
+  if (!owner) return;
+  if (owner.verificationStatus === VerificationStatus.SUSPENDED) return;
+
+  const required = getRequiredDocumentTypes(context, isAgent ? owner.isExpat : undefined);
+  const ownDocs = db.verificationDocuments.filter(d => (isAgent ? d.userId === userId : d.orgId === orgId));
+  const allApproved = required.every(type => ownDocs.some(d => d.documentType === type && d.status === DocumentStatus.APPROVED));
+
+  owner.verificationStatus = allApproved ? VerificationStatus.APPROVED : VerificationStatus.PENDING;
+}
+
+function generateDocumentReviewEmailHtml(name: string, documentType: string, status: string, rejectionReason?: string): string {
+  const statusColor = status === DocumentStatus.APPROVED ? "#059669" : "#dc2626";
+  return `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1a1918;">Verification Document ${status === DocumentStatus.APPROVED ? "Approved" : "Rejected"}</h2>
+    <p>Dear ${name},</p>
+    <p>Your submitted document <strong>${documentType.replace(/_/g, " ")}</strong> has been reviewed and marked as
+    <strong style="color: ${statusColor};">${status}</strong>.</p>
+    ${rejectionReason ? `<p><strong>Reason:</strong> ${rejectionReason}</p><p>Please resubmit a corrected document from your workspace.</p>` : ""}
+    <p>&mdash; Nerou Finder Compliance Team</p>
+  </div>`;
+}
+
+function generateDocumentExpiryEmailHtml(name: string, documentType: string, daysLeft: number, expired: boolean): string {
+  return `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1a1918;">${expired ? "Verification Document Expired" : "Verification Document Expiring Soon"}</h2>
+    <p>Dear ${name},</p>
+    <p>Your document <strong>${documentType.replace(/_/g, " ")}</strong> ${expired ? "has expired and your account verification has been downgraded until it is renewed." : `will expire in ${daysLeft} day(s).`}</p>
+    <p>Please upload a renewed document from your workspace as soon as possible to avoid disruption.</p>
+    <p>&mdash; Nerou Finder Compliance Team</p>
+  </div>`;
+}
+
+// Submit or resubmit a verification document (Agent / Agency Admin / Developer Admin)
+app.post("/api/verification-documents", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const context = getVerificationContextForUser(actor);
+  if (!context) return res.status(403).json({ error: "Your account type does not require document verification." });
+
+  const { documentType, fileUrl, expiryDate } = req.body;
+  if (!documentType || !fileUrl) return res.status(400).json({ error: "documentType and fileUrl are required." });
+  if (!ALL_DOCUMENT_TYPES_BY_CONTEXT[context].includes(documentType)) {
+    return res.status(400).json({ error: `${documentType} is not a valid document type for ${context}.` });
+  }
+
+  if (!db.verificationDocuments) db.verificationDocuments = [];
+  const userId = context === "AGENT" ? actor.id : undefined;
+  const orgId = context !== "AGENT" ? actor.orgId : undefined;
+  if (context !== "AGENT" && !orgId) return res.status(400).json({ error: "No organization associated with this account." });
+
+  const existingIdx = db.verificationDocuments.findIndex(d =>
+    d.documentType === documentType && (context === "AGENT" ? d.userId === userId : d.orgId === orgId)
+  );
+
+  const now = new Date().toISOString();
+  let doc: VerificationDocument;
+  if (existingIdx > -1) {
+    doc = db.verificationDocuments[existingIdx];
+    doc.fileUrl = fileUrl;
+    doc.status = DocumentStatus.PENDING;
+    doc.rejectionReason = undefined;
+    doc.expiryDate = expiryDate || undefined;
+    doc.submittedDate = now;
+    doc.reviewedDate = undefined;
+    doc.reviewedBy = undefined;
+    doc.reminder30SentDate = undefined;
+    doc.reminder7SentDate = undefined;
+  } else {
+    doc = {
+      id: `docv-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      context,
+      userId,
+      orgId,
+      documentType,
+      fileUrl,
+      status: DocumentStatus.PENDING,
+      expiryDate: expiryDate || undefined,
+      submittedDate: now
+    };
+    db.verificationDocuments.push(doc);
+  }
+
+  // Submitting a passport is treated as a self-declaration of expat status, which is
+  // what makes PASSPORT part of the AGENT required checklist going forward.
+  if (context === "AGENT" && documentType === DocumentType.PASSPORT) {
+    actor.isExpat = true;
+  }
+
+  writeDb(db);
+  logAudit(actor.id, actor.fullName, actor.role, "SUBMIT_VERIFICATION_DOCUMENT", doc.id, "VerificationDocument", { documentType, context });
+
+  res.json({ success: true, document: doc });
+});
+
+// Get my verification checklist + submitted documents
+app.get("/api/verification-documents/mine", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const context = getVerificationContextForUser(actor);
+  if (!context) return res.status(403).json({ error: "Your account type does not require document verification." });
+
+  if (!db.verificationDocuments) db.verificationDocuments = [];
+  const userId = context === "AGENT" ? actor.id : undefined;
+  const orgId = context !== "AGENT" ? actor.orgId : undefined;
+
+  const documents = db.verificationDocuments.filter(d => (context === "AGENT" ? d.userId === userId : d.orgId === orgId));
+  const required = getRequiredDocumentTypes(context, actor.isExpat);
+  const owner: { verificationStatus: VerificationStatus } | undefined =
+    context === "AGENT" ? actor : db.organizations.find(o => o.id === orgId);
+
+  res.json({
+    context,
+    required,
+    documents,
+    verificationStatus: owner?.verificationStatus || VerificationStatus.PENDING
+  });
+});
+
+// Admin: list all verification documents (optionally filtered by status/context)
+app.get("/api/admin/verification-documents", (req, res) => {
+  const db = readDb();
+  if (!db.verificationDocuments) db.verificationDocuments = [];
+  const { status, context } = req.query;
+  let docs = db.verificationDocuments;
+  if (status) docs = docs.filter(d => d.status === status);
+  if (context) docs = docs.filter(d => d.context === context);
+
+  const enriched = docs.map(d => {
+    const contact = getDocumentOwnerContact(db, d);
+    return { ...d, applicantName: contact?.name || "Unknown", applicantEmail: contact?.email || "" };
+  });
+
+  res.json(enriched);
+});
+
+// Admin: review (approve/reject) a single document - rejection requires a reason
+app.post("/api/admin/verification-documents/review", (req, res) => {
+  const { documentId, status, rejectionReason, actorId, actorName, actorRole } = req.body;
+  if (!documentId || !status) return res.status(400).json({ error: "documentId and status are required." });
+  if (status !== DocumentStatus.APPROVED && status !== DocumentStatus.REJECTED) {
+    return res.status(400).json({ error: "status must be APPROVED or REJECTED." });
+  }
+  if (status === DocumentStatus.REJECTED && !rejectionReason) {
+    return res.status(400).json({ error: "rejectionReason is required when rejecting a document." });
+  }
+
+  const db = readDb();
+  if (!db.verificationDocuments) db.verificationDocuments = [];
+  const idx = db.verificationDocuments.findIndex(d => d.id === documentId);
+  if (idx === -1) return res.status(404).json({ error: "Document not found." });
+
+  const doc = db.verificationDocuments[idx];
+  doc.status = status;
+  doc.rejectionReason = status === DocumentStatus.REJECTED ? rejectionReason : undefined;
+  doc.reviewedDate = new Date().toISOString();
+  doc.reviewedBy = actorId || "admin";
+
+  recomputeAccountVerification(db, doc.context, doc.userId, doc.orgId);
+  writeDb(db);
+
+  logAudit(
+    actorId || "admin",
+    actorName || "Admin",
+    actorRole || UserRole.PLATFORM_ADMIN,
+    "REVIEW_VERIFICATION_DOCUMENT",
+    documentId,
+    "VerificationDocument",
+    { status, rejectionReason }
+  );
+
+  const contact = getDocumentOwnerContact(db, doc);
+  if (contact) {
+    const html = generateDocumentReviewEmailHtml(contact.name, doc.documentType, status, doc.rejectionReason);
+    sendMockEmail(
+      contact.email,
+      `[Nerou Finder] Document ${status === DocumentStatus.APPROVED ? "Approved" : "Rejected"}: ${doc.documentType.replace(/_/g, " ")}`,
+      html,
+      "document_review"
+    );
+  }
+
+  res.json({ success: true, document: doc });
+});
+
+// Expiry sweep: flags EXPIRED documents, downgrades verification, and sends 30/7-day reminder emails.
+// Runs on an interval from startServer() and can also be triggered manually for testing.
+export function checkDocumentExpiryAndReminders() {
+  const db = readDb();
+  if (!db.verificationDocuments || db.verificationDocuments.length === 0) return;
+
+  const now = Date.now();
+  let changed = false;
+
+  for (const doc of db.verificationDocuments) {
+    if (!doc.expiryDate || doc.status !== DocumentStatus.APPROVED) continue;
+    const expiryTime = Date.parse(doc.expiryDate);
+    if (isNaN(expiryTime)) continue;
+    const daysLeft = Math.ceil((expiryTime - now) / (24 * 60 * 60 * 1000));
+    const contact = getDocumentOwnerContact(db, doc);
+
+    if (daysLeft <= 0) {
+      doc.status = DocumentStatus.EXPIRED;
+      recomputeAccountVerification(db, doc.context, doc.userId, doc.orgId);
+      changed = true;
+      if (contact) {
+        sendMockEmail(
+          contact.email,
+          `[Nerou Finder] Document Expired: ${doc.documentType.replace(/_/g, " ")}`,
+          generateDocumentExpiryEmailHtml(contact.name, doc.documentType, 0, true),
+          "document_expired"
+        );
+      }
+      logAudit("system", "System", UserRole.PLATFORM_ADMIN, "DOCUMENT_EXPIRED", doc.id, "VerificationDocument", { documentType: doc.documentType });
+    } else if (daysLeft <= 7 && !doc.reminder7SentDate) {
+      doc.reminder7SentDate = new Date().toISOString();
+      changed = true;
+      if (contact) {
+        sendMockEmail(
+          contact.email,
+          `[Nerou Finder] Document Expiring in ${daysLeft} Day(s): ${doc.documentType.replace(/_/g, " ")}`,
+          generateDocumentExpiryEmailHtml(contact.name, doc.documentType, daysLeft, false),
+          "document_expiry_reminder"
+        );
+      }
+    } else if (daysLeft <= 30 && !doc.reminder30SentDate) {
+      doc.reminder30SentDate = new Date().toISOString();
+      changed = true;
+      if (contact) {
+        sendMockEmail(
+          contact.email,
+          `[Nerou Finder] Document Expiring in ${daysLeft} Day(s): ${doc.documentType.replace(/_/g, " ")}`,
+          generateDocumentExpiryEmailHtml(contact.name, doc.documentType, daysLeft, false),
+          "document_expiry_reminder"
+        );
+      }
+    }
+  }
+
+  if (changed) writeDb(db);
+}
+
 // Ad Campaigns (Monetization)
 app.get("/api/campaigns", (req, res) => {
   const db = readDb();
@@ -2955,6 +3249,10 @@ async function startServer() {
   } catch (err) {
     console.error("Failed to initialize PostgreSQL database on startup:", err);
   }
+
+  // Verification document expiry sweep: flags EXPIRED docs and sends 30/7-day reminder emails.
+  checkDocumentExpiryAndReminders();
+  setInterval(checkDocumentExpiryAndReminders, 24 * 60 * 60 * 1000);
 
   // Dynamic SEO meta tags for properties
   app.get("/properties/:id", (req, res, next) => {

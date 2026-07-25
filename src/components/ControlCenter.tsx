@@ -99,6 +99,9 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
   const [press, setPress] = useState<PressRelease[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [locations, setLocations] = useState<LocationItem[]>([]);
+  const [verificationDocs, setVerificationDocs] = useState<any[]>([]);
+  const [rejectingDocId, setRejectingDocId] = useState<string>("");
+  const [rejectionReasonDraft, setRejectionReasonDraft] = useState<string>("");
   
   // Developer Outbound SMTP Email Mock Queue states
   const [emails, setEmails] = useState<any[]>([]);
@@ -382,7 +385,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         careersRes,
         pressRes,
         reviewsRes,
-        locationsRes
+        locationsRes,
+        verificationDocsRes
       ] = await Promise.all([
         fetch("/api/users", { headers: authHeader }),
         fetch("/api/properties", { headers: authHeader }),
@@ -400,7 +404,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         fetch("/api/careers", { headers: authHeader }),
         fetch("/api/press", { headers: authHeader }),
         fetch("/api/admin/reviews", { headers: authHeader }),
-        fetch("/api/locations", { headers: authHeader })
+        fetch("/api/locations", { headers: authHeader }),
+        fetch("/api/admin/verification-documents", { headers: authHeader })
       ]);
 
       const [
@@ -420,7 +425,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         careersData,
         pressData,
         reviewsData,
-        locationsData
+        locationsData,
+        verificationDocsData
       ] = await Promise.all([
         usersRes.ok ? usersRes.json() : Promise.resolve([]),
         propRes.ok ? propRes.json() : Promise.resolve([]),
@@ -438,7 +444,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         careersRes.ok ? careersRes.json() : Promise.resolve([]),
         pressRes.ok ? pressRes.json() : Promise.resolve([]),
         reviewsRes.ok ? reviewsRes.json() : Promise.resolve([]),
-        locationsRes.ok ? locationsRes.json() : Promise.resolve([])
+        locationsRes.ok ? locationsRes.json() : Promise.resolve([]),
+        verificationDocsRes.ok ? verificationDocsRes.json() : Promise.resolve([])
       ]);
 
       setUsers(usersData);
@@ -458,6 +465,7 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
       setPress(pressData || []);
       setReviews(reviewsData || []);
       setLocations(locationsData || []);
+      setVerificationDocs(verificationDocsData || []);
 
       // Load AI Config
       try {
@@ -686,6 +694,43 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
     }
   };
 
+  const handleReviewDocument = async (documentId: string, status: "APPROVED" | "REJECTED", rejectionReason?: string) => {
+    if (status === "REJECTED" && !rejectionReason?.trim()) {
+      showToast(isRtl ? "سبب الرفض مطلوب." : "A rejection reason is required.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch("/api/admin/verification-documents/review", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          documentId,
+          status,
+          rejectionReason,
+          actorId: "user-platform-admin",
+          actorName: "Ameera Al-Ansari",
+          actorRole: "PLATFORM_ADMIN"
+        })
+      });
+      if (res.ok) {
+        showToast(status === "APPROVED" ? (isRtl ? "تم اعتماد المستند!" : "Document approved!") : (isRtl ? "تم رفض المستند." : "Document rejected."));
+        setRejectingDocId("");
+        setRejectionReasonDraft("");
+        fetchControlContext();
+        onRefreshAll();
+      } else {
+        const d = await res.json();
+        showToast(d.error || "Failed to review document.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleReviewCampaign = async (campaignId: string, status: string) => {
     try {
       const token = localStorage.getItem("token") || "";
@@ -885,6 +930,19 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
   const pendingOrgs = organizations.filter(o => o.verificationStatus === VerificationStatus.PENDING);
   const pendingUsers = users.filter(u => u.verificationStatus === VerificationStatus.PENDING);
   const pendingCampaigns = campaigns.filter(c => c.status === "PENDING_REVIEW");
+  const pendingDocuments = verificationDocs.filter(d => d.status === "PENDING");
+
+  // Group submitted verification documents by applicant (AGENT user or AGENCY/DEVELOPER org)
+  const documentApplicantGroups: { key: string; applicantName: string; applicantEmail: string; context: string; docs: any[] }[] = [];
+  verificationDocs.forEach(d => {
+    const key = `${d.context}:${d.userId || d.orgId}`;
+    let group = documentApplicantGroups.find(g => g.key === key);
+    if (!group) {
+      group = { key, applicantName: d.applicantName, applicantEmail: d.applicantEmail, context: d.context, docs: [] };
+      documentApplicantGroups.push(group);
+    }
+    group.docs.push(d);
+  });
 
   const totalSaaSMonthlyRevenue = organizations.reduce((acc, org) => {
     if (org.subscriptionPlanId === "plan-premium") return acc + 1800;
@@ -921,9 +979,9 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
             className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "verifications" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
             {isRtl ? "طلبات التوثيق" : "Verifications Queue"}
-            {(pendingProperties.length + pendingOrgs.length + pendingUsers.length) > 0 && (
+            {(pendingProperties.length + pendingOrgs.length + pendingUsers.length + pendingDocuments.length) > 0 && (
               <span className="ml-1 bg-[#bf9b30] text-black text-[9px] px-1 py-0.2 rounded-full font-bold">
-                {pendingProperties.length + pendingOrgs.length + pendingUsers.length}
+                {pendingProperties.length + pendingOrgs.length + pendingUsers.length + pendingDocuments.length}
               </span>
             )}
           </button>
@@ -1350,6 +1408,117 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                           >
                             Reject
                           </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Per-document verification review (FIX 1: Document Verification System) */}
+              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+                  <h4 className="font-serif text-sm font-semibold text-[#1a1918]">
+                    {isRtl ? "مراجعة مستندات التوثيق" : "Document Verification Review"}
+                  </h4>
+                  <p className="text-[10px] text-[#6e6b66] mt-0.5">
+                    {isRtl
+                      ? "يصبح الحساب موثقًا بالكامل فقط عند اعتماد جميع المستندات المطلوبة."
+                      : "An account becomes fully VERIFIED only once every required document for its role is APPROVED."}
+                  </p>
+                </div>
+                <div className="divide-y divide-[#f2ede8]">
+                  {documentApplicantGroups.length === 0 ? (
+                    <p className="p-8 text-center text-[#6e6b66]">
+                      {isRtl ? "لا توجد مستندات مقدمة بعد." : "No documents have been submitted yet."}
+                    </p>
+                  ) : (
+                    documentApplicantGroups.map(group => (
+                      <div key={group.key} className="p-4 space-y-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-[#1a1918]">{group.applicantName}</span>
+                          <span className="text-[10px] bg-[#f2ede8] text-[#6e6b66] px-1.5 py-0.5 rounded">{group.context}</span>
+                          <span className="text-[10px] text-[#6e6b66]">{group.applicantEmail}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {group.docs.map((doc: any) => (
+                            <div key={doc.id} className="p-3 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg space-y-2">
+                              <div className="flex items-center justify-between gap-3 flex-wrap">
+                                <div>
+                                  <p className="font-semibold text-[#1a1918]">{doc.documentType.replace(/_/g, " ")}</p>
+                                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#bf9b30] underline">
+                                    {isRtl ? "عرض المستند" : "View document"}
+                                  </a>
+                                  {doc.expiryDate && (
+                                    <span className="text-[10px] text-[#6e6b66] ml-2">
+                                      {isRtl ? "ينتهي في: " : "Expires: "}{new Date(doc.expiryDate).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
+                                <span
+                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                    doc.status === "APPROVED"
+                                      ? "bg-emerald-50 text-emerald-700"
+                                      : doc.status === "REJECTED"
+                                      ? "bg-rose-50 text-rose-700"
+                                      : doc.status === "EXPIRED"
+                                      ? "bg-orange-50 text-orange-700"
+                                      : "bg-amber-50 text-amber-700"
+                                  }`}
+                                >
+                                  {doc.status}
+                                </span>
+                              </div>
+
+                              {doc.status === "REJECTED" && doc.rejectionReason && (
+                                <p className="text-[10px] text-rose-700">
+                                  <strong>{isRtl ? "سبب الرفض: " : "Reason: "}</strong>{doc.rejectionReason}
+                                </p>
+                              )}
+
+                              {(doc.status === "PENDING" || doc.status === "EXPIRED") && (
+                                <div className="flex items-center gap-2 flex-wrap pt-1">
+                                  <button
+                                    onClick={() => handleReviewDocument(doc.id, "APPROVED")}
+                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-semibold cursor-pointer"
+                                  >
+                                    {isRtl ? "اعتماد" : "Approve"}
+                                  </button>
+                                  {rejectingDocId === doc.id ? (
+                                    <>
+                                      <input
+                                        type="text"
+                                        value={rejectionReasonDraft}
+                                        onChange={(e) => setRejectionReasonDraft(e.target.value)}
+                                        placeholder={isRtl ? "سبب الرفض (مطلوب)" : "Rejection reason (required)"}
+                                        className="px-2 py-1 bg-white border border-[#e6e2de] rounded text-[10px] w-56"
+                                        autoFocus
+                                      />
+                                      <button
+                                        onClick={() => handleReviewDocument(doc.id, "REJECTED", rejectionReasonDraft)}
+                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded font-semibold cursor-pointer"
+                                      >
+                                        {isRtl ? "تأكيد الرفض" : "Confirm Reject"}
+                                      </button>
+                                      <button
+                                        onClick={() => { setRejectingDocId(""); setRejectionReasonDraft(""); }}
+                                        className="px-2 py-1 text-[#6e6b66] hover:text-[#1a1918] cursor-pointer"
+                                      >
+                                        {isRtl ? "إلغاء" : "Cancel"}
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => { setRejectingDocId(doc.id); setRejectionReasonDraft(""); }}
+                                      className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded font-semibold cursor-pointer"
+                                    >
+                                      {isRtl ? "رفض" : "Reject"}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))

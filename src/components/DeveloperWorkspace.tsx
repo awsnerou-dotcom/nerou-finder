@@ -19,6 +19,7 @@ import {
   TrendingUp,
   MapPin
 } from "lucide-react";
+import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 
 interface DeveloperWorkspaceProps {
   developer: Organization;
@@ -29,7 +30,7 @@ interface DeveloperWorkspaceProps {
 export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: DeveloperWorkspaceProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"projects" | "inventory" | "leads">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "inventory" | "leads" | "verification">("projects");
 
   // Local toast state
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -158,8 +159,17 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           >
             {isRtl ? "مخزون الوحدات" : "Units Inventory"}
           </button>
+          <button
+            onClick={() => setActiveTab("verification")}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "verification" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+          >
+            {isRtl ? "التوثيق" : "Verification"}
+          </button>
         </div>
       </div>
+
+      {/* VERIFICATION TAB */}
+      {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} />}
 
       {/* PROJECTS TAB */}
       {activeTab === "projects" && (

@@ -22,6 +22,7 @@ import {
   Award,
   UserCheck
 } from "lucide-react";
+import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 
 interface AgencyWorkspaceProps {
   agency: Organization;
@@ -33,7 +34,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
   const [agents, setAgents] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [activeTab, setActiveTab] = useState<"team" | "routing" | "campaigns" | "subscription" | "leads">("team");
+  const [activeTab, setActiveTab] = useState<"team" | "routing" | "campaigns" | "subscription" | "leads" | "verification">("team");
   const [invitations, setInvitations] = useState<any[]>([]);
   const [orgLeads, setOrgLeads] = useState<Lead[]>([]);
 
@@ -305,8 +306,17 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
           >
             {isRtl ? "الاشتراكات SaaS" : "SaaS Billing"}
           </button>
+          <button
+            onClick={() => setActiveTab("verification")}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "verification" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+          >
+            {isRtl ? "التوثيق" : "Verification"}
+          </button>
         </div>
       </div>
+
+      {/* VERIFICATION TAB */}
+      {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} />}
 
       {/* TEAM TAB */}
       {activeTab === "team" && (

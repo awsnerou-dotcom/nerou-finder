@@ -23,6 +23,7 @@ import {
   Image as ImageIcon,
   Loader2
 } from "lucide-react";
+import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 
 interface AgentWorkspaceProps {
   agent: User;
@@ -96,7 +97,7 @@ const compressImage = (file: File): Promise<File> => {
 export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWorkspaceProps) {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "properties" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "properties" | "verification" | "profile">("dashboard");
 
   // Local toast state
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -372,6 +373,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             {isRtl ? "عقاراتي" : "My Listings"}
           </button>
           <button
+            onClick={() => setActiveTab("verification")}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "verification" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+          >
+            {isRtl ? "التوثيق" : "Verification"}
+          </button>
+          <button
             onClick={() => setActiveTab("profile")}
             className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "profile" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
@@ -379,6 +386,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           </button>
         </div>
       </div>
+
+      {/* VERIFICATION TAB */}
+      {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} />}
 
       {/* DASHBOARD TAB */}
       {activeTab === "dashboard" && (
