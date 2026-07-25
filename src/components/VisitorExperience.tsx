@@ -1178,10 +1178,10 @@ export default function VisitorExperience({
               <div
                 key={property.id}
                 onClick={() => setSelectedProperty(property)}
-                className={`bg-white rounded-xl border transition-all overflow-hidden group cursor-pointer flex flex-col justify-between hover:shadow-lg ${
+                className={`bg-white rounded-xl border transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col justify-between hover:shadow-xl hover:-translate-y-0.5 ${
                   feat
-                    ? "border-[#bf9b30] bg-[#bf9b30]/2 shadow-sm hover:border-[#967923] ring-1 ring-[#bf9b30]/20"
-                    : "border-[#e6e2de] hover:border-[#bf9b30] shadow-xs"
+                    ? "border-[#bf9b30] bg-[#bf9b30]/2 shadow-md hover:border-[#967923] ring-1 ring-[#bf9b30]/20"
+                    : "border-[#e6e2de] hover:border-[#bf9b30] shadow-sm"
                 }`}
               >
                 <div>
@@ -1259,7 +1259,7 @@ export default function VisitorExperience({
                         <MapPin size={12} />
                         <span>{property.district}, {property.city}</span>
                       </div>
-                      <h4 className="text-base font-medium text-[#1a1918] line-clamp-1 group-hover:text-[#bf9b30] transition-colors">
+                      <h4 className="font-serif text-lg font-medium text-[#1a1918] line-clamp-1 group-hover:text-[#bf9b30] transition-colors">
                         {isRtl ? property.titleAr : property.title}
                       </h4>
                     </div>
@@ -1298,7 +1298,7 @@ export default function VisitorExperience({
                     <span className="text-[10px] text-[#6e6b66] block uppercase tracking-wider">
                       {property.transactionType === TransactionType.FOR_RENT ? (isRtl ? "قيمة الإيجار" : "Rent Price") : (isRtl ? "القيمة الإجمالية" : "Total Cost")}
                     </span>
-                    <span className="text-lg font-bold text-[#1c1a17]">
+                    <span className="font-serif text-xl font-semibold text-[#1c1a17]">
                       {formatPrice(property.price, isRtl)}
                     </span>
                   </div>
@@ -1306,14 +1306,14 @@ export default function VisitorExperience({
                   <div className="flex gap-1.5">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleWhatsAppAction(property); }}
-                      className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg transition-colors cursor-pointer"
+                      className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-full transition-colors cursor-pointer"
                       title={t.whatsappCTA}
                     >
                       <MessageCircle size={16} />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleCallAction(property); }}
-                      className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors cursor-pointer"
+                      className="p-2 bg-[#fdf6e8] hover:bg-[#f8ecc9] text-[#8c6d1d] rounded-full transition-colors cursor-pointer"
                       title={t.callCTA}
                     >
                       <Phone size={16} />

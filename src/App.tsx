@@ -495,9 +495,84 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-[#e6e2de] py-8 text-center text-xs text-[#6e6b66] space-y-1.5">
-        <p>© 2026 Nerou Finder Real Estate Discovery Marketplace and SaaS Platform. Powered by Nerou Technology Services & Nerou Find AI.</p>
-        <p className="text-[10px] text-[#a8a4a0]">Seeded for Qatar (Doha, Lusail, Pearl Qatar, West Bay) • developed by Nerou Technology Services.</p>
+      <footer className="bg-[#1c1a17] text-gray-300 mt-8">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="col-span-2 md:col-span-1 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="font-serif text-lg tracking-[0.2em] text-white font-semibold">NEROU</span>
+              <span className="font-serif text-lg tracking-wider text-[#bf9b30] font-bold">FINDER</span>
+            </div>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              {isRtl
+                ? "منصة اكتشاف العقارات الفاخرة الأولى في قطر، مدعومة بالذكاء الاصطناعي."
+                : "Qatar's premier AI-powered luxury real estate discovery platform."}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-[10px] font-bold uppercase tracking-widest text-[#bf9b30]">
+              {isRtl ? "استكشف" : "Explore"}
+            </h5>
+            <div className="flex flex-col gap-2 text-xs">
+              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "شراء" : "Buy"}
+              </button>
+              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "إيجار" : "Rent"}
+              </button>
+              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "على المخطط" : "Off-Plan"}
+              </button>
+              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "المشاريع الكبرى" : "Masterplans"}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-[10px] font-bold uppercase tracking-widest text-[#bf9b30]">
+              {isRtl ? "الشركة" : "Company"}
+            </h5>
+            <div className="flex flex-col gap-2 text-xs">
+              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "وظائف" : "Careers"}
+              </button>
+              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "الصحافة" : "Press"}
+              </button>
+              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "شراكات" : "Partnerships"}
+              </button>
+              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "الوثائق القانونية" : "Legal Policies"}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h5 className="text-[10px] font-bold uppercase tracking-widest text-[#bf9b30]">
+              {isRtl ? "الدعم" : "Support"}
+            </h5>
+            <div className="flex flex-col gap-2 text-xs">
+              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "مركز المساعدة" : "Help Center"}
+              </button>
+              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "تذاكر الدعم" : "Support Desk"}
+              </button>
+              <button onClick={() => setIsSignupOpen(true)} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "انضم كشريك" : "Become a Partner"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-white/10">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-gray-500">
+            <p>© 2026 Nerou Finder. {isRtl ? "جميع الحقوق محفوظة." : "All rights reserved."} Powered by Nerou Technology Services.</p>
+            <p>{isRtl ? "الدوحة، لوسيل، اللؤلؤة قطر، الخليج الغربي" : "Doha • Lusail • Pearl Qatar • West Bay"}</p>
+          </div>
+        </div>
       </footer>
 
       {/* 1. LOGIN MODAL DIALOG */}
