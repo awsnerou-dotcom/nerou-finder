@@ -60,6 +60,7 @@ import SupportTicketsView from "./SupportTicketsView.js";
 import PressView from "./PressView.js";
 import PartnershipsView from "./PartnershipsView.js";
 import PlansPricingView from "./PlansPricingView.js";
+import HeroBackground3D from "./HeroBackground3D.js";
 
 interface VisitorExperienceProps {
   isRtl: boolean;
@@ -844,6 +845,7 @@ export default function VisitorExperience({
         <>
           {/* 1. Conversational AI Search Banner */}
           <div className="bg-[#1c1a17] text-white p-6 md:p-8 rounded-xl border border-[#33302a] shadow-sm relative overflow-hidden">
+        <HeroBackground3D />
         <div className="absolute top-0 right-0 p-8 opacity-5">
           <Sparkles size={160} />
         </div>

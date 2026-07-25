@@ -1741,8 +1741,14 @@ app.get("/api/verification-documents/mine", authMiddleware, (req, res) => {
 
   const documents = db.verificationDocuments.filter(d => (context === "AGENT" ? d.userId === userId : d.orgId === orgId));
   const required = getRequiredDocumentTypes(context, actor.isExpat);
+
+  // Self-heal: ensure verificationStatus always reflects actual document completeness
+  // (matters for accounts that were pre-approved before this checklist existed).
+  recomputeAccountVerification(db, context, userId, orgId);
+  writeDb(db);
+
   const owner: { verificationStatus: VerificationStatus } | undefined =
-    context === "AGENT" ? actor : db.organizations.find(o => o.id === orgId);
+    context === "AGENT" ? db.users.find(u => u.id === userId) : db.organizations.find(o => o.id === orgId);
 
   res.json({
     context,
