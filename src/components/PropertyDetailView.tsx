@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Property, VerificationStatus, TransactionType, PropertyType } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
 import {
@@ -43,6 +43,7 @@ interface PropertyDetailViewProps {
   isRtl: boolean;
   allProperties?: Property[];
   onSelectProperty?: (property: Property) => void;
+  currentUser?: { fullName?: string; email?: string } | null;
 }
 
 export default function PropertyDetailView({
@@ -55,6 +56,7 @@ export default function PropertyDetailView({
   isRtl,
   allProperties = [],
   onSelectProperty,
+  currentUser,
 }: PropertyDetailViewProps) {
   const { activeCurrency, formatPrice, convertPrice, getCurrencySymbol } = useCurrency();
   // Gallery State
@@ -71,6 +73,7 @@ export default function PropertyDetailView({
   const [reportReason, setReportReason] = useState<string>("");
   const [reportDetails, setReportDetails] = useState<string>("");
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [reportError, setReportError] = useState<string>("");
 
   // Booking Form State
   const [bookingName, setBookingName] = useState("");
@@ -79,6 +82,30 @@ export default function PropertyDetailView({
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
   const [bookingSent, setBookingSent] = useState(false);
+  const [bookingError, setBookingError] = useState<string>("");
+
+  // Real per-property agent/agency identity (name, photo, phone) resolved from the server
+  const [agentInfo, setAgentInfo] = useState<{
+    agentName: string | null;
+    agentPhotoUrl: string | null;
+    orgName: string | null;
+    phone: string;
+    isVerifiedAgent: boolean;
+    hasAssignedAgent: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/properties/${property.id}/agent-info`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setAgentInfo(data);
+      })
+      .catch((e) => console.error("Failed to fetch agent info:", e));
+    return () => {
+      cancelled = true;
+    };
+  }, [property.id]);
 
   // Floor Plan State
   const [activeFloorPlanIndex, setActiveFloorPlanIndex] = useState(0);
@@ -227,17 +254,30 @@ export default function PropertyDetailView({
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.text("REPRESENTED BY AUTHORIZED BROKER", 25, footerY + 8);
 
+      const brochureAgentName = agentInfo?.agentName || agentInfo?.orgName || "Nerou Finder Team";
+      const brochurePhone = agentInfo?.phone
+        ? `+${agentInfo.phone.slice(0, 3)} ${agentInfo.phone.slice(3, 7)} ${agentInfo.phone.slice(7)}`
+        : "+974 3333 4444";
+
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
       doc.setTextColor(goldColor[0], goldColor[1], goldColor[2]);
-      doc.text("Naser Al-Kuwari", 25, footerY + 16);
+      doc.text(brochureAgentName, 25, footerY + 16);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9.5);
       doc.setTextColor(darkGray[0], darkGray[1], darkGray[2]);
-      doc.text("Licensed Agent - Nerou Finder Partner Network", 25, footerY + 23);
-      doc.text("Contact: +974 3333 4444 | Email: licensing@nerou.io", 25, footerY + 29);
-      doc.text("Rera License Registration: Q-280421 | Certified Partner", 25, footerY + 35);
+      doc.text(
+        agentInfo?.hasAssignedAgent ? "Licensed Agent - Nerou Finder Partner Network" : "Nerou Finder Partner Network",
+        25,
+        footerY + 23
+      );
+      doc.text(`Contact: ${brochurePhone} | Email: licensing@nerou.io`, 25, footerY + 29);
+      doc.text(
+        agentInfo?.isVerifiedAgent ? "Verified Nerou Finder Certified Partner" : "Nerou Finder Certified Partner Network",
+        25,
+        footerY + 35
+      );
 
       doc.save(`Brochure-${property.listingId}.pdf`);
     }).catch(err => {
@@ -407,6 +447,7 @@ export default function PropertyDetailView({
   const handleBookingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookingName || !bookingPhone) return;
+    setBookingError("");
 
     fetch("/api/leads", {
       method: "POST",
@@ -420,28 +461,39 @@ export default function PropertyDetailView({
         contactMethod: "INQUIRY"
       })
     })
-    .then(() => {
+    .then((res) => {
+      if (!res.ok) throw new Error(`Booking request failed with status ${res.status}`);
       setBookingSent(true);
       setTimeout(() => setBookingSent(false), 5000);
+    })
+    .catch((err) => {
+      console.error("Failed to submit booking request:", err);
+      setBookingError(
+        isRtl
+          ? "تعذر إرسال طلب الحجز. يرجى المحاولة مرة أخرى."
+          : "We couldn't send your booking request. Please try again."
+      );
     });
   };
 
   const submitReport = (e: React.FormEvent) => {
     e.preventDefault();
     if (!reportReason) return;
+    setReportError("");
 
     fetch("/api/reports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         propertyId: property.id,
-        reporterName: "Platform User",
-        reporterEmail: "user@nerou.com",
+        reporterName: currentUser?.fullName || (isRtl ? "زائر مجهول" : "Anonymous Visitor"),
+        reporterEmail: currentUser?.email || "anonymous@nerou.com",
         reason: reportReason,
         details: reportDetails
       })
     })
-    .then(() => {
+    .then((res) => {
+      if (!res.ok) throw new Error(`Report submission failed with status ${res.status}`);
       setReportSuccess(true);
       setTimeout(() => {
         setReportSuccess(false);
@@ -449,6 +501,14 @@ export default function PropertyDetailView({
         setReportReason("");
         setReportDetails("");
       }, 3000);
+    })
+    .catch((err) => {
+      console.error("Failed to submit report:", err);
+      setReportError(
+        isRtl
+          ? "تعذر إرسال البلاغ. يرجى المحاولة مرة أخرى."
+          : "We couldn't submit your report. Please try again."
+      );
     });
   };
 
@@ -1321,24 +1381,27 @@ export default function PropertyDetailView({
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-50 border border-[#E6E2DE]">
                       <img
-                        src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&h=150&q=80"
+                        src={agentInfo?.agentPhotoUrl || "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&h=150&q=80"}
                         alt="Agent"
                         className="w-full h-full object-cover"
                       />
                     </div>
                     <div>
-                      <h4 className="font-serif text-sm font-semibold text-[#1A1918]">Naser Al-Kuwari</h4>
-                      <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-                        <Award size={11} fill="currentColor" />
-                        <span>{isRtl ? "مقدم إعلان معتمد" : "Certified Listing Provider"}</span>
-                      </p>
+                      <h4 className="font-serif text-sm font-semibold text-[#1A1918]">
+                        {agentInfo?.agentName || agentInfo?.orgName || (isRtl ? "فريق نيرو فايندر" : "Nerou Finder Team")}
+                      </h4>
+                      {agentInfo?.isVerifiedAgent && (
+                        <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                          <Award size={11} fill="currentColor" />
+                          <span>{isRtl ? "مقدم إعلان معتمد" : "Certified Listing Provider"}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   <div className="space-y-1 text-xs text-[#6E6B66]">
-                    <p>💼 <strong>Nerou Finder Partner Network</strong></p>
+                    <p>💼 <strong>{agentInfo?.orgName || "Nerou Finder Partner Network"}</strong></p>
                     <p>🌐 {isRtl ? "يتحدث: العربية، الإنجليزية" : "Languages: Arabic, English"}</p>
-                    <p>🏷️ {isRtl ? "الترخيص العقاري" : "Rera License #"}: Q-280421</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1350,7 +1413,7 @@ export default function PropertyDetailView({
                       <span>WhatsApp</span>
                     </button>
                     <a
-                      href="tel:+97433334444"
+                      href={`tel:+${agentInfo?.phone || "97433334444"}`}
                       className="px-3 py-2 bg-[#1A1918] hover:bg-[#BF9B30] text-white rounded-lg font-bold flex items-center justify-center gap-1 transition-colors"
                     >
                       <Phone size={14} />
@@ -1373,6 +1436,11 @@ export default function PropertyDetailView({
                     </div>
                   ) : (
                     <form onSubmit={handleBookingSubmit} className="space-y-3 text-xs">
+                      {bookingError && (
+                        <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-[11px] font-medium">
+                          {bookingError}
+                        </div>
+                      )}
                       <div className="space-y-1">
                         <label className="text-[#6E6B66] font-medium">{isRtl ? "الاسم الكريم" : "Your Name"}</label>
                         <input
@@ -1457,7 +1525,7 @@ export default function PropertyDetailView({
               <MessageCircle size={18} />
             </button>
             <a
-              href="tel:+97433334444"
+              href={`tel:+${agentInfo?.phone || "97433334444"}`}
               className="px-4 py-2.5 bg-[#1A1918] text-white font-bold rounded-lg hover:bg-[#BF9B30] flex items-center gap-1"
             >
               <Phone size={14} />
@@ -1483,6 +1551,11 @@ export default function PropertyDetailView({
                 </div>
               ) : (
                 <form onSubmit={submitReport} className="space-y-3 text-xs">
+                  {reportError && (
+                    <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-[11px] font-medium">
+                      {reportError}
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <label className="text-[#6E6B66] font-medium">{isRtl ? "سبب الإبلاغ" : "Reporting Reason"}</label>
                     <select

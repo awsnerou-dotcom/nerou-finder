@@ -8,7 +8,7 @@ import VisitorExperience from "./components/VisitorExperience.js";
 import HeroBackground3D from "./components/HeroBackground3D.js";
 import CookieConsent from "./components/CookieConsent.js";
 import { trackEvent } from "./lib/analytics.js";
-import { User, UserRole, Organization, OrganizationType, VerificationStatus } from "./types.js";
+import { User, UserRole, Organization, OrganizationType, VerificationStatus, TransactionType } from "./types.js";
 import { useCurrency, CURRENCIES, CurrencyCode } from "./currencyContext.js";
 import {
   Globe,
@@ -51,6 +51,15 @@ export default function App() {
   });
   
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
+
+  // Footer navigation requests: the footer lives outside VisitorExperience (which owns the
+  // marketplace's internal tab state), so we hand it a one-shot navigation request that
+  // VisitorExperience consumes and clears.
+  const [visitorNavRequest, setVisitorNavRequest] = useState<{ tab: string; transType?: string } | null>(null);
+  const navigateFooter = (tab: string, transType?: string) => {
+    setViewMode("MARKETPLACE");
+    setVisitorNavRequest({ tab, transType });
+  };
 
   // Authentication Modals states
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
@@ -487,6 +496,8 @@ export default function App() {
             currentUser={currentUser}
             onLoginTrigger={() => setIsLoginOpen(true)}
             onSignupTrigger={() => setIsSignupOpen(true)}
+            externalNavigation={visitorNavRequest}
+            onExternalNavigationHandled={() => setVisitorNavRequest(null)}
           />
         ) : (
           <Suspense fallback={<DashboardLoader isRtl={isRtl} />}>
@@ -515,16 +526,16 @@ export default function App() {
               {isRtl ? "استكشف" : "Explore"}
             </h5>
             <div className="flex flex-col gap-2 text-xs">
-              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => navigateFooter("MARKETPLACE", TransactionType.FOR_SALE)} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "شراء" : "Buy"}
               </button>
-              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => navigateFooter("MARKETPLACE", TransactionType.FOR_RENT)} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "إيجار" : "Rent"}
               </button>
-              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => navigateFooter("MARKETPLACE", TransactionType.OFF_PLAN)} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "على المخطط" : "Off-Plan"}
               </button>
-              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => navigateFooter("PROJECTS")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "المشاريع الكبرى" : "Masterplans"}
               </button>
             </div>
@@ -535,16 +546,16 @@ export default function App() {
               {isRtl ? "الشركة" : "Company"}
             </h5>
             <div className="flex flex-col gap-2 text-xs">
-              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => navigateFooter("CAREERS")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "وظائف" : "Careers"}
               </button>
-              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => navigateFooter("PRESS")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "الصحافة" : "Press"}
               </button>
-              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => navigateFooter("PARTNERSHIPS")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "شراكات" : "Partnerships"}
               </button>
-              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => navigateFooter("LEGAL")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "الوثائق القانونية" : "Legal Policies"}
               </button>
             </div>
@@ -555,10 +566,10 @@ export default function App() {
               {isRtl ? "الدعم" : "Support"}
             </h5>
             <div className="flex flex-col gap-2 text-xs">
-              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => navigateFooter("HELP_CENTER")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "مركز المساعدة" : "Help Center"}
               </button>
-              <button onClick={() => setViewMode("MARKETPLACE")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => navigateFooter("SUPPORT_TICKETS")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "تذاكر الدعم" : "Support Desk"}
               </button>
               <button onClick={() => setIsSignupOpen(true)} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
@@ -861,11 +872,12 @@ export default function App() {
 
                     <div>
                       <label className="block text-[10px] font-bold text-[#6e6b66] uppercase mb-1">
-                        {isRtl ? "كلمة المرور" : "Create Password"} *
+                        {isRtl ? "كلمة المرور (٨ أحرف على الأقل)" : "Create Password (min. 8 characters)"} *
                       </label>
                       <input
                         type="password"
                         required
+                        minLength={8}
                         value={signupPassword}
                         onChange={(e) => setSignupPassword(e.target.value)}
                         placeholder="••••••••"

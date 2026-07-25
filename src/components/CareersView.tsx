@@ -14,6 +14,7 @@ export default function CareersView({ isRtl }: CareersViewProps) {
   const [applicantCover, setApplicantCover] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [applyError, setApplyError] = useState("");
 
   useEffect(() => {
     fetchJobs();
@@ -36,7 +37,8 @@ export default function CareersView({ isRtl }: CareersViewProps) {
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!applicantName || !applicantEmail || !applicantPhone) return;
-    
+    setApplyError("");
+
     try {
       const res = await fetch("/api/careers/apply", {
         method: "POST",
@@ -59,9 +61,20 @@ export default function CareersView({ isRtl }: CareersViewProps) {
           setApplicantCover("");
           setSelectedJob(null);
         }, 2500);
+      } else {
+        setApplyError(
+          isRtl
+            ? "تعذر إرسال طلبك. يرجى المحاولة مرة أخرى."
+            : "We couldn't submit your application. Please try again."
+        );
       }
     } catch (err) {
       console.error(err);
+      setApplyError(
+        isRtl
+          ? "تعذر إرسال طلبك. يرجى المحاولة مرة أخرى."
+          : "We couldn't submit your application. Please try again."
+      );
     }
   };
 
@@ -171,6 +184,11 @@ export default function CareersView({ isRtl }: CareersViewProps) {
               </div>
             ) : (
               <form onSubmit={handleApply} className="space-y-3 text-xs text-[#1a1918]">
+                {applyError && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-[11px] font-medium">
+                    {applyError}
+                  </div>
+                )}
                 <div>
                   <label className="block text-[10px] font-semibold text-[#6e6b66] mb-1">{isRtl ? "الاسم الكامل" : "Full Name"}</label>
                   <input

@@ -630,6 +630,10 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
     return res.status(400).json({ error: "An account with this email already exists." });
   }
 
+  if (!password || password.length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters long." });
+  }
+
   let orgId: string | undefined = undefined;
   let effectiveRole = role;
 
@@ -938,11 +942,61 @@ app.get("/api/properties/:id/whatsapp-number", (req, res) => {
   res.json({ whatsappNumber: cleanedPhone });
 });
 
+// Get the real assigned agent/agency identity for a property (name, photo, verification, contact
+// number) so the frontend never has to fabricate a display name or license for the contact card
+// and PDF brochure.
+app.get("/api/properties/:id/agent-info", (req, res) => {
+  const db = readDb();
+  const property = db.properties.find(p => p.id === req.params.id);
+  if (!property) {
+    return res.status(404).json({ error: "Property not found" });
+  }
+
+  const agent = db.users.find(u => u.id === property.agentId);
+  const org = property.orgId ? db.organizations.find(o => o.id === property.orgId) : undefined;
+
+  let phone = "";
+  if (agent) {
+    if (agent.whatsapp && agent.whatsapp.trim()) {
+      phone = agent.whatsapp.trim();
+    } else if (agent.phone && agent.phone.trim()) {
+      phone = agent.phone.trim();
+    }
+  }
+  if (!phone && org) {
+    if (org.whatsapp && org.whatsapp.trim()) {
+      phone = org.whatsapp.trim();
+    } else if (org.phone && org.phone.trim()) {
+      phone = org.phone.trim();
+    }
+  }
+  if (!phone) {
+    phone = db.aiConfig?.whatsappDefaultNumber || "97433334444";
+  }
+  const cleanedPhone = phone.replace(/\D/g, "");
+
+  res.json({
+    agentName: agent ? agent.fullName : null,
+    agentPhotoUrl: agent?.avatarUrl || org?.logoUrl || null,
+    orgName: org ? org.name : null,
+    phone: cleanedPhone,
+    isVerifiedAgent: agent ? agent.verificationStatus === VerificationStatus.APPROVED : false,
+    hasAssignedAgent: !!agent
+  });
+});
+
 // Create/Update Property (SaaS Agent/Agency Admin/Developer workspace action)
 app.post("/api/properties", authMiddleware, (req, res) => {
   const db = readDb();
   const propData = req.body;
   const isEdit = !!propData.id;
+
+  if (propData.price !== undefined && Number(propData.price) < 0) {
+    return res.status(400).json({ error: "Price cannot be negative." });
+  }
+  if (propData.area !== undefined && Number(propData.area) < 0) {
+    return res.status(400).json({ error: "Area cannot be negative." });
+  }
 
   const authReq = req as AuthenticatedRequest;
   const actorId = authReq.user?.id || "unknown";
@@ -2064,6 +2118,10 @@ app.post("/api/campaigns", authMiddleware, (req, res) => {
   const db = readDb();
   const campData = req.body;
   const id = `camp-${Date.now()}`;
+
+  if (campData.budget !== undefined && Number(campData.budget) < 0) {
+    return res.status(400).json({ error: "Campaign budget cannot be negative." });
+  }
 
   const authReq = req as AuthenticatedRequest;
   const actorId = authReq.user?.id || "unknown";

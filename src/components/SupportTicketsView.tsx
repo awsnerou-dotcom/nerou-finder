@@ -125,9 +125,12 @@ export default function SupportTicketsView({
         setDescription("");
         setIsCreating(false);
         fetchUserTickets();
+      } else {
+        showToast(isRtl ? "تعذر فتح تذكرة الدعم. يرجى المحاولة مرة أخرى." : "Failed to open the support ticket. Please try again.");
       }
     } catch (err) {
       console.error(err);
+      showToast(isRtl ? "تعذر فتح تذكرة الدعم. يرجى المحاولة مرة أخرى." : "Failed to open the support ticket. Please try again.");
     }
   };
 
@@ -153,9 +156,12 @@ export default function SupportTicketsView({
         setSelectedTicket(data.ticket);
         showToast(isRtl ? "تم إرسال الرد الفني." : "Reply successfully transmitted.");
         fetchUserTickets();
+      } else {
+        showToast(isRtl ? "تعذر إرسال الرد. يرجى المحاولة مرة أخرى." : "Failed to send the reply. Please try again.");
       }
     } catch (err) {
       console.error(err);
+      showToast(isRtl ? "تعذر إرسال الرد. يرجى المحاولة مرة أخرى." : "Failed to send the reply. Please try again.");
     }
   };
 

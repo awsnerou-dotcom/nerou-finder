@@ -68,6 +68,10 @@ interface VisitorExperienceProps {
   currentUser?: any;
   onLoginTrigger?: () => void;
   onSignupTrigger?: () => void;
+  // One-shot navigation request from outside this component (e.g. the site footer in App.tsx,
+  // which sits outside VisitorExperience and doesn't otherwise have access to its tab state).
+  externalNavigation?: { tab: string; transType?: string } | null;
+  onExternalNavigationHandled?: () => void;
 }
 
 export default function VisitorExperience({
@@ -75,7 +79,9 @@ export default function VisitorExperience({
   onLeadSubmitted,
   currentUser,
   onLoginTrigger,
-  onSignupTrigger
+  onSignupTrigger,
+  externalNavigation,
+  onExternalNavigationHandled
 }: VisitorExperienceProps) {
   const { formatPrice } = useCurrency();
   const [properties, setProperties] = useState<Property[]>([]);
@@ -111,6 +117,21 @@ export default function VisitorExperience({
     | "PLANS"
   >("MARKETPLACE");
 
+  // Consume one-shot navigation requests coming from outside this component (the App.tsx footer).
+  useEffect(() => {
+    if (externalNavigation) {
+      setCurrentTab(externalNavigation.tab as any);
+      if (externalNavigation.transType) {
+        setTransType(externalNavigation.transType);
+      } else if (externalNavigation.tab === "MARKETPLACE") {
+        setPropType("");
+        setTransType("");
+      }
+      if (onExternalNavigationHandled) onExternalNavigationHandled();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalNavigation]);
+
   // AI Search state
   const [aiPrompt, setAiPrompt] = useState<string>("");
   const [aiLoading, setAiLoading] = useState<boolean>(false);
@@ -137,17 +158,6 @@ export default function VisitorExperience({
   // In-depth representative profiles modals
   const [selectedAgentProfile, setSelectedAgentProfile] = useState<User | null>(null);
   const [selectedOrgProfile, setSelectedOrgProfile] = useState<Organization | null>(null);
-
-  // Inquiry form state
-  const [visitorName, setVisitorName] = useState<string>("");
-  const [visitorPhone, setVisitorPhone] = useState<string>("");
-  const [visitorEmail, setVisitorEmail] = useState<string>("");
-  const [preferredLang, setPreferredLang] = useState<string>("English");
-  const [message, setMessage] = useState<string>("");
-  const [prefDate, setPrefDate] = useState<string>("");
-  const [prefTime, setPrefTime] = useState<string>("");
-  const [submittingInquiry, setSubmittingInquiry] = useState<boolean>(false);
-  const [inquirySuccess, setInquirySuccess] = useState<boolean>(false);
 
   // Sorting
   const [sortBy, setSortBy] = useState<string>("default");
@@ -496,52 +506,6 @@ export default function VisitorExperience({
 
 
 
-  const handleInquirySubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!visitorName || !visitorPhone) return;
-    setSubmittingInquiry(true);
-    try {
-      const res = await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          propertyId: selectedProperty?.id,
-          visitorName,
-          visitorPhone,
-          visitorEmail,
-          preferredLanguage: preferredLang,
-          message: message || `Inquiry on ${selectedProperty?.title}`,
-          contactMethod: "INQUIRY",
-          preferredDate: prefDate,
-          preferredTimeSlot: prefTime,
-          source: "Marketplace Search"
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setInquirySuccess(true);
-        trackEvent("inquiry_submitted", "marketplace", selectedProperty?.title || "general");
-        if (prefDate && prefTime) {
-          trackEvent("viewing_requested", "marketplace", selectedProperty?.title || "general");
-        }
-        onLeadSubmitted();
-        setTimeout(() => {
-          setInquirySuccess(false);
-          setVisitorName("");
-          setVisitorPhone("");
-          setVisitorEmail("");
-          setMessage("");
-          setPrefDate("");
-          setPrefTime("");
-        }, 3000);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSubmittingInquiry(false);
-    }
-  };
-
   const handleWhatsAppAction = async (property: Property) => {
     try {
       await fetch("/api/leads", {
@@ -666,7 +630,6 @@ export default function VisitorExperience({
     baths: isRtl ? "حمامات" : "Baths",
     sqm: isRtl ? "متر مربع" : "Sqm",
     whyMatchHeader: isRtl ? "لماذا يناسبك هذا العقار؟" : "Why this match?",
-    inquirySuccessMsg: isRtl ? "تم إرسال استفسارك بنجاح! سيتصل بك مقدم الإعلان المعتمد مباشرة." : "Inquiry submitted successfully! The authorized listing provider will contact you directly.",
     detailsTitle: isRtl ? "تفاصيل العقار" : "Property Details",
     specs: isRtl ? "المواصفات الأساسية" : "Core Specifications",
     amenities: isRtl ? "المرافق والخدمات" : "Amenities & Facilities",
@@ -675,8 +638,6 @@ export default function VisitorExperience({
     phoneLabel: isRtl ? "رقم الهاتف" : "Phone Number",
     langPref: isRtl ? "اللغة المفضلة" : "Preferred Language",
     messageLabel: isRtl ? "الرسالة" : "Your Message",
-    prefDateLabel: isRtl ? "التاريخ المفضل" : "Preferred Date",
-    prefTimeLabel: isRtl ? "الوقت المفضل" : "Preferred Time Slot",
     submitForm: isRtl ? "تأكيد الطلب" : "Confirm Inquiry",
     priceHistory: isRtl ? "سجل الأسعار" : "Price History",
     aiErrorMsg: isRtl ? "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي نيرو فايند. الرجاء المحاولة مجددًا." : "Nerou Find AI is currently offline or starting up."
@@ -1355,6 +1316,7 @@ export default function VisitorExperience({
           }}
           isCompared={comparedPropertyIds.includes(selectedProperty.id)}
           isRtl={isRtl}
+          currentUser={currentUser}
         />
       )}
 

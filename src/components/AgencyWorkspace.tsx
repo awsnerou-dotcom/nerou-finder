@@ -542,6 +542,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                   <input
                     type="number"
                     required
+                    min="0"
                     value={campBudget}
                     onChange={(e) => setCampBudget(e.target.value)}
                     placeholder="e.g. 1500"

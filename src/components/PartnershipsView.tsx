@@ -14,11 +14,13 @@ export default function PartnershipsView({ isRtl }: PartnershipsViewProps) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyName || !contactName || !email || !phone) return;
     setLoading(true);
+    setSubmitError("");
     try {
       const res = await fetch("/api/partnerships", {
         method: "POST",
@@ -42,9 +44,20 @@ export default function PartnershipsView({ isRtl }: PartnershipsViewProps) {
           setPhone("");
           setMessage("");
         }, 3000);
+      } else {
+        setSubmitError(
+          isRtl
+            ? "تعذر إرسال طلب الشراكة. يرجى المحاولة مرة أخرى."
+            : "We couldn't submit your partnership application. Please try again."
+        );
       }
     } catch (err) {
       console.error(err);
+      setSubmitError(
+        isRtl
+          ? "تعذر إرسال طلب الشراكة. يرجى المحاولة مرة أخرى."
+          : "We couldn't submit your partnership application. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -113,6 +126,11 @@ export default function PartnershipsView({ isRtl }: PartnershipsViewProps) {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {submitError && (
+                <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-red-700 text-[11px] font-medium">
+                  {submitError}
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-semibold text-[#6e6b66] mb-1">{isRtl ? "اسم الشركة / الكيان" : "Company / Enterprise Name"}</label>

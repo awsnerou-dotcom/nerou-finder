@@ -190,9 +190,14 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
         onRefreshAll();
         setToastMessage(isRtl ? "تمت إضافة المشروع الجديد بنجاح في المنصة وتحديث الدليل!" : "New master project catalogued and published successfully!");
         setTimeout(() => setToastMessage(""), 4000);
+      } else {
+        setToastMessage(isRtl ? "تعذر إضافة المشروع. يرجى المحاولة مرة أخرى." : "Failed to create the project. Please try again.");
+        setTimeout(() => setToastMessage(""), 5000);
       }
     } catch (err) {
       console.error(err);
+      setToastMessage(isRtl ? "تعذر إضافة المشروع. يرجى المحاولة مرة أخرى." : "Failed to create the project. Please try again.");
+      setTimeout(() => setToastMessage(""), 5000);
     }
   };
 

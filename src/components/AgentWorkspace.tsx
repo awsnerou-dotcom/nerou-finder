@@ -340,9 +340,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         onRefreshAll();
         setToastMessage(isRtl ? "تمت إضافة العقار بنجاح وبانتظار المراجعة والتوثيق!" : "Property listing successfully created and pending review/approval!");
         setTimeout(() => setToastMessage(""), 4000);
+      } else {
+        setToastMessage(isRtl ? "تعذر إضافة العقار. يرجى المحاولة مرة أخرى." : "Failed to add the property listing. Please try again.");
+        setTimeout(() => setToastMessage(""), 5000);
       }
     } catch (err) {
       console.error("Failed to add property listing", err);
+      setToastMessage(isRtl ? "تعذر إضافة العقار. يرجى المحاولة مرة أخرى." : "Failed to add the property listing. Please try again.");
+      setTimeout(() => setToastMessage(""), 5000);
     }
   };
 
@@ -597,6 +602,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   <input
                     type="number"
                     required
+                    min="0"
                     value={listingPrice}
                     onChange={(e) => setListingPrice(e.target.value)}
                     placeholder="e.g. 10000"
@@ -609,6 +615,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   <input
                     type="number"
                     required
+                    min="0"
                     value={listingArea}
                     onChange={(e) => setListingArea(e.target.value)}
                     placeholder="e.g. 140"
