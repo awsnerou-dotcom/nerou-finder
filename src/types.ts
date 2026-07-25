@@ -1,0 +1,463 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+export enum UserRole {
+  VISITOR = "VISITOR",
+  REGISTERED = "REGISTERED",
+  AGENT = "AGENT",
+  AGENCY_ADMIN = "AGENCY_ADMIN",
+  DEVELOPER_ADMIN = "DEVELOPER_ADMIN",
+  PLATFORM_ADMIN = "PLATFORM_ADMIN",
+  SUPER_ADMIN = "SUPER_ADMIN"
+}
+
+export enum VerificationStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+  SUSPENDED = "SUSPENDED"
+}
+
+export enum TransactionType {
+  FOR_SALE = "FOR_SALE",
+  FOR_RENT = "FOR_RENT",
+  OFF_PLAN = "OFF_PLAN",
+  COMMERCIAL_SALE = "COMMERCIAL_SALE",
+  COMMERCIAL_LEASE = "COMMERCIAL_LEASE",
+  LAND_SALE = "LAND_SALE"
+}
+
+export enum PropertyType {
+  APARTMENT = "APARTMENT",
+  VILLA = "VILLA",
+  TOWNHOUSE = "TOWNHOUSE",
+  PENTHOUSE = "PENTHOUSE",
+  COMPOUND = "COMPOUND",
+  STUDIO = "STUDIO",
+  ROOM = "ROOM",
+  OFFICE = "OFFICE",
+  RETAIL = "RETAIL",
+  SHOP = "SHOP",
+  WAREHOUSE = "WAREHOUSE",
+  BUILDING = "BUILDING",
+  LAND = "LAND",
+  HOTEL_APARTMENT = "HOTEL_APARTMENT",
+  COMMERCIAL = "COMMERCIAL",
+  RESIDENTIAL = "RESIDENTIAL",
+  FARM = "FARM",
+  CHALET = "CHALET",
+  OTHER = "OTHER"
+}
+
+export interface LocationItem {
+  id: string;
+  name: string;
+  nameAr: string;
+  type: "COUNTRY" | "MUNICIPALITY" | "CITY" | "AREA" | "DISTRICT" | "SUB_AREA";
+  parentId?: string;
+  latitude?: number;
+  longitude?: number;
+  seoSlug?: string;
+  isActive: boolean;
+}
+
+export enum ListingStatus {
+  DRAFT = "DRAFT",
+  PENDING_REVIEW = "PENDING_REVIEW",
+  PUBLISHED = "PUBLISHED",
+  PAUSED = "PAUSED",
+  SOLD = "SOLD",
+  RENTED = "RENTED",
+  SUSPENDED = "SUSPENDED"
+}
+
+export enum LeadStatus {
+  NEW = "NEW",
+  ASSIGNED = "ASSIGNED",
+  CONTACTED = "CONTACTED",
+  VIEWING_REQUESTED = "VIEWING_REQUESTED",
+  VIEWING_SCHEDULED = "VIEWING_SCHEDULED",
+  NEGOTIATION = "NEGOTIATION",
+  CONVERTED = "CONVERTED",
+  LOST = "LOST"
+}
+
+export enum OrganizationType {
+  AGENCY = "AGENCY",
+  DEVELOPER = "DEVELOPER"
+}
+
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  phone: string;
+  whatsapp?: string;
+  role: UserRole;
+  orgId?: string; // Optional reference to Organization
+  avatarUrl?: string;
+  bio?: string;
+  languages?: string[];
+  specialties?: string[]; // e.g. areas or property types
+  verificationStatus: VerificationStatus;
+  createdDate: string;
+  password?: string;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  nameAr?: string;
+  type: OrganizationType;
+  logoUrl: string;
+  email: string;
+  phone: string;
+  whatsapp?: string;
+  website?: string;
+  verificationStatus: VerificationStatus;
+  subscriptionPlanId: string;
+  subscriptionExpiry: string;
+  createdDate: string;
+  subscriptionStartDate?: string;
+  subscriptionStatus?: "ACTIVE" | "SUSPENDED" | "CANCELLED" | "PENDING_APPROVAL";
+  subscriptionNotes?: string;
+  subscriptionActivationMethod?: "MANUAL" | "BANK_TRANSFER" | "INVOICE" | "OTHER";
+  leadRoutingPolicy?: "ROUND_ROBIN" | "AREA_BASED" | "PERFORMANCE";
+}
+
+export interface PriceHistoryItem {
+  price: number;
+  date: string;
+}
+
+export interface Property {
+  id: string;
+  listingId: string;
+  title: string;
+  titleAr?: string;
+  description: string;
+  descriptionAr?: string;
+  propertyType: PropertyType;
+  transactionType: TransactionType;
+  price: number;
+  currency: string; // e.g. QAR, USD
+  rentalPeriod?: "MONTHLY" | "YEARLY" | "WEEKLY" | "DAILY";
+  area: number; // in square meters
+  sizeUnit: "SQM" | "SQFT";
+  city: string; // e.g. Doha, Lusail, Al Rayyan
+  district: string; // e.g. Marina District, West Bay, Pearl Qatar
+  latitude: number;
+  longitude: number;
+  bedrooms: number;
+  bathrooms: number;
+  furnished: "YES" | "NO" | "PARTLY";
+  parking: boolean;
+  amenities: string[];
+  images: string[];
+  videoUrl?: string;
+  agentId: string;
+  orgId: string; // Agency or Developer organization ID
+  projectId?: string; // If off-plan / developer project
+  verificationStatus: VerificationStatus;
+  listingStatus: ListingStatus;
+  qualityScore: number; // Listing quality score out of 100
+  createdDate: string;
+  updatedDate: string;
+  lastVerifiedDate?: string;
+  priceHistory: PriceHistoryItem[];
+  // Extended Professional Specifications & Qatar Localization
+  referenceNumber?: string;
+  subtype?: string;
+  deposit?: number;
+  commissions?: number;
+  kahramaa?: boolean; // electricity/water inclusion
+  internet?: boolean;
+  cooling?: boolean; // cooling included
+  cheques?: number;
+  contractLength?: string;
+  builtUpArea?: number;
+  grossArea?: number;
+  netArea?: number;
+  plotArea?: number;
+  floorNumber?: number;
+  unitNumber?: string;
+  buildingName?: string;
+  buildingNumber?: string;
+  viewType?: string; // Sea, City, Marina, Lagoon, Street, Garden, Golf, Skyline
+  serviceCharges?: number;
+  villaType?: string; // standalone, compound, semi-detached
+  majlis?: boolean;
+  backyard?: boolean;
+  privatePool?: boolean;
+  outdoorKitchen?: boolean;
+  maidRoom?: boolean;
+  driverRoom?: boolean;
+  laundryRoom?: boolean;
+  centralAc?: boolean;
+  districtCooling?: boolean;
+  smartHome?: boolean;
+  appliancesIncluded?: boolean;
+  elevator?: boolean;
+  concierge?: boolean;
+  commercialUsage?: string;
+  officeGrade?: string; // Grade A, B, C
+  fittedStatus?: string; // Fitted, Shell & Core
+  loadingBay?: boolean;
+  coldStorage?: boolean;
+  industrialPower?: string;
+  commercialLicense?: string;
+  suitability?: string;
+  landZoning?: string;
+  maxHeight?: string;
+  floorAreaRatio?: number;
+  roadAccess?: string;
+  utilitiesConnected?: boolean;
+  developer?: string;
+  constructionStatus?: string;
+  completionDate?: string;
+  paymentPlan?: { reservation: number; installments: string; details: string };
+  floorPlans?: string[];
+  nearbyPlaces?: { type: string; name: string; distance: string }[];
+  savedCount?: number;
+  reportCount?: number;
+  imageCategories?: string[];
+}
+
+export interface Project {
+  id: string;
+  developerId: string;
+  name: string;
+  nameAr?: string;
+  description: string;
+  city: string;
+  district: string;
+  status: "PLANNING" | "UNDER_CONSTRUCTION" | "COMPLETED";
+  deliveryDate?: string;
+  images: string[];
+  brochureUrl?: string;
+  createdDate: string;
+}
+
+export interface Lead {
+  id: string;
+  propertyId?: string;
+  projectId?: string;
+  visitorName: string;
+  visitorPhone: string;
+  visitorWhatsapp?: string;
+  visitorEmail?: string;
+  preferredLanguage?: string;
+  message: string;
+  contactMethod: "WHATSAPP" | "CALL" | "INQUIRY";
+  status: LeadStatus;
+  agentId?: string;
+  orgId?: string;
+  createdDate: string;
+  updatedDate: string;
+  attribution?: {
+    source?: string;
+    campaign?: string;
+    utmSource?: string;
+  };
+}
+
+export interface ViewingRequest {
+  id: string;
+  leadId: string;
+  propertyId: string;
+  agentId: string;
+  preferredDate: string;
+  preferredTimeSlot: string;
+  status: "REQUESTED" | "CONFIRMED" | "RESCHEDULED" | "COMPLETED" | "CANCELLED";
+  notes?: string;
+  createdDate: string;
+}
+
+export interface SupportReport {
+  id: string;
+  propertyId?: string;
+  userId?: string;
+  reporterEmail: string;
+  reporterName: string;
+  reason: "fake_listing" | "incorrect_price" | "unavailable" | "scam" | "misleading" | "other";
+  details: string;
+  status: "OPEN" | "INVESTIGATING" | "RESOLVED" | "DISMISSED";
+  createdDate: string;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  priceMonthly: number;
+  priceYearly: number;
+  propertyLimit: number;
+  agentLimit: number;
+  aiLimit: number; // search / descriptions count per month
+  analyticsAccess: boolean;
+  featuredListingsLimit: number;
+}
+
+export interface AdCampaign {
+  id: string;
+  orgId: string;
+  propertyId?: string;
+  projectId?: string;
+  type: "FEATURED_LISTING" | "SPONSORED_SEARCH" | "BANNER_AD";
+  budget: number;
+  startDate: string;
+  endDate: string;
+  status: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "COMPLETED";
+  metrics: {
+    impressions: number;
+    clicks: number;
+    saves: number;
+    leads: number;
+    spend: number;
+  };
+  createdDate: string;
+}
+
+export interface AuditLog {
+  id: string;
+  actorId: string;
+  actorName: string;
+  actorRole: UserRole;
+  action: string;
+  targetId: string;
+  targetType: string;
+  metadata?: any;
+  timestamp: string;
+}
+
+export interface SystemHealthStatus {
+  api: "OPERATIONAL" | "DEGRADED" | "ERROR";
+  database: "OPERATIONAL" | "DEGRADED" | "ERROR";
+  ai: "OPERATIONAL" | "DEGRADED" | "ERROR";
+  payment: "OPERATIONAL" | "DEGRADED" | "ERROR";
+  whatsapp: "OPERATIONAL" | "DEGRADED" | "ERROR";
+  lastCheck: string;
+}
+
+export interface LegalDocument {
+  id: string;
+  slug: string;
+  title: string;
+  titleAr: string;
+  content: string;
+  contentAr: string;
+  version: string;
+  effectiveDate: string;
+  lastUpdated: string;
+  status: "DRAFT" | "PUBLISHED" | "SCHEDULED" | "ARCHIVED";
+  author: string;
+  legalReviewStatus: "PENDING" | "APPROVED" | "REVISION_REQUIRED";
+}
+
+export interface HelpArticle {
+  id: string;
+  category: "VISITORS" | "AGENTS" | "AGENCIES" | "DEVELOPERS" | "SUBSCRIPTIONS" | "SECURITY";
+  title: string;
+  titleAr: string;
+  content: string;
+  contentAr: string;
+  isPublished: boolean;
+  viewCount: number;
+}
+
+export interface SupportTicket {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  category: "TECHNICAL" | "BILLING" | "VERIFICATION" | "REPORT_ABUSE" | "OTHER";
+  priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  subject: string;
+  description: string;
+  status: "OPEN" | "IN_PROGRESS" | "WAITING_FOR_USER" | "RESOLVED" | "CLOSED";
+  createdDate: string;
+  replies: {
+    id: string;
+    senderId: string;
+    senderName: string;
+    senderRole: string;
+    message: string;
+    createdDate: string;
+  }[];
+}
+
+export interface JobListing {
+  id: string;
+  title: string;
+  titleAr: string;
+  department: string;
+  departmentAr: string;
+  location: string;
+  locationAr: string;
+  type: string;
+  typeAr: string;
+  description: string;
+  descriptionAr: string;
+  requirements: string[];
+  requirementsAr: string[];
+}
+
+export interface PressRelease {
+  id: string;
+  title: string;
+  titleAr: string;
+  date: string;
+  summary: string;
+  summaryAr: string;
+  content: string;
+  contentAr: string;
+}
+
+export interface PartnershipRequest {
+  id: string;
+  companyName: string;
+  contactName: string;
+  email: string;
+  phone: string;
+  type: "DEVELOPER" | "AGENCY" | "TECHNOLOGY" | "MEDIA" | "OTHER";
+  message: string;
+  status: "NEW" | "UNDER_REVIEW" | "APPROVED" | "REJECTED";
+  createdDate: string;
+}
+
+export interface Review {
+  id: string;
+  reviewerId: string;
+  targetType: "AGENT" | "AGENCY";
+  targetId: string;
+  rating: number;
+  comment: string;
+  createdDate: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  orgId: string;
+  invitedRole: UserRole;
+  token: string;
+  status: "PENDING" | "ACCEPTED" | "EXPIRED";
+  createdDate: string;
+  expiresDate: string;
+}
+
+export interface JobApplication {
+  id: string;
+  jobId: string;
+  applicantName: string;
+  applicantEmail: string;
+  applicantPhone: string;
+  cvUrl?: string;
+  coverLetter?: string;
+  status: "PENDING" | "REVIEWED" | "ACCEPTED" | "REJECTED";
+  createdDate: string;
+}
+
+

@@ -1,0 +1,158 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String @id
+  email     String @unique
+  role      String
+  data      String
+}
+
+model Organization {
+  id        String @id
+  data      String
+}
+
+model Project {
+  id        String @id
+  data      String
+}
+
+model Property {
+  id                 String @id
+  listingStatus      String
+  verificationStatus String
+  agentId            String
+  orgId              String
+  city               String?
+  propertyType       String?
+  price              Float?
+  data               String
+
+  @@index([city])
+  @@index([propertyType])
+  @@index([price])
+  @@index([listingStatus])
+  @@index([agentId])
+  @@index([orgId])
+}
+
+model Lead {
+  id        String @id
+  data      String
+}
+
+model ViewingRequest {
+  id        String @id
+  data      String
+}
+
+model SupportReport {
+  id        String @id
+  data      String
+}
+
+model AdCampaign {
+  id        String @id
+  data      String
+}
+
+model AuditLog {
+  id        String @id
+  data      String
+}
+
+model SystemHealth {
+  id        String @id
+  data      String
+}
+
+model SubscriptionPlan {
+  id        String @id
+  data      String
+}
+
+model LocationItem {
+  id        String @id
+  data      String
+}
+
+model LegalDocument {
+  id        String @id
+  data      String
+}
+
+model HelpArticle {
+  id        String @id
+  data      String
+}
+
+model SupportTicket {
+  id        String @id
+  data      String
+}
+
+model JobListing {
+  id        String @id
+  data      String
+}
+
+model PressRelease {
+  id        String @id
+  data      String
+}
+
+model PartnershipRequest {
+  id        String @id
+  data      String
+}
+
+model AiConfig {
+  id        String @id
+  data      String
+}
+
+model SavedProperty {
+  id           String @id
+  userId       String
+  propertyId   String
+  createdDate  String
+}
+
+model SavedSearch {
+  id               String @id
+  userId           String
+  filters          String
+  createdDate      String
+  lastNotifiedDate String
+  newMatchesCount  Int    @default(0)
+}
+
+model Review {
+  id           String @id
+  reviewerId   String
+  targetType   String // AGENT or AGENCY
+  targetId     String
+  rating       Int
+  comment      String
+  createdDate  String
+  status       String // PENDING, APPROVED, REJECTED
+  data         String @default("{}")
+}
+
+model Invitation {
+  id           String @id
+  data         String
+}
+
+model JobApplication {
+  id           String @id
+  data         String
+}
+

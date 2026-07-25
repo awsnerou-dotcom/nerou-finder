@@ -1,0 +1,1389 @@
+{
+  "users": [
+    {
+      "id": "user-super-admin",
+      "email": "super_admin@nerou.com",
+      "fullName": "Nasser Al-Thani",
+      "phone": "+974 5555 1111",
+      "role": "SUPER_ADMIN",
+      "verificationStatus": "APPROVED",
+      "createdDate": "2026-01-10T12:00:00Z"
+    },
+    {
+      "id": "user-platform-admin",
+      "email": "platform_admin@nerou.com",
+      "fullName": "Ameera Al-Ansari",
+      "phone": "+974 5555 2222",
+      "role": "PLATFORM_ADMIN",
+      "verificationStatus": "APPROVED",
+      "createdDate": "2026-02-15T09:30:00Z"
+    },
+    {
+      "id": "user-agency-admin",
+      "email": "agency_admin@nerou.com",
+      "fullName": "Tareq Al-Jaber",
+      "phone": "+974 4444 3333",
+      "role": "AGENCY_ADMIN",
+      "orgId": "org-agency-1",
+      "verificationStatus": "APPROVED",
+      "createdDate": "2026-03-01T08:00:00Z"
+    },
+    {
+      "id": "user-agent-1",
+      "email": "agent1@nerou.com",
+      "fullName": "Faisal Hassan",
+      "phone": "+974 3333 4444",
+      "whatsapp": "+97433334444",
+      "role": "AGENT",
+      "orgId": "org-agency-1",
+      "bio": "Luxury residential specialist with 8+ years experience in Pearl Qatar and West Bay.",
+      "languages": [
+        "English",
+        "Arabic"
+      ],
+      "specialties": [
+        "Pearl Qatar",
+        "West Bay",
+        "Penthouses"
+      ],
+      "verificationStatus": "APPROVED",
+      "createdDate": "2026-03-05T10:15:00Z"
+    },
+    {
+      "id": "user-agent-2",
+      "email": "agent2@nerou.com",
+      "fullName": "Sarah Connor",
+      "phone": "+974 3333 5555",
+      "whatsapp": "+97433335555",
+      "role": "AGENT",
+      "orgId": "org-agency-1",
+      "bio": "Focused on modern townhouses and family apartments in Lusail Marina.",
+      "languages": [
+        "English",
+        "French"
+      ],
+      "specialties": [
+        "Lusail",
+        "Apartments"
+      ],
+      "verificationStatus": "APPROVED",
+      "createdDate": "2026-03-10T14:20:00Z"
+    },
+    {
+      "id": "user-developer-admin",
+      "email": "developer_admin@nerou.com",
+      "fullName": "Khalid Al-Marri",
+      "phone": "+974 6666 7777",
+      "role": "DEVELOPER_ADMIN",
+      "orgId": "org-developer-1",
+      "verificationStatus": "APPROVED",
+      "createdDate": "2026-03-12T11:00:00Z"
+    }
+  ],
+  "organizations": [
+    {
+      "id": "org-agency-1",
+      "name": "Elite Gulf Realty",
+      "nameAr": "إيليت جلف العقارية",
+      "type": "AGENCY",
+      "logoUrl": "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=200&h=200&q=80",
+      "email": "info@elitegulfrealty.qa",
+      "phone": "+974 4444 8888",
+      "whatsapp": "+97444448888",
+      "website": "https://elitegulfrealty.qa",
+      "verificationStatus": "APPROVED",
+      "subscriptionPlanId": "plan-premium",
+      "subscriptionExpiry": "2027-07-20T11:20:00Z",
+      "createdDate": "2026-03-01T08:00:00Z"
+    },
+    {
+      "id": "org-developer-1",
+      "name": "Al Shamal Developments",
+      "nameAr": "تطوير الشمال",
+      "type": "DEVELOPER",
+      "logoUrl": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=200&h=200&q=80",
+      "email": "sales@alshamal.qa",
+      "phone": "+974 4444 9999",
+      "whatsapp": "+97444449999",
+      "website": "https://alshamal.qa",
+      "verificationStatus": "APPROVED",
+      "subscriptionPlanId": "plan-developer",
+      "subscriptionExpiry": "2027-07-20T11:20:00Z",
+      "createdDate": "2026-03-12T11:00:00Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj-1",
+      "developerId": "org-developer-1",
+      "name": "Marina Heights Lusail",
+      "nameAr": "أبراج مارينا لوسيل",
+      "description": "Premium high-rise residential towers offering scenic views of the Lusail Yacht Marina. Features smart home technology, temperature-controlled pool, and 24/7 private concierge.",
+      "city": "Lusail",
+      "district": "Marina District",
+      "status": "UNDER_CONSTRUCTION",
+      "deliveryDate": "2027-12-31",
+      "images": [
+        "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1464938050520-ef2270bb8ce8?auto=format&fit=crop&w=800&q=80"
+      ],
+      "brochureUrl": "#",
+      "createdDate": "2026-03-15T09:00:00Z"
+    },
+    {
+      "id": "proj-2",
+      "developerId": "org-developer-1",
+      "name": "Pearl Breeze Villas",
+      "nameAr": "فلل نسيم اللؤلؤة",
+      "description": "Ultra-luxurious beachfront villas with private yacht berths, beach access, and state-of-the-art security.",
+      "city": "Doha",
+      "district": "Pearl Qatar",
+      "status": "PLANNING",
+      "deliveryDate": "2028-06-30",
+      "images": [
+        "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80"
+      ],
+      "createdDate": "2026-04-01T10:00:00Z"
+    }
+  ],
+  "properties": [
+    {
+      "id": "prop-1",
+      "listingId": "N-10204",
+      "title": "Stunning 2-BR Apartment in Pearl Qatar",
+      "titleAr": "شقة مذهلة غرفتين في لؤلؤة قطر",
+      "description": "A gorgeous, fully-furnished 2 bedroom apartment in Porto Arabia, Pearl Qatar. This high-floor unit features spacious balconies, direct marina views, a fully-equipped open kitchen, and state-of-the-art facilities like gym, luxury spa, and temperature-controlled pool. Perfect for professional couples or small families seeking premium living.",
+      "descriptionAr": "شقة رائعة مفروشة بالكامل من غرفتين في بورتو أرابيا، لؤلؤة قطر. تتميز هذه الوحدة بطابق مرتفع وشرفات واسعة وإطلالات مباشرة على المرسى ومطبخ مفتوح مجهز بالكامل ومرافق حديثة مثل صالة ألعاب رياضية وسبا فاخر ومسبح متحكم بدرجة حرارته.",
+      "propertyType": "APARTMENT",
+      "transactionType": "FOR_RENT",
+      "price": 11000,
+      "currency": "QAR",
+      "rentalPeriod": "MONTHLY",
+      "area": 145,
+      "sizeUnit": "SQM",
+      "city": "Doha",
+      "district": "Pearl Qatar",
+      "latitude": 25.3725,
+      "longitude": 51.5512,
+      "bedrooms": 2,
+      "bathrooms": 3,
+      "furnished": "YES",
+      "parking": true,
+      "amenities": [
+        "Pool",
+        "Gym",
+        "Balcony",
+        "Security",
+        "Marina View",
+        "Elevator",
+        "Pets Allowed"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1502005229762-fc1b2b812ca5?auto=format&fit=crop&w=800&q=80"
+      ],
+      "agentId": "user-agent-1",
+      "orgId": "org-agency-1",
+      "verificationStatus": "APPROVED",
+      "listingStatus": "PUBLISHED",
+      "qualityScore": 95,
+      "createdDate": "2026-06-01T10:00:00Z",
+      "updatedDate": "2026-07-15T08:00:00Z",
+      "lastVerifiedDate": "2026-07-15T08:00:00Z",
+      "priceHistory": [
+        {
+          "price": 12000,
+          "date": "2026-06-01"
+        },
+        {
+          "price": 11000,
+          "date": "2026-07-15"
+        }
+      ]
+    },
+    {
+      "id": "prop-2",
+      "listingId": "N-10205",
+      "title": "Luxury 5-Bedroom Beachfront Villa in West Bay",
+      "titleAr": "فيلا شاطئية فاخرة 5 غرف في الخليج الغربي",
+      "description": "An extraordinary master-designed 5 bedroom villa on the edge of West Bay lagoon. Boasts a sprawling landscaped garden, private infinity pool, exclusive private beach access, custom-crafted Italian marble floors, cinema room, elevator, separate maids quarters, and smart home controls. Unrivaled luxury and absolute privacy.",
+      "descriptionAr": "فيلا استثنائية من تصميم مهندس رئيسي بـ 5 غرف على حافة بحيرة الخليج الغربي. تضم حديقة منسقة مترامية الأطراف، ومسبح إنفينيتي خاص، ومنفذ خاص وحصري للشاطئ، وأرضيات من الرخام الإيطالي الفاخر، وغرفة سينما، ومصعد، ومسكن منفصل للخادمة.",
+      "propertyType": "VILLA",
+      "transactionType": "FOR_SALE",
+      "price": 18500000,
+      "currency": "QAR",
+      "area": 680,
+      "sizeUnit": "SQM",
+      "city": "Doha",
+      "district": "West Bay Lagoon",
+      "latitude": 25.3855,
+      "longitude": 51.5285,
+      "bedrooms": 5,
+      "bathrooms": 6,
+      "furnished": "NO",
+      "parking": true,
+      "amenities": [
+        "Pool",
+        "Gym",
+        "Garden",
+        "Security",
+        "Sea View",
+        "Elevator",
+        "Maids Room",
+        "Smart Home"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
+        "https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=800&q=80"
+      ],
+      "agentId": "user-agent-1",
+      "orgId": "org-agency-1",
+      "verificationStatus": "APPROVED",
+      "listingStatus": "PUBLISHED",
+      "qualityScore": 100,
+      "createdDate": "2026-05-10T12:00:00Z",
+      "updatedDate": "2026-07-10T09:30:00Z",
+      "lastVerifiedDate": "2026-07-10T09:30:00Z",
+      "priceHistory": [
+        {
+          "price": 19000000,
+          "date": "2026-05-10"
+        },
+        {
+          "price": 18500000,
+          "date": "2026-07-10"
+        }
+      ]
+    },
+    {
+      "id": "prop-3",
+      "listingId": "N-10206",
+      "title": "Modern 1-BR Apartment in Lusail Marina",
+      "titleAr": "شقة حديثة غرفة واحدة في مارينا لوسيل",
+      "description": "An elegant, contemporary 1 bedroom apartment in the heart of Lusail Marina District. High floor with pristine skyline and sea views, semi-furnished with brand new designer kitchen appliances, sleek integrated wardrobing, and direct private balcony. Close to supermarkets, promenade, and coffee shops.",
+      "descriptionAr": "شقة أنيقة وعصرية من غرفة نوم واحدة في قلب منطقة مارينا لوسيل. طابق مرتفع مع إطلالات رائعة على أفق المدينة والبحر، مفروشة جزئيًا بأجهزة مطبخ جديدة وتصميم راقي وخزائن مدمجة وشرفة خاصة.",
+      "propertyType": "APARTMENT",
+      "transactionType": "FOR_RENT",
+      "price": 7500,
+      "currency": "QAR",
+      "rentalPeriod": "MONTHLY",
+      "area": 90,
+      "sizeUnit": "SQM",
+      "city": "Lusail",
+      "district": "Marina District",
+      "latitude": 25.4215,
+      "longitude": 51.5298,
+      "bedrooms": 1,
+      "bathrooms": 2,
+      "furnished": "PARTLY",
+      "parking": true,
+      "amenities": [
+        "Pool",
+        "Gym",
+        "Balcony",
+        "Security",
+        "Elevator",
+        "Sea View"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=800&q=80"
+      ],
+      "agentId": "user-agent-2",
+      "orgId": "org-agency-1",
+      "verificationStatus": "APPROVED",
+      "listingStatus": "PUBLISHED",
+      "qualityScore": 92,
+      "createdDate": "2026-06-15T11:00:00Z",
+      "updatedDate": "2026-07-18T10:00:00Z",
+      "lastVerifiedDate": "2026-07-18T10:00:00Z",
+      "priceHistory": [
+        {
+          "price": 7500,
+          "date": "2026-06-15"
+        }
+      ]
+    },
+    {
+      "id": "prop-4",
+      "listingId": "N-10207",
+      "title": "Off-Plan Luxury Residence in Marina Heights",
+      "titleAr": "شقة فاخرة قيد الإنشاء في مارينا هايتس",
+      "description": "Invest early in the highly sought-after Marina Heights Project by Al Shamal Developments. A beautifully laid out 3 bedroom premium unit with payment plans direct from developer. State-of-the-art thermal cladding, smart metering, and premium luxury layouts. Handover in late 2027.",
+      "descriptionAr": "استثمر مبكرًا في مشروع مارينا هايتس المرغوب بشدة من تطوير الشمال. وحدة فاخرة مصممة بـ 3 غرف نوم مع خطط سداد ميسرة مباشرة من المطور. تكسية حرارية متطورة وعدادات ذكية وتخطيطات فاخرة.",
+      "propertyType": "APARTMENT",
+      "transactionType": "OFF_PLAN",
+      "price": 2450000,
+      "currency": "QAR",
+      "area": 185,
+      "sizeUnit": "SQM",
+      "city": "Lusail",
+      "district": "Marina District",
+      "latitude": 25.422,
+      "longitude": 51.5305,
+      "bedrooms": 3,
+      "bathrooms": 4,
+      "furnished": "NO",
+      "parking": true,
+      "amenities": [
+        "Pool",
+        "Gym",
+        "Balcony",
+        "Security",
+        "Smart Home",
+        "Elevator"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1515263487990-61b07816b324?auto=format&fit=crop&w=800&q=80"
+      ],
+      "agentId": "user-developer-admin",
+      "orgId": "org-developer-1",
+      "projectId": "proj-1",
+      "verificationStatus": "PENDING",
+      "listingStatus": "PENDING_REVIEW",
+      "qualityScore": 88,
+      "createdDate": "2026-07-01T15:00:00Z",
+      "updatedDate": "2026-07-01T15:00:00Z",
+      "priceHistory": [
+        {
+          "price": 2450000,
+          "date": "2026-07-01"
+        }
+      ]
+    },
+    {
+      "id": "prop-5",
+      "listingId": "N-10208",
+      "title": "Spacious Premium Townhouse in Al Waab",
+      "titleAr": "تاونهاوس فخم وفسيح في الوعب",
+      "description": "An elegant, highly private 4 bedroom townhouse situated inside a premium gated residential compound in Al Waab, Doha. Features a beautiful backyard garden, customized maid quarters, large laundry room, premium fittings, and dual car enclosed garage. Community facilities include double pools, squash court, tennis court, and kids playing zone.",
+      "descriptionAr": "تاونهاوس أنيق وعالي الخصوصية من 4 غرف نوم يقع داخل مجمع سكني متميز في الوعب، الدوحة. يتميز بحديقة خلفية جميلة ومسكن خادمة مخصص وغرفة غسيل كبيرة وتجهيزات ممتازة ومرآب مغلق لسيارتين.",
+      "propertyType": "TOWNHOUSE",
+      "transactionType": "FOR_SALE",
+      "price": 4200000,
+      "currency": "QAR",
+      "area": 320,
+      "sizeUnit": "SQM",
+      "city": "Doha",
+      "district": "Al Waab",
+      "latitude": 25.2685,
+      "longitude": 51.4655,
+      "bedrooms": 4,
+      "bathrooms": 5,
+      "furnished": "NO",
+      "parking": true,
+      "amenities": [
+        "Pool",
+        "Gym",
+        "Garden",
+        "Security",
+        "Maids Room",
+        "Compound"
+      ],
+      "images": [
+        "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80",
+        "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80"
+      ],
+      "agentId": "user-agent-2",
+      "orgId": "org-agency-1",
+      "verificationStatus": "APPROVED",
+      "listingStatus": "PUBLISHED",
+      "qualityScore": 94,
+      "createdDate": "2026-06-20T10:00:00Z",
+      "updatedDate": "2026-07-12T14:00:00Z",
+      "lastVerifiedDate": "2026-07-12T14:00:00Z",
+      "priceHistory": [
+        {
+          "price": 4200000,
+          "date": "2026-06-20"
+        }
+      ]
+    }
+  ],
+  "leads": [
+    {
+      "id": "lead-1",
+      "propertyId": "prop-1",
+      "visitorName": "Ahmed Al-Mansoori",
+      "visitorPhone": "+974 5511 2233",
+      "visitorWhatsapp": "+97455112233",
+      "visitorEmail": "ahmed.mansoori@gmail.com",
+      "preferredLanguage": "Arabic",
+      "message": "I am interested in rent pricing and want to schedule a viewing for this weekend.",
+      "contactMethod": "INQUIRY",
+      "status": "ASSIGNED",
+      "agentId": "user-agent-1",
+      "orgId": "org-agency-1",
+      "createdDate": "2026-07-18T10:30:00Z",
+      "updatedDate": "2026-07-18T11:00:00Z",
+      "attribution": {
+        "source": "SEO Google",
+        "campaign": "Organic Search",
+        "utmSource": "google"
+      }
+    },
+    {
+      "id": "lead-2",
+      "propertyId": "prop-3",
+      "visitorName": "John Doe",
+      "visitorPhone": "+974 3322 1100",
+      "visitorWhatsapp": "+97433221100",
+      "visitorEmail": "johndoe@yahoo.com",
+      "preferredLanguage": "English",
+      "message": "WhatsApp inquiry about parking amenities and move-in availability.",
+      "contactMethod": "WHATSAPP",
+      "status": "CONTACTED",
+      "agentId": "user-agent-2",
+      "orgId": "org-agency-1",
+      "createdDate": "2026-07-19T14:20:00Z",
+      "updatedDate": "2026-07-19T14:25:00Z",
+      "attribution": {
+        "source": "WhatsApp Direct",
+        "utmSource": "direct"
+      }
+    },
+    {
+      "id": "lead-3",
+      "propertyId": "prop-2",
+      "visitorName": "Mariam Al-Kuwari",
+      "visitorPhone": "+974 6600 5500",
+      "visitorWhatsapp": "+97466005500",
+      "preferredLanguage": "Arabic",
+      "message": "Called Faisal Hassan about West Bay Villa pricing history and final offer guidelines.",
+      "contactMethod": "CALL",
+      "status": "NEW",
+      "agentId": "user-agent-1",
+      "orgId": "org-agency-1",
+      "createdDate": "2026-07-20T08:15:00Z",
+      "updatedDate": "2026-07-20T08:15:00Z",
+      "attribution": {
+        "source": "Call Intent Tracker"
+      }
+    }
+  ],
+  "viewings": [
+    {
+      "id": "view-1",
+      "leadId": "lead-1",
+      "propertyId": "prop-1",
+      "agentId": "user-agent-1",
+      "preferredDate": "2026-07-24",
+      "preferredTimeSlot": "16:00 - 18:00",
+      "status": "CONFIRMED",
+      "notes": "Visitor requested Arabic speaking agent Faisal to accompany.",
+      "createdDate": "2026-07-18T11:00:00Z"
+    }
+  ],
+  "reports": [
+    {
+      "id": "rep-1",
+      "propertyId": "prop-5",
+      "reporterEmail": "moderator_test@gmail.com",
+      "reporterName": "Jassim Ali",
+      "reason": "incorrect_price",
+      "details": "The compound rent has changed slightly but details were unchanged.",
+      "status": "OPEN",
+      "createdDate": "2026-07-19T16:00:00Z"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "camp-1",
+      "orgId": "org-agency-1",
+      "propertyId": "prop-2",
+      "type": "FEATURED_LISTING",
+      "budget": 1500,
+      "startDate": "2026-07-01",
+      "endDate": "2026-07-31",
+      "status": "ACTIVE",
+      "metrics": {
+        "impressions": 4250,
+        "clicks": 340,
+        "saves": 85,
+        "leads": 12,
+        "spend": 645.5
+      },
+      "createdDate": "2026-06-28T09:00:00Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "log-1",
+      "actorId": "user-platform-admin",
+      "actorName": "Ameera Al-Ansari",
+      "actorRole": "PLATFORM_ADMIN",
+      "action": "VERIFIED_ORGANIZATION",
+      "targetId": "org-agency-1",
+      "targetType": "Organization",
+      "metadata": {
+        "orgName": "Elite Gulf Realty"
+      },
+      "timestamp": "2026-03-01T08:30:00Z"
+    },
+    {
+      "id": "log-2",
+      "actorId": "user-agency-admin",
+      "actorName": "Tareq Al-Jaber",
+      "actorRole": "AGENCY_ADMIN",
+      "action": "CREATED_USER",
+      "targetId": "user-agent-1",
+      "targetType": "User",
+      "metadata": {
+        "agentName": "Faisal Hassan"
+      },
+      "timestamp": "2026-03-05T10:15:00Z"
+    }
+  ],
+  "systemHealth": {
+    "api": "OPERATIONAL",
+    "database": "OPERATIONAL",
+    "ai": "OPERATIONAL",
+    "payment": "OPERATIONAL",
+    "whatsapp": "OPERATIONAL",
+    "lastCheck": "2026-07-21T14:45:51.191Z"
+  },
+  "subscriptionPlans": [
+    {
+      "id": "plan-basic",
+      "name": "Standard Broker",
+      "priceMonthly": 500,
+      "priceYearly": 4800,
+      "propertyLimit": 15,
+      "agentLimit": 1,
+      "aiLimit": 50,
+      "analyticsAccess": false,
+      "featuredListingsLimit": 2
+    },
+    {
+      "id": "plan-premium",
+      "name": "Enterprise Agency",
+      "priceMonthly": 1800,
+      "priceYearly": 18000,
+      "propertyLimit": 100,
+      "agentLimit": 10,
+      "aiLimit": 500,
+      "analyticsAccess": true,
+      "featuredListingsLimit": 15
+    },
+    {
+      "id": "plan-developer",
+      "name": "Master Developer",
+      "priceMonthly": 4500,
+      "priceYearly": 45000,
+      "propertyLimit": 500,
+      "agentLimit": 50,
+      "aiLimit": 2000,
+      "analyticsAccess": true,
+      "featuredListingsLimit": 50
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-qatar",
+      "name": "Qatar",
+      "nameAr": "قطر",
+      "type": "COUNTRY",
+      "isActive": true,
+      "seoSlug": "qatar"
+    },
+    {
+      "id": "m-doha",
+      "name": "Doha",
+      "nameAr": "الدوحة",
+      "type": "MUNICIPALITY",
+      "parentId": "loc-qatar",
+      "isActive": true,
+      "seoSlug": "doha"
+    },
+    {
+      "id": "m-rayyan",
+      "name": "Al Rayyan",
+      "nameAr": "الريان",
+      "type": "MUNICIPALITY",
+      "parentId": "loc-qatar",
+      "isActive": true,
+      "seoSlug": "al-rayyan"
+    },
+    {
+      "id": "m-wakrah",
+      "name": "Al Wakrah",
+      "nameAr": "الوكرة",
+      "type": "MUNICIPALITY",
+      "parentId": "loc-qatar",
+      "isActive": true,
+      "seoSlug": "al-wakrah"
+    },
+    {
+      "id": "m-umsalal",
+      "name": "Umm Salal",
+      "nameAr": "أم صلال",
+      "type": "MUNICIPALITY",
+      "parentId": "loc-qatar",
+      "isActive": true,
+      "seoSlug": "umm-salal"
+    },
+    {
+      "id": "m-alkhor",
+      "name": "Al Khor and Al Thakhira",
+      "nameAr": "الخور والذخيرة",
+      "type": "MUNICIPALITY",
+      "parentId": "loc-qatar",
+      "isActive": true,
+      "seoSlug": "al-khor"
+    },
+    {
+      "id": "m-daayen",
+      "name": "Al Daayen",
+      "nameAr": "الظعاين",
+      "type": "MUNICIPALITY",
+      "parentId": "loc-qatar",
+      "isActive": true,
+      "seoSlug": "al-daayen"
+    },
+    {
+      "id": "m-shamal",
+      "name": "Al Shamal",
+      "nameAr": "الشمال",
+      "type": "MUNICIPALITY",
+      "parentId": "loc-qatar",
+      "isActive": true,
+      "seoSlug": "al-shamal"
+    },
+    {
+      "id": "m-shahaniya",
+      "name": "Al Shahaniya",
+      "nameAr": "الشحانية",
+      "type": "MUNICIPALITY",
+      "parentId": "loc-qatar",
+      "isActive": true,
+      "seoSlug": "al-shahaniya"
+    },
+    {
+      "id": "a-westbay",
+      "name": "West Bay",
+      "nameAr": "الخليج الغربي",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "west-bay"
+    },
+    {
+      "id": "a-msheireb",
+      "name": "Msheireb Downtown",
+      "nameAr": "مشيرب قلب الدوحة",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "msheireb"
+    },
+    {
+      "id": "a-alsadd",
+      "name": "Al Sadd",
+      "nameAr": "السد",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "al-sadd"
+    },
+    {
+      "id": "a-oldairport",
+      "name": "Old Airport",
+      "nameAr": "المطار القديم",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "old-airport"
+    },
+    {
+      "id": "a-binmahmoud",
+      "name": "Bin Mahmoud",
+      "nameAr": "بن محمود",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "bin-mahmoud"
+    },
+    {
+      "id": "a-alnasr",
+      "name": "Al Nasr",
+      "nameAr": "النصر",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "al-nasr"
+    },
+    {
+      "id": "a-fereej-abdulaziz",
+      "name": "Fereej Abdul Aziz",
+      "nameAr": "فريج عبد العزيز",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "fereej-abdul-aziz"
+    },
+    {
+      "id": "a-rumaila",
+      "name": "Al Rumaila",
+      "nameAr": "الرميلة",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "al-rumaila"
+    },
+    {
+      "id": "a-salata",
+      "name": "Al Salata",
+      "nameAr": "السلطة",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "al-salata"
+    },
+    {
+      "id": "a-najma",
+      "name": "Najma",
+      "nameAr": "نجمة",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "najma"
+    },
+    {
+      "id": "a-ummghuwailina",
+      "name": "Umm Ghuwailina",
+      "nameAr": "أم غويلينة",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "umm-ghuwailina"
+    },
+    {
+      "id": "a-alhilal",
+      "name": "Al Hilal",
+      "nameAr": "الهلال",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "al-hilal"
+    },
+    {
+      "id": "a-almansoura",
+      "name": "Al Mansoura",
+      "nameAr": "المنصورة",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "al-mansoura"
+    },
+    {
+      "id": "a-doha-jadeeda",
+      "name": "Al Doha Al Jadeeda",
+      "nameAr": "الدوحة الجديدة",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "al-doha-al-jadeeda"
+    },
+    {
+      "id": "a-wakra-road",
+      "name": "Al Wakra Road Area",
+      "nameAr": "منطقة طريق الوكرة",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "al-wakra-road"
+    },
+    {
+      "id": "a-rawdat-khail",
+      "name": "Rawdat Al Khail",
+      "nameAr": "روضة الخيل",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "rawdat-al-khail"
+    },
+    {
+      "id": "a-althumama",
+      "name": "Al Thumama",
+      "nameAr": "الثمامة",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "al-thumama"
+    },
+    {
+      "id": "a-new-salata",
+      "name": "New Salata",
+      "nameAr": "اسلطة الجديدة",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "new-salata"
+    },
+    {
+      "id": "a-pearl",
+      "name": "The Pearl-Qatar",
+      "nameAr": "لؤلؤة قطر",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "the-pearl"
+    },
+    {
+      "id": "a-westbaylagoon",
+      "name": "West Bay Lagoon",
+      "nameAr": "بحيرة الخليج الغربي",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "west-bay-lagoon"
+    },
+    {
+      "id": "a-gewanisland",
+      "name": "Gewan Island",
+      "nameAr": "جزيرة جيوان",
+      "type": "AREA",
+      "parentId": "m-doha",
+      "isActive": true,
+      "seoSlug": "gewan-island"
+    },
+    {
+      "id": "d-porto-arabia",
+      "name": "Porto Arabia",
+      "nameAr": "بورتو أرابيا",
+      "type": "DISTRICT",
+      "parentId": "a-pearl",
+      "isActive": true,
+      "seoSlug": "porto-arabia"
+    },
+    {
+      "id": "d-viva-bahriya",
+      "name": "Viva Bahriya",
+      "nameAr": "فيفا بحرية",
+      "type": "DISTRICT",
+      "parentId": "a-pearl",
+      "isActive": true,
+      "seoSlug": "viva-bahriya"
+    },
+    {
+      "id": "d-qanat-quartier",
+      "name": "Qanat Quartier",
+      "nameAr": "قناة كارتييه",
+      "type": "DISTRICT",
+      "parentId": "a-pearl",
+      "isActive": true,
+      "seoSlug": "qanat-quartier"
+    },
+    {
+      "id": "d-medina-centrale",
+      "name": "Medina Centrale",
+      "nameAr": "مدينا سنترال",
+      "type": "DISTRICT",
+      "parentId": "a-pearl",
+      "isActive": true,
+      "seoSlug": "medina-centrale"
+    },
+    {
+      "id": "d-abraj-quartier",
+      "name": "Abraj Quartier",
+      "nameAr": "أبراج كارتييه",
+      "type": "DISTRICT",
+      "parentId": "a-pearl",
+      "isActive": true,
+      "seoSlug": "abraj-quartier"
+    },
+    {
+      "id": "d-giardino",
+      "name": "Giardino Village",
+      "nameAr": "قرية جياردينو",
+      "type": "DISTRICT",
+      "parentId": "a-pearl",
+      "isActive": true,
+      "seoSlug": "giardino-village"
+    },
+    {
+      "id": "a-alrayyan-area",
+      "name": "Al Rayyan Area",
+      "nameAr": "منطقة الريان",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "al-rayyan-area"
+    },
+    {
+      "id": "a-alwaab",
+      "name": "Al Waab",
+      "nameAr": "الوعب",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "al-waab"
+    },
+    {
+      "id": "a-ainkhaled",
+      "name": "Ain Khaled",
+      "nameAr": "عين خالد",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "ain-khaled"
+    },
+    {
+      "id": "a-aziziya",
+      "name": "Al Aziziya",
+      "nameAr": "العزيزية",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "al-aziziya"
+    },
+    {
+      "id": "a-muaither",
+      "name": "Muaither",
+      "nameAr": "معيذر",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "muaither"
+    },
+    {
+      "id": "a-gharrafah",
+      "name": "Al Gharrafa",
+      "nameAr": "الغرافة",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "al-gharrafa"
+    },
+    {
+      "id": "a-rawdat-rashed",
+      "name": "Rawdat Rashed",
+      "nameAr": "روضة راشد",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "rawdat-rashed"
+    },
+    {
+      "id": "a-themaid",
+      "name": "Al Themaid",
+      "nameAr": "الثميد",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "al-themaid"
+    },
+    {
+      "id": "a-abu-hamour",
+      "name": "Abu Hamour",
+      "nameAr": "أبو هامور",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "abu-hamour"
+    },
+    {
+      "id": "a-al-luqta",
+      "name": "Al Luqta",
+      "nameAr": "اللقطة",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "al-luqta"
+    },
+    {
+      "id": "a-education",
+      "name": "Education City",
+      "nameAr": "المدينة التعليمية",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "education-city"
+    },
+    {
+      "id": "a-baaya",
+      "name": "Baaya",
+      "nameAr": "البعيا",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "baaya"
+    },
+    {
+      "id": "a-fereej-al-amir",
+      "name": "Fereej Al Amir",
+      "nameAr": "فريج الأمير",
+      "type": "AREA",
+      "parentId": "m-rayyan",
+      "isActive": true,
+      "seoSlug": "fereej-al-amir"
+    },
+    {
+      "id": "a-lusail",
+      "name": "Lusail City",
+      "nameAr": "مدينة لوسيل",
+      "type": "AREA",
+      "parentId": "m-daayen",
+      "isActive": true,
+      "seoSlug": "lusail-city"
+    },
+    {
+      "id": "a-al-daayen-area",
+      "name": "Al Daayen Area",
+      "nameAr": "منطقة الظعاين",
+      "type": "AREA",
+      "parentId": "m-daayen",
+      "isActive": true,
+      "seoSlug": "al-daayen-area"
+    },
+    {
+      "id": "a-kheesa",
+      "name": "Al Kheesa",
+      "nameAr": "الخيسة",
+      "type": "AREA",
+      "parentId": "m-daayen",
+      "isActive": true,
+      "seoSlug": "al-kheesa"
+    },
+    {
+      "id": "a-rawdat",
+      "name": "Rawdat Al Hamama",
+      "nameAr": "روضة الحمامة",
+      "type": "AREA",
+      "parentId": "m-daayen",
+      "isActive": true,
+      "seoSlug": "rawdat-al-hamama"
+    },
+    {
+      "id": "a-ummqarn",
+      "name": "Umm Qarn",
+      "nameAr": "أم قرن",
+      "type": "AREA",
+      "parentId": "m-daayen",
+      "isActive": true,
+      "seoSlug": "umm-qarn"
+    },
+    {
+      "id": "a-simaisma",
+      "name": "Simaisma",
+      "nameAr": "سميسمة",
+      "type": "AREA",
+      "parentId": "m-daayen",
+      "isActive": true,
+      "seoSlug": "simaisma"
+    },
+    {
+      "id": "d-marina",
+      "name": "Marina District",
+      "nameAr": "منطقة المارينا",
+      "type": "DISTRICT",
+      "parentId": "a-lusail",
+      "isActive": true,
+      "seoSlug": "marina-district"
+    },
+    {
+      "id": "d-foxhills",
+      "name": "Fox Hills",
+      "nameAr": "فوكس هيلز",
+      "type": "DISTRICT",
+      "parentId": "a-lusail",
+      "isActive": true,
+      "seoSlug": "fox-hills"
+    },
+    {
+      "id": "d-waterfront",
+      "name": "Waterfront District",
+      "nameAr": "المنطقة البحرية",
+      "type": "DISTRICT",
+      "parentId": "a-lusail",
+      "isActive": true,
+      "seoSlug": "waterfront-district"
+    },
+    {
+      "id": "d-boulevard",
+      "name": "Lusail Boulevard",
+      "nameAr": "بوليڤارد لوسيل",
+      "type": "DISTRICT",
+      "parentId": "a-lusail",
+      "isActive": true,
+      "seoSlug": "lusail-boulevard"
+    },
+    {
+      "id": "d-alerkyah",
+      "name": "Al Erkyah",
+      "nameAr": "الاركية",
+      "type": "DISTRICT",
+      "parentId": "a-lusail",
+      "isActive": true,
+      "seoSlug": "al-erkyah"
+    },
+    {
+      "id": "d-alqutaifiya",
+      "name": "Al Qutaifiya",
+      "nameAr": "القطيفية",
+      "type": "DISTRICT",
+      "parentId": "a-lusail",
+      "isActive": true,
+      "seoSlug": "al-qutaifiya"
+    },
+    {
+      "id": "d-energycity",
+      "name": "Energy City",
+      "nameAr": "مدينة الطاقة",
+      "type": "DISTRICT",
+      "parentId": "a-lusail",
+      "isActive": true,
+      "seoSlug": "energy-city"
+    },
+    {
+      "id": "a-wakrah-city",
+      "name": "Al Wakrah City",
+      "nameAr": "مدينة الوكرة",
+      "type": "AREA",
+      "parentId": "m-wakrah",
+      "isActive": true,
+      "seoSlug": "al-wakrah-city"
+    },
+    {
+      "id": "a-wukair",
+      "name": "Al Wukair",
+      "nameAr": "الوكير",
+      "type": "AREA",
+      "parentId": "m-wakrah",
+      "isActive": true,
+      "seoSlug": "al-wukair"
+    },
+    {
+      "id": "a-mesaieed",
+      "name": "Mesaieed",
+      "nameAr": "مسيعيد",
+      "type": "AREA",
+      "parentId": "m-wakrah",
+      "isActive": true,
+      "seoSlug": "mesaieed"
+    },
+    {
+      "id": "a-ums-mohammed",
+      "name": "Umm Salal Mohammed",
+      "nameAr": "أم صلال محمد",
+      "type": "AREA",
+      "parentId": "m-umsalal",
+      "isActive": true,
+      "seoSlug": "umm-salal-mohammed"
+    },
+    {
+      "id": "a-ums-ali",
+      "name": "Umm Salal Ali",
+      "nameAr": "أم صلال علي",
+      "type": "AREA",
+      "parentId": "m-umsalal",
+      "isActive": true,
+      "seoSlug": "umm-salal-ali"
+    },
+    {
+      "id": "a-izghawa",
+      "name": "Izghawa",
+      "nameAr": "إزغوى",
+      "type": "AREA",
+      "parentId": "m-umsalal",
+      "isActive": true,
+      "seoSlug": "izghawa"
+    },
+    {
+      "id": "a-alkhor-city",
+      "name": "Al Khor City",
+      "nameAr": "مدينة الخور",
+      "type": "AREA",
+      "parentId": "m-alkhor",
+      "isActive": true,
+      "seoSlug": "al-khor-city"
+    },
+    {
+      "id": "a-althakhira",
+      "name": "Al Thakhira",
+      "nameAr": "الذخيرة",
+      "type": "AREA",
+      "parentId": "m-alkhor",
+      "isActive": true,
+      "seoSlug": "al-thakhira"
+    },
+    {
+      "id": "a-raslaffan",
+      "name": "Ras Laffan",
+      "nameAr": "رأس لفان",
+      "type": "AREA",
+      "parentId": "m-alkhor",
+      "isActive": true,
+      "seoSlug": "ras-laffan"
+    },
+    {
+      "id": "a-ruwais",
+      "name": "Al Ruwais",
+      "nameAr": "الرويس",
+      "type": "AREA",
+      "parentId": "m-shamal",
+      "isActive": true,
+      "seoSlug": "al-ruwais"
+    },
+    {
+      "id": "a-madinat-ash-shamal",
+      "name": "Madinat ash Shamal",
+      "nameAr": "مدينة الشمال",
+      "type": "AREA",
+      "parentId": "m-shamal",
+      "isActive": true,
+      "seoSlug": "madinat-ash-shamal"
+    },
+    {
+      "id": "a-sheehaniya-area",
+      "name": "Al Shahaniya City",
+      "nameAr": "مدينة الشحانية",
+      "type": "AREA",
+      "parentId": "m-shahaniya",
+      "isActive": true,
+      "seoSlug": "al-shahaniya-city"
+    },
+    {
+      "id": "a-karaana",
+      "name": "Al Karaana",
+      "nameAr": "الكرعانة",
+      "type": "AREA",
+      "parentId": "m-shahaniya",
+      "isActive": true,
+      "seoSlug": "al-karaana"
+    }
+  ],
+  "legalDocuments": [
+    {
+      "id": "legal-tou",
+      "slug": "terms-of-use",
+      "title": "Terms of Use",
+      "titleAr": "شروط الاستخدام",
+      "content": "Welcome to Nerou Finder, a real estate technology discovery marketplace provided by Nerou Technology Services. By accessing or using our platform, you agree to comply with and be bound by these Terms of Use. You must be at least 18 years of age and possess the legal authority to enter into this agreement. Nerou Finder is NOT a real estate brokerage, real estate agent, or transaction intermediary. We do not negotiate transactions, represent buyers/sellers/landlords/tenants, receive commissions, or guarantee transaction success. Nerou Finder acts solely as an interactive discovery technology platform. Visitors, listing providers, agencies, and developers must provide accurate, verified information. Fraudulent listings, credential sharing, and spam are strictly prohibited under Qatari law.",
+      "contentAr": "مرحباً بكم في نيرو فايندر (Nerou Finder)، منصة تكنولوجيا الاكتشاف العقاري المقدمة من خدمات نيرو التقنية (Nerou Technology Services). بدخولكم واستخدامكم للمنصة، فإنكم توافقون على شروط الاستخدام. نيرو فايندر ليست مكتب وساطة عقارية أو وكيلاً أو وسيطاً تجارياً، ولا تتدخل في المفاوضات أو تمثيل المشترين/البائعين/المستأجرين ولا تتقاضى أي عمولات على إتمام الصفقات. تعمل المنصة كمحرك بحث تكنولوجي تفاعلي فقط للاكتشاف العقاري. يلتزم الشركاء ومقدمو الإعلانات بتقديم معلومات دقيقة وقانونية، ويُمنع منعاً باتاً نشر إعلانات مضللة أو تداول معلومات غير صحيحة بموجب القوانين والتشريعات القطرية.",
+      "version": "1.2.0",
+      "effectiveDate": "2026-01-01",
+      "lastUpdated": "2026-07-20",
+      "status": "PUBLISHED",
+      "author": "Nasser Al-Thani",
+      "legalReviewStatus": "APPROVED"
+    },
+    {
+      "id": "legal-saas",
+      "slug": "saas-terms",
+      "title": "Platform & SaaS Terms",
+      "titleAr": "شروط اتفاقية الخدمة السحابية",
+      "content": "These Platform and Software-as-a-Service (SaaS) Terms govern the commercial subscriptions for Brokers, Agencies, Developers, and Advertisers. Subscriptions provide premium workspace access, listing quotas, agent seats, and analytics. All plans are manually requested, audited, and approved. Payment is processed offline through traditional corporate bank transfers. Upon payment verification, administrative access is enabled. Plan quotas and feature limits are strictly enforced. Cancellations must be requested 30 days prior to renewal. Accounts may be suspended for billing delinquency or non-compliance with property verification standards.",
+      "contentAr": "تحكم شروط الخدمة السحابية (SaaS) الاشتراكات التجارية للوسطاء والمكاتب والمطورين والمعلنين. توفر الاشتراكات وصولاً للمساحة المخصصة، وحصص الإدراج، وحسابات الوكلاء والتحليلات. يتم مراجعة وتفعيل كافة خطط الاشتراك يدوياً بعد سداد الرسوم خارج المنصة عبر التحويلات البنكية. تُطبق حدود الإعلانات وعدد الوكلاء لكل باقة بدقة. يتوجب تقديم طلب الإلغاء قبل 30 يوماً من التجديد. يحق للإدارة تعليق الحسابات في حال التأخر عن السداد أو الإخلال بمعايير التوثيق.",
+      "version": "2.0.1",
+      "effectiveDate": "2026-01-01",
+      "lastUpdated": "2026-07-20",
+      "status": "PUBLISHED",
+      "author": "Nasser Al-Thani",
+      "legalReviewStatus": "APPROVED"
+    },
+    {
+      "id": "legal-privacy",
+      "slug": "privacy-policy",
+      "title": "Privacy & Data Protection",
+      "titleAr": "سياسة الخصوصية وحماية البيانات",
+      "content": "Nerou Finder and Nerou Technology Services are committed to protecting user privacy in accordance with Qatar Law No. 13 of 2016 on Protecting Personal Data Privacy. We collect registration details, profile info, property details, search histories, saved collections, and device identifiers. This data is processed to deliver AI search matching through Nerou Find, route inquiries directly to verified brokers, and compile performance analytics. We protect your data using industry-standard TLS encryption and secure hosting. Users hold the right to request access, correction, restriction, or permanent deletion of their personal and organizational data.",
+      "contentAr": "تلتزم منصة نيرو فايندر (Nerou Finder) وخدمات نيرو التقنية بحماية خصوصية المستخدمين بما يتماشى مع القانون القطري رقم 13 لسنة 2016 بشأن حماية خصوصية البيانات الشخصية. نقوم بجمع بيانات التسجيل، الملفات الشخصية، تفاصيل العقارات، وتاريخ البحث. تُعالج البيانات لتقديم خدمة الاكتشاف والبحث المدعوم بالذكاء الاصطناعي نيرو فايند وإرسال طلبات المعاينة إلى مقدمي الإعلانات العقارية المعتمدين. نحمي بياناتكم باستخدام تشفير TLS والاستضافة الآمنة. يحق للمستخدمين طلب الوصول إلى بياناتهم، تعديلها، أو حذفها نهائياً من سجلاتنا.",
+      "version": "1.5.0",
+      "effectiveDate": "2026-01-01",
+      "lastUpdated": "2026-07-20",
+      "status": "PUBLISHED",
+      "author": "Ameera Al-Ansari",
+      "legalReviewStatus": "APPROVED"
+    },
+    {
+      "id": "legal-cookie",
+      "slug": "cookie-policy",
+      "title": "Cookie Policy",
+      "titleAr": "سياسة ملفات تعريف الارتباط",
+      "content": "We use cookies to improve user experience, memorize language preferences, analyze traffic flow, and personalize promotional campaigns. Essential cookies are required to maintain user sessions and security. Performance and Functional cookies save UI adjustments. Analytics cookies help optimize server loading and search results. Users can control and update their cookie preferences at any time through our central Consent Manager.",
+      "contentAr": "نستخدم ملفات تعريف الارتباط (الكوكيز) لتحسين تجربة المستخدم، وحفظ تفضيلات اللغة، وتحليل حركة المرور، وتخصيص الحملات الترويجية. الكوكيز الأساسية ضرورية للحفاظ على الجلسات والأمان، بينما تساعد الكوكيز التحليلية في تحسين سرعة الخادم ونتائج البحث. يمكنكم التحكم وتعديل خيارات ملفات تعريف الارتباط في أي وقت من خلال مركز إدارة التفضيلات.",
+      "version": "1.1.0",
+      "effectiveDate": "2026-01-01",
+      "lastUpdated": "2026-07-20",
+      "status": "PUBLISHED",
+      "author": "Ameera Al-Ansari",
+      "legalReviewStatus": "APPROVED"
+    }
+  ],
+  "helpArticles": [
+    {
+      "id": "help-1",
+      "category": "VISITORS",
+      "title": "How to use AI Property Search",
+      "titleAr": "كيفية استخدام البحث بالذكاء الاصطناعي",
+      "content": "Our conversational search is powered by Nerou Find AI. Describe your requirements in natural language (e.g. 'Looking for a furnished 1 bedroom apartment in Pearl Qatar under 10000 QAR with a gym'). The AI will convert your query into filters and fetch matching properties with a clear reasoning.",
+      "contentAr": "محرك البحث التفاعلي لدينا مدعوم بالذكاء الاصطناعي نيرو فايند (Nerou Find). صِف متطلباتك بلغة طبيعية (مثال: 'شقة مفروشة غرفة نوم واحدة في لؤلؤة قطر بسعر أقل من 10000 ريال مع صالة رياضية'). وسيقوم الذكاء الاصطناعي بتحويل طلبك إلى فلاتر وجلب العقارات المناسبة من قاعدة البيانات المباشرة مع تقديم تفسير لكل عقار.",
+      "isPublished": true,
+      "viewCount": 154
+    },
+    {
+      "id": "help-2",
+      "category": "AGENTS",
+      "title": "Uploading Listings & Improving Quality Score",
+      "titleAr": "رفع العقارات وتحسين تقييم الجودة",
+      "content": "To gain verified status and appear higher in search results, listings must maintain a high quality score. Ensure you upload at least 3 high-resolution landscape photos, input accurate price history, define precise Qatari municipalities, and complete all technical and residential specifications.",
+      "contentAr": "للحصول على شارة عقار معتمد والظهور في مقدمة نتائج البحث، يجب الحفاظ على تقييم جودة مرتفع لعقاراتك. تأكد من رفع 3 صور أفقية عالية الجودة، وإدخال تاريخ أسعار دقيق، وتحديد البلدية والمنطقة بدقة، وإكمال كافة المواصفات والخدمات الفنية.",
+      "isPublished": true,
+      "viewCount": 98
+    },
+    {
+      "id": "help-3",
+      "category": "SUBSCRIPTIONS",
+      "title": "Requesting and Activating SaaS Plans",
+      "titleAr": "طلب وتفعيل خطط الاشتراك للشركات",
+      "content": "To upgrade your agency or developer workspace, navigate to the Plans section, select your plan, and click 'Request Upgrade'. Our administration team will review your business license and email an invoice. Once bank transfer is confirmed outside the system, your SaaS portal will be manually activated.",
+      "contentAr": "لترقية مساحة العمل لشركتك أو مكتبك العقاري، توجه لقسم الخطط واختر الباقة المطلوبة واضغط 'طلب ترقية'. سيقوم فريق الإدارة بمراجعة طلبك وإرسال الفاتورة لتسديدها عبر تحويل بنكي خارجي، وفور التأكيد سيتم تفعيل حسابك يدوياً.",
+      "isPublished": true,
+      "viewCount": 120
+    }
+  ],
+  "supportTickets": [],
+  "jobListings": [
+    {
+      "id": "job-1",
+      "title": "Senior Enterprise Software Engineer",
+      "titleAr": "مهندس برمجيات أول للمؤسسات",
+      "department": "Engineering",
+      "departmentAr": "الهندسة والتقنية",
+      "location": "Doha, Qatar (Hybrid)",
+      "locationAr": "الدوحة، قطر (هجين)",
+      "type": "Full-Time",
+      "typeAr": "دوام كامل",
+      "description": "We are seeking a senior full-stack engineer to lead the development of our next-generation Qatar-first SaaS core database engines and AI search integration protocols.",
+      "descriptionAr": "نبحث عن مهندس برمجيات أول لقيادة تطوير محركات قواعد البيانات والذكاء الاصطناعي السحابية الخاصة بالمنصة وإدارة البنية التحتية.",
+      "requirements": [
+        "5+ years experience with React, Node.js, and Cloud architectures",
+        "Knowledge of relational databases and search indexing",
+        "Bilingual in English and Arabic is a strong plus"
+      ],
+      "requirementsAr": [
+        "خبرة 5 سنوات على الأقل في تطوير نظم الويب React و Node",
+        "معرفة بقواعد البيانات والفهرسة المتقدمة للبحث",
+        "إتقان اللغتين العربية والإنجليزية ميزة إضافية كبيرة"
+      ]
+    }
+  ],
+  "pressReleases": [
+    {
+      "id": "press-1",
+      "title": "Nerou Finder Launches Groundbreaking AI-Driven Marketplace in Qatar",
+      "titleAr": "نيرو فايندر تطلق منصة الاكتشاف السحابية المدعومة بالذكاء الاصطناعي نيرو فايند في قطر",
+      "date": "2026-07-15",
+      "summary": "Introducing a fully multi-tenant enterprise portal integrated with real-time location analytics, side-by-side comparison matrix, and server-side Nerou Find AI.",
+      "summaryAr": "إطلاق منصة اكتشاف عقارية شاملة للشركات والوسطاء مدعومة بمحرك ذكاء اصطناعي تفاعلي وتحليلات جغرافية متطورة.",
+      "content": "DOHA, QATAR — Nerou Technology Services today announced the official public deployment of Nerou Finder, its flagship real estate technology discovery SaaS and marketplace hub. Operating on full-stack architecture, it delivers state-of-the-art tools including verification badges, direct WhatsApp CRM connectors, and the specialized Nerou Find AI discovery engine.",
+      "contentAr": "الدوحة، قطر — أعلنت خدمات نيرو التقنية اليوم عن الإطلاق الرسمي لمنصة نيرو فايندر (Nerou Finder) المخصصة لخدمات تكنولوجيا الاكتشاف والاشتراكات العقارية (SaaS) في قطر، مجهزة بحلول مبتكرة ومحرك الذكاء الاصطناعي نيرو فايند (Nerou Find)."
+    }
+  ],
+  "partnershipRequests": []
+}

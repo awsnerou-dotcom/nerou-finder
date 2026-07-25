@@ -1,0 +1,6 @@
+{
+  "name": "Nerou Finder",
+  "description": "AI-powered real estate discovery marketplace, multi-tenant SaaS, and platform control center for Qatar and international markets, powered by Nerou Find AI.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
