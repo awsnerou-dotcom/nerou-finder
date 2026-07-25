@@ -733,6 +733,39 @@ app.get("/api/users", (req, res) => {
   res.json(db.users);
 });
 
+// Update own profile (Agent/Agency/Developer "Save Profile Changes" forms), or any user if PLATFORM_ADMIN
+app.patch("/api/users/:id", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const authReq = req as AuthenticatedRequest;
+  const actor = authReq.user;
+  if (!actor) return res.status(401).json({ error: "Access token missing or invalid." });
+  if (actor.id !== id && actor.role !== UserRole.PLATFORM_ADMIN && actor.role !== UserRole.SUPER_ADMIN) {
+    return res.status(403).json({ error: "You may only update your own profile." });
+  }
+
+  const db = readDb();
+  const idx = db.users.findIndex(u => u.id === id);
+  if (idx === -1) return res.status(404).json({ error: "User not found." });
+
+  // Whitelist: profile fields only. Role, email, password, verificationStatus, and orgId
+  // all have their own dedicated admin/auth endpoints and must not be changed here.
+  const { fullName, phone, whatsapp, bio, languages, specialties, avatarUrl } = req.body;
+  const existing = db.users[idx] as any;
+  if (fullName !== undefined) existing.fullName = fullName;
+  if (phone !== undefined) existing.phone = phone;
+  if (whatsapp !== undefined) existing.whatsapp = whatsapp;
+  if (bio !== undefined) existing.bio = bio;
+  if (languages !== undefined) existing.languages = languages;
+  if (specialties !== undefined) existing.specialties = specialties;
+  if (avatarUrl !== undefined) existing.avatarUrl = avatarUrl;
+
+  writeDb(db);
+
+  logAudit(actor.id, actor.fullName, actor.role, "UPDATE_USER_PROFILE", id, "User", { fullName, phone, whatsapp });
+
+  res.json({ success: true, user: db.users[idx] });
+});
+
 // Properties API
 app.get("/api/properties", (req, res) => {
   const db = readDb();
