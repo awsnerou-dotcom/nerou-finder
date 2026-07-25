@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, Suspense, lazy } from "react";
 import VisitorExperience from "./components/VisitorExperience.js";
+import HeroBackground3D from "./components/HeroBackground3D.js";
 import CookieConsent from "./components/CookieConsent.js";
 import { trackEvent } from "./lib/analytics.js";
 import { User, UserRole, Organization, OrganizationType, VerificationStatus } from "./types.js";
@@ -579,23 +580,29 @@ export default function App() {
       {isLoginOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-white rounded-xl border border-[#e6e2de] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
-            
+
             <button
               onClick={() => { setIsLoginOpen(false); setAuthError(""); }}
-              className="absolute top-4 right-4 p-1.5 bg-[#fcfbfa] hover:bg-[#f2ede8] text-[#1a1918] rounded-full border border-[#e6e2de] transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-full border border-white/20 transition-colors cursor-pointer z-10"
             >
               <X size={15} />
             </button>
 
-            <div className="p-6 md:p-8 space-y-6">
-              
-              <div className="text-center space-y-2">
-                <span className="font-serif text-xl tracking-[0.2em] font-semibold text-[#1a1918]">NEROU</span>
-                <span className="font-serif text-xl tracking-wider font-bold text-[#bf9b30] block">PARTNER PORTAL</span>
-                <p className="text-xs text-[#6e6b66]">
+            <div className="bg-[#1c1a17] relative overflow-hidden text-center py-8 px-6 space-y-1.5">
+              <HeroBackground3D />
+              <div className="relative z-10">
+                <span className="font-serif text-xl tracking-[0.2em] font-semibold text-white">NEROU</span>
+                <span className="font-serif text-xl tracking-wider font-bold text-[#bf9b30] ml-1.5">FINDER</span>
+                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#bf9b30] mt-1">
+                  {isRtl ? "بوابة الشركاء" : "Partner Portal"}
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
                   {isRtl ? "سجل دخولك لإدارة محفظتك العقارية والعملاء" : "Access your active agency inventory, leads & workspace"}
                 </p>
               </div>
+            </div>
+
+            <div className="p-6 md:p-8 space-y-6">
 
               {/* Error Box */}
               {authError && (
@@ -639,7 +646,7 @@ export default function App() {
                         required
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        placeholder="e.g. agent1@nerou.com"
+                        placeholder="you@company.com"
                         className="w-full px-3.5 py-2.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-sm"
                       />
                     </div>
@@ -693,23 +700,29 @@ export default function App() {
       {isSignupOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
           <div className="bg-white rounded-xl border border-[#e6e2de] w-full max-w-lg my-8 overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
-            
+
             <button
               onClick={() => { setIsSignupOpen(false); setAuthError(""); }}
-              className="absolute top-4 right-4 p-1.5 bg-[#fcfbfa] hover:bg-[#f2ede8] text-[#1a1918] rounded-full border border-[#e6e2de] transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-full border border-white/20 transition-colors cursor-pointer z-10"
             >
               <X size={15} />
             </button>
 
-            <div className="p-6 md:p-8 space-y-6 max-h-[85vh] overflow-y-auto">
-              
-              <div className="text-center space-y-1">
-                <span className="font-serif text-xl tracking-[0.2em] font-semibold text-[#1a1918]">NEROU</span>
-                <span className="font-serif text-xl tracking-wider font-bold text-[#bf9b30] block">PARTNER REGISTRATION</span>
-                <p className="text-xs text-[#6e6b66]">
+            <div className="bg-[#1c1a17] relative overflow-hidden text-center py-8 px-6 space-y-1.5">
+              <HeroBackground3D />
+              <div className="relative z-10">
+                <span className="font-serif text-xl tracking-[0.2em] font-semibold text-white">NEROU</span>
+                <span className="font-serif text-xl tracking-wider font-bold text-[#bf9b30] ml-1.5">FINDER</span>
+                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#bf9b30] mt-1">
+                  {isRtl ? "تسجيل الشركاء" : "Partner Registration"}
+                </p>
+                <p className="text-xs text-gray-400 mt-2">
                   {isRtl ? "انضم لأكبر منظومة عقارية متطورة في قطر والشرق الأوسط" : "Register and launch your agency or developer SaaS channel"}
                 </p>
               </div>
+            </div>
+
+            <div className="p-6 md:p-8 space-y-6 max-h-[85vh] overflow-y-auto">
 
               {signupSuccess ? (
                 <div className="p-8 text-center space-y-4">

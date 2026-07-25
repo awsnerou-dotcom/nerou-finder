@@ -534,7 +534,7 @@ export default function PropertyDetailView({
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-serif font-medium text-[#1A1918]">
+            <h1 className="text-2xl sm:text-3xl font-serif font-medium text-[#1A1918]">
               {isRtl ? property.titleAr || property.title : property.title}
             </h1>
 
@@ -1295,7 +1295,27 @@ export default function PropertyDetailView({
             {/* RIGHT COLUMN: STICKY LEAD CONVERSION CARD (DESKTOP) */}
             <div className="lg:col-span-4 relative">
               <div className="lg:sticky lg:top-4 space-y-4">
-                
+
+                {/* PRICE HERO CARD (desktop) - previously only visible in the mobile sticky bar */}
+                <div className="hidden lg:block bg-[#1A1918] rounded-xl border border-[#33302a] shadow-sm p-5 space-y-1">
+                  <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">
+                    {isRtl ? "السعر الكلي المقدر" : "Asking Price"}
+                  </span>
+                  <div className="flex items-baseline gap-1.5">
+                    <strong className="font-serif text-3xl font-semibold text-[#BF9B30]">
+                      {propertyPrice.toLocaleString()} {currencySymbol}
+                    </strong>
+                    {isRent && (
+                      <span className="text-xs text-gray-400"> / {property.rentalPeriod || "YR"}</span>
+                    )}
+                  </div>
+                  {property.serviceCharges != null && (
+                    <p className="text-[10px] text-gray-500 pt-1">
+                      {isRtl ? "+ رسوم الخدمة" : "+ Service Charges"}: {property.serviceCharges.toLocaleString()} {currencySymbol}
+                    </p>
+                  )}
+                </div>
+
                 {/* REPRESENTATIVE AGENCY CARD */}
                 <div className="bg-white p-5 rounded-xl border border-[#E6E2DE] shadow-sm space-y-4">
                   <div className="flex items-center gap-3">
