@@ -1158,9 +1158,16 @@ export default function VisitorExperience({
           ))}
         </div>
       ) : getSortedProperties().length === 0 ? (
-        <div className="text-center py-16 bg-white border border-[#e6e2de] rounded-xl">
-          <Info size={40} className="mx-auto text-[#a8a4a0] mb-3" />
-          <p className="text-[#6e6b66]">{t.noProperties}</p>
+        <div className="text-center py-20 bg-white border border-[#e6e2de] rounded-xl">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#faf6ea] border border-[#bf9b30]/30 flex items-center justify-center">
+            <Info size={24} className="text-[#bf9b30]" />
+          </div>
+          <h4 className="font-serif text-lg text-[#1a1918] mb-1">{t.noProperties}</h4>
+          <p className="text-xs text-[#6e6b66] max-w-sm mx-auto">
+            {isRtl
+              ? "جرّب تعديل معايير البحث أو تصفح جميع الفئات لاكتشاف فرص جديدة."
+              : "Try adjusting your search filters or browse all categories to discover new opportunities."}
+          </p>
         </div>
       ) : viewFormat === "MAP" ? (
         <InteractiveMap
