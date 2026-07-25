@@ -80,7 +80,9 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
       setAgents(orgAgents);
 
       // Get invitations
-      const invRes = await fetch(`/api/organizations/${agency.id}/invitations`);
+      const invRes = await fetch(`/api/organizations/${agency.id}/invitations`, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
       if (invRes.ok) {
         const invData = await invRes.json();
         setInvitations(invData);
@@ -105,11 +107,11 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
         setOrgProperties(await propsRes.json());
       }
 
-      // Get subscriptions definitions
-      const dbRes = await fetch("/api/health");
-      const dbData = await dbRes.json();
-      // Since subscriptionPlans are seeded in the DB, let's fetch them
-      const plansRes = await fetch("/api/admin/audits"); // We can get the DB lists
+      // Get subscription plan catalog
+      const plansRes = await fetch("/api/plans");
+      if (plansRes.ok) {
+        setPlans(await plansRes.json());
+      }
     } catch (e) {
       console.error(e);
     }
@@ -206,7 +208,10 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
     try {
       const res = await fetch("/api/campaigns", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
         body: JSON.stringify({
           orgId: agency.id,
           type: campType,
@@ -240,7 +245,10 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
       try {
         const res = await fetch("/api/organizations/upgrade", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("token")}`
+          },
           body: JSON.stringify({
             orgId: agency.id,
             planId,

@@ -152,12 +152,15 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       const leadsData = await leadsRes.json();
       setLeads(leadsData);
 
-      // Fetch properties uploaded/assigned to this agent
-      const propRes = await fetch(`/api/properties?orgId=${agent.orgId}`);
-      const propData = await propRes.json();
-      // Filter those belonging to this agent if needed, or show organization properties
-      const agentProperties = propData.filter((p: Property) => p.agentId === agent.id);
-      setProperties(agentProperties);
+      // Fetch properties uploaded/assigned to this agent (requires an org affiliation)
+      if (agent.orgId) {
+        const propRes = await fetch(`/api/properties?orgId=${agent.orgId}`);
+        const propData = await propRes.json();
+        const agentProperties = propData.filter((p: Property) => p.agentId === agent.id);
+        setProperties(agentProperties);
+      } else {
+        setProperties([]);
+      }
     } catch (err) {
       console.error("Failed to load agent workspace details", err);
     }
@@ -167,7 +170,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     try {
       const res = await fetch("/api/leads/status", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
         body: JSON.stringify({
           leadId,
           status,
@@ -279,6 +285,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const handleAddListing = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!listingTitle || !listingPrice || !listingDesc) return;
+    if (!agent.orgId) {
+      setToastMessage(isRtl ? "يجب أن تنضم إلى مكتب عقاري لتتمكن من إضافة عقارات." : "You must be affiliated with an agency before you can list properties.");
+      setTimeout(() => setToastMessage(""), 5000);
+      return;
+    }
 
     // Resolve city & district names from selected location IDs
     const muniItem = locations.find(l => l.id === selectedMunicipality);
@@ -310,7 +321,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           images: listingImages,
           amenities: listingAmenities.split(",").map(a => a.trim()),
           agentId: agent.id,
-          orgId: agent.orgId || "org-agency-1",
+          orgId: agent.orgId,
           actorId: agent.id,
           actorName: agent.fullName,
           actorRole: agent.role

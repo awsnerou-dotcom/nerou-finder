@@ -53,7 +53,7 @@ export default function ProfileReviewsSection({
     setSuccess("");
 
     try {
-      const token = sessionStorage.getItem("nerou_token");
+      const token = localStorage.getItem("token");
       const res = await fetch("/api/reviews", {
         method: "POST",
         headers: {

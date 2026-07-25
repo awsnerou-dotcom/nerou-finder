@@ -41,7 +41,10 @@ import {
   AdChargeType,
   AD_CHARGE_PRICES,
   DEFAULT_MONTHLY_BOOST_CAPS,
-  DEFAULT_BOOST_CAP_FALLBACK
+  DEFAULT_BOOST_CAP_FALLBACK,
+  JobApplication,
+  Invitation,
+  Organization
 } from "./src/types.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
@@ -398,7 +401,22 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const ALLOWED_UPLOAD_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB per file
+    files: 20
+  },
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_UPLOAD_MIMES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Unsupported file type. Only JPG, PNG, WEBP, GIF, and PDF files are allowed."));
+    }
+  }
+});
 
 // Shared lazy-loaded Gemini client
 let aiClient: GoogleGenAI | null = null;
@@ -591,7 +609,7 @@ app.post("/api/auth/2fa/disable", authMiddleware, (req, res) => {
 
 // Real Signup
 app.post("/api/auth/signup", authRateLimiter, (req, res) => {
-  const { email, password, fullName, phone, role, orgName, orgType, selectedPlanId } = req.body;
+  const { email, password, fullName, phone, role, orgName, orgType, selectedPlanId, inviteToken } = req.body;
   const db = readDb();
 
   // Check if user already exists
@@ -601,9 +619,22 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
   }
 
   let orgId: string | undefined = undefined;
-  
+  let effectiveRole = role;
+
+  // If signing up via a team invitation, honor the invited org + role instead of the form's own selection
+  let consumedInvitation: Invitation | undefined;
+  if (inviteToken) {
+    if (!db.invitations) db.invitations = [];
+    const invitation = db.invitations.find(inv => inv.token === inviteToken);
+    if (invitation && invitation.status === "PENDING" && new Date(invitation.expiresDate) >= new Date()) {
+      orgId = invitation.orgId;
+      effectiveRole = invitation.invitedRole;
+      consumedInvitation = invitation;
+    }
+  }
+
   // If role is AGENCY_ADMIN or DEVELOPER_ADMIN, create organization
-  if (role === UserRole.AGENCY_ADMIN || role === UserRole.DEVELOPER_ADMIN) {
+  if (!orgId && (effectiveRole === UserRole.AGENCY_ADMIN || effectiveRole === UserRole.DEVELOPER_ADMIN)) {
     orgId = `org-${Date.now()}`;
     const targetPlanId = selectedPlanId || (orgType === "DEVELOPER" ? "plan-developer" : "plan-basic");
     const matchedPlan = db.subscriptionPlans.find(p => p.id === targetPlanId) || db.subscriptionPlans[0];
@@ -637,10 +668,9 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
       matchedPlan.priceMonthly
     );
     sendMockEmail("admin@nerou.io", `[Nerou Finder] New SaaS Subscription Request: ${newOrg.name}`, reqEmailHtml, "subscription_request");
-  } else if (role === UserRole.AGENT) {
-    // Default link to org-agency-1 for demo purposes if they register as individual agent, or they can stand alone
-    orgId = "org-agency-1";
   }
+  // Agents signing up without an invitation remain unaffiliated (orgId undefined) until they
+  // either receive/accept an agency invite or an agency admin links them manually.
 
   const userId = `user-${Date.now()}`;
   const hashedPassword = bcrypt.hashSync(password || "nerou123", 10);
@@ -651,10 +681,10 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
     fullName,
     phone,
     whatsapp: phone,
-    role: role || UserRole.AGENT,
+    role: effectiveRole || UserRole.AGENT,
     orgId,
-    avatarUrl: `https://images.unsplash.com/photo-${role === UserRole.AGENT ? "1560250097-0b93528c311a" : "1472099645785-5658abf4ff4e"}?auto=format&fit=crop&w=200&h=200&q=80`,
-    bio: role === UserRole.AGENT ? "Professional real estate specialist." : "Administrator account.",
+    avatarUrl: `https://images.unsplash.com/photo-${effectiveRole === UserRole.AGENT ? "1560250097-0b93528c311a" : "1472099645785-5658abf4ff4e"}?auto=format&fit=crop&w=200&h=200&q=80`,
+    bio: effectiveRole === UserRole.AGENT ? "Professional real estate specialist." : "Administrator account.",
     languages: ["English", "Arabic"],
     specialties: ["Pearl Qatar", "West Bay"],
     verificationStatus: VerificationStatus.APPROVED,
@@ -662,9 +692,14 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
   };
 
   db.users.push(newUser);
+
+  if (consumedInvitation) {
+    consumedInvitation.status = "ACCEPTED";
+  }
+
   writeDb(db);
 
-  logAudit(userId, fullName, role, "USER_SIGNUP", userId, "User", { email });
+  logAudit(userId, fullName, effectiveRole, "USER_SIGNUP", userId, "User", { email, viaInvitation: !!consumedInvitation });
 
   // Issue JWT Token
   const token = jwt.sign(
@@ -1445,6 +1480,132 @@ app.post("/api/organizations/upgrade", authMiddleware, (req, res) => {
 
 
   res.json({ success: true, organization: db.organizations[idx] });
+});
+
+// -----------------------------------------------------------------------------
+// ORGANIZATION TEAM INVITATIONS & LEAD ROUTING POLICY
+// -----------------------------------------------------------------------------
+
+// Public: look up an invitation by its token (used by the signup page before the user has an account)
+app.get("/api/invitations/:token", (req, res) => {
+  const { token } = req.params;
+  const db = readDb();
+  if (!db.invitations) db.invitations = [];
+  const invitation = db.invitations.find(inv => inv.token === token);
+  if (!invitation) return res.status(404).json({ error: "Invitation not found." });
+  if (invitation.status !== "PENDING") {
+    return res.status(410).json({ error: "This invitation has already been used or revoked." });
+  }
+  if (new Date(invitation.expiresDate) < new Date()) {
+    invitation.status = "EXPIRED";
+    writeDb(db);
+    return res.status(410).json({ error: "This invitation has expired." });
+  }
+  res.json({ invitation });
+});
+
+// List an organization's invitations (org admin or platform admin only)
+app.get("/api/organizations/:id/invitations", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  const isAdmin = actor?.role === UserRole.PLATFORM_ADMIN || actor?.role === UserRole.SUPER_ADMIN;
+  if (!actor || (!isAdmin && actor.orgId !== id)) {
+    return res.status(403).json({ error: "You do not have access to this organization's invitations." });
+  }
+
+  if (!db.invitations) db.invitations = [];
+  res.json(db.invitations.filter(inv => inv.orgId === id));
+});
+
+// Send a team invitation (org admin or platform admin only)
+app.post("/api/organizations/:id/invite", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const { email, invitedRole } = req.body;
+  if (!email) return res.status(400).json({ error: "email is required." });
+
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  const isAdmin = actor?.role === UserRole.PLATFORM_ADMIN || actor?.role === UserRole.SUPER_ADMIN;
+  const isOrgAdmin = actor?.orgId === id && (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+  if (!actor || (!isAdmin && !isOrgAdmin)) {
+    return res.status(403).json({ error: "Only an organization admin may send invitations." });
+  }
+
+  const org = db.organizations.find(o => o.id === id);
+  if (!org) return res.status(404).json({ error: "Organization not found." });
+
+  if (db.users.some(u => u.email === email)) {
+    return res.status(400).json({ error: "A user with this email already exists." });
+  }
+
+  if (!db.invitations) db.invitations = [];
+  const token = crypto.randomBytes(24).toString("hex");
+  const now = new Date();
+  const expiresDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Reuse an existing pending invite for the same email+org rather than duplicating rows
+  let invitation = db.invitations.find(inv => inv.email === email && inv.orgId === id && inv.status === "PENDING");
+  if (invitation) {
+    invitation.token = token;
+    invitation.expiresDate = expiresDate;
+    invitation.createdDate = now.toISOString();
+  } else {
+    invitation = {
+      id: `inv-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      email,
+      orgId: id,
+      invitedRole: invitedRole || UserRole.AGENT,
+      token,
+      status: "PENDING",
+      createdDate: now.toISOString(),
+      expiresDate
+    };
+    db.invitations.push(invitation);
+  }
+
+  writeDb(db);
+  logAudit(actor.id, actor.fullName, actor.role, "SEND_INVITATION", invitation.id, "Invitation", { email, orgId: id });
+
+  const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+  const inviteLink = `${appUrl}/?token=${token}`;
+  const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1a1918;">You're invited to join ${org.name} on Nerou Finder</h2>
+    <p>Click the link below to create your account and join the team:</p>
+    <p><a href="${inviteLink}" style="color: #bf9b30;">${inviteLink}</a></p>
+    <p>This invitation expires in 7 days.</p>
+  </div>`;
+  sendMockEmail(email, `[Nerou Finder] You're invited to join ${org.name}`, html, "org_invitation");
+
+  res.json({ success: true, invitation });
+});
+
+// Update lead routing policy (org admin or platform admin only)
+app.patch("/api/organizations/:id/routing", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const { policy } = req.body;
+  if (!policy) return res.status(400).json({ error: "policy is required." });
+
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  const isAdmin = actor?.role === UserRole.PLATFORM_ADMIN || actor?.role === UserRole.SUPER_ADMIN;
+  const isOrgAdmin = actor?.orgId === id && (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+  if (!actor || (!isAdmin && !isOrgAdmin)) {
+    return res.status(403).json({ error: "Only an organization admin may update the routing policy." });
+  }
+
+  const orgIdx = db.organizations.findIndex(o => o.id === id);
+  if (orgIdx === -1) return res.status(404).json({ error: "Organization not found." });
+
+  db.organizations[orgIdx].leadRoutingPolicy = policy;
+  writeDb(db);
+  logAudit(actor.id, actor.fullName, actor.role, "UPDATE_LEAD_ROUTING_POLICY", id, "Organization", { policy });
+
+  res.json({ success: true, organization: db.organizations[orgIdx] });
 });
 
 // GET all subscription plans
@@ -2581,6 +2742,47 @@ app.post("/api/admin/careers", (req, res) => {
   res.json({ success: true, job: updatedJob });
 });
 
+// Public: submit a job application (no auth - applicants aren't platform users)
+app.post("/api/careers/apply", (req, res) => {
+  const { jobId, applicantName, applicantEmail, applicantPhone, coverLetter, cvUrl } = req.body;
+  if (!jobId || !applicantName || !applicantEmail || !applicantPhone) {
+    return res.status(400).json({ error: "jobId, applicantName, applicantEmail, and applicantPhone are required." });
+  }
+
+  const db = readDb();
+  if (!db.jobListings) db.jobListings = [];
+  const job = db.jobListings.find(j => j.id === jobId);
+  if (!job) return res.status(404).json({ error: "Job listing not found." });
+
+  if (!db.jobApplications) db.jobApplications = [];
+  const application: JobApplication = {
+    id: `jobapp-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+    jobId,
+    applicantName,
+    applicantEmail,
+    applicantPhone,
+    cvUrl,
+    coverLetter,
+    status: "PENDING",
+    createdDate: new Date().toISOString()
+  };
+  db.jobApplications.push(application);
+  writeDb(db);
+
+  logAudit(application.id, applicantName, UserRole.VISITOR, "SUBMIT_JOB_APPLICATION", jobId, "JobApplication", { applicantEmail, jobTitle: job.title });
+
+  const notifyHtml = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1a1918;">New Job Application</h2>
+    <p><strong>Position:</strong> ${job.title}</p>
+    <p><strong>Applicant:</strong> ${applicantName} (${applicantEmail}, ${applicantPhone})</p>
+    ${coverLetter ? `<p><strong>Cover Letter:</strong></p><p>${coverLetter}</p>` : ""}
+  </div>`;
+  sendMockEmail("careers@nerou.io", `[Nerou Finder] New Application: ${job.title}`, notifyHtml, "job_application");
+
+  res.json({ success: true, application });
+});
+
 app.get("/api/press", (req, res) => {
   const db = readDb();
   res.json(db.pressReleases || []);
@@ -3002,7 +3204,14 @@ async function applyWatermark(inputPath: string, outputPath: string) {
   }
 }
 
-app.post("/api/media/upload", upload.array("files"), async (req, res) => {
+app.post("/api/media/upload", authMiddleware, (req, res, next) => {
+  upload.array("files")(req, res, (err: any) => {
+    if (err) {
+      return res.status(400).json({ error: err.message || "File upload failed." });
+    }
+    next();
+  });
+}, async (req, res) => {
   const files = req.files as Express.Multer.File[];
   if (!files || files.length === 0) {
     return res.status(400).json({ error: "No files uploaded." });
@@ -3034,9 +3243,18 @@ app.post("/api/media/upload", upload.array("files"), async (req, res) => {
 // =============================================================================
 // GDPR & QATAR LAW NO.13 PRIVACY & DATA PORTABILITY COMPLIANCE ENDPOINTS
 // =============================================================================
-app.post("/api/user/delete-account", (req, res) => {
-  const { userId, actorName, actorRole } = req.body;
+app.post("/api/user/delete-account", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const isAdmin = authReq.user?.role === UserRole.PLATFORM_ADMIN || authReq.user?.role === UserRole.SUPER_ADMIN;
+  const requestedUserId = req.body.userId;
+  // Users may only scrub their own account; only a platform admin may act on someone else's behalf
+  const userId = isAdmin && requestedUserId ? requestedUserId : authReq.user?.id;
+  const actorName = req.body.actorName || authReq.user?.fullName || "Self";
+  const actorRole = req.body.actorRole || authReq.user?.role || UserRole.REGISTERED;
   if (!userId) return res.status(400).json({ error: "User ID is required" });
+  if (!isAdmin && requestedUserId && requestedUserId !== authReq.user?.id) {
+    return res.status(403).json({ error: "You may only delete your own account." });
+  }
 
   const db = readDb();
   
@@ -3081,9 +3299,16 @@ app.post("/api/user/delete-account", (req, res) => {
   });
 });
 
-app.get("/api/user/export-data", (req, res) => {
-  const { userId } = req.query;
+app.get("/api/user/export-data", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const isAdmin = authReq.user?.role === UserRole.PLATFORM_ADMIN || authReq.user?.role === UserRole.SUPER_ADMIN;
+  const requestedUserId = req.query.userId as string | undefined;
+  // Users may only export their own data; only a platform admin may act on someone else's behalf
+  const userId = isAdmin && requestedUserId ? requestedUserId : authReq.user?.id;
   if (!userId) return res.status(400).json({ error: "User ID is required" });
+  if (!isAdmin && requestedUserId && requestedUserId !== authReq.user?.id) {
+    return res.status(403).json({ error: "You may only export your own data." });
+  }
 
   const db = readDb();
   const user = db.users.find(u => u.id === userId);
