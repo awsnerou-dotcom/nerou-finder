@@ -51,7 +51,8 @@ import {
   Plus,
   Mail,
   Trash2,
-  Star
+  Star,
+  ChevronRight
 } from "lucide-react";
 
 interface ControlCenterProps {
@@ -77,7 +78,14 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
     | "email_logs"
     | "reviews"
     | "locations"
+    | "ad_billing"
   >("overview");
+
+  // Collapsible sidebar navigation: which grouped sections are expanded
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ overview_group: true });
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
+  };
 
   // Database lists
   const [users, setUsers] = useState<User[]>([]);
@@ -952,6 +960,91 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
 
   const totalAdvertisingRevenue = campaigns.reduce((acc, c) => acc + c.budget, 0);
 
+  // Grouped, collapsible sidebar navigation config (FIX 2) - every existing tab remains reachable,
+  // just organized into sections instead of one flat button row. Content behind each tab is unchanged.
+  const navGroups: { id: string; label: { en: string; ar: string }; icon: any; tabs: { id: string; label: { en: string; ar: string }; badge?: number }[] }[] = [
+    {
+      id: "overview_group",
+      label: { en: "Overview", ar: "نظرة عامة" },
+      icon: Compass,
+      tabs: [{ id: "overview", label: { en: "Oversight", ar: "لوحة التشغيل" } }]
+    },
+    {
+      id: "verification_group",
+      label: { en: "Verification & Compliance", ar: "التوثيق والامتثال" },
+      icon: ShieldAlert,
+      tabs: [
+        {
+          id: "verifications",
+          label: { en: "Verifications Queue", ar: "طلبات التوثيق" },
+          badge: pendingProperties.length + pendingOrgs.length + pendingUsers.length + pendingDocuments.length
+        }
+      ]
+    },
+    {
+      id: "listings_group",
+      label: { en: "Listings & Locations", ar: "العقارات والمناطق" },
+      icon: FolderTree,
+      tabs: [{ id: "locations", label: { en: "Location Hierarchy", ar: "إدارة المناطق" } }]
+    },
+    {
+      id: "leads_group",
+      label: { en: "Leads & Communication", ar: "العملاء والتواصل" },
+      icon: PhoneCall,
+      tabs: [
+        { id: "leads", label: { en: "Platform Inquiries", ar: "مراقبة الاتصالات" } },
+        {
+          id: "support_tickets",
+          label: { en: "Support Tickets", ar: "تذاكر الدعم" },
+          badge: tickets.filter(t => t.status === "OPEN").length
+        }
+      ]
+    },
+    {
+      id: "monetization_group",
+      label: { en: "Monetization", ar: "الإيرادات" },
+      icon: DollarSign,
+      tabs: [
+        { id: "subscription", label: { en: "SaaS Subscriptions", ar: "الاشتراكات SaaS" } },
+        { id: "campaigns", label: { en: "Ad Approval", ar: "مراجعة الترويج" } },
+        { id: "ad_billing", label: { en: "Ad Billing Ledger", ar: "دفتر إعلانات الترويج" } }
+      ]
+    },
+    {
+      id: "trust_group",
+      label: { en: "Trust & Safety", ar: "الثقة والأمان" },
+      icon: Award,
+      tabs: [
+        { id: "reviews", label: { en: "Reviews Moderation", ar: "مراجعة التقييمات" } },
+        { id: "health", label: { en: "System Health", ar: "مزودو الخدمات" } }
+      ]
+    },
+    {
+      id: "ai_group",
+      label: { en: "AI & Analytics", ar: "الذكاء الاصطناعي" },
+      icon: Cpu,
+      tabs: [{ id: "ai", label: { en: "AI Analytics", ar: "خادم الذكاء الاصطناعي" } }]
+    },
+    {
+      id: "content_group",
+      label: { en: "Content & Legal", ar: "المحتوى والشؤون القانونية" },
+      icon: Scale,
+      tabs: [
+        { id: "legal_cms", label: { en: "Legal CMS", ar: "سياسات CMS" } },
+        { id: "help_articles", label: { en: "Help Desk", ar: "المساعدة" } },
+        { id: "careers", label: { en: "Careers CMS", ar: "الوظائف والتوظيف" } },
+        { id: "press", label: { en: "Press CMS", ar: "الصحافة والإعلام" } },
+        { id: "partnerships", label: { en: "Partner Requests", ar: "شراكات الشركات" } }
+      ]
+    },
+    {
+      id: "settings_group",
+      label: { en: "Settings", ar: "الإعدادات" },
+      icon: Sliders,
+      tabs: [{ id: "email_logs", label: { en: "Email Logs", ar: "سجلات البريد" } }]
+    }
+  ];
+
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Control Center Header */}
@@ -966,115 +1059,6 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
           </p>
         </div>
 
-        {/* Side menu tabs */}
-        <div className="flex flex-wrap bg-[#f2ede8] p-0.5 rounded-lg text-xs font-medium">
-          <button
-            onClick={() => setActiveSubTab("overview")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "overview" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "لوحة التشغيل" : "Oversight"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("verifications")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "verifications" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "طلبات التوثيق" : "Verifications Queue"}
-            {(pendingProperties.length + pendingOrgs.length + pendingUsers.length + pendingDocuments.length) > 0 && (
-              <span className="ml-1 bg-[#bf9b30] text-black text-[9px] px-1 py-0.2 rounded-full font-bold">
-                {pendingProperties.length + pendingOrgs.length + pendingUsers.length + pendingDocuments.length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("leads")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "leads" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "مراقبة الاتصالات" : "Platform Inquiries"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("campaigns")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "campaigns" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "مراجعة الترويج" : "Ad Approval"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("ai")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "ai" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "خادم الذكاء الاصطناعي" : "AI Analytics"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("health")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "health" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "مزودو الخدمات" : "System Health"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("subscription")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "subscription" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "الاشتراكات SaaS" : "SaaS Subscriptions"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("legal_cms")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "legal_cms" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "سياسات CMS" : "Legal CMS"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("locations")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "locations" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "إدارة المناطق" : "Location Hierarchy"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("help_articles")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "help_articles" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "المساعدة" : "Help Desk"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("support_tickets")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "support_tickets" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "تذاكر الدعم" : "Support Tickets"}
-            {tickets.filter(t => t.status === "OPEN").length > 0 && (
-              <span className="ml-1 bg-red-600 text-white text-[9px] px-1 py-0.2 rounded-full font-bold">
-                {tickets.filter(t => t.status === "OPEN").length}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("partnerships")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "partnerships" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "شراكات الشركات" : "Partner Requests"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("careers")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "careers" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "الوظائف والتوظيف" : "Careers CMS"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("press")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "press" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "الصحافة والإعلام" : "Press CMS"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("email_logs")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "email_logs" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "سجلات البريد" : "Email Logs"}
-          </button>
-          <button
-            onClick={() => setActiveSubTab("reviews")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === "reviews" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
-          >
-            {isRtl ? "مراجعة التقييمات" : "Reviews Moderation"}
-          </button>
-        </div>
       </div>
 
       {/* Floating Toast Notification */}
@@ -1085,6 +1069,60 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         </div>
       )}
 
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Collapsible grouped sidebar navigation (FIX 2) */}
+        <aside className="w-full lg:w-64 lg:shrink-0">
+          <nav className="bg-[#f2ede8] rounded-xl p-2 space-y-1 text-xs font-medium lg:sticky lg:top-4">
+            {navGroups.map(group => {
+              const isExpanded = !!expandedGroups[group.id];
+              const groupHasActive = group.tabs.some(t => t.id === activeSubTab);
+              const GroupIcon = group.icon;
+              const groupBadgeTotal = group.tabs.reduce((sum, t) => sum + (t.badge || 0), 0);
+              return (
+                <div key={group.id}>
+                  <button
+                    onClick={() => toggleGroup(group.id)}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${groupHasActive ? "text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <GroupIcon size={14} className={groupHasActive ? "text-[#bf9b30]" : ""} />
+                      {isRtl ? group.label.ar : group.label.en}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      {groupBadgeTotal > 0 && (
+                        <span className="bg-[#bf9b30] text-black text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                          {groupBadgeTotal}
+                        </span>
+                      )}
+                      <ChevronRight size={12} className={`transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                    </span>
+                  </button>
+                  {isExpanded && (
+                    <div className="pl-4 pr-1 pb-1 space-y-0.5">
+                      {group.tabs.map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveSubTab(tab.id as any)}
+                          className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === tab.id ? "bg-white text-[#1a1918] shadow-sm" : "text-[#6e6b66] hover:text-[#1a1918] hover:bg-white/50"}`}
+                        >
+                          <span>{isRtl ? tab.label.ar : tab.label.en}</span>
+                          {!!tab.badge && (
+                            <span className="bg-[#bf9b30] text-black text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                              {tab.badge}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </aside>
+
+        {/* Active tab content */}
+        <div className="flex-1 min-w-0">
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 text-xs text-[#6e6b66] gap-2">
           <RefreshCw size={24} className="animate-spin text-[#bf9b30]" />
@@ -3894,6 +3932,9 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
           )}
         </div>
       )}
+
+        </div>
+      </div>
 
     </div>
   );
