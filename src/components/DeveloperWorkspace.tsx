@@ -20,6 +20,7 @@ import {
   MapPin
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
+import BoostButton from "./BoostButton.js";
 
 interface DeveloperWorkspaceProps {
   developer: Organization;
@@ -352,14 +353,17 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                 <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "لا توجد وحدات مسجلة تحت هذا المشروع." : "No units listed under this developer workspace yet."}</p>
               ) : (
                 properties.map(unit => (
-                  <div key={unit.id} className="p-4 flex justify-between items-center">
+                  <div key={unit.id} className="p-4 flex justify-between items-center gap-3 flex-wrap">
                     <div>
                       <p className="font-bold text-[#1a1918]">{isRtl ? unit.titleAr : unit.title}</p>
                       <p className="text-[10px] text-[#6e6b66]">District: {unit.district} | {unit.bedrooms} Bed | {unit.area} SQM</p>
                     </div>
-                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold uppercase rounded">
-                      Available
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <BoostButton propertyId={unit.id} isRtl={isRtl} />
+                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold uppercase rounded shrink-0">
+                        Available
+                      </span>
+                    </div>
                   </div>
                 ))
               )}

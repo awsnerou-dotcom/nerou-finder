@@ -110,6 +110,9 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
   const [verificationDocs, setVerificationDocs] = useState<any[]>([]);
   const [rejectingDocId, setRejectingDocId] = useState<string>("");
   const [rejectionReasonDraft, setRejectionReasonDraft] = useState<string>("");
+  const [adCharges, setAdCharges] = useState<any[]>([]);
+  const [adBoostCaps, setAdBoostCaps] = useState<Record<string, number>>({});
+  const [capDrafts, setCapDrafts] = useState<Record<string, string>>({});
   
   // Developer Outbound SMTP Email Mock Queue states
   const [emails, setEmails] = useState<any[]>([]);
@@ -394,7 +397,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         pressRes,
         reviewsRes,
         locationsRes,
-        verificationDocsRes
+        verificationDocsRes,
+        adChargesRes
       ] = await Promise.all([
         fetch("/api/users", { headers: authHeader }),
         fetch("/api/properties", { headers: authHeader }),
@@ -413,7 +417,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         fetch("/api/press", { headers: authHeader }),
         fetch("/api/admin/reviews", { headers: authHeader }),
         fetch("/api/locations", { headers: authHeader }),
-        fetch("/api/admin/verification-documents", { headers: authHeader })
+        fetch("/api/admin/verification-documents", { headers: authHeader }),
+        fetch("/api/ad-charges", { headers: authHeader })
       ]);
 
       const [
@@ -434,7 +439,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         pressData,
         reviewsData,
         locationsData,
-        verificationDocsData
+        verificationDocsData,
+        adChargesData
       ] = await Promise.all([
         usersRes.ok ? usersRes.json() : Promise.resolve([]),
         propRes.ok ? propRes.json() : Promise.resolve([]),
@@ -453,7 +459,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         pressRes.ok ? pressRes.json() : Promise.resolve([]),
         reviewsRes.ok ? reviewsRes.json() : Promise.resolve([]),
         locationsRes.ok ? locationsRes.json() : Promise.resolve([]),
-        verificationDocsRes.ok ? verificationDocsRes.json() : Promise.resolve([])
+        verificationDocsRes.ok ? verificationDocsRes.json() : Promise.resolve([]),
+        adChargesRes.ok ? adChargesRes.json() : Promise.resolve([])
       ]);
 
       setUsers(usersData);
@@ -474,6 +481,7 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
       setReviews(reviewsData || []);
       setLocations(locationsData || []);
       setVerificationDocs(verificationDocsData || []);
+      setAdCharges(adChargesData || []);
 
       // Load AI Config
       try {
@@ -492,6 +500,7 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
           setWhatsappDefaultNumber(aiConfigData.whatsappDefaultNumber || "97433334444");
           setWatermarkText(aiConfigData.watermarkText || "Nerou Finder");
           setWatermarkLogoType(aiConfigData.watermarkLogoType || "gold_diamond");
+          setAdBoostCaps(aiConfigData.adBoostCaps || {});
         }
       } catch (err) {
         console.error("Failed to fetch AI configuration inside context load:", err);
@@ -733,6 +742,64 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
       } else {
         const d = await res.json();
         showToast(d.error || "Failed to review document.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSettleBillingPeriod = async (orgId: string, billingPeriod: string) => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch("/api/admin/ad-charges/settle", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          orgId,
+          billingPeriod,
+          actorId: "user-platform-admin",
+          actorName: "Ameera Al-Ansari",
+          actorRole: "PLATFORM_ADMIN"
+        })
+      });
+      if (res.ok) {
+        showToast(isRtl ? "تم تسوية فترة الفوترة بنجاح!" : "Billing period settled successfully!");
+        fetchControlContext();
+      } else {
+        const d = await res.json();
+        showToast(d.error || "Failed to settle billing period.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveBoostCap = async (planId: string) => {
+    const value = parseInt(capDrafts[planId], 10);
+    if (isNaN(value) || value < 0) {
+      showToast(isRtl ? "قيمة الحد الأقصى غير صالحة." : "Invalid cap value.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch("/api/admin/ad-boost-caps", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ caps: { [planId]: value } })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdBoostCaps(data.adBoostCaps || {});
+        showToast(isRtl ? "تم تحديث الحد الأقصى الشهري!" : "Monthly cap updated!");
+      } else {
+        const d = await res.json();
+        showToast(d.error || "Failed to update cap.");
       }
     } catch (e) {
       console.error(e);
@@ -1629,6 +1696,109 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* AD BILLING LEDGER TAB (FIX 3: Self-Service Ad Boosts) */}
+          {activeSubTab === "ad_billing" && (
+            <div className="space-y-6 text-xs">
+              {/* Monthly self-service boost caps per plan */}
+              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+                  <h4 className="font-serif text-sm font-semibold text-[#1a1918]">
+                    {isRtl ? "الحد الأقصى الشهري للرفع الذاتي حسب الباقة" : "Monthly Self-Service Boost Cap per Plan"}
+                  </h4>
+                </div>
+                <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {plans.map(plan => (
+                    <div key={plan.id} className="p-3 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg space-y-2">
+                      <p className="font-bold text-[#1a1918]">{plan.name}</p>
+                      <p className="text-[#6e6b66]">
+                        {isRtl ? "الحالي: " : "Current: "}
+                        <strong>{adBoostCaps[plan.id] ?? "—"}</strong> {isRtl ? "رفعة/شهر" : "boosts/mo"}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder={String(adBoostCaps[plan.id] ?? "")}
+                          value={capDrafts[plan.id] ?? ""}
+                          onChange={(e) => setCapDrafts(prev => ({ ...prev, [plan.id]: e.target.value }))}
+                          className="w-20 px-2 py-1 bg-white border border-[#e6e2de] rounded"
+                        />
+                        <button
+                          onClick={() => handleSaveBoostCap(plan.id)}
+                          className="px-3 py-1 bg-[#1a1918] hover:bg-[#bf9b30] text-white rounded font-semibold cursor-pointer"
+                        >
+                          {isRtl ? "حفظ" : "Save"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Running per-org billing ledger */}
+              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+                  <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "دفتر إعلانات الترويج الذاتي" : "Ad Billing Ledger"}</h4>
+                  <p className="text-[10px] text-[#6e6b66] mt-0.5">
+                    {isRtl
+                      ? "لا يمكن للمؤسسة تفعيل رفعات جديدة إذا كانت فترة سابقة غير مسواة."
+                      : "Organizations with an unsettled prior period are blocked from further self-service activations until resolved."}
+                  </p>
+                </div>
+                <div className="divide-y divide-[#f2ede8]">
+                  {(() => {
+                    const groups = new Map<string, { orgId: string; billingPeriod: string; total: number; count: number; settled: boolean }>();
+                    adCharges.forEach((c: any) => {
+                      const key = `${c.orgId}:${c.billingPeriod}`;
+                      const existing = groups.get(key);
+                      if (existing) {
+                        existing.total += c.amount;
+                        existing.count += 1;
+                        existing.settled = existing.settled && c.settled;
+                      } else {
+                        groups.set(key, { orgId: c.orgId, billingPeriod: c.billingPeriod, total: c.amount, count: 1, settled: c.settled });
+                      }
+                    });
+                    const sorted = Array.from(groups.values()).sort((a, b) => {
+                      if (a.settled !== b.settled) return a.settled ? 1 : -1;
+                      return b.billingPeriod.localeCompare(a.billingPeriod);
+                    });
+
+                    if (sorted.length === 0) {
+                      return <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "لا توجد رسوم إعلانية مسجلة بعد." : "No ad boost charges recorded yet."}</p>;
+                    }
+
+                    return sorted.map(group => {
+                      const org = organizations.find(o => o.id === group.orgId);
+                      return (
+                        <div key={`${group.orgId}:${group.billingPeriod}`} className="p-4 flex justify-between items-center gap-3 flex-wrap">
+                          <div>
+                            <p className="font-bold text-[#1a1918]">{org?.name || group.orgId}</p>
+                            <p className="text-[#6e6b66]">
+                              {isRtl ? "الفترة: " : "Period: "}{group.billingPeriod} • {group.count} {isRtl ? "رفعة" : "boost(s)"} • <strong>{group.total.toLocaleString()} QAR</strong>
+                            </p>
+                          </div>
+                          {group.settled ? (
+                            <span className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded font-bold">
+                              {isRtl ? "مسواة" : "Settled"}
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleSettleBillingPeriod(group.orgId, group.billingPeriod)}
+                              className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] text-white rounded font-semibold cursor-pointer"
+                            >
+                              {isRtl ? "وضع علامة كمسواة" : "Mark as Settled"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
             </div>
           )}

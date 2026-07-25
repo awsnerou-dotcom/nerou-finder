@@ -39,7 +39,8 @@ import {
   Invitation,
   JobApplication,
   VerificationDocument,
-  AdCharge
+  AdCharge,
+  DEFAULT_MONTHLY_BOOST_CAPS
 } from "./src/types.js";
 
 const DB_FILE = path.join(process.cwd(), "data.json");
@@ -89,6 +90,7 @@ export interface DatabaseState {
       temperature: number;
       maxTokens: number;
     };
+    adBoostCaps?: Record<string, number>;
   };
 }
 
@@ -923,7 +925,8 @@ const DEFAULT_AI_CONFIG = {
     model: "gemini-3.6-flash",
     temperature: 0.1,
     maxTokens: 1000
-  }
+  },
+  adBoostCaps: { ...DEFAULT_MONTHLY_BOOST_CAPS }
 };
 
 let dbCache: DatabaseState | null = null;

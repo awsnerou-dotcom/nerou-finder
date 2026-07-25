@@ -1917,6 +1917,140 @@ app.post("/api/admin/campaigns/review", (req, res) => {
   res.json({ success: true, campaign: db.campaigns[idx] });
 });
 
+// -----------------------------------------------------------------------------
+// SELF-SERVICE AD BOOSTS & BILLING LEDGER (independent of the campaign-based
+// FEATURED_LISTING admin-approval flow above, which is left untouched)
+// -----------------------------------------------------------------------------
+
+function getCurrentBillingPeriod(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// Self-service: instantly activate a Bump or Featured boost on your own org's listing
+app.post("/api/ad-charges", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+  if (![UserRole.AGENT, UserRole.AGENCY_ADMIN, UserRole.DEVELOPER_ADMIN].includes(actor.role as UserRole)) {
+    return res.status(403).json({ error: "Only agents, agency admins, or developer admins can activate ad boosts." });
+  }
+  if (!actor.orgId) return res.status(400).json({ error: "No organization associated with this account." });
+
+  const org = db.organizations.find(o => o.id === actor.orgId);
+  if (!org) return res.status(404).json({ error: "Organization not found." });
+  if (org.subscriptionStatus !== "ACTIVE") {
+    return res.status(403).json({ error: "An active subscription is required to activate self-service ad boosts." });
+  }
+
+  const { propertyId, type } = req.body as { propertyId: string; type: AdChargeType };
+  if (!propertyId || (type !== "BUMP" && type !== "FEATURED")) {
+    return res.status(400).json({ error: "propertyId and a valid type (BUMP or FEATURED) are required." });
+  }
+
+  const property = db.properties.find(p => p.id === propertyId);
+  if (!property || property.orgId !== org.id) {
+    return res.status(403).json({ error: "You may only boost listings that belong to your own organization." });
+  }
+
+  if (!db.adCharges) db.adCharges = [];
+  const currentPeriod = getCurrentBillingPeriod();
+
+  const hasUnsettledPastPeriod = db.adCharges.some(c => c.orgId === org.id && c.billingPeriod !== currentPeriod && !c.settled);
+  if (hasUnsettledPastPeriod) {
+    return res.status(403).json({ error: "You have an unsettled ad billing period from a previous month. Please contact support to settle it before activating new boosts." });
+  }
+
+  const cap = db.aiConfig?.adBoostCaps?.[org.subscriptionPlanId] ?? DEFAULT_BOOST_CAP_FALLBACK;
+  const usedThisPeriod = db.adCharges.filter(c => c.orgId === org.id && c.billingPeriod === currentPeriod).length;
+  if (usedThisPeriod >= cap) {
+    return res.status(403).json({ error: `Monthly self-service boost cap (${cap}) reached for your plan this billing period.` });
+  }
+
+  const charge: AdCharge = {
+    id: `adc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+    orgId: org.id,
+    propertyId,
+    type,
+    amount: AD_CHARGE_PRICES[type],
+    createdDate: new Date().toISOString(),
+    billingPeriod: currentPeriod,
+    settled: false
+  };
+  db.adCharges.push(charge);
+  writeDb(db);
+
+  logAudit(actor.id, actor.fullName, actor.role, "ACTIVATE_AD_BOOST", charge.id, "AdCharge", { propertyId, type, amount: charge.amount });
+
+  res.json({ success: true, charge, remainingThisPeriod: Math.max(0, cap - usedThisPeriod - 1) });
+});
+
+// List ad charges - org members see only their own org's ledger, admins may query any org
+app.get("/api/ad-charges", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  if (!db.adCharges) db.adCharges = [];
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  let charges = db.adCharges;
+  if (actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN) {
+    const { orgId } = req.query;
+    if (orgId) charges = charges.filter(c => c.orgId === orgId);
+  } else {
+    if (!actor.orgId) return res.json([]);
+    charges = charges.filter(c => c.orgId === actor.orgId);
+  }
+
+  res.json(charges);
+});
+
+// Admin: mark a billing period as settled for an org (mirrors the existing manual
+// subscription-payment-confirmation pattern at /api/admin/organizations/subscription)
+app.post("/api/admin/ad-charges/settle", (req, res) => {
+  const { orgId, billingPeriod, actorId, actorName, actorRole } = req.body;
+  if (!orgId || !billingPeriod) return res.status(400).json({ error: "orgId and billingPeriod are required." });
+
+  const db = readDb();
+  if (!db.adCharges) db.adCharges = [];
+  const matching = db.adCharges.filter(c => c.orgId === orgId && c.billingPeriod === billingPeriod);
+  if (matching.length === 0) return res.status(404).json({ error: "No ad charges found for that organization and billing period." });
+
+  const now = new Date().toISOString();
+  matching.forEach(c => {
+    c.settled = true;
+    c.settledDate = now;
+    c.settledBy = actorId || "admin";
+  });
+  writeDb(db);
+
+  logAudit(
+    actorId || "admin",
+    actorName || "Admin",
+    actorRole || UserRole.PLATFORM_ADMIN,
+    "SETTLE_AD_BILLING_PERIOD",
+    orgId,
+    "Organization",
+    { billingPeriod, chargeCount: matching.length, total: matching.reduce((s, c) => s + c.amount, 0) }
+  );
+
+  res.json({ success: true, settledCount: matching.length });
+});
+
+// Admin: adjust monthly self-service boost caps per subscription plan id
+app.post("/api/admin/ad-boost-caps", (req, res) => {
+  const { caps } = req.body;
+  if (!caps || typeof caps !== "object") return res.status(400).json({ error: "caps object is required." });
+
+  const db = readDb();
+  if (!db.aiConfig) db.aiConfig = {} as any;
+  db.aiConfig.adBoostCaps = { ...(db.aiConfig.adBoostCaps || {}), ...caps };
+  writeDb(db);
+
+  res.json({ success: true, adBoostCaps: db.aiConfig.adBoostCaps });
+});
+
 // Support Reports (Moderation Queue)
 app.get("/api/reports", (req, res) => {
   const db = readDb();

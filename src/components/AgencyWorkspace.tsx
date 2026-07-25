@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Organization, User, UserRole, AdCampaign, SubscriptionPlan, Lead } from "../types.js";
+import { Organization, User, UserRole, AdCampaign, SubscriptionPlan, Lead, Property } from "../types.js";
 import {
   CreditCard,
   Briefcase,
@@ -23,6 +23,7 @@ import {
   UserCheck
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
+import BoostButton from "./BoostButton.js";
 
 interface AgencyWorkspaceProps {
   agency: Organization;
@@ -37,6 +38,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
   const [activeTab, setActiveTab] = useState<"team" | "routing" | "campaigns" | "subscription" | "leads" | "verification">("team");
   const [invitations, setInvitations] = useState<any[]>([]);
   const [orgLeads, setOrgLeads] = useState<Lead[]>([]);
+  const [orgProperties, setOrgProperties] = useState<Property[]>([]);
 
   // Local toast state
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -96,6 +98,12 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
       const campData = await campRes.json();
       const agencyCamps = campData.filter((c: AdCampaign) => c.orgId === agency.id);
       setCampaigns(agencyCamps);
+
+      // Get this agency's own listings (for self-service ad boosts)
+      const propsRes = await fetch(`/api/properties?orgId=${agency.id}`);
+      if (propsRes.ok) {
+        setOrgProperties(await propsRes.json());
+      }
 
       // Get subscriptions definitions
       const dbRes = await fetch("/api/health");
@@ -478,6 +486,31 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
       {/* AD CAMPAIGNS TAB */}
       {activeTab === "campaigns" && (
         <div className="space-y-6">
+          {/* Self-service ad boosts (instant, no admin approval - independent of the campaign flow below) */}
+          <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+            <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+              <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "رفع فوري للإعلانات (بدون موافقة إدارية)" : "Self-Service Listing Boosts"}</h4>
+              <p className="text-[10px] text-[#6e6b66] mt-0.5">
+                {isRtl ? "متاح فقط للحسابات ذات الاشتراك النشط." : "Requires an active subscription. Charges are logged instantly to your Ad Billing Ledger."}
+              </p>
+            </div>
+            <div className="divide-y divide-[#f2ede8] max-h-80 overflow-y-auto">
+              {orgProperties.length === 0 ? (
+                <p className="p-6 text-center text-[#6e6b66]">{isRtl ? "لا توجد عقارات مسجلة بعد." : "No listings found for this agency yet."}</p>
+              ) : (
+                orgProperties.map(prop => (
+                  <div key={prop.id} className="p-3 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="font-bold text-[#1a1918] truncate">{isRtl ? prop.titleAr : prop.title}</p>
+                      <p className="text-[10px] text-[#6e6b66]">{prop.district}, {prop.city}</p>
+                    </div>
+                    <BoostButton propertyId={prop.id} isRtl={isRtl} />
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
           <div className="flex justify-between items-center">
             <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "إعلانات العقارات المميزة والمدعومة" : "Promoted Listings Marketing campaigns"}</h4>
             <button

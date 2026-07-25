@@ -24,6 +24,7 @@ import {
   Loader2
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
+import BoostButton from "./BoostButton.js";
 
 interface AgentWorkspaceProps {
   agent: User;
@@ -817,6 +818,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   <h5 className="text-xs font-bold text-[#1a1918] truncate">{isRtl ? prop.titleAr : prop.title}</h5>
                   <p className="text-[10px] text-[#6e6b66]">{prop.district}, {prop.city}</p>
                   <p className="text-xs font-bold text-[#bf9b30]">{prop.price.toLocaleString()} QAR</p>
+                  <BoostButton propertyId={prop.id} isRtl={isRtl} />
                 </div>
               </div>
             ))}
