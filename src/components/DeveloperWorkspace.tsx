@@ -17,7 +17,10 @@ import {
   Users,
   CheckCircle,
   TrendingUp,
-  MapPin
+  MapPin,
+  Image as ImageIcon,
+  Loader2,
+  Trash2
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -27,6 +30,69 @@ interface DeveloperWorkspaceProps {
   onRefreshAll: () => void;
   isRtl: boolean;
 }
+
+const compressImage = (file: File): Promise<File> => {
+  return new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) {
+      resolve(file);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        const MAX_WIDTH = 1400;
+        const MAX_HEIGHT = 1400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          0.8
+        );
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
 
 export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: DeveloperWorkspaceProps) {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -48,6 +114,8 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
 
   const [projStatus, setProjStatus] = useState<"PLANNING" | "UNDER_CONSTRUCTION" | "COMPLETED">("UNDER_CONSTRUCTION");
   const [projDate, setProjDate] = useState<string>("");
+  const [projectImages, setProjectImages] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState<boolean>(false);
 
   useEffect(() => {
     fetchDeveloperContext();
@@ -90,9 +158,13 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
     const finalDistrict = areaItem ? areaItem.name : "Fox Hills";
 
     try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch("/api/projects", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           developerId: developer.id,
           name: projName,
@@ -101,6 +173,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           district: finalDistrict,
           status: projStatus,
           deliveryDate: projDate,
+          images: projectImages,
           actorId: developer.id,
           actorName: developer.name,
           actorRole: "DEVELOPER_ADMIN"
@@ -112,6 +185,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
         setProjName("");
         setProjDesc("");
         setSelectedArea("");
+        setProjectImages([]);
         fetchDeveloperContext();
         onRefreshAll();
         setToastMessage(isRtl ? "تمت إضافة المشروع الجديد بنجاح في المنصة وتحديث الدليل!" : "New master project catalogued and published successfully!");
@@ -120,6 +194,48 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleProjectMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingImages(true);
+    const formData = new FormData();
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          const compressed = await compressImage(file);
+          formData.append("files", compressed);
+        } catch (err) {
+          formData.append("files", file);
+        }
+      }
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/media/upload", { method: "POST", headers, body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        const uploadedUrls = data.fileUrls || data.urls || [];
+        setProjectImages(prev => [...prev, ...uploadedUrls]);
+      } else {
+        const data = await res.json();
+        setToastMessage(data.error || (isRtl ? "فشل رفع الصور." : "Failed to upload images."));
+        setTimeout(() => setToastMessage(""), 4000);
+      }
+    } catch (err) {
+      console.error("Project media upload error:", err);
+      setToastMessage(isRtl ? "فشل رفع الصور." : "Failed to upload images.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setUploadingImages(false);
+      e.target.value = "";
+    }
+  };
+
+  const removeProjectImage = (index: number) => {
+    setProjectImages(prev => prev.filter((_, i) => i !== index));
   };
 
   // Stats calculation
@@ -272,6 +388,50 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                   placeholder="Describe location conveniences, beach layout access..."
                   className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg"
                 ></textarea>
+              </div>
+
+              <div>
+                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "صور المشروع" : "Project Photos"}</label>
+                <div className="border-2 border-dashed border-[#e6e2de] hover:border-[#bf9b30] rounded-xl p-6 text-center cursor-pointer bg-white transition-colors relative">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleProjectMediaUpload}
+                    disabled={uploadingImages}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="space-y-2">
+                    {uploadingImages ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="animate-spin text-[#bf9b30]" size={28} />
+                        <p className="text-sm font-medium text-[#6e6b66]">{isRtl ? "جارٍ رفع الصور..." : "Uploading images..."}</p>
+                      </div>
+                    ) : (
+                      <>
+                        <ImageIcon className="mx-auto text-gray-400" size={32} />
+                        <p className="text-sm font-medium text-[#1a1918]">{isRtl ? "اضغط هنا لرفع عدة صور" : "Click here to upload multiple images"}</p>
+                        <p className="text-xs text-[#6e6b66]">{isRtl ? "يدعم JPG، PNG وغيرها" : "Supports JPG, PNG etc."}</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {projectImages.length > 0 && (
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-3">
+                    {projectImages.map((imgUrl, index) => (
+                      <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-[#e6e2de] bg-[#fdfdfc] shadow-2xs">
+                        <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeProjectImage(index)}
+                          className="absolute top-1 right-1 p-1 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-md cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-2 justify-end pt-2">

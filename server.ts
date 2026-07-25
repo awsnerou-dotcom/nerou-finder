@@ -1317,7 +1317,7 @@ app.post("/api/projects", authMiddleware, (req, res) => {
 
   const newProject = {
     id,
-    developerId: actorId, // Automatically link developerId
+    developerId: projData.developerId || actorId, // Organization id (matches how projects are looked up), falls back to actor id if omitted
     name: projData.name,
     nameAr: projData.nameAr || projData.name,
     description: projData.description,
