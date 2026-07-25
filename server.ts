@@ -13,6 +13,7 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import fs from "fs";
 import sharp from "sharp";
+import { Resend } from "resend";
 import { readDb, writeDb, DatabaseState, initDb, prisma } from "./server-db.js";
 import {
   UserRole,
@@ -140,8 +141,12 @@ export function generateTOTPSecret(): string {
 }
 
 
-// Mock Outbound SMTP Email Emulator and Storage Queue
+// Outbound Email: logs every email locally (visible in Control Center's Email Logs),
+// and additionally delivers it for real via Resend when RESEND_API_KEY is configured.
 const EMAILS_FILE = path.join(process.cwd(), "emails.json");
+const resendApiKey = process.env.RESEND_API_KEY;
+const resendClient = resendApiKey ? new Resend(resendApiKey) : null;
+const EMAIL_FROM = process.env.EMAIL_FROM || "Nerou Finder <onboarding@resend.dev>";
 
 export function generateInquiryEmailHtml(leadName: string, leadPhone: string, leadEmail: string, propTitle: string, propPrice: number, propId: string) {
   return `
@@ -349,6 +354,13 @@ export function sendMockEmail(to: string, subject: string, html: string, type: s
 ${html.replace(/<[^>]*>/g, " ").trim().substring(0, 400)}...
 \x1b[33m+=============================================================================+\x1b[0m
   `);
+
+  // Real delivery (fire-and-forget so callers never have to await email sending)
+  if (resendClient) {
+    resendClient.emails.send({ from: EMAIL_FROM, to, subject, html }).catch(err => {
+      console.error(`Failed to deliver email via Resend (to: ${to}, type: ${type}):`, err?.message || err);
+    });
+  }
 }
 
 export interface AuthenticatedRequest extends express.Request {
