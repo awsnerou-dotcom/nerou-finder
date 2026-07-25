@@ -104,6 +104,7 @@ export interface User {
   verificationStatus: VerificationStatus;
   createdDate: string;
   password?: string;
+  isExpat?: boolean; // Determines whether PASSPORT is a required verification document for AGENT role
 }
 
 export interface Organization {
@@ -460,4 +461,111 @@ export interface JobApplication {
   createdDate: string;
 }
 
+// ---------------------------------------------------------------------------
+// Document Verification System
+// ---------------------------------------------------------------------------
+
+export enum DocumentType {
+  QID_FRONT = "QID_FRONT",
+  QID_BACK = "QID_BACK",
+  PASSPORT = "PASSPORT",
+  AGENCY_AUTHORIZATION_LETTER = "AGENCY_AUTHORIZATION_LETTER",
+  COMMERCIAL_REGISTRATION = "COMMERCIAL_REGISTRATION",
+  TRADE_LICENSE = "TRADE_LICENSE",
+  BROKERAGE_PERMIT = "BROKERAGE_PERMIT",
+  SIGNATORY_ID = "SIGNATORY_ID",
+  MUNICIPALITY_PROJECT_PERMIT = "MUNICIPALITY_PROJECT_PERMIT",
+  LAND_OR_MASTER_DEVELOPER_AUTHORIZATION = "LAND_OR_MASTER_DEVELOPER_AUTHORIZATION",
+  ESCROW_CONFIRMATION = "ESCROW_CONFIRMATION"
+}
+
+export enum DocumentStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+  EXPIRED = "EXPIRED"
+}
+
+// The verification "context" an applicant belongs to - drives which document
+// checklist applies. AGENT documents are owned by a User; AGENCY/DEVELOPER
+// documents are owned by an Organization.
+export type VerificationContext = "AGENT" | "AGENCY" | "DEVELOPER";
+
+export interface VerificationDocument {
+  id: string;
+  context: VerificationContext;
+  userId?: string; // set when context === "AGENT"
+  orgId?: string; // set when context === "AGENCY" | "DEVELOPER"
+  documentType: DocumentType;
+  fileUrl: string;
+  status: DocumentStatus;
+  rejectionReason?: string;
+  expiryDate?: string;
+  submittedDate: string;
+  reviewedDate?: string;
+  reviewedBy?: string;
+  reminder30SentDate?: string;
+  reminder7SentDate?: string;
+}
+
+// Required document checklist per verification context. AGENT's PASSPORT
+// requirement is conditional on User.isExpat and is handled separately by
+// getRequiredDocumentTypes() below rather than being listed unconditionally here.
+export const REQUIRED_DOCUMENTS_BY_CONTEXT: Record<VerificationContext, DocumentType[]> = {
+  AGENT: [DocumentType.QID_FRONT, DocumentType.QID_BACK, DocumentType.AGENCY_AUTHORIZATION_LETTER],
+  AGENCY: [
+    DocumentType.COMMERCIAL_REGISTRATION,
+    DocumentType.TRADE_LICENSE,
+    DocumentType.BROKERAGE_PERMIT,
+    DocumentType.SIGNATORY_ID
+  ],
+  DEVELOPER: [
+    DocumentType.COMMERCIAL_REGISTRATION,
+    DocumentType.MUNICIPALITY_PROJECT_PERMIT,
+    DocumentType.LAND_OR_MASTER_DEVELOPER_AUTHORIZATION,
+    DocumentType.ESCROW_CONFIRMATION
+  ]
+};
+
+export function getRequiredDocumentTypes(context: VerificationContext, isExpat?: boolean): DocumentType[] {
+  const base = REQUIRED_DOCUMENTS_BY_CONTEXT[context];
+  if (context === "AGENT" && isExpat) {
+    return [...base, DocumentType.PASSPORT];
+  }
+  return base;
+}
+
+// ---------------------------------------------------------------------------
+// Self-Service Ad Boosts & Billing Ledger
+// ---------------------------------------------------------------------------
+
+export type AdChargeType = "BUMP" | "FEATURED";
+
+export interface AdCharge {
+  id: string;
+  orgId: string;
+  propertyId: string;
+  type: AdChargeType;
+  amount: number;
+  createdDate: string;
+  billingPeriod: string; // "YYYY-MM"
+  settled: boolean;
+  settledDate?: string;
+  settledBy?: string;
+}
+
+export const AD_CHARGE_PRICES: Record<AdChargeType, number> = {
+  BUMP: 49,
+  FEATURED: 299
+};
+
+// Monthly self-service boost cap per subscription plan id. Adjustable by PLATFORM_ADMIN
+// via PlatformConfig.adBoostCaps (falls back to this default when unset).
+export const DEFAULT_MONTHLY_BOOST_CAPS: Record<string, number> = {
+  "plan-basic": 3,
+  "plan-premium": 15,
+  "plan-developer": 25
+};
+
+export const DEFAULT_BOOST_CAP_FALLBACK = 3;
 

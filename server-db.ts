@@ -37,7 +37,9 @@ import {
   PartnershipRequest,
   Review,
   Invitation,
-  JobApplication
+  JobApplication,
+  VerificationDocument,
+  AdCharge
 } from "./src/types.js";
 
 const DB_FILE = path.join(process.cwd(), "data.json");
@@ -64,6 +66,8 @@ export interface DatabaseState {
   reviews?: Review[];
   invitations?: Invitation[];
   jobApplications?: JobApplication[];
+  verificationDocuments?: VerificationDocument[];
+  adCharges?: AdCharge[];
   aiConfig?: {
     whatsappDefaultNumber?: string;
     watermarkText?: string;
@@ -991,6 +995,8 @@ function getDefaults(): DatabaseState {
     reviews: [],
     invitations: [],
     jobApplications: [],
+    verificationDocuments: [],
+    adCharges: [],
     aiConfig: DEFAULT_AI_CONFIG
   };
 }
@@ -1016,6 +1022,8 @@ function ensureStateDefaults(db: DatabaseState): void {
   if (!db.reviews) db.reviews = [];
   if (!db.invitations) db.invitations = [];
   if (!db.jobApplications) db.jobApplications = [];
+  if (!db.verificationDocuments) db.verificationDocuments = [];
+  if (!db.adCharges) db.adCharges = [];
   if (!db.aiConfig) db.aiConfig = DEFAULT_AI_CONFIG;
 }
 
@@ -1043,7 +1051,9 @@ async function loadStateFromDb(): Promise<DatabaseState> {
     aiConfigRows,
     reviews,
     invitations,
-    jobApplications
+    jobApplications,
+    verificationDocuments,
+    adCharges
   ] = await Promise.all([
     prisma.user.findMany(),
     prisma.organization.findMany(),
@@ -1066,7 +1076,9 @@ async function loadStateFromDb(): Promise<DatabaseState> {
     prisma.aiConfig.findMany(),
     prisma.review.findMany(),
     prisma.invitation.findMany(),
-    prisma.jobApplication.findMany()
+    prisma.jobApplication.findMany(),
+    prisma.verificationDocument.findMany(),
+    prisma.adCharge.findMany()
   ]);
 
   return {
@@ -1091,6 +1103,8 @@ async function loadStateFromDb(): Promise<DatabaseState> {
     reviews: reviews.map(r => JSON.parse(r.data)),
     invitations: invitations.map(i => JSON.parse(i.data)),
     jobApplications: jobApplications.map(j => JSON.parse(j.data)),
+    verificationDocuments: verificationDocuments.map(v => JSON.parse(v.data)),
+    adCharges: adCharges.map(a => JSON.parse(a.data)),
     aiConfig: aiConfigRows[0] ? JSON.parse(aiConfigRows[0].data) : DEFAULT_AI_CONFIG
   };
 }
@@ -1128,6 +1142,8 @@ async function syncStateToDb(state: DatabaseState): Promise<void> {
       prisma.review.deleteMany(),
       prisma.invitation.deleteMany(),
       prisma.jobApplication.deleteMany(),
+      prisma.verificationDocument.deleteMany(),
+      prisma.adCharge.deleteMany(),
     ]);
 
     // Re-insert everything from state
@@ -1330,6 +1346,31 @@ async function syncStateToDb(state: DatabaseState): Promise<void> {
         data: state.jobApplications.map(j => ({
           id: j.id,
           data: JSON.stringify(j),
+        }))
+      });
+    }
+
+    if (state.verificationDocuments && state.verificationDocuments.length > 0) {
+      await prisma.verificationDocument.createMany({
+        data: state.verificationDocuments.map(v => ({
+          id: v.id,
+          context: v.context,
+          userId: v.userId || null,
+          orgId: v.orgId || null,
+          status: v.status,
+          data: JSON.stringify(v),
+        }))
+      });
+    }
+
+    if (state.adCharges && state.adCharges.length > 0) {
+      await prisma.adCharge.createMany({
+        data: state.adCharges.map(a => ({
+          id: a.id,
+          orgId: a.orgId,
+          billingPeriod: a.billingPeriod,
+          settled: a.settled,
+          data: JSON.stringify(a),
         }))
       });
     }

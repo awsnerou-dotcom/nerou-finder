@@ -479,7 +479,7 @@ app.post("/api/auth/login", authRateLimiter, (req, res) => {
   }
   // Validate password if it is set in user record
   if (user.password) {
-    const isMatched = bcrypt.compareSync(password, user.password) || user.password === password;
+    const isMatched = bcrypt.compareSync(password, user.password);
     if (!isMatched) {
       return res.status(401).json({ error: "Incorrect password. Please try again." });
     }
@@ -1212,6 +1212,48 @@ app.post("/api/leads/status", authMiddleware, (req, res) => {
   res.json({ success: true, lead: db.leads[idx] });
 });
 
+// Manually Reassign Lead to a Specific Agent (Agency Admin action, independent of automatic routing policy)
+app.patch("/api/leads/:id/assign", authMiddleware, requireRole([UserRole.AGENCY_ADMIN]), (req, res) => {
+  const { id } = req.params;
+  const { agentId } = req.body;
+  if (!agentId) return res.status(400).json({ error: "agentId is required." });
+
+  const db = readDb();
+  const leadIdx = db.leads.findIndex(l => l.id === id);
+  if (leadIdx === -1) return res.status(404).json({ error: "Lead not found" });
+
+  const authReq = req as AuthenticatedRequest;
+  const actorId = authReq.user?.id || "unknown";
+  const actor = db.users.find(u => u.id === actorId);
+  if (!actor?.orgId) return res.status(403).json({ error: "No organization associated with this account." });
+
+  const lead = db.leads[leadIdx];
+  if (lead.orgId !== actor.orgId) {
+    return res.status(403).json({ error: "You may only reassign leads belonging to your own organization." });
+  }
+
+  const targetAgent = db.users.find(u => u.id === agentId);
+  if (!targetAgent || targetAgent.role !== UserRole.AGENT || targetAgent.orgId !== actor.orgId) {
+    return res.status(400).json({ error: "Target agent must be a member of your organization." });
+  }
+
+  db.leads[leadIdx].agentId = agentId;
+  db.leads[leadIdx].status = lead.status === LeadStatus.NEW ? LeadStatus.ASSIGNED : lead.status;
+  db.leads[leadIdx].updatedDate = new Date().toISOString();
+  writeDb(db);
+
+  logAudit(
+    actorId,
+    actor.fullName || "Agency Admin",
+    UserRole.AGENCY_ADMIN,
+    "REASSIGN_LEAD",
+    id,
+    "Lead",
+    { agentId, previousAgentId: lead.agentId }
+  );
+
+  res.json({ success: true, lead: db.leads[leadIdx] });
+});
 
 // Projects API (Developers)
 app.get("/api/projects", (req, res) => {

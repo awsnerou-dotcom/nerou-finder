@@ -156,3 +156,29 @@ model JobApplication {
   data         String
 }
 
+model VerificationDocument {
+  id        String  @id
+  context   String
+  userId    String?
+  orgId     String?
+  status    String
+  data      String
+
+  @@index([userId])
+  @@index([orgId])
+  @@index([status])
+}
+
+model AdCharge {
+  id            String @id
+  orgId         String
+  billingPeriod String
+  settled       Boolean @default(false)
+  data          String
+
+  @@index([orgId])
+  @@index([billingPeriod])
+
+  @@map("ad_charges")
+}
+
