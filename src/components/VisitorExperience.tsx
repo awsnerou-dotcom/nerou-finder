@@ -685,245 +685,252 @@ export default function VisitorExperience({
   return (
     <div className="space-y-8" dir={isRtl ? "rtl" : "ltr"}>
       
-      {/* Premium Multi-Tab Sub-Navigation Menu */}
-      <div className="bg-white border border-[#e6e2de] rounded-xl p-2 flex flex-wrap gap-1 items-center justify-between text-xs font-bold text-[#1a1918]">
-        <div className="flex flex-wrap gap-1">
-          <button
-            onClick={() => {
-              setCurrentTab("MARKETPLACE");
-              clearAiSearch();
-              setPropType("");
-              setTransType("");
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "MARKETPLACE" && !propType && !transType
-                ? "bg-[#1c1a17] text-[#bf9b30]"
-                : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "العقارات المتاحة" : "Browse Properties"}
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentTab("MARKETPLACE");
-              setTransType(TransactionType.FOR_SALE);
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "MARKETPLACE" && transType === TransactionType.FOR_SALE
-                ? "bg-[#1c1a17] text-[#bf9b30]"
-                : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "شراء" : "Buy"}
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentTab("MARKETPLACE");
-              setTransType(TransactionType.FOR_RENT);
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "MARKETPLACE" && transType === TransactionType.FOR_RENT
-                ? "bg-[#1c1a17] text-[#bf9b30]"
-                : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "إيجار" : "Rent"}
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentTab("MARKETPLACE");
-              setTransType(TransactionType.OFF_PLAN);
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "MARKETPLACE" && transType === TransactionType.OFF_PLAN
-                ? "bg-[#1c1a17] text-[#bf9b30]"
-                : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "على المخطط" : "Off-Plan"}
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentTab("PROJECTS");
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "PROJECTS" ? "bg-[#1c1a17] text-[#bf9b30]" : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "المشاريع الكبرى" : "Masterplans"}
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentTab("PLANS");
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "PLANS" ? "bg-[#1c1a17] text-[#bf9b30]" : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "الأسعار والخطط" : "Plans & Pricing"}
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentTab("HELP_CENTER");
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "HELP_CENTER" ? "bg-[#1c1a17] text-[#bf9b30]" : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "مركز المساعدة" : "Help Center"}
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentTab("CAREERS");
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "CAREERS" ? "bg-[#1c1a17] text-[#bf9b30]" : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "وظائف" : "Careers"}
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentTab("PRESS");
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "PRESS" ? "bg-[#1c1a17] text-[#bf9b30]" : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "الصحافة" : "Press"}
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentTab("PARTNERSHIPS");
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "PARTNERSHIPS" ? "bg-[#1c1a17] text-[#bf9b30]" : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "شراكات" : "Partnerships"}
-          </button>
-
-          <button
-            onClick={() => {
-              setCurrentTab("LEGAL");
-            }}
-            className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-              currentTab === "LEGAL" ? "bg-[#1c1a17] text-[#bf9b30]" : "hover:bg-gray-100 text-[#6e6b66]"
-            }`}
-          >
-            {isRtl ? "الوثائق القانونية" : "Legal Policies"}
-          </button>
+      {/* Unified luxury panel: category navigation + AI search share one continuous dark/gold surface */}
+      <div className="bg-[#1c1a17] rounded-xl border border-[#33302a] shadow-sm relative overflow-hidden">
+        <HeroBackground3D />
+        <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+          <Sparkles size={160} />
         </div>
 
-        <div>
-          <button
-            onClick={() => {
-              setCurrentTab("SUPPORT_TICKETS");
-            }}
-            className={`px-3 py-2 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
-              currentTab === "SUPPORT_TICKETS"
-                ? "bg-red-50 text-red-700 border-red-200"
-                : "border-[#e6e2de] hover:bg-gray-50 text-[#6e6b66]"
-            }`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
-            <span>{isRtl ? "تذاكر الدعم" : "My Support Desk"}</span>
-          </button>
+        <div className="relative z-10">
+          {/* Premium Multi-Tab Sub-Navigation Menu */}
+          <div className="p-2 flex flex-wrap gap-1 items-center justify-between text-xs font-bold">
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={() => {
+                  setCurrentTab("MARKETPLACE");
+                  clearAiSearch();
+                  setPropType("");
+                  setTransType("");
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "MARKETPLACE" && !propType && !transType
+                    ? "bg-[#bf9b30] text-black"
+                    : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "العقارات المتاحة" : "Browse Properties"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentTab("MARKETPLACE");
+                  setTransType(TransactionType.FOR_SALE);
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "MARKETPLACE" && transType === TransactionType.FOR_SALE
+                    ? "bg-[#bf9b30] text-black"
+                    : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "شراء" : "Buy"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentTab("MARKETPLACE");
+                  setTransType(TransactionType.FOR_RENT);
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "MARKETPLACE" && transType === TransactionType.FOR_RENT
+                    ? "bg-[#bf9b30] text-black"
+                    : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "إيجار" : "Rent"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentTab("MARKETPLACE");
+                  setTransType(TransactionType.OFF_PLAN);
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "MARKETPLACE" && transType === TransactionType.OFF_PLAN
+                    ? "bg-[#bf9b30] text-black"
+                    : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "على المخطط" : "Off-Plan"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentTab("PROJECTS");
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "PROJECTS" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "المشاريع الكبرى" : "Masterplans"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentTab("PLANS");
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "PLANS" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "الأسعار والخطط" : "Plans & Pricing"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentTab("HELP_CENTER");
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "HELP_CENTER" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "مركز المساعدة" : "Help Center"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentTab("CAREERS");
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "CAREERS" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "وظائف" : "Careers"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentTab("PRESS");
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "PRESS" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "الصحافة" : "Press"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentTab("PARTNERSHIPS");
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "PARTNERSHIPS" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "شراكات" : "Partnerships"}
+              </button>
+
+              <button
+                onClick={() => {
+                  setCurrentTab("LEGAL");
+                }}
+                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
+                  currentTab === "LEGAL" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                {isRtl ? "الوثائق القانونية" : "Legal Policies"}
+              </button>
+            </div>
+
+            <div>
+              <button
+                onClick={() => {
+                  setCurrentTab("SUPPORT_TICKETS");
+                }}
+                className={`px-3 py-2 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  currentTab === "SUPPORT_TICKETS"
+                    ? "bg-red-500/15 text-red-300 border-red-500/40"
+                    : "border-white/15 hover:bg-white/10 text-gray-300 hover:text-white"
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+                <span>{isRtl ? "تذاكر الدعم" : "My Support Desk"}</span>
+              </button>
+            </div>
+          </div>
+
+          {currentTab === "MARKETPLACE" && (
+            <div className="border-t border-white/10 text-white p-6 md:p-8">
+              <div className="max-w-3xl space-y-4">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#bf9b30] text-black text-xs font-semibold uppercase tracking-wider rounded-full">
+                  <Sparkles size={14} />
+                  <span>{t.aiTitle}</span>
+                </div>
+                <h2 className="text-2xl md:text-3xl font-serif tracking-tight font-medium">
+                  {t.aiSubtitle}
+                </h2>
+
+                {/* Conversational Chat History Logs */}
+                {aiHistory.length > 0 && (
+                  <div className="bg-[#24211e] rounded-xl border border-[#3d3934] p-4 max-h-64 overflow-y-auto space-y-3 scrollbar-thin text-left">
+                    {aiHistory.map((chat, idx) => (
+                      <div
+                        key={idx}
+                        className={`flex flex-col ${chat.role === "user" ? "items-end" : "items-start"} space-y-1`}
+                      >
+                        <span className="text-[10px] font-bold text-[#8c847a] uppercase tracking-wide">
+                          {chat.role === "user" ? (isRtl ? "أنت" : "You") : (isRtl ? "مساعد نيرو الذكي" : "Nerou AI Assistant")}
+                        </span>
+                        <div
+                          className={`px-3 py-2 rounded-lg text-xs md:text-sm max-w-[85%] leading-relaxed ${
+                            chat.role === "user"
+                              ? "bg-[#bf9b30] text-black font-medium rounded-tr-none"
+                              : "bg-[#2d2925] text-[#eae5df] border border-[#423d37] rounded-tl-none"
+                          }`}
+                        >
+                          {chat.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <form onSubmit={handleAiSearch} className="flex flex-col md:flex-row gap-2 mt-4">
+                  <input
+                    type="text"
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder={t.aiPlaceholder}
+                    className="flex-1 px-4 py-3 bg-[#2c2925] text-white rounded-lg border border-[#44403a] placeholder-gray-400 focus:outline-none focus:border-[#bf9b30] font-sans text-sm md:text-base"
+                  />
+                  <button
+                    type="submit"
+                    disabled={aiLoading}
+                    className="px-6 py-3 bg-[#bf9b30] hover:bg-[#a68628] disabled:bg-gray-600 text-black font-semibold rounded-lg transition-colors text-sm md:text-base flex items-center justify-center gap-2"
+                  >
+                    {aiLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                        <span>{isRtl ? "جاري البحث..." : "Searching..."}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Search size={18} />
+                        <span>{isRtl ? "ابحث بالذكاء الاصطناعي" : "AI Match"}</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {aiSearchActive && (
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      onClick={clearAiSearch}
+                      className="text-xs text-[#bf9b30] hover:underline cursor-pointer"
+                    >
+                      {isRtl ? "إلغاء البحث الذكي والعودة للعرض التقليدي" : "Reset & show all properties"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {currentTab === "MARKETPLACE" && (
         <>
-          {/* 1. Conversational AI Search Banner */}
-          <div className="bg-[#1c1a17] text-white p-6 md:p-8 rounded-xl border border-[#33302a] shadow-sm relative overflow-hidden">
-        <HeroBackground3D />
-        <div className="absolute top-0 right-0 p-8 opacity-5">
-          <Sparkles size={160} />
-        </div>
-        <div className="relative z-10 max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#bf9b30] text-black text-xs font-semibold uppercase tracking-wider rounded-full">
-            <Sparkles size={14} />
-            <span>{t.aiTitle}</span>
-          </div>
-          <h2 className="text-2xl md:text-3xl font-serif tracking-tight font-medium">
-            {t.aiSubtitle}
-          </h2>
-
-          {/* Conversational Chat History Logs */}
-          {aiHistory.length > 0 && (
-            <div className="bg-[#24211e] rounded-xl border border-[#3d3934] p-4 max-h-64 overflow-y-auto space-y-3 scrollbar-thin text-left">
-              {aiHistory.map((chat, idx) => (
-                <div
-                  key={idx}
-                  className={`flex flex-col ${chat.role === "user" ? "items-end" : "items-start"} space-y-1`}
-                >
-                  <span className="text-[10px] font-bold text-[#8c847a] uppercase tracking-wide">
-                    {chat.role === "user" ? (isRtl ? "أنت" : "You") : (isRtl ? "مساعد نيرو الذكي" : "Nerou AI Assistant")}
-                  </span>
-                  <div
-                    className={`px-3 py-2 rounded-lg text-xs md:text-sm max-w-[85%] leading-relaxed ${
-                      chat.role === "user"
-                        ? "bg-[#bf9b30] text-black font-medium rounded-tr-none"
-                        : "bg-[#2d2925] text-[#eae5df] border border-[#423d37] rounded-tl-none"
-                    }`}
-                  >
-                    {chat.text}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <form onSubmit={handleAiSearch} className="flex flex-col md:flex-row gap-2 mt-4">
-            <input
-              type="text"
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder={t.aiPlaceholder}
-              className="flex-1 px-4 py-3 bg-[#2c2925] text-white rounded-lg border border-[#44403a] placeholder-gray-400 focus:outline-none focus:border-[#bf9b30] font-sans text-sm md:text-base"
-            />
-            <button
-              type="submit"
-              disabled={aiLoading}
-              className="px-6 py-3 bg-[#bf9b30] hover:bg-[#a68628] disabled:bg-gray-600 text-black font-semibold rounded-lg transition-colors text-sm md:text-base flex items-center justify-center gap-2"
-            >
-              {aiLoading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                  <span>{isRtl ? "جاري البحث..." : "Searching..."}</span>
-                </>
-              ) : (
-                <>
-                  <Search size={18} />
-                  <span>{isRtl ? "ابحث بالذكاء الاصطناعي" : "AI Match"}</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          {aiSearchActive && (
-            <div className="pt-2 flex justify-end">
-              <button
-                onClick={clearAiSearch}
-                className="text-xs text-[#bf9b30] hover:underline cursor-pointer"
-              >
-                {isRtl ? "إلغاء البحث الذكي والعودة للعرض التقليدي" : "Reset & show all properties"}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 2. Central Qatar Parent-Child Location & Property Type Filters */}
+          {/* 2. Central Qatar Parent-Child Location & Property Type Filters */}
       {!aiSearchActive && (
         <div className="space-y-3 mb-6">
           <div className="bg-white p-4 rounded-xl border border-[#e6e2de] grid grid-cols-2 md:grid-cols-6 gap-3">
