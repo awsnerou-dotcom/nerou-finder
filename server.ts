@@ -1220,6 +1220,30 @@ app.post("/api/admin/properties/verify", (req, res) => {
   res.json({ success: true, property: db.properties[idx] });
 });
 
+// Delete a Property (Platform Admin action)
+app.delete("/api/admin/properties/:id", (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  const idx = db.properties.findIndex(p => p.id === id);
+  if (idx === -1) return res.status(404).json({ error: "Property not found" });
+
+  const [removed] = db.properties.splice(idx, 1);
+  writeDb(db);
+
+  const authReq = req as AuthenticatedRequest;
+  logAudit(
+    authReq.user?.id || "unknown",
+    authReq.user?.fullName || "Admin",
+    (authReq.user?.role as UserRole) || UserRole.PLATFORM_ADMIN,
+    "DELETE_PROPERTY",
+    id,
+    "Property",
+    { title: removed.title }
+  );
+
+  res.json({ success: true });
+});
+
 // Lead Capture (Visitor submits inquiry or triggers Call/WhatsApp event)
 app.post("/api/leads", (req, res) => {
   const db = readDb();
@@ -1398,6 +1422,30 @@ app.patch("/api/leads/:id/assign", authMiddleware, requireRole([UserRole.AGENCY_
   );
 
   res.json({ success: true, lead: db.leads[leadIdx] });
+});
+
+// Delete a Lead (Platform Admin action)
+app.delete("/api/admin/leads/:id", (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  const idx = db.leads.findIndex(l => l.id === id);
+  if (idx === -1) return res.status(404).json({ error: "Lead not found" });
+
+  const [removed] = db.leads.splice(idx, 1);
+  writeDb(db);
+
+  const authReq = req as AuthenticatedRequest;
+  logAudit(
+    authReq.user?.id || "unknown",
+    authReq.user?.fullName || "Admin",
+    (authReq.user?.role as UserRole) || UserRole.PLATFORM_ADMIN,
+    "DELETE_LEAD",
+    id,
+    "Lead",
+    { visitorName: removed.visitorName }
+  );
+
+  res.json({ success: true });
 });
 
 // Projects API (Developers)
@@ -3615,8 +3663,35 @@ app.put("/api/admin/reviews/:id", authMiddleware, requireRole([UserRole.PLATFORM
   
   db.reviews[idx].status = status;
   writeDb(db);
-  
+
   res.json({ success: true, review: db.reviews[idx] });
+});
+
+app.delete("/api/admin/reviews/:id", authMiddleware, requireRole([UserRole.PLATFORM_ADMIN]), (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  if (!db.reviews) db.reviews = [];
+
+  const idx = db.reviews.findIndex(r => r.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: "Review not found." });
+  }
+
+  const [removed] = db.reviews.splice(idx, 1);
+  writeDb(db);
+
+  const authReq = req as AuthenticatedRequest;
+  logAudit(
+    authReq.user?.id || "unknown",
+    authReq.user?.fullName || "Admin",
+    (authReq.user?.role as UserRole) || UserRole.PLATFORM_ADMIN,
+    "DELETE_REVIEW",
+    id,
+    "Review",
+    { targetId: removed.targetId, targetType: removed.targetType }
+  );
+
+  res.json({ success: true });
 });
 
 // -----------------------------------------------------------------------------

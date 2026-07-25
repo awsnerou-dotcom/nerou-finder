@@ -332,6 +332,7 @@ export default function App() {
           <ControlCenter
             onRefreshAll={handleDatabaseRefresh}
             isRtl={isRtl}
+            currentUser={currentUser}
           />
         );
       default:

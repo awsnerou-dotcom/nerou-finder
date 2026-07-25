@@ -58,9 +58,10 @@ import {
 interface ControlCenterProps {
   onRefreshAll: () => void;
   isRtl: boolean;
+  currentUser: User;
 }
 
-export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProps) {
+export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: ControlCenterProps) {
   const [activeSubTab, setActiveSubTab] = useState<
     | "overview"
     | "verifications"
@@ -535,6 +536,31 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
     }
   };
 
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!window.confirm(isRtl ? "هل تريد حذف هذا التقييم؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this review? This cannot be undone.")) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch(`/api/admin/reviews/${reviewId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        showToast(isRtl ? "تم حذف التقييم بنجاح." : "Review deleted successfully.");
+        setReviews(reviews.filter(r => r.id !== reviewId));
+      } else {
+        const d = await res.json();
+        showToast(d.error || "Failed to delete review.");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to delete review.");
+    }
+  };
+
   const handleStart2faSetup = async () => {
     setTfaLoading(true);
     setTfaError("");
@@ -645,8 +671,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         body: JSON.stringify({
           propertyId,
           status,
-          actorId: "user-platform-admin",
-          actorName: "Ameera Al-Ansari",
+          actorId: currentUser.id,
+          actorName: currentUser.fullName,
           actorRole: "PLATFORM_ADMIN"
         })
       });
@@ -656,6 +682,57 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteProperty = async (propertyId: string) => {
+    if (!window.confirm(isRtl ? "هل تريد حذف هذا العقار؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this property? This cannot be undone.")) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch(`/api/admin/properties/${propertyId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        showToast(isRtl ? "تم حذف العقار بنجاح." : "Property deleted successfully.");
+        fetchControlContext();
+        onRefreshAll();
+      } else {
+        const d = await res.json();
+        showToast(d.error || "Failed to delete property.");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to delete property.");
+    }
+  };
+
+  const handleDeleteLead = async (leadId: string) => {
+    if (!window.confirm(isRtl ? "هل تريد حذف هذا العميل المحتمل؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this lead? This cannot be undone.")) {
+      return;
+    }
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch(`/api/admin/leads/${leadId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        showToast(isRtl ? "تم حذف السجل بنجاح." : "Lead deleted successfully.");
+        setLeads(leads.filter(l => l.id !== leadId));
+      } else {
+        const d = await res.json();
+        showToast(d.error || "Failed to delete lead.");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to delete lead.");
     }
   };
 
@@ -671,8 +748,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         body: JSON.stringify({
           orgId,
           status,
-          actorId: "user-platform-admin",
-          actorName: "Ameera Al-Ansari",
+          actorId: currentUser.id,
+          actorName: currentUser.fullName,
           actorRole: "PLATFORM_ADMIN"
         })
       });
@@ -697,8 +774,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         body: JSON.stringify({
           userId,
           status,
-          actorId: "user-platform-admin",
-          actorName: "Ameera Al-Ansari",
+          actorId: currentUser.id,
+          actorName: currentUser.fullName,
           actorRole: "PLATFORM_ADMIN"
         })
       });
@@ -728,8 +805,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
           documentId,
           status,
           rejectionReason,
-          actorId: "user-platform-admin",
-          actorName: "Ameera Al-Ansari",
+          actorId: currentUser.id,
+          actorName: currentUser.fullName,
           actorRole: "PLATFORM_ADMIN"
         })
       });
@@ -760,8 +837,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         body: JSON.stringify({
           orgId,
           billingPeriod,
-          actorId: "user-platform-admin",
-          actorName: "Ameera Al-Ansari",
+          actorId: currentUser.id,
+          actorName: currentUser.fullName,
           actorRole: "PLATFORM_ADMIN"
         })
       });
@@ -818,8 +895,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         body: JSON.stringify({
           campaignId,
           status,
-          actorId: "user-platform-admin",
-          actorName: "Ameera Al-Ansari",
+          actorId: currentUser.id,
+          actorName: currentUser.fullName,
           actorRole: "PLATFORM_ADMIN"
         })
       });
@@ -835,8 +912,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
   const handleUpdateHealth = async (provider: string, status: string) => {
     try {
       const payload: any = {
-        actorId: "user-platform-admin",
-        actorName: "Ameera Al-Ansari",
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
         actorRole: "PLATFORM_ADMIN"
       };
       payload[provider] = status;
@@ -880,8 +957,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         aiLimit: Number(planAiLimit || 100),
         analyticsAccess: planAnalyticsAccess,
         featuredListingsLimit: Number(planFeaturedListingsLimit || 5),
-        actorId: "user-platform-admin",
-        actorName: "Ameera Al-Ansari",
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
         actorRole: "PLATFORM_ADMIN"
       };
 
@@ -926,8 +1003,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         status: subStatus,
         notes: subNotes,
         activationMethod: subActivationMethod,
-        actorId: "user-platform-admin",
-        actorName: "Ameera Al-Ansari",
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
         actorRole: "PLATFORM_ADMIN"
       };
 
@@ -967,8 +1044,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
         summaryAr: pressSummaryAr || (pressContentAr ? pressContentAr.slice(0, 150) + "..." : ""),
         content: pressContent,
         contentAr: pressContentAr || pressContent,
-        actorId: "user-platform-admin",
-        actorName: "Ameera Al-Ansari",
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
         actorRole: "PLATFORM_ADMIN"
       };
 
@@ -1478,6 +1555,14 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                             <XCircle size={14} />
                             <span>{isRtl ? "رفض وتعليق" : "Reject & Suspend"}</span>
                           </button>
+                          <button
+                            onClick={() => handleDeleteProperty(prop.id)}
+                            className="px-3 py-1.5 bg-[#1c1a17] hover:bg-[#33302a] text-white rounded font-semibold flex items-center gap-1 cursor-pointer"
+                            title={isRtl ? "حذف العقار" : "Delete Property"}
+                          >
+                            <Trash2 size={14} />
+                            <span>{isRtl ? "حذف" : "Delete"}</span>
+                          </button>
                         </div>
                       </div>
                     ))
@@ -1657,6 +1742,15 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                       <p>UTM Source: <strong className="text-[#1a1918]">{lead.attribution?.utmSource || "Direct Website"}</strong></p>
                       <p>Routed Broker ID: <strong className="text-[#1a1918]">{lead.agentId || "Fallback platform pool"}</strong></p>
                     </div>
+
+                    <button
+                      onClick={() => handleDeleteLead(lead.id)}
+                      className="px-3 py-1.5 bg-[#1c1a17] hover:bg-[#33302a] text-white rounded font-semibold flex items-center gap-1 cursor-pointer shrink-0"
+                      title={isRtl ? "حذف السجل" : "Delete Lead"}
+                    >
+                      <Trash2 size={14} />
+                      <span>{isRtl ? "حذف" : "Delete"}</span>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -2586,8 +2680,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                           version: legalVersion,
                           status: legalStatus,
                           legalReviewStatus: legalReview,
-                          actorId: "admin",
-                          actorName: "Ameera Al-Ansari",
+                          actorId: currentUser.id,
+                          actorName: currentUser.fullName,
                           actorRole: UserRole.PLATFORM_ADMIN
                         })
                       });
@@ -2811,8 +2905,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                           content: artContent,
                           contentAr: artContentAr,
                           isPublished: artPublished,
-                          actorId: "admin",
-                          actorName: "Ameera Al-Ansari",
+                          actorId: currentUser.id,
+                          actorName: currentUser.fullName,
                           actorRole: UserRole.PLATFORM_ADMIN
                         })
                       });
@@ -3022,8 +3116,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                                   },
                                   body: JSON.stringify({
                                     status: newStatus,
-                                    actorId: "admin",
-                                    actorName: "Ameera Al-Ansari",
+                                    actorId: currentUser.id,
+                                    actorName: currentUser.fullName,
                                     actorRole: UserRole.PLATFORM_ADMIN
                                   })
                                 });
@@ -3082,8 +3176,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                                 "Authorization": `Bearer ${token}`
                               },
                               body: JSON.stringify({
-                                senderId: "admin",
-                                senderName: "Ameera Al-Ansari (Platform Ops)",
+                                senderId: currentUser.id,
+                                senderName: `${currentUser.fullName} (Platform Ops)`,
                                 senderRole: UserRole.PLATFORM_ADMIN,
                                 message: ticketReplyText
                               })
@@ -3189,8 +3283,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                                     },
                                     body: JSON.stringify({
                                       status: "APPROVED",
-                                      actorId: "admin",
-                                      actorName: "Ameera Al-Ansari",
+                                      actorId: currentUser.id,
+                                      actorName: currentUser.fullName,
                                       actorRole: UserRole.PLATFORM_ADMIN
                                     })
                                   });
@@ -3216,8 +3310,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                                     },
                                     body: JSON.stringify({
                                       status: "REJECTED",
-                                      actorId: "admin",
-                                      actorName: "Ameera Al-Ansari",
+                                      actorId: currentUser.id,
+                                      actorName: currentUser.fullName,
                                       actorRole: UserRole.PLATFORM_ADMIN
                                     })
                                   });
@@ -3303,8 +3397,8 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                           descriptionAr: jobDescAr,
                           requirements: jobReqs.split("\n").filter(Boolean),
                           requirementsAr: jobReqsAr.split("\n").filter(Boolean),
-                          actorId: "admin",
-                          actorName: "Ameera Al-Ansari",
+                          actorId: currentUser.id,
+                          actorName: currentUser.fullName,
                           actorRole: UserRole.PLATFORM_ADMIN
                         })
                       });
@@ -3868,24 +3962,33 @@ export default function ControlCenter({ onRefreshAll, isRtl }: ControlCenterProp
                                 </span>
                               </td>
                               <td className="p-3 text-right">
-                                {isPending ? (
-                                  <div className="flex justify-end gap-1.5">
-                                    <button
-                                      onClick={() => handleModerateReview(rev.id, "APPROVED")}
-                                      className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-[10px] font-bold cursor-pointer"
-                                    >
-                                      {isRtl ? "اعتماد" : "Approve"}
-                                    </button>
-                                    <button
-                                      onClick={() => handleModerateReview(rev.id, "REJECTED")}
-                                      className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer"
-                                    >
-                                      {isRtl ? "رفض" : "Reject"}
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="text-[#6e6b66] text-[10px] italic">Processed</span>
-                                )}
+                                <div className="flex justify-end items-center gap-1.5">
+                                  {isPending ? (
+                                    <>
+                                      <button
+                                        onClick={() => handleModerateReview(rev.id, "APPROVED")}
+                                        className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-[10px] font-bold cursor-pointer"
+                                      >
+                                        {isRtl ? "اعتماد" : "Approve"}
+                                      </button>
+                                      <button
+                                        onClick={() => handleModerateReview(rev.id, "REJECTED")}
+                                        className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-[10px] font-bold cursor-pointer"
+                                      >
+                                        {isRtl ? "رفض" : "Reject"}
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <span className="text-[#6e6b66] text-[10px] italic">Processed</span>
+                                  )}
+                                  <button
+                                    onClick={() => handleDeleteReview(rev.id)}
+                                    className="px-2 py-1 bg-[#1c1a17] hover:bg-[#33302a] text-white rounded text-[10px] font-bold cursor-pointer flex items-center gap-1"
+                                    title={isRtl ? "حذف التقييم" : "Delete Review"}
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           );
