@@ -1461,19 +1461,20 @@ export default function PropertyDetailView({
                           value={bookingName}
                           onChange={(e) => setBookingName(e.target.value)}
                           placeholder="e.g. Jassem Al-Thani"
-                          className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg focus:outline-none focus:border-[#BF9B30]"
+                          className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg focus:outline-none focus:border-[#BF9B30] text-base md:text-xs"
                         />
                       </div>
 
                       <div className="space-y-1">
                         <label className="text-[#6E6B66] font-medium">{isRtl ? "رقم الجوال (مع رمز البلد)" : "Contact Number"}</label>
                         <input
-                          type="text"
+                          type="tel"
+                          inputMode="tel"
                           required
                           value={bookingPhone}
                           onChange={(e) => setBookingPhone(e.target.value)}
                           placeholder="+974 5555 6666"
-                          className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg focus:outline-none focus:border-[#BF9B30]"
+                          className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg focus:outline-none focus:border-[#BF9B30] text-base md:text-xs"
                         />
                       </div>
 
@@ -1483,7 +1484,7 @@ export default function PropertyDetailView({
                           type="date"
                           value={bookingDate}
                           onChange={(e) => setBookingDate(e.target.value)}
-                          className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg"
+                          className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg text-base md:text-xs"
                         />
                       </div>
 
@@ -1493,7 +1494,7 @@ export default function PropertyDetailView({
                           <select
                             value={bookingTime}
                             onChange={(e) => setBookingTime(e.target.value)}
-                            className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg"
+                            className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg text-base md:text-xs"
                           >
                             <option value="MORNING">AM (09:00 - 12:00)</option>
                             <option value="AFTERNOON">PM (12:00 - 16:00)</option>
@@ -1574,7 +1575,7 @@ export default function PropertyDetailView({
                       required
                       value={reportReason}
                       onChange={(e) => setReportReason(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg focus:outline-none"
+                      className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg focus:outline-none text-base md:text-xs"
                     >
                       <option value="">-- {isRtl ? "اختر السبب" : "Select violation type"} --</option>
                       <option value="fake_listing">{isRtl ? "عقار وهمي أو تم بيعه بالفعل" : "Fake or Sold / Unavailable listing"}</option>
@@ -1592,7 +1593,7 @@ export default function PropertyDetailView({
                       value={reportDetails}
                       onChange={(e) => setReportDetails(e.target.value)}
                       placeholder="Specify what details are wrong..."
-                      className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg"
+                      className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg text-base md:text-xs"
                     />
                   </div>
 

@@ -547,28 +547,28 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           </p>
         </div>
 
-        <div className="flex bg-[#f2ede8] p-0.5 rounded-lg text-xs font-medium">
+        <div className="flex bg-[#f2ede8] p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
           <button
             onClick={() => setActiveTab("dashboard")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "dashboard" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
             {isRtl ? "لوحة القيادة" : "Stats Center"}
           </button>
           <button
             onClick={() => setActiveTab("leads")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "leads" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
             {isRtl ? "العملاء المحتملون" : "Leads Panel"}
           </button>
           <button
             onClick={() => setActiveTab("properties")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "properties" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "properties" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
             {isRtl ? "عقاراتي" : "My Listings"}
           </button>
           <button
             onClick={() => setActiveTab("verification")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "verification" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
@@ -577,14 +577,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           {effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
             <button
               onClick={() => setActiveTab("subscription")}
-              className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "subscription" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+              className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "subscription" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
             >
               {isRtl ? "الاشتراك" : "Subscription"}
             </button>
           )}
           <button
             onClick={() => setActiveTab("profile")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "profile" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
             {isRtl ? "الحساب" : "My Profile"}
           </button>
@@ -861,6 +861,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "السعر (ريال قطري)" : "Price (QAR)"}</label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     required
                     min="0"
                     value={listingPrice}
@@ -874,6 +875,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المساحة (متر مربع)" : "Area Size (SQM)"}</label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     required
                     min="0"
                     value={listingArea}
@@ -1156,7 +1158,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             <div>
               <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم الاتصال المباشر" : "Direct Telephone"}</label>
               <input
-                type="text"
+                type="tel"
+                inputMode="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
@@ -1166,7 +1169,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             <div>
               <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم واتساب للأعمال" : "WhatsApp Business Number"}</label>
               <input
-                type="text"
+                type="tel"
+                inputMode="tel"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
                 placeholder="+97433334444"

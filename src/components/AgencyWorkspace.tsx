@@ -619,7 +619,8 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
               <div>
                 <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم الهاتف" : "Phone Number"}</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
                   value={orgPhone}
                   onChange={(e) => setOrgPhone(e.target.value)}
                   className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
@@ -628,7 +629,8 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
               <div>
                 <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم واتساب" : "WhatsApp Number"}</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
                   value={orgWhatsapp}
                   onChange={(e) => setOrgWhatsapp(e.target.value)}
                   placeholder="+97433334444"
@@ -926,11 +928,12 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                 {isRtl ? "تفاصيل ترويج العقار المختار" : "Configure Promoted Campaign Parameters"}
               </h5>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الميزانية الكلية (ريال قطري)" : "Total Campaign Budget (QAR)"}</label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     required
                     min="0"
                     value={campBudget}
@@ -1026,63 +1029,109 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-[#fcfbfa] border-b border-[#e6e2de] text-[10px] text-[#6e6b66] uppercase tracking-wider">
-                  <th className="p-4 font-semibold">{isRtl ? "العميل" : "Client / Contact"}</th>
-                  <th className="p-4 font-semibold">{isRtl ? "العقار المستهدف" : "Target Property / Message"}</th>
-                  <th className="p-4 font-semibold">{isRtl ? "الوسيط الحالي" : "Assigned Representative"}</th>
-                  <th className="p-4 font-semibold">{isRtl ? "إعادة تعيين" : "Manual Reassignment"}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f2ede8]">
-                {orgLeads.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="p-8 text-center text-[#6e6b66] italic">
-                      {isRtl ? "لا يوجد عملاء متاحين حالياً في هذا المكتب." : "No leads registered under this organization yet."}
-                    </td>
-                  </tr>
-                ) : (
-                  orgLeads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-[#fcfbfa]/50 transition-colors">
-                      <td className="p-4">
+          {orgLeads.length === 0 ? (
+            <p className="p-8 text-center text-[#6e6b66] italic">
+              {isRtl ? "لا يوجد عملاء متاحين حالياً في هذا المكتب." : "No leads registered under this organization yet."}
+            </p>
+          ) : (
+            <>
+              {/* Desktop/tablet: full data table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#fcfbfa] border-b border-[#e6e2de] text-[10px] text-[#6e6b66] uppercase tracking-wider">
+                      <th className="p-4 font-semibold">{isRtl ? "العميل" : "Client / Contact"}</th>
+                      <th className="p-4 font-semibold">{isRtl ? "العقار المستهدف" : "Target Property / Message"}</th>
+                      <th className="p-4 font-semibold">{isRtl ? "الوسيط الحالي" : "Assigned Representative"}</th>
+                      <th className="p-4 font-semibold">{isRtl ? "إعادة تعيين" : "Manual Reassignment"}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#f2ede8]">
+                    {orgLeads.map((lead) => (
+                      <tr key={lead.id} className="hover:bg-[#fcfbfa]/50 transition-colors">
+                        <td className="p-4">
+                          <div className="font-bold text-sm text-[#1a1918]">{lead.visitorName}</div>
+                          <div className="text-[10px] text-[#6e6b66] mt-0.5">{lead.visitorPhone} {lead.visitorEmail ? `• ${lead.visitorEmail}` : ""}</div>
+                          <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-[9px] rounded font-mono">
+                            {lead.contactMethod}
+                          </span>
+                        </td>
+                        <td className="p-4 max-w-xs">
+                          <p className="font-semibold text-xs text-[#bf9b30] truncate">ID: {lead.propertyId || "General Inquiry"}</p>
+                          <p className="text-[#6e6b66] mt-1 line-clamp-2 leading-relaxed">{lead.message}</p>
+                          <span className="text-[9px] text-[#a8a4a0] block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
+                        </td>
+                        <td className="p-4 font-medium text-[#1a1918]">
+                          {agents.find((a) => a.id === lead.agentId)?.fullName || (
+                            <span className="text-rose-500 font-bold italic">{isRtl ? "غير معين" : "Unassigned"}</span>
+                          )}
+                        </td>
+                        <td className="p-4">
+                          <select
+                            value={lead.agentId || ""}
+                            onChange={(e) => handleReassignLead(lead.id, e.target.value)}
+                            className="px-2 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30] text-xs font-semibold cursor-pointer text-[#1a1918]"
+                          >
+                            <option value="">-- {isRtl ? "اختر وكيلاً" : "Assign Broker"} --</option>
+                            {agents.map((ag) => (
+                              <option key={ag.id} value={ag.id}>
+                                {ag.fullName}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile: stacked cards instead of a horizontally-scrolling table */}
+              <div className="md:hidden divide-y divide-[#f2ede8]">
+                {orgLeads.map((lead) => (
+                  <div key={lead.id} className="p-4 space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
                         <div className="font-bold text-sm text-[#1a1918]">{lead.visitorName}</div>
-                        <div className="text-[10px] text-[#6e6b66] mt-0.5">{lead.visitorPhone} {lead.visitorEmail ? `• ${lead.visitorEmail}` : ""}</div>
-                        <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-[9px] rounded font-mono">
-                          {lead.contactMethod}
-                        </span>
-                      </td>
-                      <td className="p-4 max-w-xs">
-                        <p className="font-semibold text-xs text-[#bf9b30] truncate">ID: {lead.propertyId || "General Inquiry"}</p>
-                        <p className="text-[#6e6b66] mt-1 line-clamp-2 leading-relaxed">{lead.message}</p>
-                        <span className="text-[9px] text-[#a8a4a0] block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
-                      </td>
-                      <td className="p-4 font-medium text-[#1a1918]">
+                        <div className="text-[11px] text-[#6e6b66] mt-0.5 break-words">{lead.visitorPhone} {lead.visitorEmail ? `• ${lead.visitorEmail}` : ""}</div>
+                      </div>
+                      <span className="shrink-0 px-2 py-0.5 bg-gray-100 text-gray-700 text-[9px] rounded font-mono">
+                        {lead.contactMethod}
+                      </span>
+                    </div>
+
+                    <div className="bg-[#fcfbfa] border border-[#f2ede8] rounded-lg p-2.5">
+                      <p className="font-semibold text-xs text-[#bf9b30] truncate">ID: {lead.propertyId || "General Inquiry"}</p>
+                      <p className="text-[#6e6b66] mt-1 line-clamp-2 leading-relaxed">{lead.message}</p>
+                      <span className="text-[9px] text-[#a8a4a0] block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-[#6e6b66]">{isRtl ? "الوسيط الحالي:" : "Assigned to:"}</span>
+                      <span className="font-medium text-[#1a1918]">
                         {agents.find((a) => a.id === lead.agentId)?.fullName || (
                           <span className="text-rose-500 font-bold italic">{isRtl ? "غير معين" : "Unassigned"}</span>
                         )}
-                      </td>
-                      <td className="p-4">
-                        <select
-                          value={lead.agentId || ""}
-                          onChange={(e) => handleReassignLead(lead.id, e.target.value)}
-                          className="px-2 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30] text-xs font-semibold cursor-pointer text-[#1a1918]"
-                        >
-                          <option value="">-- {isRtl ? "اختر وكيلاً" : "Assign Broker"} --</option>
-                          {agents.map((ag) => (
-                            <option key={ag.id} value={ag.id}>
-                              {ag.fullName}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </span>
+                    </div>
+
+                    <select
+                      value={lead.agentId || ""}
+                      onChange={(e) => handleReassignLead(lead.id, e.target.value)}
+                      className="w-full px-3 py-2.5 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30] text-base font-semibold cursor-pointer text-[#1a1918]"
+                    >
+                      <option value="">-- {isRtl ? "اختر وكيلاً" : "Assign Broker"} --</option>
+                      {agents.map((ag) => (
+                        <option key={ag.id} value={ag.id}>
+                          {ag.fullName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 

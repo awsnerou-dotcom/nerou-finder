@@ -852,7 +852,7 @@ export default function VisitorExperience({
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     placeholder={t.aiPlaceholder}
-                    className="flex-1 px-4 py-3 bg-[#2c2925] text-white rounded-lg border border-[#44403a] placeholder-gray-400 focus:outline-none focus:border-[#bf9b30] font-sans text-sm md:text-base"
+                    className="flex-1 px-4 py-3 bg-[#2c2925] text-white rounded-lg border border-[#44403a] placeholder-gray-400 focus:outline-none focus:border-[#bf9b30] font-sans text-base"
                   />
                   <button
                     type="submit"
@@ -894,10 +894,10 @@ export default function VisitorExperience({
           {/* 2. Central Qatar Parent-Child Location & Property Type Filters */}
       {!aiSearchActive && (
         <div className="space-y-3 mb-6">
-          <div className="bg-white p-4 rounded-xl border border-[#e6e2de] grid grid-cols-2 md:grid-cols-6 gap-3">
-            
+          <div className="bg-white p-4 rounded-xl border border-[#e6e2de] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+
             {/* Keyword search query */}
-            <div className="col-span-2 md:col-span-2">
+            <div className="sm:col-span-2 md:col-span-2">
               <label className="block text-xs font-medium text-[#6e6b66] mb-1">
                 {isRtl ? "البحث النصي" : "Keyword"}
               </label>
@@ -907,7 +907,7 @@ export default function VisitorExperience({
                   placeholder={t.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+                  className="w-full pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-base md:text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
                 />
                 <Search size={16} className={`absolute ${isRtl ? "right-3" : "left-3"} top-2.5 text-[#a8a4a0]`} />
               </div>
@@ -924,7 +924,7 @@ export default function VisitorExperience({
                   setSelectedMunicipality(e.target.value);
                   setSelectedArea(""); // Reset child
                 }}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-base md:text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
               >
                 <option value="">{isRtl ? "كل البلديات" : "All Municipalities"}</option>
                 {municipalities.map(muni => (
@@ -944,7 +944,7 @@ export default function VisitorExperience({
                 value={selectedArea}
                 disabled={!selectedMunicipality}
                 onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918] disabled:opacity-50"
+                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-base md:text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918] disabled:opacity-50"
               >
                 <option value="">{isRtl ? "كل المناطق" : "All Areas"}</option>
                 {filteredAreas.map(area => (
@@ -963,7 +963,7 @@ export default function VisitorExperience({
               <select
                 value={propType}
                 onChange={(e) => setPropType(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-base md:text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
               >
                 <option value="">{isRtl ? "جميع الأنواع" : "All Types"}</option>
                 <option value={PropertyType.APARTMENT}>{isRtl ? "شقة سكنية" : "Apartment"}</option>
@@ -994,7 +994,7 @@ export default function VisitorExperience({
               <select
                 value={transType}
                 onChange={(e) => setTransType(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-base md:text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
               >
                 <option value="">{isRtl ? "الكل" : "All"}</option>
                 <option value={TransactionType.FOR_RENT}>{isRtl ? "للإيجار" : "For Rent"}</option>

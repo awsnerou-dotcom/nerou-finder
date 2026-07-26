@@ -415,28 +415,28 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
         </div>
 
         {/* Tab switcher */}
-        <div className="flex bg-[#f2ede8] p-0.5 rounded-lg text-xs font-medium">
+        <div className="flex bg-[#f2ede8] p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
           <button
             onClick={() => setActiveTab("projects")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "projects" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "projects" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
             {isRtl ? "المشاريع الكبرى" : "Master Projects"}
           </button>
           <button
             onClick={() => setActiveTab("inventory")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "inventory" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "inventory" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
             {isRtl ? "مخزون الوحدات" : "Units Inventory"}
           </button>
           <button
             onClick={() => setActiveTab("verification")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "verification" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
           <button
             onClick={() => setActiveTab("profile")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "profile" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
             {isRtl ? "الإعدادات" : "Profile"}
           </button>
@@ -497,7 +497,8 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
               <div>
                 <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم الهاتف" : "Phone Number"}</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
                   value={orgPhone}
                   onChange={(e) => setOrgPhone(e.target.value)}
                   className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
@@ -506,7 +507,8 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
               <div>
                 <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم واتساب" : "WhatsApp Number"}</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
                   value={orgWhatsapp}
                   onChange={(e) => setOrgWhatsapp(e.target.value)}
                   placeholder="+97433334444"
@@ -610,7 +612,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                 {isRtl ? "إدخال تفاصيل المشروع الجديد" : "Provide New Project Guidelines"}
               </h5>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "اسم المشروع" : "Project Name"}</label>
                   <input
@@ -634,7 +636,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "البلدية" : "Municipality"}</label>
                   <select

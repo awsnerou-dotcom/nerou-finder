@@ -24,7 +24,8 @@ import {
   User as UserIcon,
   X,
   Check,
-  ArrowRight
+  ArrowRight,
+  Menu
 } from "lucide-react";
 
 const AgentWorkspace = lazy(() => import("./components/AgentWorkspace.js"));
@@ -65,6 +66,9 @@ export default function App() {
   // Authentication Modals states
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
   const [isSignupOpen, setIsSignupOpen] = useState<boolean>(false);
+
+  // Mobile nav drawer state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   // Form states
   const [loginEmail, setLoginEmail] = useState<string>("");
@@ -401,9 +405,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* Nav Controls */}
-          <div className="flex items-center gap-2 md:gap-4">
-            
+          {/* Nav Controls (desktop) */}
+          <div className="hidden md:flex items-center gap-2 md:gap-4">
+
             {/* View switcher for logged in users */}
             {currentUser && (
               <div className="flex items-center bg-[#fdfcfb] border border-[#e6e2de] rounded-lg p-0.5 shadow-xs">
@@ -512,7 +516,131 @@ export default function App() {
 
           </div>
 
+          {/* Mobile hamburger toggle */}
+          <button
+            onClick={() => setIsMobileMenuOpen(prev => !prev)}
+            className="md:hidden p-2.5 -mr-1 rtl:mr-0 rtl:-ml-1 bg-[#fdfcfb] border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg text-[#1c1a17] cursor-pointer transition-colors"
+            aria-label={isRtl ? "فتح القائمة" : "Open menu"}
+            aria-expanded={isMobileMenuOpen}
+          >
+            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+
         </div>
+
+        {/* Mobile Nav Drawer */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-[#e6e2de] bg-white px-4 py-4 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
+
+            {/* View switcher for logged in users */}
+            {currentUser && (
+              <div className="flex items-center bg-[#fdfcfb] border border-[#e6e2de] rounded-lg p-1 shadow-xs">
+                <button
+                  onClick={() => { setViewMode("MARKETPLACE"); setIsMobileMenuOpen(false); }}
+                  className={`flex-1 px-3 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    viewMode === "MARKETPLACE"
+                      ? "bg-white text-[#1a1918] shadow-xs border border-[#e6e2de]"
+                      : "text-[#6e6b66] hover:text-[#1a1918]"
+                  }`}
+                >
+                  <Eye size={15} />
+                  <span>{isRtl ? "المعرض" : "Marketplace"}</span>
+                </button>
+                <button
+                  onClick={() => { setViewMode("DASHBOARD"); setIsMobileMenuOpen(false); }}
+                  className={`flex-1 px-3 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    viewMode === "DASHBOARD"
+                      ? "bg-[#1c1a17] text-[#bf9b30] shadow-xs"
+                      : "text-[#6e6b66] hover:text-[#1a1918]"
+                  }`}
+                >
+                  <LayoutDashboard size={15} />
+                  <span>{isRtl ? "لوحة التحكم" : "Dashboard"}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Language Toggle */}
+            <button
+              onClick={() => setIsRtl(!isRtl)}
+              className="w-full p-3 bg-[#fdfcfb] border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg transition-colors cursor-pointer text-[#1c1a17] flex items-center justify-center gap-2 text-sm font-bold"
+            >
+              <Globe size={16} />
+              <span>{isRtl ? "English" : "العربية"}</span>
+            </button>
+
+            {/* Currency Selector */}
+            <div className="flex items-center bg-[#fdfcfb] border border-[#e6e2de] rounded-lg p-1 shadow-xs">
+              {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => {
+                const config = CURRENCIES[code];
+                const active = activeCurrency === code;
+                return (
+                  <button
+                    key={code}
+                    onClick={() => setActiveCurrency(code)}
+                    className={`flex-1 px-2 py-2.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                      active
+                        ? "bg-[#1c1a17] text-[#bf9b30] shadow-xs"
+                        : "text-[#6e6b66] hover:text-[#1a1918]"
+                    }`}
+                  >
+                    {isRtl ? config.symbolAr : config.code}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Auth Buttons / User info */}
+            {!currentUser ? (
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => { setIsLoginOpen(true); setIsMobileMenuOpen(false); }}
+                  className="w-full px-3 py-3 text-sm font-bold border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg text-[#1a1918] flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <LogIn size={16} />
+                  <span>{isRtl ? "تسجيل دخول" : "Log In"}</span>
+                </button>
+                <button
+                  onClick={() => { setIsSignupOpen(true); setIsMobileMenuOpen(false); }}
+                  className="w-full px-3 py-3 text-sm font-bold bg-[#1c1a17] hover:bg-[#33302a] text-white rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <UserPlus size={16} />
+                  <span>{isRtl ? "شريك جديد" : "Sign Up"}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-3 border-t border-[#e6e2de] pt-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  {currentUser.avatarUrl ? (
+                    <img
+                      src={currentUser.avatarUrl}
+                      alt={currentUser.fullName}
+                      className="w-9 h-9 rounded-full object-cover border border-[#bf9b30] shrink-0"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full border border-[#bf9b30] bg-[#bf9b30] text-black font-bold text-sm flex items-center justify-center shrink-0">
+                      {currentUser.fullName.charAt(0)}
+                    </div>
+                  )}
+                  <div className="flex flex-col text-left rtl:text-right leading-tight min-w-0">
+                    <span className="text-sm font-bold text-[#1c1a17] truncate">{currentUser.fullName}</span>
+                    <span className="text-[10px] font-semibold text-[#bf9b30] uppercase tracking-wider truncate">
+                      {currentUser.role.replace("_", " ")}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+                  className="p-3 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors shrink-0"
+                  title={isRtl ? "تسجيل الخروج" : "Log Out"}
+                >
+                  <LogOut size={18} />
+                </button>
+              </div>
+            )}
+
+          </div>
+        )}
       </header>
 
       {/* Main Container */}
@@ -686,7 +814,7 @@ export default function App() {
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         placeholder="you@company.com"
-                        className="w-full px-3.5 py-2.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-sm"
+                        className="w-full px-3.5 py-2.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-sm"
                       />
                     </div>
 
@@ -699,7 +827,7 @@ export default function App() {
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full px-3.5 py-2.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-sm"
+                        className="w-full px-3.5 py-2.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-sm"
                       />
                     </div>
                   </>
@@ -848,14 +976,14 @@ export default function App() {
                             value={signupOrgName}
                             onChange={(e) => setSignupOrgName(e.target.value)}
                             placeholder={signupRole === UserRole.DEVELOPER_ADMIN ? "e.g. Doha Sands Developers" : "e.g. Pearl Gates Real Estate"}
-                            className="w-full px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-xs focus:outline-none focus:border-[#bf9b30]"
+                            className="w-full px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-base md:text-xs focus:outline-none focus:border-[#bf9b30]"
                           />
                         </div>
                       </div>
                     )}
 
                     {/* Standard details */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-[#6e6b66] uppercase mb-1">
                           {isRtl ? "الاسم الكامل" : "Full Name"} *
@@ -866,7 +994,7 @@ export default function App() {
                           value={signupName}
                           onChange={(e) => setSignupName(e.target.value)}
                           placeholder="Nasser Jassim"
-                          className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-xs"
+                          className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-xs"
                         />
                       </div>
                       <div>
@@ -879,7 +1007,7 @@ export default function App() {
                           value={signupPhone}
                           onChange={(e) => setSignupPhone(e.target.value)}
                           placeholder="+974 5555 6666"
-                          className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-xs"
+                          className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-xs"
                         />
                       </div>
                     </div>
@@ -894,7 +1022,7 @@ export default function App() {
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
                         placeholder="nasser@example.qa"
-                        className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-xs"
+                        className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-xs"
                       />
                     </div>
 
@@ -909,7 +1037,7 @@ export default function App() {
                         value={signupPassword}
                         onChange={(e) => setSignupPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-xs"
+                        className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-xs"
                       />
                     </div>
 

@@ -71,7 +71,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
         <div className="bg-[#bf9b30]/10 p-2 rounded-lg text-[#bf9b30] shrink-0">
           <ShieldCheck size={20} />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h4 className="text-xs font-bold uppercase tracking-wider text-[#bf9b30] mb-1">
             {isRtl ? "إعدادات الخصوصية وملفات التعريف" : "Cookie Privacy & Analytics"}
           </h4>
@@ -119,7 +119,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               type="checkbox"
               checked={consentFunctional}
               onChange={(e) => setConsentFunctional(e.target.checked)}
-              className="accent-[#bf9b30] h-3 w-3 cursor-pointer"
+              className="accent-[#bf9b30] h-4 w-4 md:h-3 md:w-3 cursor-pointer"
             />
           </div>
 
@@ -136,7 +136,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               type="checkbox"
               checked={consentAnalytics}
               onChange={(e) => setConsentAnalytics(e.target.checked)}
-              className="accent-[#bf9b30] h-3 w-3 cursor-pointer"
+              className="accent-[#bf9b30] h-4 w-4 md:h-3 md:w-3 cursor-pointer"
             />
           </div>
 
@@ -157,22 +157,22 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
         </div>
       ) : (
         <div className="mt-4 flex flex-wrap gap-2 justify-end">
-          <button 
+          <button
             onClick={() => setShowPreferences(true)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-[#33302a] hover:bg-[#4d483e] text-xs text-white rounded-md transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-3 py-2.5 md:py-1.5 bg-[#33302a] hover:bg-[#4d483e] text-xs text-white rounded-md transition-colors cursor-pointer"
           >
             <Settings size={12} />
-            <span className="text-[10px] uppercase tracking-wider">{isRtl ? "تخصيص" : "Customize"}</span>
+            <span className="text-xs md:text-[10px] uppercase tracking-wider">{isRtl ? "تخصيص" : "Customize"}</span>
           </button>
-          <button 
+          <button
             onClick={handleAcceptAll}
-            className="px-4 py-1.5 bg-[#bf9b30] hover:bg-[#a68222] text-black font-bold rounded-md text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
+            className="px-4 py-2.5 md:py-1.5 bg-[#bf9b30] hover:bg-[#a68222] text-black font-bold rounded-md text-xs md:text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
           >
             {isRtl ? "قبول الكل" : "Accept All"}
           </button>
-          <button 
+          <button
             onClick={handleDeclineAll}
-            className="px-3 py-1.5 bg-transparent border border-[#a8a4a0]/30 hover:bg-[#2c2924] text-[10px] text-[#a8a4a0] hover:text-white uppercase tracking-wider rounded-md transition-all cursor-pointer"
+            className="px-3 py-2.5 md:py-1.5 bg-transparent border border-[#a8a4a0]/30 hover:bg-[#2c2924] text-xs md:text-[10px] text-[#a8a4a0] hover:text-white uppercase tracking-wider rounded-md transition-all cursor-pointer"
           >
             {isRtl ? "رفض الكل" : "Decline All"}
           </button>

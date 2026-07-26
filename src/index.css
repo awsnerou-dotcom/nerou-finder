@@ -5,6 +5,33 @@
   --font-sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+html, body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-sans);
+}
+
+/* Mobile-only safety net: form controls below 16px trigger an automatic zoom-in on focus in
+   iOS Safari. This does not change desktop (>=768px / Tailwind `md`) rendering at all - it only
+   guarantees every text input, select, and textarea across the app is readable & zoom-safe on
+   phones, even ones using dense `text-xs`/`text-[10px]` utility classes for their surrounding form. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="submit"]):not([type="button"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Hide scrollbars on horizontally-scrollable mobile nav strips while keeping them scrollable. */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

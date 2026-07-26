@@ -941,14 +941,16 @@ export async function initDb(): Promise<DatabaseState> {
       console.log("Loading existing database state from SQLite...");
       dbCache = await loadStateFromDb();
       // ensureStateDefaults was previously only ever called on a true first-time seed, so if
-      // db.locations (or other defaulted collections) ever ended up empty in a synced state -
-      // e.g. from a race during an earlier load - it stayed permanently empty on every
-      // subsequent restart, since this "existing state" branch never re-applied defaults.
-      // Re-run it here too so a corrupted/empty collection self-heals on the next boot.
-      const beforeHeal = JSON.stringify(dbCache.locations);
+      // any defaulted collection (locations, subscriptionPlans, etc.) ever ended up empty in a
+      // synced state - e.g. from a race during an earlier load - it stayed permanently empty on
+      // every subsequent restart, since this "existing state" branch never re-applied defaults.
+      // Re-run it here too so a corrupted/empty collection self-heals on the next boot. Compare
+      // the whole state (not just one field) so this catches any collection ensureStateDefaults
+      // covers today or in the future, not just the ones we've already caught it wiping.
+      const beforeHeal = JSON.stringify(dbCache);
       ensureStateDefaults(dbCache);
-      if (JSON.stringify(dbCache.locations) !== beforeHeal) {
-        console.log("Healed an empty/corrupted locations collection - persisting the restored defaults.");
+      if (JSON.stringify(dbCache) !== beforeHeal) {
+        console.log("Healed one or more empty/corrupted default collections - persisting the restored defaults.");
         writeDb(dbCache);
       }
       return dbCache;
@@ -1029,6 +1031,7 @@ function ensureStateDefaults(db: DatabaseState): void {
     }
   }
   if (!db.helpArticles || db.helpArticles.length === 0) db.helpArticles = DEFAULT_HELP_ARTICLES;
+  if (!db.subscriptionPlans || db.subscriptionPlans.length === 0) db.subscriptionPlans = DEFAULT_SUB_PLANS;
   if (!db.supportTickets) db.supportTickets = [];
   if (!db.jobListings || db.jobListings.length === 0) db.jobListings = DEFAULT_JOB_LISTINGS;
   if (!db.pressReleases || db.pressReleases.length === 0) db.pressReleases = DEFAULT_PRESS_RELEASES;

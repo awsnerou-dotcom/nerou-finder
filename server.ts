@@ -660,7 +660,10 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
   if (!orgId && (effectiveRole === UserRole.AGENCY_ADMIN || effectiveRole === UserRole.DEVELOPER_ADMIN)) {
     orgId = `org-${Date.now()}`;
     const targetPlanId = selectedPlanId || (orgType === "DEVELOPER" ? "plan-developer" : "plan-basic");
-    const matchedPlan = db.subscriptionPlans.find(p => p.id === targetPlanId) || db.subscriptionPlans[0];
+    // Defensive fallback: db.subscriptionPlans is self-healed on every server boot, but a new
+    // org signup must never hard-crash even in the unlikely event it's still empty somehow.
+    const matchedPlan = db.subscriptionPlans.find(p => p.id === targetPlanId) || db.subscriptionPlans[0]
+      || { name: targetPlanId, priceMonthly: 0 };
 
     const newOrg = {
       id: orgId,
