@@ -70,6 +70,16 @@ export default function App() {
   // Mobile nav drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
+  // Transparent header (floats over the marketplace hero photo until the user scrolls past it)
+  const [isScrolled, setIsScrolled] = useState<boolean>(false);
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 40);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+  const heroTransparent = viewMode === "MARKETPLACE" && !isScrolled;
+
   // Form states
   const [loginEmail, setLoginEmail] = useState<string>("");
   const [loginPassword, setLoginPassword] = useState<string>("");
@@ -386,8 +396,16 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#fcfbfa] text-[#1a1918] font-sans flex flex-col justify-between">
       
-      {/* Main Header */}
-      <header className="bg-white/95 backdrop-blur-sm border-b border-[#e6e2de] shadow-[0_1px_0_0_rgba(191,155,48,0.18)] sticky top-0 z-40">
+      {/* Main Header: floats transparently over the marketplace hero photo at the top of the
+          page, then transitions to its normal solid appearance once the user scrolls past it. */}
+      <header
+        className={`sticky top-0 z-40 transition-colors duration-300 backdrop-blur-sm ${
+          heroTransparent
+            ? "border-b border-transparent shadow-none"
+            : "border-b border-[#e6e2de] shadow-[0_1px_0_0_rgba(191,155,48,0.18)]"
+        }`}
+        style={{ backgroundColor: heroTransparent ? "transparent" : "rgba(255,255,255,0.95)" }}
+      >
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
 
           {/* Brand Logo + AI badge */}
@@ -396,10 +414,16 @@ export default function App() {
               className="flex items-center gap-2 select-none cursor-pointer"
               onClick={() => setViewMode("MARKETPLACE")}
             >
-              <span className="font-serif text-lg tracking-[0.2em] text-[#1a1918] font-semibold">NEROU</span>
+              <span className={`font-serif text-lg tracking-[0.2em] font-semibold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-[#1a1918]"}`}>NEROU</span>
               <span className="font-serif text-lg tracking-wider text-[#bf9b30] font-bold">FINDER</span>
             </div>
-            <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-[#fdfcfb] to-[#f8f2e0] border border-[#bf9b30]/40 rounded-full text-[10px] font-semibold text-[#8c6d1d] tracking-wide">
+            <div
+              className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide transition-colors duration-300 ${
+                heroTransparent
+                  ? "bg-white/10 backdrop-blur-sm border border-white/30 text-white"
+                  : "bg-gradient-to-r from-[#fdfcfb] to-[#f8f2e0] border border-[#bf9b30]/40 text-[#8c6d1d]"
+              }`}
+            >
               <Sparkles size={11} className="text-[#bf9b30] animate-pulse" />
               <span>{isRtl ? "الذكاء الاصطناعي نشط" : "AI-Powered Search"}</span>
             </div>
@@ -472,7 +496,11 @@ export default function App() {
               <div className="flex items-center gap-1 md:gap-2">
                 <button
                   onClick={() => setIsLoginOpen(true)}
-                  className="px-2.5 py-1.5 text-xs font-bold border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg text-[#1a1918] flex items-center gap-1 transition-all cursor-pointer"
+                  className={`px-2.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
+                    heroTransparent
+                      ? "border border-white/40 hover:bg-white/10 text-white"
+                      : "border border-[#e6e2de] hover:bg-[#f2ede8] text-[#1a1918]"
+                  }`}
                 >
                   <LogIn size={14} />
                   <span className="hidden sm:inline">{isRtl ? "تسجيل دخول" : "Log In"}</span>
@@ -486,9 +514,9 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-3 border-l border-[#e6e2de] pl-3">
+              <div className={`flex items-center gap-3 border-l pl-3 transition-colors duration-300 ${heroTransparent ? "border-white/30" : "border-[#e6e2de]"}`}>
                 <div className="hidden md:flex flex-col text-right leading-tight">
-                  <span className="text-xs font-bold text-[#1c1a17]">{currentUser.fullName}</span>
+                  <span className={`text-xs font-bold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-[#1c1a17]"}`}>{currentUser.fullName}</span>
                   <span className="text-[10px] font-semibold text-[#bf9b30] uppercase tracking-wider">
                     {currentUser.role.replace("_", " ")}
                   </span>

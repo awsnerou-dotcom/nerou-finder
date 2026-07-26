@@ -60,7 +60,7 @@ import SupportTicketsView from "./SupportTicketsView.js";
 import PressView from "./PressView.js";
 import PartnershipsView from "./PartnershipsView.js";
 import PlansPricingView from "./PlansPricingView.js";
-import CinematicSkyline from "./CinematicSkyline.js";
+import PhotoHero from "./PhotoHero.js";
 
 interface VisitorExperienceProps {
   isRtl: boolean;
@@ -646,14 +646,17 @@ export default function VisitorExperience({
   return (
     <div className="space-y-8" dir={isRtl ? "rtl" : "ltr"}>
       
-      {/* Unified luxury panel: category navigation + AI search share one continuous dark/gold surface */}
-      <div className="bg-[#1c1a17] rounded-xl border border-[#33302a] shadow-sm relative overflow-hidden">
-        <CinematicSkyline />
+      {/* Unified luxury panel: category navigation + AI search share one continuous dark/gold
+          surface. Pulled up by the header's height (-mt-24 = -6rem = -64px header + 32px main
+          padding) so the photo extends behind the transparent floating header at the top of the
+          page; pt-24 on the inner content below compensates so nothing is actually hidden. */}
+      <div className="bg-[#1c1a17] rounded-xl border border-[#33302a] shadow-sm relative overflow-hidden -mt-24">
+        <PhotoHero />
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <Sparkles size={160} />
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 pt-24">
           {/* Premium Multi-Tab Sub-Navigation Menu */}
           <div className="p-2 flex flex-wrap gap-1 items-center justify-between text-xs font-bold">
             <div className="flex flex-wrap gap-1">
