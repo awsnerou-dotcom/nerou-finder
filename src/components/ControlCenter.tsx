@@ -25,7 +25,9 @@ import {
   LocationItem,
   ApplicationStatus,
   AgentType,
-  getEffectiveAgentType
+  getEffectiveAgentType,
+  ListingStatus,
+  LeadStatus
 } from "../types.js";
 import {
   ShieldAlert,
@@ -55,7 +57,11 @@ import {
   Mail,
   Trash2,
   Star,
-  ChevronRight
+  ChevronRight,
+  Layers,
+  ClipboardList,
+  TrendingUp,
+  Clock
 } from "lucide-react";
 
 interface ControlCenterProps {
@@ -1194,13 +1200,91 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     group.docs.push(d);
   });
 
-  const totalSaaSMonthlyRevenue = organizations.reduce((acc, org) => {
-    if (org.subscriptionPlanId === "plan-premium") return acc + 1800;
-    if (org.subscriptionPlanId === "plan-developer") return acc + 4500;
-    return acc + 500;
-  }, 0);
+  // Real MRR: only ACTIVE-subscription orgs, priced from the actual SubscriptionPlan record
+  // rather than a hardcoded per-plan-id price map.
+  const totalSaaSMonthlyRevenue = organizations
+    .filter(org => org.subscriptionStatus === "ACTIVE")
+    .reduce((acc, org) => {
+      const plan = plans.find(p => p.id === org.subscriptionPlanId);
+      return acc + (plan ? plan.priceMonthly : 0);
+    }, 0);
 
   const totalAdvertisingRevenue = campaigns.reduce((acc, c) => acc + c.budget, 0);
+
+  // ---------------------------------------------------------------------
+  // Overview dashboard KPI computations (Part A)
+  // ---------------------------------------------------------------------
+  const nowDate = new Date();
+  const currentMonthIdx = nowDate.getMonth();
+  const currentYearNum = nowDate.getFullYear();
+
+  // 1. Total users by type
+  const independentAgentsList = users.filter(u => u.role === UserRole.AGENT && getEffectiveAgentType(u) === AgentType.INDEPENDENT_AGENT);
+  const agencyAgentsCount = users.filter(u => u.role === UserRole.AGENT && getEffectiveAgentType(u) === AgentType.AGENCY_AGENT).length;
+  const agenciesCount = users.filter(u => u.role === UserRole.AGENCY_ADMIN).length;
+  const developersCount = users.filter(u => u.role === UserRole.DEVELOPER_ADMIN).length;
+  const registeredUsersCount = users.filter(u => u.role === UserRole.REGISTERED).length;
+  const usersByType: { label: { en: string; ar: string }; count: number }[] = [
+    { label: { en: "Independent Agents", ar: "وكلاء مستقلون" }, count: independentAgentsList.length },
+    { label: { en: "Agency Agents", ar: "وكلاء الشركات" }, count: agencyAgentsCount },
+    { label: { en: "Agencies", ar: "المكاتب العقارية" }, count: agenciesCount },
+    { label: { en: "Developers", ar: "شركات التطوير" }, count: developersCount },
+    { label: { en: "Registered Buyers/Tenants", ar: "المستخدمون المسجلون" }, count: registeredUsersCount }
+  ];
+
+  // 2. Pending applications by stage
+  const applicationStageOrder: ApplicationStatus[] = [
+    ApplicationStatus.PENDING_APPROVAL,
+    ApplicationStatus.AWAITING_PAYMENT,
+    ApplicationStatus.AWAITING_DOCUMENTS,
+    ApplicationStatus.UNDER_VERIFICATION
+  ];
+  const applicationsByStage = applicationStageOrder.map(stage => ({
+    stage,
+    count: pendingApplications.filter(u => u.applicationStatus === stage).length
+  }));
+
+  // 3. Active vs expired subscriptions (orgs + independent agents, each own field)
+  const orgsActiveSubs = organizations.filter(o => o.subscriptionStatus === "ACTIVE").length;
+  const orgsInactiveSubs = organizations.length - orgsActiveSubs;
+  const orgsExpiredSubs = organizations.filter(o => o.subscriptionExpiry && new Date(o.subscriptionExpiry) < nowDate).length;
+  const indAgentsActiveSubs = independentAgentsList.filter(u => u.subscriptionStatus === "ACTIVE").length;
+  const indAgentsInactiveSubs = independentAgentsList.length - indAgentsActiveSubs;
+  const indAgentsExpiredSubs = independentAgentsList.filter(u => u.subscriptionExpiry && new Date(u.subscriptionExpiry) < nowDate).length;
+
+  // 4. Total listings by status - driven off the real ListingStatus enum, not guessed values
+  const listingStatusCounts = Object.values(ListingStatus).map(status => ({
+    status,
+    count: properties.filter(p => p.listingStatus === status).length
+  }));
+
+  // 5. Leads this month + conversion rate (LeadStatus.CONVERTED is the real "won" status)
+  const leadsThisMonth = leads.filter(l => {
+    const d = new Date(l.createdDate);
+    return d.getFullYear() === currentYearNum && d.getMonth() === currentMonthIdx;
+  });
+  const convertedLeadsThisMonth = leadsThisMonth.filter(l => l.status === LeadStatus.CONVERTED).length;
+  const leadConversionRateThisMonth = leadsThisMonth.length > 0 ? Math.round((convertedLeadsThisMonth / leadsThisMonth.length) * 100) : 0;
+
+  // 6. Current-period ad billing total, computed client-side from the already-fetched adCharges
+  // (GET /api/ad-charges returns the full ledger to a PLATFORM_ADMIN caller with no orgId filter).
+  const currentBillingPeriod = `${currentYearNum}-${String(currentMonthIdx + 1).padStart(2, "0")}`;
+  const currentPeriodAdCharges = adCharges.filter((c: any) => c.billingPeriod === currentBillingPeriod);
+  const currentPeriodAdTotal = currentPeriodAdCharges.reduce((acc: number, c: any) => acc + c.amount, 0);
+  const currentPeriodAdSettled = currentPeriodAdCharges.filter((c: any) => c.settled).reduce((acc: number, c: any) => acc + c.amount, 0);
+  const currentPeriodAdUnsettled = currentPeriodAdTotal - currentPeriodAdSettled;
+
+  // 7. Recent activity feed - interesting action types only (real logAudit(...) action strings
+  // from server.ts), sorted newest first, capped at 15.
+  const INTERESTING_AUDIT_ACTIONS = new Set([
+    "USER_SIGNUP", "REGISTER_ORGANIZATION", "CREATE_PROPERTY", "APPROVE_PROPERTY", "REJECT_PROPERTY",
+    "VERIFY_ORGANIZATION", "VERIFY_USER", "UPDATE_APPLICATION_STATUS", "REVIEW_VERIFICATION_DOCUMENT",
+    "ACTIVATE_AD_BOOST", "UPGRADE_SUBSCRIPTION", "MANUAL_MANAGE_SUBSCRIPTION", "CONFIRM_AGENT_SUBSCRIPTION"
+  ]);
+  const recentActivityFeed = [...auditLogs]
+    .filter(log => INTERESTING_AUDIT_ACTIONS.has(log.action))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, 15);
 
   // Grouped, collapsible sidebar navigation config (FIX 2) - every existing tab remains reachable,
   // just organized into sections instead of one flat button row. Content behind each tab is unchanged.
@@ -1398,7 +1482,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <DollarSign size={20} className="text-[#6e6b66]" />
                     <span>{totalAdvertisingRevenue.toLocaleString()} QAR</span>
                   </h3>
-                  <p className="text-[9px] text-emerald-600 font-bold mt-2">↑ 22% billing capture velocity</p>
+                  <p className="text-[9px] text-[#6e6b66] mt-2">{campaigns.filter(c => c.status === "ACTIVE").length} {isRtl ? "حملة نشطة من" : "active campaigns of"} {campaigns.length}</p>
                 </div>
 
                 <div className="bg-white p-5 rounded-xl border border-[#e6e2de]">
@@ -1410,7 +1494,153 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 <div className="bg-white p-5 rounded-xl border border-[#e6e2de]">
                   <span className="text-[10px] text-[#6e6b66] block uppercase tracking-wider mb-1">{isRtl ? "قنوات التواصل المسجلة" : "Capturing Client Leads"}</span>
                   <h3 className="text-2xl font-serif font-bold text-[#1a1918]">{leads.length}</h3>
-                  <p className="text-[9px] text-emerald-600 font-bold mt-2">0% failure routing rate</p>
+                  <p className="text-[9px] text-emerald-600 font-bold mt-2">
+                    {leads.length > 0 ? `${Math.round((leads.filter(l => l.agentId).length / leads.length) * 100)}% ${isRtl ? "موجهة لوكيل" : "routed to an agent"}` : (isRtl ? "لا يوجد عملاء محتملون بعد" : "No leads yet")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Users by type + Listings by status */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
+                <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+                  <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+                    <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
+                      <Users size={14} className="text-[#bf9b30]" />
+                      <span>{isRtl ? "إجمالي المستخدمين حسب النوع" : "Total Users by Type"}</span>
+                    </h4>
+                  </div>
+                  <div className="divide-y divide-[#f2ede8]">
+                    {usersByType.map(row => (
+                      <div key={row.label.en} className="p-3 flex items-center justify-between">
+                        <span className="text-[#6e6b66]">{isRtl ? row.label.ar : row.label.en}</span>
+                        <span className="font-bold text-[#1a1918]">{row.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+                  <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+                    <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
+                      <Layers size={14} className="text-[#bf9b30]" />
+                      <span>{isRtl ? "إجمالي العقارات حسب الحالة" : "Total Listings by Status"}</span>
+                    </h4>
+                  </div>
+                  <div className="divide-y divide-[#f2ede8]">
+                    {listingStatusCounts.map(row => (
+                      <div key={row.status} className="p-3 flex items-center justify-between">
+                        <span className="text-[#6e6b66]">{row.status.replace(/_/g, " ")}</span>
+                        <span className="font-bold text-[#1a1918]">{row.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Pending applications by stage + Active vs expired subscriptions */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
+                <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+                  <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+                    <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
+                      <ClipboardList size={14} className="text-[#bf9b30]" />
+                      <span>{isRtl ? "الطلبات المعلقة حسب المرحلة" : "Pending Applications by Stage"}</span>
+                    </h4>
+                  </div>
+                  <div className="divide-y divide-[#f2ede8]">
+                    {applicationsByStage.map(row => (
+                      <div key={row.stage} className="p-3 flex items-center justify-between">
+                        <span className="text-[#6e6b66]">{row.stage.replace(/_/g, " ")}</span>
+                        <span className="font-bold text-[#1a1918]">{row.count}</span>
+                      </div>
+                    ))}
+                    {pendingApplications.length === 0 && (
+                      <p className="p-4 text-center text-[#6e6b66]">{isRtl ? "لا توجد طلبات معلقة." : "No pending applications."}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+                  <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+                    <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
+                      <CalendarRange size={14} className="text-[#bf9b30]" />
+                      <span>{isRtl ? "الاشتراكات النشطة مقابل المنتهية" : "Active vs Expired Subscriptions"}</span>
+                    </h4>
+                  </div>
+                  <div className="p-4 grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg">
+                      <p className="text-[10px] text-[#6e6b66] uppercase tracking-wider">{isRtl ? "المؤسسات" : "Organizations"}</p>
+                      <p className="mt-1"><span className="font-bold text-emerald-700">{orgsActiveSubs}</span> {isRtl ? "نشط" : "active"} / <span className="font-bold text-[#1a1918]">{orgsInactiveSubs}</span> {isRtl ? "غير نشط" : "inactive"}</p>
+                      <p className="text-[10px] text-red-600 mt-1">{orgsExpiredSubs} {isRtl ? "منتهي فعليًا" : "past expiry date"}</p>
+                    </div>
+                    <div className="p-3 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg">
+                      <p className="text-[10px] text-[#6e6b66] uppercase tracking-wider">{isRtl ? "الوكلاء المستقلون" : "Independent Agents"}</p>
+                      <p className="mt-1"><span className="font-bold text-emerald-700">{indAgentsActiveSubs}</span> {isRtl ? "نشط" : "active"} / <span className="font-bold text-[#1a1918]">{indAgentsInactiveSubs}</span> {isRtl ? "غير نشط" : "inactive"}</p>
+                      <p className="text-[10px] text-red-600 mt-1">{indAgentsExpiredSubs} {isRtl ? "منتهي فعليًا" : "past expiry date"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Leads this month + conversion rate, Current-period ad billing total */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
+                <div className="bg-white rounded-xl border border-[#e6e2de] p-4 space-y-2">
+                  <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
+                    <TrendingUp size={14} className="text-[#bf9b30]" />
+                    <span>{isRtl ? "العملاء المحتملون هذا الشهر ومعدل التحويل" : "Leads This Month & Conversion Rate"}</span>
+                  </h4>
+                  <div className="flex items-center gap-6 pt-1">
+                    <div>
+                      <p className="text-2xl font-serif font-bold text-[#1a1918]">{leadsThisMonth.length}</p>
+                      <p className="text-[10px] text-[#6e6b66]">{isRtl ? "عميل محتمل هذا الشهر" : "leads this month"}</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-serif font-bold text-[#bf9b30]">{leadConversionRateThisMonth}%</p>
+                      <p className="text-[10px] text-[#6e6b66]">{isRtl ? "معدل التحويل (تم الفوز)" : "conversion rate (CONVERTED)"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl border border-[#e6e2de] p-4 space-y-2">
+                  <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
+                    <DollarSign size={14} className="text-[#bf9b30]" />
+                    <span>{isRtl ? "فوترة الإعلانات للفترة الحالية" : "Current-Period Ad Billing"}</span>
+                  </h4>
+                  <div className="flex items-center gap-6 pt-1">
+                    <div>
+                      <p className="text-2xl font-serif font-bold text-[#1a1918]">{currentPeriodAdTotal.toLocaleString()} QAR</p>
+                      <p className="text-[10px] text-[#6e6b66]">{currentBillingPeriod} {isRtl ? "الإجمالي" : "total"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] text-emerald-700 font-bold">{currentPeriodAdSettled.toLocaleString()} QAR {isRtl ? "مسواة" : "settled"}</p>
+                      <p className="text-[11px] text-amber-700 font-bold">{currentPeriodAdUnsettled.toLocaleString()} QAR {isRtl ? "غير مسواة" : "unsettled"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent activity feed */}
+              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center justify-between">
+                  <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
+                    <Clock size={14} className="text-[#bf9b30]" />
+                    <span>{isRtl ? "أحدث النشاطات على المنصة" : "Recent Platform Activity"}</span>
+                  </h4>
+                  <span className="text-[10px] text-[#6e6b66]">{isRtl ? "آخر 15 حدثًا" : "Last 15 events"}</span>
+                </div>
+                <div className="divide-y divide-[#f2ede8] max-h-72 overflow-y-auto">
+                  {recentActivityFeed.length === 0 ? (
+                    <p className="p-6 text-center text-[#6e6b66]">{isRtl ? "لا توجد نشاطات بعد." : "No activity recorded yet."}</p>
+                  ) : (
+                    recentActivityFeed.map(log => (
+                      <div key={log.id} className="p-3 flex items-start justify-between gap-4 hover:bg-[#fcfbfa]">
+                        <div className="space-y-0.5">
+                          <p className="font-bold text-[#1a1918]">{log.action.replace(/_/g, " ")}</p>
+                          <p className="text-[10px] text-[#6e6b66]">{isRtl ? "منفذ العملية:" : "Actor:"} {log.actorName} ({log.actorRole})</p>
+                        </div>
+                        <span className="text-[10px] text-[#a8a4a0] shrink-0">{new Date(log.timestamp).toLocaleString()}</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 

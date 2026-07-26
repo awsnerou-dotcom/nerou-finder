@@ -23,7 +23,9 @@ import {
   Image as ImageIcon,
   Loader2,
   AlertTriangle,
-  CreditCard
+  CreditCard,
+  Camera,
+  Lock
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -126,6 +128,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [bio, setBio] = useState<string>(agent.bio || "");
   const [languages, setLanguages] = useState<string>(agent.languages?.join(", ") || "");
   const [specialties, setSpecialties] = useState<string>(agent.specialties?.join(", ") || "");
+  const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string>(agent.avatarUrl || "");
+  const [avatarUploading, setAvatarUploading] = useState<boolean>(false);
+
+  // Change Password form state
+  const [currentPassword, setCurrentPassword] = useState<string>("");
+  const [newPassword, setNewPassword] = useState<string>("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState<string>("");
+  const [passwordChanging, setPasswordChanging] = useState<boolean>(false);
 
   // Listing Form States (Create Property)
   const [isAddingListing, setIsAddingListing] = useState<boolean>(false);
@@ -285,6 +295,111 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       console.error(err);
       setToastMessage("Network error saving profile changes.");
       setTimeout(() => setToastMessage(""), 4000);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+
+    setAvatarUploading(true);
+    try {
+      const compressed = await compressImage(file);
+      const formData = new FormData();
+      formData.append("files", compressed);
+
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      // ?type=avatar tells the shared media upload endpoint to skip the property-photo
+      // watermark - appropriate for property images, wrong for a profile picture.
+      const uploadRes = await fetch("/api/media/upload?type=avatar", {
+        method: "POST",
+        headers,
+        body: formData
+      });
+
+      if (!uploadRes.ok) {
+        const data = await uploadRes.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "فشل رفع الصورة الشخصية." : "Failed to upload profile picture."));
+        setTimeout(() => setToastMessage(""), 4000);
+        return;
+      }
+
+      const uploadData = await uploadRes.json();
+      const newAvatarUrl = (uploadData.fileUrls || uploadData.urls || [])[0];
+      if (!newAvatarUrl) return;
+
+      const patchHeaders: HeadersInit = { "Content-Type": "application/json" };
+      if (token) patchHeaders["Authorization"] = `Bearer ${token}`;
+      const patchRes = await fetch(`/api/users/${agent.id}`, {
+        method: "PATCH",
+        headers: patchHeaders,
+        body: JSON.stringify({ avatarUrl: newAvatarUrl })
+      });
+
+      if (patchRes.ok) {
+        const data = await patchRes.json();
+        setCurrentAvatarUrl(newAvatarUrl);
+        localStorage.setItem("nerou_user", JSON.stringify(data.user));
+        onRefreshAll();
+        setToastMessage(isRtl ? "تم تحديث الصورة الشخصية بنجاح!" : "Profile picture updated successfully!");
+      } else {
+        const data = await patchRes.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "فشل حفظ الصورة الشخصية." : "Failed to save profile picture."));
+      }
+      setTimeout(() => setToastMessage(""), 4000);
+    } catch (err) {
+      console.error("Avatar upload error:", err);
+      setToastMessage(isRtl ? "فشل رفع الصورة الشخصية." : "Failed to upload profile picture.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmNewPassword) {
+      setToastMessage(isRtl ? "كلمتا المرور الجديدتان غير متطابقتين." : "New password and confirmation do not match.");
+      setTimeout(() => setToastMessage(""), 4000);
+      return;
+    }
+    if (newPassword.length < 8) {
+      setToastMessage(isRtl ? "يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل." : "New password must be at least 8 characters long.");
+      setTimeout(() => setToastMessage(""), 4000);
+      return;
+    }
+
+    setPasswordChanging(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/users/${agent.id}/change-password`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setToastMessage(isRtl ? "تم تغيير كلمة المرور بنجاح!" : "Password changed successfully!");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+      } else {
+        setToastMessage(data.error || (isRtl ? "فشل تغيير كلمة المرور." : "Failed to change password."));
+      }
+      setTimeout(() => setToastMessage(""), 4000);
+    } catch (err) {
+      console.error("Change password error:", err);
+      setToastMessage(isRtl ? "فشل تغيير كلمة المرور." : "Failed to change password.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setPasswordChanging(false);
     }
   };
 
@@ -997,8 +1112,29 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {activeTab === "profile" && (
         <form onSubmit={handleUpdateProfile} className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4 text-xs">
           <div className="flex items-center gap-4 border-b border-[#f2ede8] pb-4">
-            <div className="w-16 h-16 bg-[#bf9b30] text-black font-bold text-xl rounded-full flex items-center justify-center">
-              {agent.fullName.charAt(0)}
+            <div className="relative shrink-0">
+              {currentAvatarUrl ? (
+                <img src={currentAvatarUrl} alt={agent.fullName} className="w-16 h-16 rounded-full object-cover border border-[#e6e2de]" />
+              ) : (
+                <div className="w-16 h-16 bg-[#bf9b30] text-black font-bold text-xl rounded-full flex items-center justify-center">
+                  {agent.fullName.charAt(0)}
+                </div>
+              )}
+              <label
+                htmlFor="agent-avatar-upload"
+                className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#1c1a17] hover:bg-[#bf9b30] text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
+                title={isRtl ? "تغيير الصورة الشخصية" : "Change profile picture"}
+              >
+                {avatarUploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+              </label>
+              <input
+                id="agent-avatar-upload"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={avatarUploading}
+                onChange={handleAvatarUpload}
+              />
             </div>
             <div>
               <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{agent.fullName}</h4>
@@ -1077,6 +1213,60 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer"
             >
               Save Profile Changes
+            </button>
+          </div>
+        </form>
+      )}
+
+      {activeTab === "profile" && (
+        <form onSubmit={handleChangePassword} className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4 text-xs">
+          <div className="border-b border-[#f2ede8] pb-3 flex items-center gap-2">
+            <Lock size={16} className="text-[#bf9b30]" />
+            <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "تغيير كلمة المرور" : "Change Password"}</h4>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "كلمة المرور الحالية" : "Current Password"}</label>
+              <input
+                type="password"
+                required
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "كلمة المرور الجديدة" : "New Password"}</label>
+              <input
+                type="password"
+                required
+                minLength={8}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "تأكيد كلمة المرور الجديدة" : "Confirm New Password"}</label>
+              <input
+                type="password"
+                required
+                minLength={8}
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2 border-t border-[#f2ede8]">
+            <button
+              type="submit"
+              disabled={passwordChanging}
+              className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+            >
+              {passwordChanging ? (isRtl ? "جارٍ التحديث..." : "Updating...") : (isRtl ? "تغيير كلمة المرور" : "Change Password")}
             </button>
           </div>
         </form>

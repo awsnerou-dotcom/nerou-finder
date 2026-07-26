@@ -839,6 +839,43 @@ app.patch("/api/users/:id", authMiddleware, (req, res) => {
   res.json({ success: true, user: db.users[idx] });
 });
 
+// Change own password. A user may only change their own password - never another user's,
+// even a PLATFORM_ADMIN (admin password resets, if ever needed, are a separate concern).
+app.post("/api/users/:id/change-password", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const authReq = req as AuthenticatedRequest;
+  const actor = authReq.user;
+  if (!actor) return res.status(401).json({ error: "Access token missing or invalid." });
+  if (actor.id !== id) {
+    return res.status(403).json({ error: "You may only change your own password." });
+  }
+
+  const { currentPassword, newPassword } = req.body as { currentPassword?: string; newPassword?: string };
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "Current and new password are required." });
+  }
+
+  const db = readDb();
+  const idx = db.users.findIndex(u => u.id === id);
+  if (idx === -1) return res.status(404).json({ error: "User not found." });
+  const user = db.users[idx];
+
+  if (!user.password || !bcrypt.compareSync(currentPassword, user.password)) {
+    return res.status(401).json({ error: "Current password is incorrect." });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters long." });
+  }
+
+  (user as any).password = bcrypt.hashSync(newPassword, 10);
+  writeDb(db);
+
+  logAudit(actor.id, actor.fullName, actor.role as UserRole, "CHANGE_PASSWORD", id, "User", {});
+
+  res.json({ success: true });
+});
+
 // Properties API
 app.get("/api/properties", (req, res) => {
   const db = readDb();
@@ -1663,6 +1700,39 @@ app.post("/api/organizations/upgrade", authMiddleware, (req, res) => {
 
 
   res.json({ success: true, organization: db.organizations[idx] });
+});
+
+// Update an organization's own profile fields (logo, name, contact details). Org admin
+// for this org, or a platform admin, only - mirrors the /routing endpoint's auth pattern.
+app.patch("/api/organizations/:id", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  const isAdmin = actor?.role === UserRole.PLATFORM_ADMIN || actor?.role === UserRole.SUPER_ADMIN;
+  const isOrgAdmin = actor?.orgId === id && (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+  if (!actor || (!isAdmin && !isOrgAdmin)) {
+    return res.status(403).json({ error: "Only an organization admin may update this organization's profile." });
+  }
+
+  const orgIdx = db.organizations.findIndex(o => o.id === id);
+  if (orgIdx === -1) return res.status(404).json({ error: "Organization not found." });
+
+  // Whitelist: public profile fields only. Subscription, verification, and type fields
+  // all have their own dedicated admin endpoints and must not be changed here.
+  const { name, nameAr, logoUrl, phone, whatsapp, website } = req.body;
+  const existing = db.organizations[orgIdx] as any;
+  if (name !== undefined) existing.name = name;
+  if (nameAr !== undefined) existing.nameAr = nameAr;
+  if (logoUrl !== undefined) existing.logoUrl = logoUrl;
+  if (phone !== undefined) existing.phone = phone;
+  if (whatsapp !== undefined) existing.whatsapp = whatsapp;
+  if (website !== undefined) existing.website = website;
+
+  writeDb(db);
+  logAudit(actor.id, actor.fullName, actor.role, "UPDATE_ORGANIZATION_PROFILE", id, "Organization", { name, phone, whatsapp });
+
+  res.json({ success: true, organization: db.organizations[orgIdx] });
 });
 
 // -----------------------------------------------------------------------------
@@ -3540,12 +3610,25 @@ app.post("/api/media/upload", authMiddleware, (req, res, next) => {
     return res.status(400).json({ error: "No files uploaded." });
   }
 
+  // Profile/org avatar & logo uploads should never carry the visible property-photo
+  // watermark. Callers opt out via ?type=avatar (query) or an "uploadType=avatar" form
+  // field - default (no param) keeps the existing watermark-every-upload behavior so
+  // every other caller of this shared endpoint is unaffected.
+  const uploadType = (req.query.type as string | undefined) || (req.body && (req.body as any).uploadType);
+  const skipWatermark = uploadType === "avatar";
+
   const urls = [];
 
   for (const file of files) {
     const filename = file.filename;
     const uploadedPath = path.join(uploadsDir, filename);
     const originalPath = path.join(uploadsDir, "original-" + filename);
+
+    if (skipWatermark) {
+      // Serve the raw uploaded file as-is - no watermark composite step.
+      urls.push(`/assets/uploads/${filename}`);
+      continue;
+    }
 
     try {
       // 1. Store the raw/unwatermarked copy as 'original-<filename>'

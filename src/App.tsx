@@ -489,11 +489,17 @@ export default function App() {
                     {currentUser.role.replace("_", " ")}
                   </span>
                 </div>
-                <img
-                  src={currentUser.avatarUrl || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=100&h=100&q=80"}
-                  alt={currentUser.fullName}
-                  className="w-8 h-8 rounded-full border border-[#bf9b30]"
-                />
+                {currentUser.avatarUrl ? (
+                  <img
+                    src={currentUser.avatarUrl}
+                    alt={currentUser.fullName}
+                    className="w-8 h-8 rounded-full object-cover border border-[#bf9b30]"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full border border-[#bf9b30] bg-[#bf9b30] text-black font-bold text-xs flex items-center justify-center">
+                    {currentUser.fullName.charAt(0)}
+                  </div>
+                )}
                 <button
                   onClick={handleLogout}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-lg cursor-pointer transition-colors"

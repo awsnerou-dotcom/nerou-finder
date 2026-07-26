@@ -940,6 +940,17 @@ export async function initDb(): Promise<DatabaseState> {
     if (count > 0) {
       console.log("Loading existing database state from SQLite...");
       dbCache = await loadStateFromDb();
+      // ensureStateDefaults was previously only ever called on a true first-time seed, so if
+      // db.locations (or other defaulted collections) ever ended up empty in a synced state -
+      // e.g. from a race during an earlier load - it stayed permanently empty on every
+      // subsequent restart, since this "existing state" branch never re-applied defaults.
+      // Re-run it here too so a corrupted/empty collection self-heals on the next boot.
+      const beforeHeal = JSON.stringify(dbCache.locations);
+      ensureStateDefaults(dbCache);
+      if (JSON.stringify(dbCache.locations) !== beforeHeal) {
+        console.log("Healed an empty/corrupted locations collection - persisting the restored defaults.");
+        writeDb(dbCache);
+      }
       return dbCache;
     }
   } catch (err) {

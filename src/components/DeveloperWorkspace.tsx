@@ -20,7 +20,10 @@ import {
   MapPin,
   Image as ImageIcon,
   Loader2,
-  Trash2
+  Trash2,
+  Camera,
+  Lock,
+  Settings
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -97,10 +100,39 @@ const compressImage = (file: File): Promise<File> => {
 export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: DeveloperWorkspaceProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"projects" | "inventory" | "leads" | "verification">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "inventory" | "leads" | "verification" | "profile">("projects");
 
   // Local toast state
   const [toastMessage, setToastMessage] = useState<string>("");
+
+  // Profile / organization settings state (Part B/C: developer admin's own org profile
+  // fields - Organization has no fullName/bio like a User, so this edits org-level
+  // name/logo/contact info via the new PATCH /api/organizations/:id endpoint).
+  const [orgName, setOrgName] = useState<string>(developer.name);
+  const [orgPhone, setOrgPhone] = useState<string>(developer.phone || "");
+  const [orgWhatsapp, setOrgWhatsapp] = useState<string>(developer.whatsapp || "");
+  const [orgWebsite, setOrgWebsite] = useState<string>(developer.website || "");
+  const [orgLogoUrl, setOrgLogoUrl] = useState<string>(developer.logoUrl || "");
+  const [logoUploading, setLogoUploading] = useState<boolean>(false);
+  const [savingOrgProfile, setSavingOrgProfile] = useState<boolean>(false);
+
+  // Change Password form state - this workspace only receives the org (not the acting user),
+  // so the acting DEVELOPER_ADMIN's own id is read from the same "nerou_user" localStorage
+  // record every workspace already writes back to on profile save.
+  const [currentPassword, setCurrentPassword] = useState<string>("");
+  const [newPassword, setNewPassword] = useState<string>("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState<string>("");
+  const [passwordChanging, setPasswordChanging] = useState<boolean>(false);
+
+  const getActingUserId = (): string => {
+    const saved = localStorage.getItem("nerou_user");
+    if (!saved) return "";
+    try {
+      return JSON.parse(saved)?.id || "";
+    } catch {
+      return "";
+    }
+  };
 
   // New Project Form
   const [isAddingProject, setIsAddingProject] = useState<boolean>(false);
@@ -243,6 +275,121 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
     setProjectImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+
+    setLogoUploading(true);
+    try {
+      const compressed = await compressImage(file);
+      const formData = new FormData();
+      formData.append("files", compressed);
+
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      // ?type=avatar skips the property-photo watermark - correct for a company logo too.
+      const res = await fetch("/api/media/upload?type=avatar", { method: "POST", headers, body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        const newLogoUrl = (data.fileUrls || data.urls || [])[0];
+        if (newLogoUrl) setOrgLogoUrl(newLogoUrl);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "فشل رفع الشعار." : "Failed to upload logo."));
+        setTimeout(() => setToastMessage(""), 4000);
+      }
+    } catch (err) {
+      console.error("Logo upload error:", err);
+      setToastMessage(isRtl ? "فشل رفع الشعار." : "Failed to upload logo.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleSaveOrgProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingOrgProfile(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/organizations/${developer.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ name: orgName, phone: orgPhone, whatsapp: orgWhatsapp, website: orgWebsite, logoUrl: orgLogoUrl })
+      });
+
+      if (res.ok) {
+        onRefreshAll();
+        setToastMessage(isRtl ? "تم حفظ ملف الشركة بنجاح!" : "Company profile saved successfully!");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "فشل حفظ ملف الشركة." : "Failed to save company profile."));
+      }
+      setTimeout(() => setToastMessage(""), 4000);
+    } catch (err) {
+      console.error("Save org profile error:", err);
+      setToastMessage(isRtl ? "فشل حفظ ملف الشركة." : "Failed to save company profile.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setSavingOrgProfile(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const actingUserId = getActingUserId();
+    if (!actingUserId) {
+      setToastMessage(isRtl ? "تعذر تحديد المستخدم الحالي. يرجى إعادة تسجيل الدخول." : "Could not determine the current user. Please sign in again.");
+      setTimeout(() => setToastMessage(""), 4000);
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setToastMessage(isRtl ? "كلمتا المرور الجديدتان غير متطابقتين." : "New password and confirmation do not match.");
+      setTimeout(() => setToastMessage(""), 4000);
+      return;
+    }
+    if (newPassword.length < 8) {
+      setToastMessage(isRtl ? "يجب أن تتكون كلمة المرور الجديدة من 8 أحرف على الأقل." : "New password must be at least 8 characters long.");
+      setTimeout(() => setToastMessage(""), 4000);
+      return;
+    }
+
+    setPasswordChanging(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/users/${actingUserId}/change-password`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setToastMessage(isRtl ? "تم تغيير كلمة المرور بنجاح!" : "Password changed successfully!");
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+      } else {
+        setToastMessage(data.error || (isRtl ? "فشل تغيير كلمة المرور." : "Failed to change password."));
+      }
+      setTimeout(() => setToastMessage(""), 4000);
+    } catch (err) {
+      console.error("Change password error:", err);
+      setToastMessage(isRtl ? "فشل تغيير كلمة المرور." : "Failed to change password.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setPasswordChanging(false);
+    }
+  };
+
   // Stats calculation
   const totalProjects = projects.length;
   const totalUnits = properties.length;
@@ -287,11 +434,161 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
+          <button
+            onClick={() => setActiveTab("profile")}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "profile" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+          >
+            {isRtl ? "الإعدادات" : "Profile"}
+          </button>
         </div>
       </div>
 
       {/* VERIFICATION TAB */}
       {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} />}
+
+      {/* PROFILE / SETTINGS TAB */}
+      {activeTab === "profile" && (
+        <div className="space-y-6">
+          <form onSubmit={handleSaveOrgProfile} className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4 text-xs">
+            <div className="flex items-center gap-4 border-b border-[#f2ede8] pb-4">
+              <div className="relative shrink-0">
+                {orgLogoUrl ? (
+                  <img src={orgLogoUrl} alt={orgName} className="w-16 h-16 rounded-xl object-cover border border-[#e6e2de]" />
+                ) : (
+                  <div className="w-16 h-16 bg-[#bf9b30] text-black font-bold text-xl rounded-xl flex items-center justify-center">
+                    {orgName.charAt(0)}
+                  </div>
+                )}
+                <label
+                  htmlFor="developer-logo-upload"
+                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#1c1a17] hover:bg-[#bf9b30] text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
+                  title={isRtl ? "تغيير الشعار" : "Change logo"}
+                >
+                  {logoUploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                </label>
+                <input
+                  id="developer-logo-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={logoUploading}
+                  onChange={handleLogoUpload}
+                />
+              </div>
+              <div>
+                <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
+                  <Settings size={14} className="text-[#bf9b30]" />
+                  <span>{isRtl ? "ملف الشركة المطورة" : "Developer Company Profile"}</span>
+                </h4>
+                <p className="text-[10px] text-[#6e6b66] mt-0.5">{isRtl ? "قم بتحديث شعار الشركة وبيانات التواصل الرسمية." : "Update your company logo and official contact details."}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "اسم الشركة" : "Company Name"}</label>
+                <input
+                  type="text"
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم الهاتف" : "Phone Number"}</label>
+                <input
+                  type="text"
+                  value={orgPhone}
+                  onChange={(e) => setOrgPhone(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم واتساب" : "WhatsApp Number"}</label>
+                <input
+                  type="text"
+                  value={orgWhatsapp}
+                  onChange={(e) => setOrgWhatsapp(e.target.value)}
+                  placeholder="+97433334444"
+                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الموقع الإلكتروني" : "Website"}</label>
+                <input
+                  type="text"
+                  value={orgWebsite}
+                  onChange={(e) => setOrgWebsite(e.target.value)}
+                  placeholder="https://"
+                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-[#f2ede8]">
+              <button
+                type="submit"
+                disabled={savingOrgProfile}
+                className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+              >
+                {savingOrgProfile ? (isRtl ? "جارٍ الحفظ..." : "Saving...") : (isRtl ? "حفظ ملف الشركة" : "Save Company Profile")}
+              </button>
+            </div>
+          </form>
+
+          <form onSubmit={handleChangePassword} className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4 text-xs">
+            <div className="border-b border-[#f2ede8] pb-3 flex items-center gap-2">
+              <Lock size={16} className="text-[#bf9b30]" />
+              <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "تغيير كلمة المرور" : "Change Password"}</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "كلمة المرور الحالية" : "Current Password"}</label>
+                <input
+                  type="password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "كلمة المرور الجديدة" : "New Password"}</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "تأكيد كلمة المرور الجديدة" : "Confirm New Password"}</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-[#f2ede8]">
+              <button
+                type="submit"
+                disabled={passwordChanging}
+                className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+              >
+                {passwordChanging ? (isRtl ? "جارٍ التحديث..." : "Updating...") : (isRtl ? "تغيير كلمة المرور" : "Change Password")}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* PROJECTS TAB */}
       {activeTab === "projects" && (
