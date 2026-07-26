@@ -44,11 +44,15 @@ export default function SupportTicketsView({
     if (!currentUser) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/support/tickets");
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/support/tickets", {
+        headers: token ? { "Authorization": `Bearer ${token}` } : {}
+      });
       if (res.ok) {
+        // Server now scopes results to the authenticated caller already - no client-side
+        // filtering needed (and no other user's tickets are ever sent to the browser).
         const data = await res.json();
-        const userTickets = data.filter((t: any) => t.userEmail === userEmail || t.userId === userId);
-        setTickets(userTickets);
+        setTickets(data);
       }
     } catch (err) {
       console.error(err);

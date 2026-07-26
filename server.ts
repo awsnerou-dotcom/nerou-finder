@@ -2988,15 +2988,15 @@ app.post("/api/admin/help", (req, res) => {
 // =============================================================================
 // SUPPORT TICKET ENDPOINTS
 // =============================================================================
-app.get("/api/support/tickets", (req, res) => {
-  const { userId, email } = req.query;
+// Scoped strictly to the authenticated caller's own tickets - never trust a client-supplied
+// userId/email query param, or any logged-in visitor could read every user's support tickets
+// (names, emails, phone numbers) platform-wide. Admin-wide ticket access is a separate,
+// admin-gated endpoint (GET /api/admin/support/tickets).
+app.get("/api/support/tickets", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
   const db = readDb();
   let tickets = db.supportTickets || [];
-  if (userId) {
-    tickets = tickets.filter(t => t.userId === userId);
-  } else if (email) {
-    tickets = tickets.filter(t => t.userEmail === email);
-  }
+  tickets = tickets.filter(t => t.userId === authReq.user?.id || t.userEmail === authReq.user?.email);
   res.json(tickets);
 });
 
