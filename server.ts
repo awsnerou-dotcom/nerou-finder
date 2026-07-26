@@ -3810,11 +3810,23 @@ app.post("/api/reviews", authMiddleware, (req, res) => {
   });
   
   if (!hasInquiry) {
-    return res.status(403).json({ 
-      error: "Eligibility Check Failed: You can only review an agent or agency that you have actively submitted a Lead or Viewing request to." 
+    return res.status(403).json({
+      error: "Eligibility Check Failed: You can only review an agent or agency that you have actively submitted a Lead or Viewing request to."
     });
   }
-  
+
+  // Duplicate prevention: one review per reviewer per target (regardless of its current
+  // moderation status - resubmitting after a REJECTED or while a PENDING is outstanding
+  // is not allowed; use the admin edit/delete flow instead).
+  const alreadyReviewed = db.reviews.some(
+    r => r.reviewerId === user.id && r.targetType === targetType && r.targetId === targetId
+  );
+  if (alreadyReviewed) {
+    return res.status(400).json({
+      error: "You have already submitted a review for this profile."
+    });
+  }
+
   const id = `review-${Date.now()}`;
   const newReview = {
     id,

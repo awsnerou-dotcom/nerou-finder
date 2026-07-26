@@ -1317,6 +1317,13 @@ export default function VisitorExperience({
           isCompared={comparedPropertyIds.includes(selectedProperty.id)}
           isRtl={isRtl}
           currentUser={currentUser}
+          onViewAgentProfile={() => {
+            if (responsibleAgent) {
+              setSelectedAgentProfile(responsibleAgent);
+            } else if (responsibleOrg) {
+              setSelectedOrgProfile(responsibleOrg);
+            }
+          }}
         />
       )}
 

@@ -44,6 +44,7 @@ interface PropertyDetailViewProps {
   allProperties?: Property[];
   onSelectProperty?: (property: Property) => void;
   currentUser?: { fullName?: string; email?: string } | null;
+  onViewAgentProfile?: () => void;
 }
 
 export default function PropertyDetailView({
@@ -57,6 +58,7 @@ export default function PropertyDetailView({
   allProperties = [],
   onSelectProperty,
   currentUser,
+  onViewAgentProfile,
 }: PropertyDetailViewProps) {
   const { activeCurrency, formatPrice, convertPrice, getCurrencySymbol } = useCurrency();
   // Gallery State
@@ -1420,6 +1422,16 @@ export default function PropertyDetailView({
                       <span>{isRtl ? "اتصال" : "Call"}</span>
                     </a>
                   </div>
+
+                  {onViewAgentProfile && (agentInfo?.hasAssignedAgent || agentInfo?.orgName) && (
+                    <button
+                      onClick={onViewAgentProfile}
+                      className="w-full px-3 py-2 bg-white hover:bg-[#BF9B30]/10 border border-[#E6E2DE] hover:border-[#BF9B30] text-[#1A1918] rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Award size={13} className="text-[#BF9B30]" />
+                      <span>{isRtl ? "عرض الملف الشخصي والتقييمات" : "View Full Profile & Reviews"}</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* SCHEDULE VIEWING INTERACTIVE FORM */}
