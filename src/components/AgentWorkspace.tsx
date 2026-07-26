@@ -25,7 +25,12 @@ import {
   AlertTriangle,
   CreditCard,
   Camera,
-  Lock
+  Lock,
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -141,8 +146,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [confirmNewPassword, setConfirmNewPassword] = useState<string>("");
   const [passwordChanging, setPasswordChanging] = useState<boolean>(false);
 
-  // Listing Form States (Create Property)
+  // Listing Form States (Create Property) - restructured as a 5-step wizard. All field state
+  // below is unchanged from the original single-page form; only the JSX that renders it (and
+  // when handleAddListing fires) changed.
   const [isAddingListing, setIsAddingListing] = useState<boolean>(false);
+  const [wizardStep, setWizardStep] = useState<number>(1);
   const [listingTitle, setListingTitle] = useState<string>("");
   const [listingPrice, setListingPrice] = useState<string>("");
   const [listingType, setListingType] = useState<PropertyType>(PropertyType.APARTMENT);
@@ -171,6 +179,80 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [uploading, setUploading] = useState<boolean>(false);
   const [listingAmenities, setListingAmenities] = useState<string>("Pool, Gym, Parking");
 
+  // Draft auto-save: persist in-progress wizard state to localStorage, keyed per-agent so it
+  // never collides with another agent's draft on a shared browser profile. Restored on mount
+  // below and cleared on successful submission. This is a nice-to-have per spec - kept simple
+  // (raw JSON blob of primitive field state, no debouncing needed since writes are cheap).
+  const listingDraftKey = `nerou_agent_listing_draft_${agent.id}`;
+  // Guards the "default municipality to Doha" effect below from clobbering a municipality that
+  // was just restored from a saved draft (the fetch resolves after mount, i.e. after restore).
+  const restoredMunicipalityRef = React.useRef<boolean>(false);
+  const draftRestoreAttempted = React.useRef<boolean>(false);
+
+  // Restore an in-progress listing draft (if any) on first mount for this agent.
+  useEffect(() => {
+    if (draftRestoreAttempted.current) return;
+    draftRestoreAttempted.current = true;
+    try {
+      const raw = localStorage.getItem(listingDraftKey);
+      if (!raw) return;
+      const draft = JSON.parse(raw);
+      const hasContent = !!(draft.listingTitle || draft.listingPrice || draft.listingDesc || draft.selectedMunicipality || (draft.listingImages && draft.listingImages.length > 0));
+      if (!hasContent) return;
+
+      if (draft.selectedMunicipality) restoredMunicipalityRef.current = true;
+
+      setWizardStep(draft.wizardStep || 1);
+      setListingTitle(draft.listingTitle || "");
+      setListingPrice(draft.listingPrice || "");
+      setListingType(draft.listingType || PropertyType.APARTMENT);
+      setListingTrans(draft.listingTrans || TransactionType.FOR_RENT);
+      setListingArea(draft.listingArea || "");
+      setListingBeds(draft.listingBeds || "2");
+      setListingBaths(draft.listingBaths || "2");
+      setListingCompletionYear(draft.listingCompletionYear || "");
+      setListingFurnishingStatus(draft.listingFurnishingStatus || "");
+      setListingMetroStation(draft.listingMetroStation || "");
+      setListingMetroWalkingMinutes(draft.listingMetroWalkingMinutes || "");
+      setListingUtilitiesIncluded(draft.listingUtilitiesIncluded || "");
+      setListingParkingType(draft.listingParkingType || "");
+      setListingParkingSpaces(draft.listingParkingSpaces || "");
+      setListingTenureType(draft.listingTenureType || "");
+      setSelectedMunicipality(draft.selectedMunicipality || "");
+      setSelectedArea(draft.selectedArea || "");
+      setListingDesc(draft.listingDesc || "");
+      setListingImages(draft.listingImages || []);
+      setListingAmenities(draft.listingAmenities || "Pool, Gym, Parking");
+      setIsAddingListing(true);
+      setToastMessage(isRtl ? "تم استرجاع مسودة الإعلان المحفوظة." : "Restored your saved listing draft.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } catch (e) {
+      console.error("Failed to restore listing draft:", e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent.id]);
+
+  // Persist the in-progress wizard state on every change while the form is open.
+  useEffect(() => {
+    if (!isAddingListing) return;
+    try {
+      const draft = {
+        wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
+        listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
+        listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
+        selectedMunicipality, selectedArea, listingDesc, listingImages, listingAmenities
+      };
+      localStorage.setItem(listingDraftKey, JSON.stringify(draft));
+    } catch (e) {
+      console.error("Failed to save listing draft:", e);
+    }
+  }, [
+    isAddingListing, wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
+    listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
+    listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
+    selectedMunicipality, selectedArea, listingDesc, listingImages, listingAmenities, listingDraftKey
+  ]);
+
   useEffect(() => {
     fetchLeadsAndProperties();
     // Load central dynamic locations list
@@ -178,9 +260,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       .then(res => res.json())
       .then(data => {
         setLocations(data);
-        // Default to Doha if exists
+        // Default to Doha if exists - unless a saved draft already restored a specific
+        // municipality choice, in which case don't clobber it.
         const doha = data.find((l: any) => l.name === "Doha" && l.type === "MUNICIPALITY");
-        if (doha) setSelectedMunicipality(doha.id);
+        if (doha && !restoredMunicipalityRef.current) setSelectedMunicipality(doha.id);
       })
       .catch(e => console.error("Error loading locations:", e));
   }, [agent.id]);
@@ -498,6 +581,71 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     setListingImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Simple up/down reordering for the photo grid - no drag-and-drop library required.
+  const moveListingImage = (index: number, direction: -1 | 1) => {
+    setListingImages(prev => {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const updated = [...prev];
+      const tmp = updated[index];
+      updated[index] = updated[targetIndex];
+      updated[targetIndex] = tmp;
+      return updated;
+    });
+  };
+
+  // 5-step "Add Listing" wizard: names + per-step validation. Validation checks mirror exactly
+  // what the original single-page form already enforced (via `required` attributes and the
+  // guard at the top of handleAddListing) - just moved to fire on "Next" instead of only at
+  // final submit. Location (step 2) and Photos (step 4) carry no hard requirement in the
+  // original form either (location silently falls back to Doha/West Bay), so none is added here.
+  const LISTING_WIZARD_STEPS: { step: number; en: string; ar: string }[] = [
+    { step: 1, en: "Type & Purpose", ar: "النوع والغرض" },
+    { step: 2, en: "Location", ar: "الموقع" },
+    { step: 3, en: "Specifications", ar: "المواصفات" },
+    { step: 4, en: "Photos", ar: "الصور" },
+    { step: 5, en: "Description & Review", ar: "الوصف والمراجعة" }
+  ];
+
+  const getListingStepError = (step: number): string | null => {
+    switch (step) {
+      case 1:
+        if (!listingTitle.trim()) return isRtl ? "يرجى إدخال عنوان الإعلان." : "Please enter a listing title.";
+        if (!listingType) return isRtl ? "يرجى اختيار نوع العقار." : "Please select a property type.";
+        if (!listingTrans) return isRtl ? "يرجى اختيار نوع المعاملة." : "Please select a transaction type.";
+        return null;
+      case 3:
+        if (!listingPrice || Number(listingPrice) < 0) return isRtl ? "يرجى إدخال سعر صالح." : "Please enter a valid price.";
+        if (!listingArea || Number(listingArea) < 0) return isRtl ? "يرجى إدخال مساحة صالحة." : "Please enter a valid area size.";
+        return null;
+      case 5:
+        if (!listingDesc.trim()) return isRtl ? "يرجى إدخال وصف للعقار." : "Please enter a property description.";
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const handleWizardNext = () => {
+    const err = getListingStepError(wizardStep);
+    if (err) {
+      setToastMessage(err);
+      setTimeout(() => setToastMessage(""), 4000);
+      return;
+    }
+    setWizardStep(s => Math.min(LISTING_WIZARD_STEPS.length, s + 1));
+  };
+
+  const handleWizardBack = () => {
+    setWizardStep(s => Math.max(1, s - 1));
+  };
+
+  // Clicking a step "pill" in the progress indicator only allows going BACK to a step already
+  // visited - forward jumps must go through handleWizardNext so validation still applies.
+  const goToWizardStep = (step: number) => {
+    if (step <= wizardStep) setWizardStep(step);
+  };
+
   const handleAddListing = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!listingTitle || !listingPrice || !listingDesc) return;
@@ -558,6 +706,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
       if (res.ok) {
         setIsAddingListing(false);
+        setWizardStep(1);
         setListingTitle("");
         setListingPrice("");
         setListingArea("");
@@ -572,6 +721,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         setListingParkingType("");
         setListingParkingSpaces("");
         setListingTenureType("");
+        // Draft fully consumed - clear it so a stale draft doesn't reappear on next visit.
+        try { localStorage.removeItem(listingDraftKey); } catch (e) { console.error(e); }
         fetchLeadsAndProperties();
         onRefreshAll();
         setToastMessage(isRtl ? "تمت إضافة العقار بنجاح وبانتظار المراجعة والتوثيق!" : "Property listing successfully created and pending review/approval!");
@@ -901,157 +1052,355 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           )}
 
           {isAddingListing && (
-            <form onSubmit={handleAddListing} className="bg-white p-5 rounded-xl border border-[#bf9b30]/30 space-y-4 animate-in fade-in duration-200 text-xs">
-              <h5 className="font-serif text-sm font-bold text-[#1a1918] border-b border-[#f2ede8] pb-2">
-                {isRtl ? "إدخال بيانات عقار جديد" : "Provide New Property Specifications"}
-              </h5>
+            <form
+              onSubmit={handleAddListing}
+              onKeyDown={(e) => {
+                // Only the final step's submit button should ever fire this form's submission -
+                // block implicit Enter-to-submit on earlier steps so it always goes through the
+                // wizard's own Next/validation flow instead.
+                if (e.key === "Enter" && wizardStep < LISTING_WIZARD_STEPS.length && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+                  e.preventDefault();
+                }
+              }}
+              className="bg-white p-5 rounded-xl border border-[#bf9b30]/30 space-y-5 animate-in fade-in duration-200 text-xs"
+            >
+              <div>
+                <h5 className="font-serif text-sm font-bold text-[#1a1918] pb-2">
+                  {isRtl ? "إدخال بيانات عقار جديد" : "Provide New Property Specifications"}
+                </h5>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "عنوان الإعلان" : "Listing Title"}</label>
-                  <input
-                    type="text"
-                    required
-                    value={listingTitle}
-                    onChange={(e) => setListingTitle(e.target.value)}
-                    placeholder="e.g. Elegant 2-BR West Bay Penthouse"
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
-                  />
+                {/* Progress indicator - "Step X of 5" with clickable back-navigation to any
+                    already-visited step. Forward jumps must go through Next's validation. */}
+                <div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-2">
+                  {LISTING_WIZARD_STEPS.map((s, idx) => {
+                    const isActive = s.step === wizardStep;
+                    const isDone = s.step < wizardStep;
+                    const isClickable = s.step <= wizardStep;
+                    return (
+                      <React.Fragment key={s.step}>
+                        <button
+                          type="button"
+                          onClick={() => goToWizardStep(s.step)}
+                          disabled={!isClickable}
+                          className={`flex items-center gap-1.5 px-2 py-1 rounded-lg shrink-0 text-[10px] sm:text-xs font-semibold transition-colors ${
+                            isActive ? "bg-[#1a1918] text-white" :
+                            isDone ? "bg-[#f2ede8] text-[#1a1918] cursor-pointer hover:bg-[#e6e2de]" :
+                            "text-[#a9a49d] cursor-not-allowed"
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 ${
+                            isActive ? "bg-[#bf9b30] text-white" : isDone ? "bg-[#bf9b30]/70 text-white" : "bg-[#e6e2de] text-[#6e6b66]"
+                          }`}>
+                            {isDone ? <Check size={10} /> : s.step}
+                          </span>
+                          <span className="whitespace-nowrap">{isRtl ? s.ar : s.en}</span>
+                        </button>
+                        {idx < LISTING_WIZARD_STEPS.length - 1 && (
+                          <div className={`h-px w-3 sm:w-6 shrink-0 ${s.step < wizardStep ? "bg-[#bf9b30]" : "bg-[#e6e2de]"}`} />
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
-
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "السعر (ريال قطري)" : "Price (QAR)"}</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    required
-                    min="0"
-                    value={listingPrice}
-                    onChange={(e) => setListingPrice(e.target.value)}
-                    placeholder="e.g. 10000"
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المساحة (متر مربع)" : "Area Size (SQM)"}</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    required
-                    min="0"
-                    value={listingArea}
-                    onChange={(e) => setListingArea(e.target.value)}
-                    placeholder="e.g. 140"
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
-                  />
-                </div>
+                <p className="text-[10px] text-[#6e6b66] border-b border-[#f2ede8] pb-3">
+                  {isRtl
+                    ? `الخطوة ${wizardStep} من ${LISTING_WIZARD_STEPS.length}: ${LISTING_WIZARD_STEPS[wizardStep - 1].ar}`
+                    : `Step ${wizardStep} of ${LISTING_WIZARD_STEPS.length}: ${LISTING_WIZARD_STEPS[wizardStep - 1].en}`}
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع العقار" : "Property Type"}</label>
-                  <select
-                    value={listingType}
-                    onChange={(e) => setListingType(e.target.value as PropertyType)}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
-                  >
-                    <option value={PropertyType.APARTMENT}>Apartment</option>
-                    <option value={PropertyType.VILLA}>Villa</option>
-                    <option value={PropertyType.TOWNHOUSE}>Townhouse</option>
-                    <option value={PropertyType.PENTHOUSE}>Penthouse</option>
-                    <option value={PropertyType.COMPOUND}>Compound</option>
-                    <option value={PropertyType.STUDIO}>Studio</option>
-                    <option value={PropertyType.ROOM}>Room</option>
-                    <option value={PropertyType.OFFICE}>Office</option>
-                    <option value={PropertyType.RETAIL}>Retail</option>
-                    <option value={PropertyType.SHOP}>Shop</option>
-                    <option value={PropertyType.WAREHOUSE}>Warehouse</option>
-                    <option value={PropertyType.BUILDING}>Building</option>
-                    <option value={PropertyType.LAND}>Land</option>
-                    <option value={PropertyType.HOTEL_APARTMENT}>Hotel Apartment</option>
-                    <option value={PropertyType.CHALET}>Chalet</option>
-                    <option value={PropertyType.FARM}>Farm</option>
-                    <option value={PropertyType.OTHER}>Other</option>
-                  </select>
-                </div>
+              {/* STEP 1: Property Type & Purpose */}
+              {wizardStep === 1 && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "عنوان الإعلان" : "Listing Title"}</label>
+                    <input
+                      type="text"
+                      required
+                      value={listingTitle}
+                      onChange={(e) => setListingTitle(e.target.value)}
+                      placeholder="e.g. Elegant 2-BR West Bay Penthouse"
+                      className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع المعاملة" : "Transaction"}</label>
-                  <select
-                    value={listingTrans}
-                    onChange={(e) => setListingTrans(e.target.value as TransactionType)}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
-                  >
-                    <option value={TransactionType.FOR_RENT}>For Rent</option>
-                    <option value={TransactionType.FOR_SALE}>For Sale</option>
-                    <option value={TransactionType.OFF_PLAN}>Off-Plan</option>
-                  </select>
-                </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع العقار" : "Property Type"}</label>
+                      <select
+                        value={listingType}
+                        onChange={(e) => setListingType(e.target.value as PropertyType)}
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                      >
+                        <option value={PropertyType.APARTMENT}>Apartment</option>
+                        <option value={PropertyType.VILLA}>Villa</option>
+                        <option value={PropertyType.TOWNHOUSE}>Townhouse</option>
+                        <option value={PropertyType.PENTHOUSE}>Penthouse</option>
+                        <option value={PropertyType.COMPOUND}>Compound</option>
+                        <option value={PropertyType.STUDIO}>Studio</option>
+                        <option value={PropertyType.ROOM}>Room</option>
+                        <option value={PropertyType.OFFICE}>Office</option>
+                        <option value={PropertyType.RETAIL}>Retail</option>
+                        <option value={PropertyType.SHOP}>Shop</option>
+                        <option value={PropertyType.WAREHOUSE}>Warehouse</option>
+                        <option value={PropertyType.BUILDING}>Building</option>
+                        <option value={PropertyType.LAND}>Land</option>
+                        <option value={PropertyType.HOTEL_APARTMENT}>Hotel Apartment</option>
+                        <option value={PropertyType.CHALET}>Chalet</option>
+                        <option value={PropertyType.FARM}>Farm</option>
+                        <option value={PropertyType.OTHER}>Other</option>
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "غرف النوم" : "Bedrooms"}</label>
-                  <select
-                    value={listingBeds}
-                    onChange={(e) => setListingBeds(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
-                  >
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4+</option>
-                  </select>
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع المعاملة" : "Transaction"}</label>
+                      <select
+                        value={listingTrans}
+                        onChange={(e) => setListingTrans(e.target.value as TransactionType)}
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                      >
+                        <option value={TransactionType.FOR_RENT}>For Rent</option>
+                        <option value={TransactionType.FOR_SALE}>For Sale</option>
+                        <option value={TransactionType.OFF_PLAN}>Off-Plan</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
+              )}
 
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الحمامات" : "Bathrooms"}</label>
-                  <select
-                    value={listingBaths}
-                    onChange={(e) => setListingBaths(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
-                  >
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4+</option>
-                  </select>
+              {/* STEP 2: Location */}
+              {wizardStep === 2 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "البلدية / المدينة" : "Municipality"}</label>
+                    <select
+                      value={selectedMunicipality}
+                      onChange={(e) => {
+                        setSelectedMunicipality(e.target.value);
+                        setSelectedArea("");
+                      }}
+                      className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                    >
+                      <option value="">Select Municipality</option>
+                      {locations.filter(l => l.type === "MUNICIPALITY" && l.isActive).map(muni => (
+                        <option key={muni.id} value={muni.id}>{muni.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الحي / المنطقة" : "Area / District"}</label>
+                    <select
+                      value={selectedArea}
+                      disabled={!selectedMunicipality}
+                      onChange={(e) => setSelectedArea(e.target.value)}
+                      className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg disabled:opacity-50"
+                    >
+                      <option value="">Select Area / District</option>
+                      {locations.filter(l => l.parentId === selectedMunicipality && l.isActive).map(area => (
+                        <option key={area.id} value={area.id}>{area.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "البلدية / المدينة" : "Municipality"}</label>
-                  <select
-                    value={selectedMunicipality}
-                    onChange={(e) => {
-                      setSelectedMunicipality(e.target.value);
-                      setSelectedArea("");
-                    }}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
-                  >
-                    <option value="">Select Municipality</option>
-                    {locations.filter(l => l.type === "MUNICIPALITY" && l.isActive).map(muni => (
-                      <option key={muni.id} value={muni.id}>{muni.name}</option>
-                    ))}
-                  </select>
+              {/* STEP 3: Specifications */}
+              {wizardStep === 3 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "السعر (ريال قطري)" : "Price (QAR)"}</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        required
+                        min="0"
+                        value={listingPrice}
+                        onChange={(e) => setListingPrice(e.target.value)}
+                        placeholder="e.g. 10000"
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المساحة (متر مربع)" : "Area Size (SQM)"}</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        required
+                        min="0"
+                        value={listingArea}
+                        onChange={(e) => setListingArea(e.target.value)}
+                        placeholder="e.g. 140"
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "غرف النوم" : "Bedrooms"}</label>
+                      <select
+                        value={listingBeds}
+                        onChange={(e) => setListingBeds(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                      >
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4+</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الحمامات" : "Bathrooms"}</label>
+                      <select
+                        value={listingBaths}
+                        onChange={(e) => setListingBaths(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                      >
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4+</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <h5 className="font-serif text-sm font-bold text-[#1a1918] border-b border-[#f2ede8] pb-2 pt-2">
+                    {isRtl ? "مواصفات قطرية إضافية" : "Qatar Specifications"}
+                  </h5>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "سنة الإنجاز" : "Completion Year"}</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="1950"
+                        max="2100"
+                        value={listingCompletionYear}
+                        onChange={(e) => setListingCompletionYear(e.target.value)}
+                        placeholder="e.g. 2026"
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "حالة الفرش" : "Furnishing Status"}</label>
+                      <select
+                        value={listingFurnishingStatus}
+                        onChange={(e) => setListingFurnishingStatus(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                      >
+                        <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
+                        <option value="FULLY_FURNISHED">{isRtl ? "مؤثث بالكامل" : "Fully Furnished"}</option>
+                        <option value="SEMI_FURNISHED">{isRtl ? "مؤثث جزئياً" : "Semi Furnished"}</option>
+                        <option value="UNFURNISHED">{isRtl ? "غير مؤثث" : "Unfurnished"}</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع الملكية" : "Tenure Type"}</label>
+                      <select
+                        value={listingTenureType}
+                        onChange={(e) => setListingTenureType(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                      >
+                        <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
+                        <option value="FREEHOLD">{isRtl ? "تملك حر" : "Freehold"}</option>
+                        <option value="USUFRUCT">{isRtl ? "حق الانتفاع" : "Usufruct"}</option>
+                        <option value="LOCAL_OWNERSHIP_ONLY">{isRtl ? "تملك للمواطنين فقط" : "Local Ownership Only"}</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المرافق مشمولة" : "Utilities Included"}</label>
+                      <select
+                        value={listingUtilitiesIncluded}
+                        onChange={(e) => setListingUtilitiesIncluded(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                      >
+                        <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
+                        <option value="YES">{isRtl ? "نعم" : "Yes"}</option>
+                        <option value="NO">{isRtl ? "لا" : "No"}</option>
+                        <option value="PARTIAL">{isRtl ? "جزئياً" : "Partial"}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "أقرب محطة مترو" : "Nearest Metro Station"}</label>
+                      <select
+                        value={listingMetroStation}
+                        onChange={(e) => setListingMetroStation(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                      >
+                        <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
+                        {DOHA_METRO_STATIONS.map(station => (
+                          <option key={station} value={station}>{station}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "دقائق المشي للمترو" : "Walking Minutes to Metro"}</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        value={listingMetroWalkingMinutes}
+                        onChange={(e) => setListingMetroWalkingMinutes(e.target.value)}
+                        placeholder="e.g. 5"
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع مواقف السيارات" : "Parking Type"}</label>
+                      <select
+                        value={listingParkingType}
+                        onChange={(e) => setListingParkingType(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                      >
+                        <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
+                        <option value="COVERED">{isRtl ? "مغطى" : "Covered"}</option>
+                        <option value="UNCOVERED">{isRtl ? "مكشوف" : "Uncovered"}</option>
+                        <option value="GARAGE">{isRtl ? "كراج" : "Garage"}</option>
+                        <option value="NONE">{isRtl ? "لا يوجد" : "None"}</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "عدد مواقف السيارات" : "Parking Spaces"}</label>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min="0"
+                        value={listingParkingSpaces}
+                        onChange={(e) => setListingParkingSpaces(e.target.value)}
+                        placeholder="e.g. 2"
+                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المرافق (مفصولة بفاصلة)" : "Amenities (Comma separated)"}</label>
+                    <input
+                      type="text"
+                      value={listingAmenities}
+                      onChange={(e) => setListingAmenities(e.target.value)}
+                      placeholder="e.g. Pool, Gym, Parking, Balcony"
+                      className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                    />
+                  </div>
                 </div>
+              )}
 
+              {/* STEP 4: Photos */}
+              {wizardStep === 4 && (
                 <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الحي / المنطقة" : "Area / District"}</label>
-                  <select
-                    value={selectedArea}
-                    disabled={!selectedMunicipality}
-                    onChange={(e) => setSelectedArea(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg disabled:opacity-50"
-                  >
-                    <option value="">Select Area / District</option>
-                    {locations.filter(l => l.parentId === selectedMunicipality && l.isActive).map(area => (
-                      <option key={area.id} value={area.id}>{area.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="col-span-1 md:col-span-2">
                   <div className="flex items-center justify-between mb-1">
                     <label className="block font-medium text-[#6e6b66]">{isRtl ? "صور العقار (تحميل متعدد)" : "Property Photos (Multi-upload)"}</label>
                     <span className={`text-xs font-semibold ${listingImages.length >= MAX_LISTING_IMAGES ? "text-red-600" : "text-[#6e6b66]"}`}>
@@ -1099,180 +1448,182 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   )}
 
                   {listingImages.length > 0 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-3">
-                      {listingImages.map((imgUrl, index) => (
-                        <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-[#e6e2de] bg-[#fdfdfc] shadow-2xs">
-                          <img src={imgUrl} alt="" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => removeUploadedImage(index)}
-                            className="absolute top-1 right-1 p-1 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-md cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    <>
+                      <p className="text-[10px] text-[#6e6b66] mt-3">
+                        {isRtl
+                          ? "استخدم الأسهم لإعادة ترتيب الصور - الصورة الأولى هي الصورة الرئيسية للإعلان."
+                          : "Use the arrows to reorder photos - the first photo is the listing's main cover image."}
+                      </p>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-2">
+                        {listingImages.map((imgUrl, index) => (
+                          <div key={imgUrl + index} className="relative group aspect-square rounded-lg overflow-hidden border border-[#e6e2de] bg-[#fdfdfc] shadow-2xs">
+                            <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                            {index === 0 && (
+                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-[#1a1918]/80 text-white text-[8px] font-bold rounded">
+                                {isRtl ? "الرئيسية" : "COVER"}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => removeUploadedImage(index)}
+                              className="absolute top-1 right-1 p-1 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-md cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                            <div className="absolute top-1 left-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                              <button
+                                type="button"
+                                onClick={() => moveListingImage(index, -1)}
+                                disabled={index === 0}
+                                className="p-0.5 bg-white/90 hover:bg-white text-[#1a1918] rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                title={isRtl ? "تحريك للأعلى" : "Move earlier"}
+                              >
+                                <ChevronUp size={12} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveListingImage(index, 1)}
+                                disabled={index === listingImages.length - 1}
+                                className="p-0.5 bg-white/90 hover:bg-white text-[#1a1918] rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                title={isRtl ? "تحريك للأسفل" : "Move later"}
+                              >
+                                <ChevronDown size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </div>
-              </div>
+              )}
 
-              <h5 className="font-serif text-sm font-bold text-[#1a1918] border-b border-[#f2ede8] pb-2 pt-2">
-                {isRtl ? "مواصفات قطرية إضافية" : "Qatar Specifications"}
-              </h5>
+              {/* STEP 5: Description & Review */}
+              {wizardStep === 5 && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "شرح وتفاصيل الإعلان" : "Property Details & Descriptions"}</label>
+                    <textarea
+                      rows={3}
+                      required
+                      value={listingDesc}
+                      onChange={(e) => setListingDesc(e.target.value)}
+                      placeholder="Provide comprehensive details about amenities, location near schools, views..."
+                      className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                    ></textarea>
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "سنة الإنجاز" : "Completion Year"}</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min="1950"
-                    max="2100"
-                    value={listingCompletionYear}
-                    onChange={(e) => setListingCompletionYear(e.target.value)}
-                    placeholder="e.g. 2026"
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
-                  />
+                  {(() => {
+                    const muniItem = locations.find(l => l.id === selectedMunicipality);
+                    const areaItem = locations.find(l => l.id === selectedArea);
+                    return (
+                      <div className="border-t border-[#f2ede8] pt-4 space-y-3">
+                        <h5 className="font-serif text-sm font-bold text-[#1a1918]">
+                          {isRtl ? "مراجعة الإعلان قبل النشر" : "Review Before Publishing"}
+                        </h5>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-[#fbfaf8] border border-[#e6e2de] rounded-lg p-4">
+                          <div className="flex justify-between sm:block">
+                            <span className="text-[#6e6b66]">{isRtl ? "العنوان" : "Title"}</span>
+                            <span className="font-bold text-[#1a1918] sm:block">{listingTitle || "-"}</span>
+                          </div>
+                          <div className="flex justify-between sm:block">
+                            <span className="text-[#6e6b66]">{isRtl ? "النوع / المعاملة" : "Type / Transaction"}</span>
+                            <span className="font-bold text-[#1a1918] sm:block">{listingType} • {listingTrans}</span>
+                          </div>
+                          <div className="flex justify-between sm:block">
+                            <span className="text-[#6e6b66]">{isRtl ? "الموقع" : "Location"}</span>
+                            <span className="font-bold text-[#1a1918] sm:block">
+                              {(muniItem?.name || "Doha")}{areaItem ? ` › ${areaItem.name}` : ""}
+                            </span>
+                          </div>
+                          <div className="flex justify-between sm:block">
+                            <span className="text-[#6e6b66]">{isRtl ? "السعر" : "Price"}</span>
+                            <span className="font-bold text-[#bf9b30] sm:block">{listingPrice ? `${Number(listingPrice).toLocaleString()} QAR` : "-"}</span>
+                          </div>
+                          <div className="flex justify-between sm:block">
+                            <span className="text-[#6e6b66]">{isRtl ? "المواصفات" : "Specs"}</span>
+                            <span className="font-bold text-[#1a1918] sm:block">
+                              {listingArea || "-"} SQM • {listingBeds} {isRtl ? "غرف" : "bed"} • {listingBaths} {isRtl ? "حمام" : "bath"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between sm:block">
+                            <span className="text-[#6e6b66]">{isRtl ? "الصور" : "Photos"}</span>
+                            <span className="font-bold text-[#1a1918] sm:block">{listingImages.length} / {MAX_LISTING_IMAGES}</span>
+                          </div>
+                          {(listingCompletionYear || listingFurnishingStatus || listingTenureType || listingUtilitiesIncluded || listingMetroStation || listingParkingType) && (
+                            <div className="sm:col-span-2 pt-2 border-t border-[#e6e2de] text-[10px] text-[#6e6b66] space-y-0.5">
+                              {listingCompletionYear && <p>{isRtl ? "سنة الإنجاز" : "Completion Year"}: {listingCompletionYear}</p>}
+                              {listingFurnishingStatus && <p>{isRtl ? "حالة الفرش" : "Furnishing"}: {listingFurnishingStatus}</p>}
+                              {listingTenureType && <p>{isRtl ? "نوع الملكية" : "Tenure"}: {listingTenureType}</p>}
+                              {listingUtilitiesIncluded && <p>{isRtl ? "المرافق" : "Utilities Included"}: {listingUtilitiesIncluded}</p>}
+                              {listingMetroStation && <p>{isRtl ? "المترو" : "Metro"}: {listingMetroStation}{listingMetroWalkingMinutes ? ` (${listingMetroWalkingMinutes} min walk)` : ""}</p>}
+                              {listingParkingType && <p>{isRtl ? "المواقف" : "Parking"}: {listingParkingType}{listingParkingSpaces ? ` × ${listingParkingSpaces}` : ""}</p>}
+                            </div>
+                          )}
+                        </div>
+                        {listingImages.length > 0 && (
+                          <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
+                            {listingImages.map((imgUrl, index) => (
+                              <div key={imgUrl + index} className="aspect-square rounded-md overflow-hidden border border-[#e6e2de]">
+                                <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
+              )}
 
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "حالة الفرش" : "Furnishing Status"}</label>
-                  <select
-                    value={listingFurnishingStatus}
-                    onChange={(e) => setListingFurnishingStatus(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+              {/* Wizard navigation */}
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#f2ede8]">
+                {wizardStep > 1 ? (
+                  <button
+                    type="button"
+                    onClick={handleWizardBack}
+                    className="px-4 py-2 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
-                    <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
-                    <option value="FULLY_FURNISHED">{isRtl ? "مؤثث بالكامل" : "Fully Furnished"}</option>
-                    <option value="SEMI_FURNISHED">{isRtl ? "مؤثث جزئياً" : "Semi Furnished"}</option>
-                    <option value="UNFURNISHED">{isRtl ? "غير مؤثث" : "Unfurnished"}</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع الملكية" : "Tenure Type"}</label>
-                  <select
-                    value={listingTenureType}
-                    onChange={(e) => setListingTenureType(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                    <ArrowLeft size={14} />
+                    {isRtl ? "السابق" : "Back"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddingListing(false)}
+                    className="px-4 py-2 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded-lg font-semibold cursor-pointer"
                   >
-                    <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
-                    <option value="FREEHOLD">{isRtl ? "تملك حر" : "Freehold"}</option>
-                    <option value="USUFRUCT">{isRtl ? "حق الانتفاع" : "Usufruct"}</option>
-                    <option value="LOCAL_OWNERSHIP_ONLY">{isRtl ? "تملك للمواطنين فقط" : "Local Ownership Only"}</option>
-                  </select>
+                    {isRtl ? "إلغاء" : "Cancel"}
+                  </button>
+                )}
+                <div className="flex gap-2">
+                  {wizardStep > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingListing(false)}
+                      className="px-4 py-2 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded-lg font-semibold cursor-pointer"
+                    >
+                      {isRtl ? "إلغاء" : "Cancel"}
+                    </button>
+                  )}
+                  {wizardStep < LISTING_WIZARD_STEPS.length ? (
+                    <button
+                      type="button"
+                      onClick={handleWizardNext}
+                      className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {isRtl ? "التالي" : "Next"}
+                      <ArrowRight size={14} />
+                    </button>
+                  ) : (
+                    <button
+                      type="submit"
+                      className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer"
+                    >
+                      {isRtl ? "نشر الإعلان" : "Publish Listing"}
+                    </button>
+                  )}
                 </div>
-
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المرافق مشمولة" : "Utilities Included"}</label>
-                  <select
-                    value={listingUtilitiesIncluded}
-                    onChange={(e) => setListingUtilitiesIncluded(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
-                  >
-                    <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
-                    <option value="YES">{isRtl ? "نعم" : "Yes"}</option>
-                    <option value="NO">{isRtl ? "لا" : "No"}</option>
-                    <option value="PARTIAL">{isRtl ? "جزئياً" : "Partial"}</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "أقرب محطة مترو" : "Nearest Metro Station"}</label>
-                  <select
-                    value={listingMetroStation}
-                    onChange={(e) => setListingMetroStation(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
-                  >
-                    <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
-                    {DOHA_METRO_STATIONS.map(station => (
-                      <option key={station} value={station}>{station}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "دقائق المشي للمترو" : "Walking Minutes to Metro"}</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    value={listingMetroWalkingMinutes}
-                    onChange={(e) => setListingMetroWalkingMinutes(e.target.value)}
-                    placeholder="e.g. 5"
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع مواقف السيارات" : "Parking Type"}</label>
-                  <select
-                    value={listingParkingType}
-                    onChange={(e) => setListingParkingType(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
-                  >
-                    <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
-                    <option value="COVERED">{isRtl ? "مغطى" : "Covered"}</option>
-                    <option value="UNCOVERED">{isRtl ? "مكشوف" : "Uncovered"}</option>
-                    <option value="GARAGE">{isRtl ? "كراج" : "Garage"}</option>
-                    <option value="NONE">{isRtl ? "لا يوجد" : "None"}</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "عدد مواقف السيارات" : "Parking Spaces"}</label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    value={listingParkingSpaces}
-                    onChange={(e) => setListingParkingSpaces(e.target.value)}
-                    placeholder="e.g. 2"
-                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "شرح وتفاصيل الإعلان" : "Property Details & Descriptions"}</label>
-                <textarea
-                  rows={3}
-                  required
-                  value={listingDesc}
-                  onChange={(e) => setListingDesc(e.target.value)}
-                  placeholder="Provide comprehensive details about amenities, location near schools, views..."
-                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
-                ></textarea>
-              </div>
-
-              <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المرافق (مفصولة بفاصلة)" : "Amenities (Comma separated)"}</label>
-                <input
-                  type="text"
-                  value={listingAmenities}
-                  onChange={(e) => setListingAmenities(e.target.value)}
-                  placeholder="e.g. Pool, Gym, Parking, Balcony"
-                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
-                />
-              </div>
-
-              <div className="flex gap-2 justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddingListing(false)}
-                  className="px-4 py-2 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded-lg font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg"
-                >
-                  Publish Listing
-                </button>
               </div>
             </form>
           )}
