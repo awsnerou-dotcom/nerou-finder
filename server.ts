@@ -1059,6 +1059,9 @@ app.post("/api/properties", authMiddleware, (req, res) => {
   if (propData.area !== undefined && Number(propData.area) < 0) {
     return res.status(400).json({ error: "Area cannot be negative." });
   }
+  if (Array.isArray(propData.images) && propData.images.length > 14) {
+    return res.status(400).json({ error: "A listing may have a maximum of 14 photos." });
+  }
 
   const authReq = req as AuthenticatedRequest;
   const actorId = authReq.user?.id || "unknown";
@@ -1174,7 +1177,16 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       qualityScore,
       createdDate: new Date().toISOString(),
       updatedDate: new Date().toISOString(),
-      priceHistory: [{ price: Number(propData.price), date: new Date().toISOString().split("T")[0] }]
+      priceHistory: [{ price: Number(propData.price), date: new Date().toISOString().split("T")[0] }],
+      // Qatar-specific specification fields
+      completionYear: propData.completionYear !== undefined ? Number(propData.completionYear) : undefined,
+      furnishingStatus: propData.furnishingStatus,
+      metroStation: propData.metroStation,
+      metroWalkingMinutes: propData.metroWalkingMinutes !== undefined ? Number(propData.metroWalkingMinutes) : undefined,
+      utilitiesIncluded: propData.utilitiesIncluded,
+      parkingType: propData.parkingType,
+      parkingSpaces: propData.parkingSpaces !== undefined ? Number(propData.parkingSpaces) : undefined,
+      tenureType: propData.tenureType
     };
 
     db.properties.unshift(newProp);

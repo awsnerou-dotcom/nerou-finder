@@ -262,6 +262,17 @@ export interface Property {
   savedCount?: number;
   reportCount?: number;
   imageCategories?: string[];
+  // Qatar-specific specification fields
+  completionYear?: number; // Year the building was/will be completed (off-plan vs ready)
+  // Richer furnishing detail alongside the existing `furnished` YES/NO/PARTLY field
+  // (kept for backward compatibility - forms should use furnishingStatus going forward).
+  furnishingStatus?: "FULLY_FURNISHED" | "SEMI_FURNISHED" | "UNFURNISHED";
+  metroStation?: string; // Nearest Doha Metro station
+  metroWalkingMinutes?: number; // Approximate walking time to the metro station, in minutes
+  utilitiesIncluded?: "YES" | "NO" | "PARTIAL";
+  parkingType?: "COVERED" | "UNCOVERED" | "GARAGE" | "NONE";
+  parkingSpaces?: number;
+  tenureType?: "FREEHOLD" | "USUFRUCT" | "LOCAL_OWNERSHIP_ONLY";
 }
 
 export interface Project {
@@ -606,4 +617,23 @@ export const DEFAULT_MONTHLY_BOOST_CAPS: Record<string, number> = {
 };
 
 export const DEFAULT_BOOST_CAP_FALLBACK = 3;
+
+// Doha Metro stations (Red, Green and Gold lines) - used to populate the
+// metroStation dropdown on the listing form. Free text is still accepted server-side,
+// this is just a convenience list of real station names.
+export const DOHA_METRO_STATIONS: string[] = [
+  // Red Line
+  "Lusail", "Lusail QNCC", "Legtaifiya", "Msheireb", "Al Sadd",
+  "Al Bidda", "Corniche", "Union", "Al Mansoura", "Souq Waqif",
+  "National Museum of Qatar", "Sports City", "Katara", "Ras Bu Aboud",
+  "Free Zone", "Ras Bu Fantas", "Al Wakrah", "Al Wukair", "Mesaieed",
+  // Green Line
+  "Al Riffa", "Bin Mahmoud", "Dafna", "Umm Ghuwailina", "Hamad Hospital",
+  "Al Aziziyah", "Al Waab", "Al Gharrafa", "Al Markhiya",
+  "Qatar National Library", "Qatar University", "Al Messila",
+  // Gold Line
+  "Rawdat Al Khail", "Al Matar Al Qadeem (Old Airport)", "Bani Hajer",
+  "Salwa Road", "Ezdan Oasis", "Al Shaqab", "Al Wajba",
+  "Hamad International Airport"
+];
 

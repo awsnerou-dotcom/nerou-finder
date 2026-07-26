@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Property, Lead, LeadStatus, User, PropertyType, TransactionType, VerificationStatus, LocationItem, AgentType, getEffectiveAgentType, SubscriptionPlan, Organization, DocumentType, DocumentStatus } from "../types.js";
+import { Property, Lead, LeadStatus, User, PropertyType, TransactionType, VerificationStatus, LocationItem, AgentType, getEffectiveAgentType, SubscriptionPlan, Organization, DocumentType, DocumentStatus, DOHA_METRO_STATIONS } from "../types.js";
 import {
   TrendingUp,
   Briefcase,
@@ -35,6 +35,10 @@ interface AgentWorkspaceProps {
   onRefreshAll: () => void;
   isRtl: boolean;
 }
+
+// A listing may carry at most this many photos - enforced client-side here and
+// server-side in POST /api/properties.
+const MAX_LISTING_IMAGES = 14;
 
 const compressImage = (file: File): Promise<File> => {
   return new Promise((resolve) => {
@@ -146,7 +150,17 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [listingArea, setListingArea] = useState<string>("");
   const [listingBeds, setListingBeds] = useState<string>("2");
   const [listingBaths, setListingBaths] = useState<string>("2");
-  
+
+  // Qatar-specific specification fields
+  const [listingCompletionYear, setListingCompletionYear] = useState<string>("");
+  const [listingFurnishingStatus, setListingFurnishingStatus] = useState<string>("");
+  const [listingMetroStation, setListingMetroStation] = useState<string>("");
+  const [listingMetroWalkingMinutes, setListingMetroWalkingMinutes] = useState<string>("");
+  const [listingUtilitiesIncluded, setListingUtilitiesIncluded] = useState<string>("");
+  const [listingParkingType, setListingParkingType] = useState<string>("");
+  const [listingParkingSpaces, setListingParkingSpaces] = useState<string>("");
+  const [listingTenureType, setListingTenureType] = useState<string>("");
+
   // Dynamic Locations States
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [selectedMunicipality, setSelectedMunicipality] = useState<string>("");
@@ -407,12 +421,34 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    // Hard cap: existing + newly-selected images may not exceed MAX_LISTING_IMAGES.
+    const remainingSlots = MAX_LISTING_IMAGES - listingImages.length;
+    if (remainingSlots <= 0) {
+      setToastMessage(
+        isRtl
+          ? "الحد الأقصى 14 صورة لكل إعلان — قم بإزالة صورة لإضافة أخرى."
+          : "Maximum 14 photos per listing reached — remove one to add another."
+      );
+      setTimeout(() => setToastMessage(""), 4000);
+      e.target.value = "";
+      return;
+    }
+
+    const allFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) allFiles.push(files[i]);
+    let truncated = false;
+    let filesToUpload = allFiles;
+    if (filesToUpload.length > remainingSlots) {
+      filesToUpload = filesToUpload.slice(0, remainingSlots);
+      truncated = true;
+    }
+
     setUploading(true);
     const formData = new FormData();
-    
+
     try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i];
         try {
           const compressed = await compressImage(file);
           formData.append("files", compressed);
@@ -437,6 +473,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         const data = await res.json();
         const uploadedUrls = data.fileUrls || data.urls || [];
         setListingImages(prev => [...prev, ...uploadedUrls]);
+        if (truncated) {
+          setToastMessage(
+            isRtl
+              ? "الحد الأقصى 14 صورة لكل إعلان — قم بإزالة صورة لإضافة أخرى."
+              : "Maximum 14 photos per listing reached — remove one to add another."
+          );
+          setTimeout(() => setToastMessage(""), 4000);
+        }
       } else {
         const data = await res.json();
         alert(data.error || "Failed to upload images.");
@@ -446,6 +490,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       alert("Failed to upload media files.");
     } finally {
       setUploading(false);
+      e.target.value = "";
     }
   };
 
@@ -498,7 +543,16 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           orgId: agent.orgId,
           actorId: agent.id,
           actorName: agent.fullName,
-          actorRole: agent.role
+          actorRole: agent.role,
+          // Qatar-specific specification fields
+          completionYear: listingCompletionYear ? Number(listingCompletionYear) : undefined,
+          furnishingStatus: listingFurnishingStatus || undefined,
+          metroStation: listingMetroStation || undefined,
+          metroWalkingMinutes: listingMetroWalkingMinutes ? Number(listingMetroWalkingMinutes) : undefined,
+          utilitiesIncluded: listingUtilitiesIncluded || undefined,
+          parkingType: listingParkingType || undefined,
+          parkingSpaces: listingParkingSpaces ? Number(listingParkingSpaces) : undefined,
+          tenureType: listingTenureType || undefined
         })
       });
 
@@ -510,6 +564,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         setListingDesc("");
         setListingImages([]);
         setSelectedArea("");
+        setListingCompletionYear("");
+        setListingFurnishingStatus("");
+        setListingMetroStation("");
+        setListingMetroWalkingMinutes("");
+        setListingUtilitiesIncluded("");
+        setListingParkingType("");
+        setListingParkingSpaces("");
+        setListingTenureType("");
         fetchLeadsAndProperties();
         onRefreshAll();
         setToastMessage(isRtl ? "تمت إضافة العقار بنجاح وبانتظار المراجعة والتوثيق!" : "Property listing successfully created and pending review/approval!");
@@ -990,35 +1052,51 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                 </div>
 
                 <div className="col-span-1 md:col-span-2">
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "صور العقار (تحميل متعدد)" : "Property Photos (Multi-upload)"}</label>
-                  <div className="border-2 border-dashed border-[#e6e2de] hover:border-[#bf9b30] rounded-xl p-6 text-center cursor-pointer bg-white transition-colors relative">
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleMediaUpload}
-                      disabled={uploading}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    />
-                    <div className="space-y-2">
-                      {uploading ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <Loader2 className="animate-spin text-[#bf9b30]" size={28} />
-                          <p className="text-sm font-medium text-[#6e6b66]">{isRtl ? "جاري رفع الصور..." : "Uploading images..."}</p>
-                        </div>
-                      ) : (
-                        <>
-                          <ImageIcon className="mx-auto text-gray-400" size={32} />
-                          <p className="text-sm font-medium text-[#1a1918]">
-                            {isRtl ? "اضغط هنا لتحميل صور متعددة" : "Click here to upload multiple images"}
-                          </p>
-                          <p className="text-xs text-[#6e6b66]">
-                            {isRtl ? "يدعم ملفات JPG, PNG وغيرها" : "Supports JPG, PNG etc."}
-                          </p>
-                        </>
-                      )}
-                    </div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-medium text-[#6e6b66]">{isRtl ? "صور العقار (تحميل متعدد)" : "Property Photos (Multi-upload)"}</label>
+                    <span className={`text-xs font-semibold ${listingImages.length >= MAX_LISTING_IMAGES ? "text-red-600" : "text-[#6e6b66]"}`}>
+                      {listingImages.length} / {MAX_LISTING_IMAGES} {isRtl ? "صورة" : "photos"}
+                    </span>
                   </div>
+                  {listingImages.length >= MAX_LISTING_IMAGES ? (
+                    <div className="border-2 border-dashed border-red-200 rounded-xl p-6 text-center bg-red-50">
+                      <AlertTriangle className="mx-auto text-red-500" size={28} />
+                      <p className="text-sm font-medium text-red-700 mt-2">
+                        {isRtl
+                          ? "الحد الأقصى 14 صورة لكل إعلان — قم بإزالة صورة لإضافة أخرى."
+                          : "Maximum 14 photos per listing reached — remove one to add another."}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-[#e6e2de] hover:border-[#bf9b30] rounded-xl p-6 text-center cursor-pointer bg-white transition-colors relative">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleMediaUpload}
+                        disabled={uploading}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                      <div className="space-y-2">
+                        {uploading ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <Loader2 className="animate-spin text-[#bf9b30]" size={28} />
+                            <p className="text-sm font-medium text-[#6e6b66]">{isRtl ? "جاري رفع الصور..." : "Uploading images..."}</p>
+                          </div>
+                        ) : (
+                          <>
+                            <ImageIcon className="mx-auto text-gray-400" size={32} />
+                            <p className="text-sm font-medium text-[#1a1918]">
+                              {isRtl ? "اضغط هنا لتحميل صور متعددة" : "Click here to upload multiple images"}
+                            </p>
+                            <p className="text-xs text-[#6e6b66]">
+                              {isRtl ? "يدعم ملفات JPG, PNG وغيرها" : "Supports JPG, PNG etc."}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {listingImages.length > 0 && (
                     <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-3">
@@ -1036,6 +1114,125 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+
+              <h5 className="font-serif text-sm font-bold text-[#1a1918] border-b border-[#f2ede8] pb-2 pt-2">
+                {isRtl ? "مواصفات قطرية إضافية" : "Qatar Specifications"}
+              </h5>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "سنة الإنجاز" : "Completion Year"}</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="1950"
+                    max="2100"
+                    value={listingCompletionYear}
+                    onChange={(e) => setListingCompletionYear(e.target.value)}
+                    placeholder="e.g. 2026"
+                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "حالة الفرش" : "Furnishing Status"}</label>
+                  <select
+                    value={listingFurnishingStatus}
+                    onChange={(e) => setListingFurnishingStatus(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                  >
+                    <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
+                    <option value="FULLY_FURNISHED">{isRtl ? "مؤثث بالكامل" : "Fully Furnished"}</option>
+                    <option value="SEMI_FURNISHED">{isRtl ? "مؤثث جزئياً" : "Semi Furnished"}</option>
+                    <option value="UNFURNISHED">{isRtl ? "غير مؤثث" : "Unfurnished"}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع الملكية" : "Tenure Type"}</label>
+                  <select
+                    value={listingTenureType}
+                    onChange={(e) => setListingTenureType(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                  >
+                    <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
+                    <option value="FREEHOLD">{isRtl ? "تملك حر" : "Freehold"}</option>
+                    <option value="USUFRUCT">{isRtl ? "حق الانتفاع" : "Usufruct"}</option>
+                    <option value="LOCAL_OWNERSHIP_ONLY">{isRtl ? "تملك للمواطنين فقط" : "Local Ownership Only"}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المرافق مشمولة" : "Utilities Included"}</label>
+                  <select
+                    value={listingUtilitiesIncluded}
+                    onChange={(e) => setListingUtilitiesIncluded(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                  >
+                    <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
+                    <option value="YES">{isRtl ? "نعم" : "Yes"}</option>
+                    <option value="NO">{isRtl ? "لا" : "No"}</option>
+                    <option value="PARTIAL">{isRtl ? "جزئياً" : "Partial"}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "أقرب محطة مترو" : "Nearest Metro Station"}</label>
+                  <select
+                    value={listingMetroStation}
+                    onChange={(e) => setListingMetroStation(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                  >
+                    <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
+                    {DOHA_METRO_STATIONS.map(station => (
+                      <option key={station} value={station}>{station}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "دقائق المشي للمترو" : "Walking Minutes to Metro"}</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={listingMetroWalkingMinutes}
+                    onChange={(e) => setListingMetroWalkingMinutes(e.target.value)}
+                    placeholder="e.g. 5"
+                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع مواقف السيارات" : "Parking Type"}</label>
+                  <select
+                    value={listingParkingType}
+                    onChange={(e) => setListingParkingType(e.target.value)}
+                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                  >
+                    <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
+                    <option value="COVERED">{isRtl ? "مغطى" : "Covered"}</option>
+                    <option value="UNCOVERED">{isRtl ? "مكشوف" : "Uncovered"}</option>
+                    <option value="GARAGE">{isRtl ? "كراج" : "Garage"}</option>
+                    <option value="NONE">{isRtl ? "لا يوجد" : "None"}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "عدد مواقف السيارات" : "Parking Spaces"}</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={listingParkingSpaces}
+                    onChange={(e) => setListingParkingSpaces(e.target.value)}
+                    placeholder="e.g. 2"
+                    className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                  />
                 </div>
               </div>
 

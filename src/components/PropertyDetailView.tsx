@@ -845,11 +845,79 @@ export default function PropertyDetailView({
                   <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
                     <span className="font-medium">{isRtl ? "الملكية" : "Ownership Type"}</span>
                     <span className="text-[#1A1918] font-bold">
-                      {property.district.toLowerCase().includes("pearl") || property.district.toLowerCase().includes("lusail") || property.district.toLowerCase().includes("west bay")
+                      {property.tenureType
+                        ? property.tenureType === "FREEHOLD"
+                          ? (isRtl ? "تملك حر" : "Freehold")
+                          : property.tenureType === "USUFRUCT"
+                          ? (isRtl ? "حق الانتفاع" : "Usufruct")
+                          : (isRtl ? "تملك للمواطنين فقط" : "Local Ownership Only")
+                        : property.district.toLowerCase().includes("pearl") || property.district.toLowerCase().includes("lusail") || property.district.toLowerCase().includes("west bay")
                         ? (isRtl ? "تملك حر للأجانب" : "Freehold (Qatar Foreign Ownership)")
                         : (isRtl ? "حق منفعة / إيجار" : "Leasehold Status")}
                     </span>
                   </div>
+
+                  {/* Qatar-specific specification fields */}
+                  {property.completionYear !== undefined && (
+                    <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <span className="font-medium">{isRtl ? "سنة الإنجاز" : "Completion Year"}</span>
+                      <span className="text-[#1A1918] font-bold">{property.completionYear}</span>
+                    </div>
+                  )}
+
+                  {property.furnishingStatus && (
+                    <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <span className="font-medium">{isRtl ? "حالة التأثيث التفصيلية" : "Furnishing Status"}</span>
+                      <span className="text-[#1A1918] font-bold">
+                        {property.furnishingStatus === "FULLY_FURNISHED"
+                          ? (isRtl ? "مؤثث بالكامل" : "Fully Furnished")
+                          : property.furnishingStatus === "SEMI_FURNISHED"
+                          ? (isRtl ? "مؤثث جزئياً" : "Semi Furnished")
+                          : (isRtl ? "غير مؤثث" : "Unfurnished")}
+                      </span>
+                    </div>
+                  )}
+
+                  {property.metroStation && (
+                    <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <span className="font-medium">{isRtl ? "أقرب محطة مترو" : "Nearest Metro Station"}</span>
+                      <span className="text-[#1A1918] font-bold">
+                        {property.metroStation}
+                        {property.metroWalkingMinutes !== undefined
+                          ? ` (${property.metroWalkingMinutes} ${isRtl ? "دقيقة مشي" : "min walk"})`
+                          : ""}
+                      </span>
+                    </div>
+                  )}
+
+                  {property.utilitiesIncluded && (
+                    <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <span className="font-medium">{isRtl ? "المرافق مشمولة" : "Utilities Included"}</span>
+                      <span className={`font-bold ${property.utilitiesIncluded === "YES" ? "text-emerald-600" : property.utilitiesIncluded === "PARTIAL" ? "text-[#BF9B30]" : "text-amber-600"}`}>
+                        {property.utilitiesIncluded === "YES"
+                          ? (isRtl ? "نعم" : "Yes")
+                          : property.utilitiesIncluded === "PARTIAL"
+                          ? (isRtl ? "جزئياً" : "Partial")
+                          : (isRtl ? "لا" : "No")}
+                      </span>
+                    </div>
+                  )}
+
+                  {property.parkingType && (
+                    <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <span className="font-medium">{isRtl ? "نوع مواقف السيارات" : "Parking Type"}</span>
+                      <span className="text-[#1A1918] font-bold">
+                        {property.parkingType === "COVERED"
+                          ? (isRtl ? "مغطى" : "Covered")
+                          : property.parkingType === "UNCOVERED"
+                          ? (isRtl ? "مكشوف" : "Uncovered")
+                          : property.parkingType === "GARAGE"
+                          ? (isRtl ? "كراج" : "Garage")
+                          : (isRtl ? "لا يوجد" : "None")}
+                        {property.parkingSpaces !== undefined ? ` (${property.parkingSpaces})` : ""}
+                      </span>
+                    </div>
+                  )}
 
                   {isRent && (
                     <>
