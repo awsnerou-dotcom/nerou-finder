@@ -5,7 +5,7 @@
 
 import fs from "fs";
 import path from "path";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcrypt";
 
 export const prisma = new PrismaClient();
@@ -1135,8 +1135,10 @@ async function syncStateToDb(state: DatabaseState): Promise<void> {
   }
 
   try {
-    // Delete all rows in collections in a single transaction
-    await prisma.$transaction([
+    // Delete-then-recreate every table in a single transaction, so a failure
+    // partway through (e.g. a createMany rejecting bad data) rolls back the
+    // deletes too, instead of leaving tables permanently emptied.
+    const ops: Prisma.PrismaPromise<any>[] = [
       prisma.user.deleteMany(),
       prisma.organization.deleteMany(),
       prisma.project.deleteMany(),
@@ -1161,180 +1163,180 @@ async function syncStateToDb(state: DatabaseState): Promise<void> {
       prisma.jobApplication.deleteMany(),
       prisma.verificationDocument.deleteMany(),
       prisma.adCharge.deleteMany(),
-    ]);
+    ];
 
     // Re-insert everything from state
     if (state.users.length > 0) {
-      await prisma.user.createMany({
+      ops.push(prisma.user.createMany({
         data: state.users.map(u => ({
           id: u.id,
           email: u.email,
           role: u.role,
           data: JSON.stringify(u),
         }))
-      });
+      }));
     }
 
     if (state.organizations.length > 0) {
-      await prisma.organization.createMany({
+      ops.push(prisma.organization.createMany({
         data: state.organizations.map(o => ({
           id: o.id,
           data: JSON.stringify(o),
         }))
-      });
+      }));
     }
 
     if (state.projects.length > 0) {
-      await prisma.project.createMany({
+      ops.push(prisma.project.createMany({
         data: state.projects.map(p => ({
           id: p.id,
           data: JSON.stringify(p),
         }))
-      });
+      }));
     }
 
     if (state.properties.length > 0) {
-      await prisma.property.createMany({
+      ops.push(prisma.property.createMany({
         data: state.properties.map(p => ({
           id: p.id,
           listingStatus: p.listingStatus,
           verificationStatus: p.verificationStatus,
           agentId: p.agentId,
-          orgId: p.orgId,
+          orgId: p.orgId || null,
           city: p.city || null,
           propertyType: p.propertyType || null,
           price: typeof p.price === "number" ? p.price : null,
           data: JSON.stringify(p),
         }))
-      });
+      }));
     }
 
     if (state.leads.length > 0) {
-      await prisma.lead.createMany({
+      ops.push(prisma.lead.createMany({
         data: state.leads.map(l => ({
           id: l.id,
           data: JSON.stringify(l),
         }))
-      });
+      }));
     }
 
     if (state.viewings.length > 0) {
-      await prisma.viewingRequest.createMany({
+      ops.push(prisma.viewingRequest.createMany({
         data: state.viewings.map(v => ({
           id: v.id,
           data: JSON.stringify(v),
         }))
-      });
+      }));
     }
 
     if (state.reports.length > 0) {
-      await prisma.supportReport.createMany({
+      ops.push(prisma.supportReport.createMany({
         data: state.reports.map(r => ({
           id: r.id,
           data: JSON.stringify(r),
         }))
-      });
+      }));
     }
 
     if (state.campaigns.length > 0) {
-      await prisma.adCampaign.createMany({
+      ops.push(prisma.adCampaign.createMany({
         data: state.campaigns.map(c => ({
           id: c.id,
           data: JSON.stringify(c),
         }))
-      });
+      }));
     }
 
     if (state.auditLogs.length > 0) {
-      await prisma.auditLog.createMany({
+      ops.push(prisma.auditLog.createMany({
         data: state.auditLogs.map(a => ({
           id: a.id,
           data: JSON.stringify(a),
         }))
-      });
+      }));
     }
 
-    await prisma.systemHealth.create({
+    ops.push(prisma.systemHealth.create({
       data: {
         id: "health",
         data: JSON.stringify(state.systemHealth),
       }
-    });
+    }));
 
     if (state.subscriptionPlans.length > 0) {
-      await prisma.subscriptionPlan.createMany({
+      ops.push(prisma.subscriptionPlan.createMany({
         data: state.subscriptionPlans.map(p => ({
           id: p.id,
           data: JSON.stringify(p),
         }))
-      });
+      }));
     }
 
     if (state.locations && state.locations.length > 0) {
-      await prisma.locationItem.createMany({
+      ops.push(prisma.locationItem.createMany({
         data: state.locations.map(l => ({
           id: l.id,
           data: JSON.stringify(l),
         }))
-      });
+      }));
     }
 
     if (state.legalDocuments && state.legalDocuments.length > 0) {
-      await prisma.legalDocument.createMany({
+      ops.push(prisma.legalDocument.createMany({
         data: state.legalDocuments.map(l => ({
           id: l.id,
           data: JSON.stringify(l),
         }))
-      });
+      }));
     }
 
     if (state.helpArticles && state.helpArticles.length > 0) {
-      await prisma.helpArticle.createMany({
+      ops.push(prisma.helpArticle.createMany({
         data: state.helpArticles.map(h => ({
           id: h.id,
           data: JSON.stringify(h),
         }))
-      });
+      }));
     }
 
     if (state.supportTickets && state.supportTickets.length > 0) {
-      await prisma.supportTicket.createMany({
+      ops.push(prisma.supportTicket.createMany({
         data: state.supportTickets.map(s => ({
           id: s.id,
           data: JSON.stringify(s),
         }))
-      });
+      }));
     }
 
     if (state.jobListings && state.jobListings.length > 0) {
-      await prisma.jobListing.createMany({
+      ops.push(prisma.jobListing.createMany({
         data: state.jobListings.map(j => ({
           id: j.id,
           data: JSON.stringify(j),
         }))
-      });
+      }));
     }
 
     if (state.pressReleases && state.pressReleases.length > 0) {
-      await prisma.pressRelease.createMany({
+      ops.push(prisma.pressRelease.createMany({
         data: state.pressReleases.map(p => ({
           id: p.id,
           data: JSON.stringify(p),
         }))
-      });
+      }));
     }
 
     if (state.partnershipRequests && state.partnershipRequests.length > 0) {
-      await prisma.partnershipRequest.createMany({
+      ops.push(prisma.partnershipRequest.createMany({
         data: state.partnershipRequests.map(p => ({
           id: p.id,
           data: JSON.stringify(p),
         }))
-      });
+      }));
     }
 
     if (state.reviews && state.reviews.length > 0) {
-      await prisma.review.createMany({
+      ops.push(prisma.review.createMany({
         data: state.reviews.map(r => ({
           id: r.id,
           reviewerId: r.reviewerId,
@@ -1346,29 +1348,29 @@ async function syncStateToDb(state: DatabaseState): Promise<void> {
           status: r.status,
           data: JSON.stringify(r),
         }))
-      });
+      }));
     }
 
     if (state.invitations && state.invitations.length > 0) {
-      await prisma.invitation.createMany({
+      ops.push(prisma.invitation.createMany({
         data: state.invitations.map(i => ({
           id: i.id,
           data: JSON.stringify(i),
         }))
-      });
+      }));
     }
 
     if (state.jobApplications && state.jobApplications.length > 0) {
-      await prisma.jobApplication.createMany({
+      ops.push(prisma.jobApplication.createMany({
         data: state.jobApplications.map(j => ({
           id: j.id,
           data: JSON.stringify(j),
         }))
-      });
+      }));
     }
 
     if (state.verificationDocuments && state.verificationDocuments.length > 0) {
-      await prisma.verificationDocument.createMany({
+      ops.push(prisma.verificationDocument.createMany({
         data: state.verificationDocuments.map(v => ({
           id: v.id,
           context: v.context,
@@ -1377,11 +1379,11 @@ async function syncStateToDb(state: DatabaseState): Promise<void> {
           status: v.status,
           data: JSON.stringify(v),
         }))
-      });
+      }));
     }
 
     if (state.adCharges && state.adCharges.length > 0) {
-      await prisma.adCharge.createMany({
+      ops.push(prisma.adCharge.createMany({
         data: state.adCharges.map(a => ({
           id: a.id,
           orgId: a.orgId,
@@ -1389,16 +1391,17 @@ async function syncStateToDb(state: DatabaseState): Promise<void> {
           settled: a.settled,
           data: JSON.stringify(a),
         }))
-      });
+      }));
     }
 
-    await prisma.aiConfig.create({
+    ops.push(prisma.aiConfig.create({
       data: {
         id: "config",
         data: JSON.stringify(state.aiConfig),
       }
-    });
+    }));
 
+    await prisma.$transaction(ops);
   } catch (err) {
     console.error("Critical error in syncStateToDb background worker:", err);
   }

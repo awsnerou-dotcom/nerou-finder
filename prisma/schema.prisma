@@ -30,7 +30,7 @@ model Property {
   listingStatus      String
   verificationStatus String
   agentId            String
-  orgId              String
+  orgId              String?
   city               String?
   propertyType       String?
   price              Float?
