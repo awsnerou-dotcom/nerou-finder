@@ -59,6 +59,7 @@ import {
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
+import BoostRecommendations from "./BoostRecommendations.js";
 
 interface AgentWorkspaceProps {
   agent: User;
@@ -1436,6 +1437,13 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             </div>
           )}
 
+          {/* Smart Boost Recommendations panel - AI-assisted "Recommended to Boost" analysis.
+              AGENCY_AGENT never self-triggers a boost (see BoostButton gate below), so skip it
+              here too - their agency admin sees the equivalent panel in AgencyWorkspace instead. */}
+          {effectiveAgentType !== AgentType.AGENCY_AGENT && (
+            <BoostRecommendations properties={properties} agentId={agent.id} isRtl={isRtl} />
+          )}
+
           {isAddingListing && (
             <form
               onSubmit={handleAddListing}
@@ -2086,7 +2094,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     {/* AGENCY_AGENT never self-triggers a boost - their agency admin does it on
                         their behalf from AgencyWorkspace, billed to the agency ledger. */}
                     {effectiveAgentType !== AgentType.AGENCY_AGENT && (
-                      <BoostButton propertyId={prop.id} isRtl={isRtl} />
+                      <BoostButton property={prop} isRtl={isRtl} />
                     )}
 
                     {/* One-click "Confirm Still Available" - shown prominently when confirmation

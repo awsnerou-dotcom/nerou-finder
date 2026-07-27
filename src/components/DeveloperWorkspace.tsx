@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
+import BoostRecommendations from "./BoostRecommendations.js";
 
 interface DeveloperWorkspaceProps {
   developer: Organization;
@@ -807,6 +808,9 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
             </div>
           </div>
 
+          {/* Smart Boost Recommendations panel - AI-assisted "Recommended to Boost" analysis. */}
+          <BoostRecommendations properties={properties} orgId={developer.id} isRtl={isRtl} />
+
           {/* Catalog Table */}
           <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden text-xs">
             <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
@@ -823,7 +827,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                       <p className="text-[10px] text-[#6e6b66]">District: {unit.district} | {unit.bedrooms} Bed | {unit.area} SQM</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <BoostButton propertyId={unit.id} isRtl={isRtl} />
+                      <BoostButton property={unit} isRtl={isRtl} />
                       <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold uppercase rounded shrink-0">
                         Available
                       </span>

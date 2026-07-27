@@ -1014,20 +1014,52 @@ app.get("/api/properties", (req, res) => {
     );
   }
 
+  // Smart Budget Pacing for Featured campaigns: among AdCharge type FEATURED whose
+  // billingPeriod covers today (i.e. equals the current "YYYY-MM" period - see
+  // getCurrentBillingPeriod() below, and not yet rolled into an expired past period), rotate
+  // which one gets "front of queue" placement so whichever org boosted first doesn't
+  // permanently win the top slot. Rotation key is the current hour-of-day, cycled modulo the
+  // number of active Featured listings - deterministic within an hour, and over a full day
+  // every active Featured listing gets roughly equal time at the front. Purely additive: it
+  // only affects relative order among Featured listings and does not change whether a
+  // non-Featured listing shows up.
+  const currentBillingPeriodForRotation = getCurrentBillingPeriod();
+  const activeFeaturedPropertyIds = Array.from(
+    new Set(
+      (db.adCharges || [])
+        .filter(c => c.type === "FEATURED" && c.billingPeriod === currentBillingPeriodForRotation)
+        .map(c => c.propertyId)
+    )
+  ).sort(); // stable base order (by id) before the hourly rotation offset is applied
+  const rotationOffset = activeFeaturedPropertyIds.length > 0 ? new Date().getHours() % activeFeaturedPropertyIds.length : 0;
+  const rotatedFeaturedIds = [
+    ...activeFeaturedPropertyIds.slice(rotationOffset),
+    ...activeFeaturedPropertyIds.slice(0, rotationOffset)
+  ];
+  const featuredRotationRank = new Map(rotatedFeaturedIds.map((id, i) => [id, i]));
+
   // Modest default-ranking penalty: no explicit sort is requested here (callers - the public
   // search UI, agent/agency/developer dashboards - each apply their own further sort on top of
   // this order), so the existing implicit order is "whatever the filters above produced" (most
-  // recently created first, since properties are unshifted on creation). Additively layer one
-  // rule on top: listings sitting in the "Availability Unconfirmed" window (21+ days since
-  // lastConfirmedAvailableDate, see Property.lastConfirmedAvailableDate) are stable-sorted just
-  // behind everything else, without touching relative order within either group.
+  // recently created first, since properties are unshifted on creation). Additively layer two
+  // rules on top: (1) currently-active Featured listings rotate to the front, taking turns per
+  // the hourly rotation above; (2) listings sitting in the "Availability Unconfirmed" window
+  // (21+ days since lastConfirmedAvailableDate, see Property.lastConfirmedAvailableDate) are
+  // stable-sorted just behind everything else - without touching relative order within groups.
   properties = properties
     .map((p, idx) => ({
       p,
       idx,
+      featuredRank: featuredRotationRank.has(p.id) ? (featuredRotationRank.get(p.id) as number) : -1,
       penalized: getAvailabilityStaleDays(p.lastConfirmedAvailableDate || p.createdDate) >= AVAILABILITY_UNCONFIRMED_DAYS
     }))
-    .sort((a, b) => (a.penalized === b.penalized ? a.idx - b.idx : a.penalized ? 1 : -1))
+    .sort((a, b) => {
+      const aFeatured = a.featuredRank !== -1;
+      const bFeatured = b.featuredRank !== -1;
+      if (aFeatured !== bFeatured) return aFeatured ? -1 : 1;
+      if (aFeatured && bFeatured && a.featuredRank !== b.featuredRank) return a.featuredRank - b.featuredRank;
+      return a.penalized === b.penalized ? a.idx - b.idx : a.penalized ? 1 : -1;
+    })
     .map(x => x.p);
 
   res.json(properties);
@@ -3165,6 +3197,49 @@ function getCurrentBillingPeriod(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// Post-Campaign ROI Report: computed live (no schema change / no settle-time write needed) so
+// it's always accurate for the current state of the property's views/leads, whether the charge
+// is settled yet or not. "Before" window is the 7 days immediately preceding the boost; the
+// "during" window runs from the charge's createdDate through its settledDate (or now, if the
+// billing period hasn't been settled yet). Views are summed from Property.viewsByDay (see FIX 8
+// real view tracking, POST /api/properties/:id/view) which is keyed by "YYYY-MM-DD".
+function computeAdChargeRoi(charge: AdCharge, db: DatabaseState): {
+  viewsBefore: number;
+  viewsDuring: number;
+  leadsGenerated: number;
+  costPerLead: number | null;
+} {
+  const property = db.properties.find(p => p.id === charge.propertyId);
+  const boostStart = new Date(charge.createdDate);
+  const boostEnd = charge.settledDate ? new Date(charge.settledDate) : new Date();
+  const preStart = new Date(boostStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const sumViewsInRange = (from: Date, to: Date): number => {
+    if (!property?.viewsByDay) return 0;
+    let total = 0;
+    for (const [dateStr, count] of Object.entries(property.viewsByDay)) {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) continue;
+      if (d >= from && d <= to) total += count;
+    }
+    return total;
+  };
+
+  const viewsBefore = sumViewsInRange(preStart, boostStart);
+  const viewsDuring = sumViewsInRange(boostStart, boostEnd);
+
+  const leadsGenerated = db.leads.filter(l => {
+    if (l.propertyId !== charge.propertyId) return false;
+    const created = new Date(l.createdDate);
+    if (isNaN(created.getTime())) return false;
+    return created >= boostStart && created <= boostEnd;
+  }).length;
+
+  const costPerLead = leadsGenerated > 0 ? Math.round((charge.amount / leadsGenerated) * 100) / 100 : null;
+
+  return { viewsBefore, viewsDuring, leadsGenerated, costPerLead };
+}
+
 // Self-service: instantly activate a Bump or Featured boost on your own org's listing
 app.post("/api/ad-charges", authMiddleware, (req, res) => {
   const authReq = req as AuthenticatedRequest;
@@ -3275,7 +3350,13 @@ app.get("/api/ad-charges", authMiddleware, (req, res) => {
     charges = charges.filter(c => c.orgId === billingOwnerId);
   }
 
-  res.json(charges);
+  // Post-Campaign ROI Report: attach a live-computed performance summary to every charge
+  // (views in the 7 days before the boost vs. during it, leads generated, cost-per-lead) -
+  // see computeAdChargeRoi() above. Purely additive field, safe whether the charge is settled
+  // yet or still in its active billing period.
+  const chargesWithRoi = charges.map(c => ({ ...c, roiSummary: computeAdChargeRoi(c, db) }));
+
+  res.json(chargesWithRoi);
 });
 
 // Admin: mark a billing period as settled for an org (mirrors the existing manual
@@ -3308,6 +3389,187 @@ app.post("/api/admin/ad-charges/settle", (req, res) => {
   );
 
   res.json({ success: true, settledCount: matching.length });
+});
+
+// -----------------------------------------------------------------------------
+// SMART BOOST RECOMMENDATIONS ("Recommended to Boost" panel)
+// -----------------------------------------------------------------------------
+//
+// Simple "Performance Score" per property, computed from data already on hand: total views,
+// lead count, and how long ago it was created / last boosted. No dedicated AI-search-match log
+// exists in this codebase (checked - there is no aiSearchLog/searchMatchCount table), so this
+// falls back to the views/leads-relative-to-age heuristic described in the task. Listings that
+// are at least a couple of days old, haven't been boosted very recently, and are generating few
+// views/leads per day since creation are surfaced as candidates. For each candidate we make ONE
+// real Gemini call (same client/model/error-handling pattern as /api/ai/search above) to produce
+// a natural-language one-sentence reason, in both English and Arabic.
+const BOOST_RECOMMENDATION_MIN_AGE_DAYS = 2;
+const BOOST_RECOMMENDATION_MIN_DAYS_SINCE_LAST_BOOST = 2;
+const BOOST_RECOMMENDATION_MAX_RESULTS = 5;
+// Above this Performance Score (views/day + leads/day*5, see below), a listing is doing fine
+// on its own and isn't worth flagging as an underperformer.
+const BOOST_RECOMMENDATION_MAX_SCORE = 5;
+
+function daysSinceIso(dateStr?: string): number {
+  if (!dateStr) return 0;
+  const then = Date.parse(dateStr);
+  if (isNaN(then)) return 0;
+  return Math.max(0, Math.floor((Date.now() - then) / (24 * 60 * 60 * 1000)));
+}
+
+app.get("/api/boost-recommendations", authMiddleware, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const { agentId, orgId } = req.query as { agentId?: string; orgId?: string };
+  const isPlatformStaff = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
+
+  let scoped: Property[];
+  if (orgId) {
+    if (!isPlatformStaff && actor.orgId !== orgId) {
+      return res.status(403).json({ error: "Not authorized for this organization." });
+    }
+    scoped = db.properties.filter(p => p.orgId === orgId);
+  } else {
+    const targetAgentId = agentId || actor.id;
+    if (!isPlatformStaff && targetAgentId !== actor.id) {
+      return res.status(403).json({ error: "Not authorized for this agent." });
+    }
+    scoped = db.properties.filter(p => p.agentId === targetAgentId);
+  }
+
+  // Only currently-live listings are worth boosting.
+  scoped = scoped.filter(p => p.listingStatus === ListingStatus.PUBLISHED);
+
+  const adCharges = db.adCharges || [];
+
+  type Candidate = {
+    property: Property;
+    performanceScore: number;
+    viewsPerDay: number;
+    leadsCount: number;
+    ageDays: number;
+    daysSinceLastBoost: number;
+  };
+
+  const candidates: Candidate[] = scoped
+    .map(property => {
+      const ageDays = Math.max(1, daysSinceIso(property.createdDate));
+      const lastBoost = adCharges
+        .filter(c => c.propertyId === property.id)
+        .sort((a, b) => Date.parse(b.createdDate) - Date.parse(a.createdDate))[0];
+      const daysSinceLastBoost = lastBoost ? daysSinceIso(lastBoost.createdDate) : ageDays;
+      const leadsCount = db.leads.filter(l => l.propertyId === property.id).length;
+      const viewsPerDay = (property.views || 0) / ageDays;
+      const leadsPerDay = leadsCount / ageDays;
+      // Simple weighted engagement rate: views count a little, leads count a lot more since
+      // they're the far stronger signal of real interest. Lower = more "underperforming".
+      const performanceScore = Math.round((viewsPerDay + leadsPerDay * 5) * 100) / 100;
+      return { property, performanceScore, viewsPerDay, leadsCount, ageDays, daysSinceLastBoost };
+    })
+    .filter(
+      c =>
+        c.ageDays >= BOOST_RECOMMENDATION_MIN_AGE_DAYS &&
+        c.daysSinceLastBoost >= BOOST_RECOMMENDATION_MIN_DAYS_SINCE_LAST_BOOST &&
+        // Only genuinely low-performing listings are worth flagging - without this absolute
+        // cutoff, ranking alone would always surface a workspace's "worst" listing even when
+        // every listing is actually doing fine.
+        c.performanceScore < BOOST_RECOMMENDATION_MAX_SCORE
+    )
+    .sort((a, b) => a.performanceScore - b.performanceScore)
+    .slice(0, BOOST_RECOMMENDATION_MAX_RESULTS);
+
+  if (candidates.length === 0) {
+    return res.json({ recommendations: [] });
+  }
+
+  const cfg = db.aiConfig;
+  const model = cfg?.modelConfiguration?.model || "gemini-3.6-flash";
+
+  const buildFallbackReason = (c: Candidate) => ({
+    reasonEn: `Only ${c.property.views || 0} views and ${c.leadsCount} lead(s) in ${c.ageDays} day(s) since listing${
+      c.daysSinceLastBoost === c.ageDays ? " (never boosted)" : ` (last boosted ${c.daysSinceLastBoost}d ago)`
+    } - boosting could help it get seen.`,
+    reasonAr: `${c.property.views || 0} مشاهدة فقط و ${c.leadsCount} عميل محتمل خلال ${c.ageDays} يوم منذ الإدراج${
+      c.daysSinceLastBoost === c.ageDays ? " (لم يتم رفعه من قبل)" : ` (آخر رفع منذ ${c.daysSinceLastBoost} يوم)`
+    } - قد يساعد الرفع في زيادة ظهوره.`
+  });
+
+  let ai: GoogleGenAI | null = null;
+  try {
+    ai = getGeminiClient();
+  } catch (e) {
+    // No Gemini key configured - degrade gracefully to the deterministic fallback reason
+    // rather than failing the whole panel.
+    ai = null;
+  }
+
+  const recommendations = await Promise.all(
+    candidates.map(async c => {
+      let reasonEn: string;
+      let reasonAr: string;
+
+      if (!ai) {
+        const fb = buildFallbackReason(c);
+        reasonEn = fb.reasonEn;
+        reasonAr = fb.reasonAr;
+      } else {
+        try {
+          const systemInstruction = `You are the boost-recommendation reasoning assistant for Nerou Finder's "Recommended to Boost" panel. You must respond with strictly valid JSON only, matching the given schema exactly - no markdown, no commentary, no text before or after the JSON object.`;
+
+          const prompt = `Listing: "${c.property.title}" - a ${c.property.propertyType} in ${c.property.district}, ${c.property.city}, priced at ${c.property.price} ${c.property.currency}.
+Real performance data since it was listed: ${c.property.views || 0} total views (about ${c.viewsPerDay.toFixed(2)} views/day) and ${c.leadsCount} lead(s), over ${c.ageDays} day(s) on the platform.
+It was ${c.daysSinceLastBoost === c.ageDays ? "never boosted" : `last boosted ${c.daysSinceLastBoost} day(s) ago`}.
+Write exactly one short, natural-language sentence (in English, and separately in Arabic) explaining concretely why this specific listing is a good candidate to boost right now. Reference the real numbers above. Do not invent any data that wasn't given.`;
+
+          const response = await ai.models.generateContent({
+            model,
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            config: {
+              systemInstruction,
+              temperature: 0.2,
+              maxOutputTokens: 1000,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                  reasonEn: { type: Type.STRING },
+                  reasonAr: { type: Type.STRING }
+                },
+                required: ["reasonEn", "reasonAr"]
+              }
+            }
+          });
+
+          const textResult = response.text;
+          if (!textResult) throw new Error("AI returned empty text content.");
+          const parsed = JSON.parse(textResult.trim());
+          reasonEn = parsed.reasonEn;
+          reasonAr = parsed.reasonAr;
+        } catch (error: any) {
+          console.error("Gemini boost-recommendation reason failed:", error);
+          const fb = buildFallbackReason(c);
+          reasonEn = fb.reasonEn;
+          reasonAr = fb.reasonAr;
+        }
+      }
+
+      return {
+        propertyId: c.property.id,
+        performanceScore: c.performanceScore,
+        viewsPerDay: Math.round(c.viewsPerDay * 100) / 100,
+        leadsCount: c.leadsCount,
+        ageDays: c.ageDays,
+        daysSinceLastBoost: c.daysSinceLastBoost,
+        reasonEn,
+        reasonAr
+      };
+    })
+  );
+
+  res.json({ recommendations });
 });
 
 // Admin: adjust monthly self-service boost caps per subscription plan id

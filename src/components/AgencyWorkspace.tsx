@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
+import BoostRecommendations from "./BoostRecommendations.js";
 
 interface AgencyWorkspaceProps {
   agency: Organization;
@@ -964,12 +965,15 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                       <p className="font-bold text-[#1a1918] truncate">{isRtl ? prop.titleAr : prop.title}</p>
                       <p className="text-[10px] text-[#6e6b66]">{prop.district}, {prop.city}</p>
                     </div>
-                    <BoostButton propertyId={prop.id} isRtl={isRtl} />
+                    <BoostButton property={prop} isRtl={isRtl} />
                   </div>
                 ))
               )}
             </div>
           </div>
+
+          {/* Smart Boost Recommendations panel - AI-assisted "Recommended to Boost" analysis. */}
+          <BoostRecommendations properties={orgProperties} orgId={agency.id} isRtl={isRtl} />
 
           <div className="flex justify-between items-center">
             <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "إعلانات العقارات المميزة والمدعومة" : "Promoted Listings Marketing campaigns"}</h4>

@@ -127,6 +127,9 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   const [rejectingDocId, setRejectingDocId] = useState<string>("");
   const [rejectionReasonDraft, setRejectionReasonDraft] = useState<string>("");
   const [adCharges, setAdCharges] = useState<any[]>([]);
+  // Post-Campaign ROI Report: which org+billingPeriod ledger groups have their per-charge
+  // breakdown expanded (each charge now carries a live-computed roiSummary from the server).
+  const [expandedLedgerGroups, setExpandedLedgerGroups] = useState<Set<string>>(new Set());
   const [adBoostCaps, setAdBoostCaps] = useState<Record<string, number>>({});
   const [capDrafts, setCapDrafts] = useState<Record<string, string>>({});
   const [viewings, setViewings] = useState<ViewingRequest[]>([]);
@@ -2550,7 +2553,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 </div>
                 <div className="divide-y divide-[#f2ede8]">
                   {(() => {
-                    const groups = new Map<string, { orgId: string; billingPeriod: string; total: number; count: number; settled: boolean }>();
+                    const groups = new Map<string, { orgId: string; billingPeriod: string; total: number; count: number; settled: boolean; charges: any[] }>();
                     adCharges.forEach((c: any) => {
                       const key = `${c.orgId}:${c.billingPeriod}`;
                       const existing = groups.get(key);
@@ -2558,8 +2561,9 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         existing.total += c.amount;
                         existing.count += 1;
                         existing.settled = existing.settled && c.settled;
+                        existing.charges.push(c);
                       } else {
-                        groups.set(key, { orgId: c.orgId, billingPeriod: c.billingPeriod, total: c.amount, count: 1, settled: c.settled });
+                        groups.set(key, { orgId: c.orgId, billingPeriod: c.billingPeriod, total: c.amount, count: 1, settled: c.settled, charges: [c] });
                       }
                     });
                     const sorted = Array.from(groups.values()).sort((a, b) => {
@@ -2573,25 +2577,79 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
                     return sorted.map(group => {
                       const org = organizations.find(o => o.id === group.orgId);
+                      const groupKey = `${group.orgId}:${group.billingPeriod}`;
+                      const isExpanded = expandedLedgerGroups.has(groupKey);
                       return (
-                        <div key={`${group.orgId}:${group.billingPeriod}`} className="p-4 flex justify-between items-center gap-3 flex-wrap">
-                          <div>
-                            <p className="font-bold text-[#1a1918]">{org?.name || group.orgId}</p>
-                            <p className="text-[#6e6b66]">
-                              {isRtl ? "الفترة: " : "Period: "}{group.billingPeriod} • {group.count} {isRtl ? "رفعة" : "boost(s)"} • <strong>{group.total.toLocaleString()} QAR</strong>
-                            </p>
+                        <div key={groupKey} className="p-4 space-y-3">
+                          <div className="flex justify-between items-center gap-3 flex-wrap">
+                            <div>
+                              <p className="font-bold text-[#1a1918]">{org?.name || group.orgId}</p>
+                              <p className="text-[#6e6b66]">
+                                {isRtl ? "الفترة: " : "Period: "}{group.billingPeriod} • {group.count} {isRtl ? "رفعة" : "boost(s)"} • <strong>{group.total.toLocaleString()} QAR</strong>
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  setExpandedLedgerGroups(prev => {
+                                    const next = new Set(prev);
+                                    if (next.has(groupKey)) next.delete(groupKey);
+                                    else next.add(groupKey);
+                                    return next;
+                                  });
+                                }}
+                                className="px-2 py-1 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] text-[#1a1918] rounded font-semibold cursor-pointer"
+                              >
+                                {isExpanded
+                                  ? (isRtl ? "إخفاء التفاصيل" : "Hide breakdown")
+                                  : (isRtl ? "عرض تفاصيل كل رفعة (ROI)" : "Show per-boost ROI")}
+                              </button>
+                              {group.settled ? (
+                                <span className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded font-bold">
+                                  {isRtl ? "مسواة" : "Settled"}
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => handleSettleBillingPeriod(group.orgId, group.billingPeriod)}
+                                  className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] text-white rounded font-semibold cursor-pointer"
+                                >
+                                  {isRtl ? "وضع علامة كمسواة" : "Mark as Settled"}
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          {group.settled ? (
-                            <span className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded font-bold">
-                              {isRtl ? "مسواة" : "Settled"}
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleSettleBillingPeriod(group.orgId, group.billingPeriod)}
-                              className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] text-white rounded font-semibold cursor-pointer"
-                            >
-                              {isRtl ? "وضع علامة كمسواة" : "Mark as Settled"}
-                            </button>
+
+                          {/* Post-Campaign ROI Report: per-charge breakdown (views before/during
+                              the boost, leads generated during it, and cost-per-lead) - computed
+                              live server-side from Property.viewsByDay and Lead.createdDate, see
+                              computeAdChargeRoi() in server.ts / GET /api/ad-charges. */}
+                          {isExpanded && (
+                            <div className="rounded-lg border border-[#e6e2de] divide-y divide-[#f2ede8] overflow-hidden">
+                              {group.charges.map((c: any) => {
+                                const prop = properties.find(p => p.id === c.propertyId);
+                                const roi = c.roiSummary || { viewsBefore: 0, viewsDuring: 0, leadsGenerated: 0, costPerLead: null };
+                                return (
+                                  <div key={c.id} className="p-3 bg-[#fdfcfb] flex flex-wrap justify-between items-center gap-2">
+                                    <div className="min-w-0">
+                                      <p className="font-semibold text-[#1a1918] truncate">
+                                        {prop ? (isRtl ? prop.titleAr || prop.title : prop.title) : c.propertyId}
+                                        <span className="text-[#a9a49d] font-normal"> • {c.type} • {c.amount.toLocaleString()} QAR</span>
+                                      </p>
+                                      <p className="text-[#6e6b66]">
+                                        {isRtl
+                                          ? `المشاهدات قبل الرفع (٧ أيام): ${roi.viewsBefore} • أثناء الرفع: ${roi.viewsDuring} • العملاء المحتملون: ${roi.leadsGenerated}`
+                                          : `Views 7d before boost: ${roi.viewsBefore} • during boost: ${roi.viewsDuring} • leads: ${roi.leadsGenerated}`}
+                                      </p>
+                                    </div>
+                                    <span className={`px-2 py-1 rounded font-bold shrink-0 ${roi.costPerLead !== null ? "bg-blue-50 text-blue-700 border border-blue-200" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
+                                      {roi.costPerLead !== null
+                                        ? (isRtl ? `${roi.costPerLead.toLocaleString()} ر.ق / عميل محتمل` : `${roi.costPerLead.toLocaleString()} QAR / lead`)
+                                        : (isRtl ? "لا يوجد عملاء محتملون بعد" : "No leads yet")}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           )}
                         </div>
                       );
