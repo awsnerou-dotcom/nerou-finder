@@ -12,7 +12,10 @@ import {
   Lead,
   LocationItem,
   User,
-  Organization
+  Organization,
+  getAvailabilityStaleDays,
+  AVAILABILITY_UNCONFIRMED_DAYS,
+  getVerifiedBadgeLabel
 } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
 import { trackEvent, trackPageView } from "../lib/analytics.js";
@@ -516,7 +519,8 @@ export default function VisitorExperience({
           visitorName: "Anonymous Visitor (WhatsApp)",
           visitorPhone: "WhatsApp Event",
           contactMethod: "WHATSAPP",
-          message: `Visitor clicked WhatsApp for property ${property.listingId}`
+          message: `Visitor clicked WhatsApp for property ${property.listingId}`,
+          campaign: sessionStorage.getItem("attributionCampaignId") || undefined
         })
       });
       trackEvent("whatsapp_click", "marketplace", property.title);
@@ -562,7 +566,8 @@ export default function VisitorExperience({
           visitorName: "Anonymous Visitor (Phone Link)",
           visitorPhone: "Call Event",
           contactMethod: "CALL",
-          message: `Visitor initiated a call for property ${property.listingId}`
+          message: `Visitor initiated a call for property ${property.listingId}`,
+          campaign: sessionStorage.getItem("attributionCampaignId") || undefined
         })
       });
       trackEvent("call_click", "marketplace", property.title);
@@ -1207,13 +1212,24 @@ export default function VisitorExperience({
                       </div>
                     </div>
 
-                    <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center">
-                      {property.verificationStatus === VerificationStatus.APPROVED && (
-                        <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-[#1a1918] flex items-center gap-1 shadow-xs border border-[#bf9b30]/30">
-                          <CheckCircle size={12} className="text-[#bf9b30]" />
-                          <span>{t.verified}</span>
-                        </div>
-                      )}
+                    <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center gap-1.5">
+                      <div className="flex items-center gap-1.5">
+                        {property.verificationStatus === VerificationStatus.APPROVED && (
+                          <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-[#1a1918] flex items-center gap-1 shadow-xs border border-[#bf9b30]/30">
+                            <CheckCircle size={12} className="text-[#bf9b30]" />
+                            <span>{t.verified}</span>
+                          </div>
+                        )}
+                        {/* Honest, non-alarming freshness signal: shown once a listing has
+                            gone 21+ days without its availability being reconfirmed (see
+                            getAvailabilityStaleDays()/AVAILABILITY_UNCONFIRMED_DAYS). */}
+                        {getAvailabilityStaleDays(property.lastConfirmedAvailableDate || property.createdDate) >= AVAILABILITY_UNCONFIRMED_DAYS && (
+                          <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-amber-700 flex items-center gap-1 shadow-xs border border-amber-300">
+                            <Clock size={12} />
+                            <span>{isRtl ? "التوفر غير مؤكد" : "Availability Unconfirmed"}</span>
+                          </div>
+                        )}
+                      </div>
 
                       {feat && (
                         <div className="bg-[#bf9b30] text-black px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs border border-white ml-auto">
@@ -1233,6 +1249,17 @@ export default function VisitorExperience({
                       <h4 className="font-serif text-lg font-medium text-[#1a1918] line-clamp-1 group-hover:text-[#bf9b30] transition-colors">
                         {isRtl ? property.titleAr : property.title}
                       </h4>
+                      {/* FIX 4: verified badge on search-result cards too, showing the agent's
+                          actual company rather than a generic "Nerou" claim. */}
+                      {(() => {
+                        const listingAgent = users.find(u => u.id === property.agentId);
+                        if (!listingAgent || listingAgent.verificationStatus !== VerificationStatus.APPROVED) return null;
+                        return (
+                          <p className="text-[10px] text-[#8c6d1d] font-semibold truncate">
+                            {getVerifiedBadgeLabel(listingAgent, organizations.find(o => o.id === listingAgent.orgId)?.name, isRtl)}
+                          </p>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex items-center gap-4 text-xs text-[#6e6b66] border-y border-[#f2ede8] py-2">
@@ -1371,7 +1398,7 @@ export default function VisitorExperience({
         </>
       )}
 
-      {currentTab === "PROJECTS" && <ProjectsView isRtl={isRtl} />}
+      {currentTab === "PROJECTS" && <ProjectsView isRtl={isRtl} organizations={organizations} />}
       {currentTab === "PLANS" && (
         <PlansPricingView
           isRtl={isRtl}
@@ -1457,11 +1484,6 @@ export default function VisitorExperience({
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
                     <h3 className="text-lg font-serif font-bold text-[#1c1a17]">{selectedAgentProfile.fullName}</h3>
-                    {selectedAgentProfile.verificationStatus === VerificationStatus.APPROVED && (
-                      <span className="p-0.5 bg-amber-50 text-[#bf9b30] border border-[#bf9b30]/30 rounded-full" title="Verified Agent">
-                        <CheckCircle size={12} className="fill-[#bf9b30] text-white" />
-                      </span>
-                    )}
                   </div>
                   <span className="text-[10px] bg-[#bf9b30]/10 text-[#bf9b30] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider block w-max">
                     {selectedAgentProfile.role.replace("_", " ")}
@@ -1469,7 +1491,9 @@ export default function VisitorExperience({
                   <div className="flex items-center gap-1 text-xs text-[#6e6b66]">
                     <Building2 size={12} />
                     <span>
-                      {organizations.find(o => o.id === selectedAgentProfile.orgId)?.name || "Independent Brokerage"}
+                      {selectedAgentProfile.verificationStatus === VerificationStatus.APPROVED
+                        ? getVerifiedBadgeLabel(selectedAgentProfile, organizations.find(o => o.id === selectedAgentProfile.orgId)?.name, isRtl)
+                        : (organizations.find(o => o.id === selectedAgentProfile.orgId)?.name || (isRtl ? "وكيل مستقل" : "Independent Agent"))}
                     </span>
                   </div>
                 </div>
@@ -1640,7 +1664,7 @@ export default function VisitorExperience({
               </div>
 
               <ProfileReviewsSection
-                targetType="ORGANIZATION"
+                targetType="AGENCY"
                 targetId={selectedOrgProfile.id}
                 currentUser={currentUser}
                 isRtl={isRtl}

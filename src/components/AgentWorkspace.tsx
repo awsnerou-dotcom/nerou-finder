@@ -4,7 +4,29 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Property, Lead, LeadStatus, User, PropertyType, TransactionType, VerificationStatus, LocationItem, AgentType, getEffectiveAgentType, SubscriptionPlan, Organization, DocumentType, DocumentStatus, DOHA_METRO_STATIONS } from "../types.js";
+import {
+  Property,
+  Lead,
+  LeadStatus,
+  User,
+  PropertyType,
+  TransactionType,
+  VerificationStatus,
+  ListingStatus,
+  LocationItem,
+  AgentType,
+  getEffectiveAgentType,
+  SubscriptionPlan,
+  Organization,
+  DocumentType,
+  DocumentStatus,
+  DOHA_METRO_STATIONS,
+  getAvailabilityStaleDays,
+  AVAILABILITY_CONFIRM_DUE_DAYS,
+  AVAILABILITY_UNCONFIRMED_DAYS,
+  LeadNote,
+  getVerifiedBadgeLabel
+} from "../types.js";
 import {
   TrendingUp,
   Briefcase,
@@ -30,7 +52,10 @@ import {
   ArrowRight,
   Check,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  X,
+  Eye,
+  Star
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -110,8 +135,53 @@ const compressImage = (file: File): Promise<File> => {
 
 export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWorkspaceProps) {
   const [leads, setLeads] = useState<Lead[]>([]);
+  // FIX 10: Reviews & Ratings tab
+  const [myReviews, setMyReviews] = useState<any[]>([]);
+  const [myReviewSummary, setMyReviewSummary] = useState<{ average: number; count: number; distribution: Record<number, number> } | null>(null);
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+
+  const fetchMyReviews = async () => {
+    try {
+      const [reviewsRes, summaryRes] = await Promise.all([
+        fetch(`/api/reviews?targetType=AGENT&targetId=${agent.id}`),
+        fetch(`/api/reviews/summary?targetType=AGENT&targetId=${agent.id}`)
+      ]);
+      if (reviewsRes.ok) setMyReviews(await reviewsRes.json());
+      if (summaryRes.ok) setMyReviewSummary(await summaryRes.json());
+    } catch (e) {
+      console.error("Failed to load reviews", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyReviews();
+  }, [agent.id]);
+
+  const handleReplyToReview = async (reviewId: string) => {
+    const text = replyDrafts[reviewId];
+    if (!text || !text.trim()) return;
+    try {
+      const res = await fetch(`/api/reviews/${reviewId}/reply`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` },
+        body: JSON.stringify({ text: text.trim() })
+      });
+      if (res.ok) {
+        setReplyDrafts(prev => ({ ...prev, [reviewId]: "" }));
+        fetchMyReviews();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // FIX 2: lead detail modal + notes + archive toggle
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [leadNoteDraft, setLeadNoteDraft] = useState<string>("");
+  const [showArchivedLeads, setShowArchivedLeads] = useState<boolean>(false);
+  const [leadPropertyPreview, setLeadPropertyPreview] = useState<Property | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "properties" | "verification" | "subscription" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "properties" | "verification" | "subscription" | "profile" | "reviews">("dashboard");
 
   // FIX1: derive the agent's effective type defensively - existing accounts created before
   // AgentType existed have agentType === undefined, so fall back to orgId-based inference
@@ -178,6 +248,15 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [listingImages, setListingImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState<boolean>(false);
   const [listingAmenities, setListingAmenities] = useState<string>("Pool, Gym, Parking");
+
+  // Non-blocking duplicate-listing warning surfaced after a successful create (Part 2 of the
+  // availability refresh cycle work) - the listing is already created by the time this shows,
+  // it's purely informational so the agent can confirm it's a genuinely different unit.
+  const [possibleDuplicates, setPossibleDuplicates] = useState<{ id: string; title: string; price: number; district: string }[]>([]);
+
+  // "Confirm Still Available" button state - tracks which listing card currently has a
+  // confirm-available request in flight so only that card's button shows a spinner.
+  const [confirmingAvailabilityId, setConfirmingAvailabilityId] = useState<string | null>(null);
 
   // Draft auto-save: persist in-progress wizard state to localStorage, keyed per-agent so it
   // never collides with another agent's draft on a shared browser profile. Restored on mount
@@ -320,7 +399,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       // Fetch properties uploaded/assigned to this agent. AGENCY_AGENT listings are scoped
       // by their agency's orgId; INDEPENDENT_AGENT has no orgId, so fetch broadly and rely
       // on the agentId filter below.
-      const propRes = await fetch(agent.orgId ? `/api/properties?orgId=${agent.orgId}` : "/api/properties");
+      const propRes = await fetch(agent.orgId ? `/api/properties?orgId=${agent.orgId}&includeAllStatuses=true` : "/api/properties?includeAllStatuses=true");
       const propData = await propRes.json();
       const agentProperties = propData.filter((p: Property) => p.agentId === agent.id);
       setProperties(agentProperties);
@@ -348,6 +427,54 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       if (res.ok) {
         fetchLeadsAndProperties();
         onRefreshAll();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // FIX 2: add a timestamped note to a lead (persisted, visible on its detail view).
+  const handleAddLeadNote = async (leadId: string) => {
+    if (!leadNoteDraft.trim()) return;
+    try {
+      const res = await fetch(`/api/leads/${leadId}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` },
+        body: JSON.stringify({ text: leadNoteDraft.trim(), authorId: agent.id, authorName: agent.fullName })
+      });
+      if (res.ok) {
+        setLeadNoteDraft("");
+        fetchLeadsAndProperties();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // FIX 2: soft-close/reopen a lead - preserves history, never deletes it.
+  const handleArchiveLead = async (leadId: string, isArchived: boolean) => {
+    try {
+      const res = await fetch(`/api/leads/${leadId}/archive`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` },
+        body: JSON.stringify({ isArchived })
+      });
+      if (res.ok) {
+        fetchLeadsAndProperties();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // FIX 2: "view the related property" - the app has no client-side router/deep-linking for
+  // property detail pages (they're an in-memory selection inside VisitorExperience), so the
+  // honest way to show it from the dashboard is to fetch and preview it inline here.
+  const handleViewLeadProperty = async (propertyId: string) => {
+    try {
+      const res = await fetch(`/api/properties/${propertyId}`);
+      if (res.ok) {
+        setLeadPropertyPreview(await res.json());
       }
     } catch (e) {
       console.error(e);
@@ -705,6 +832,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       });
 
       if (res.ok) {
+        const data = await res.json().catch(() => ({}));
         setIsAddingListing(false);
         setWizardStep(1);
         setListingTitle("");
@@ -725,8 +853,22 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         try { localStorage.removeItem(listingDraftKey); } catch (e) { console.error(e); }
         fetchLeadsAndProperties();
         onRefreshAll();
-        setToastMessage(isRtl ? "تمت إضافة العقار بنجاح وبانتظار المراجعة والتوثيق!" : "Property listing successfully created and pending review/approval!");
+        // FIX 3: listings publish immediately (no per-listing admin approval step) once the
+        // account-level gate passes - message reflects the actual resulting status instead
+        // of the old "pending review" copy.
+        setToastMessage(
+          data.listingStatus === ListingStatus.DRAFT
+            ? (isRtl ? "تم حفظ العقار كمسودة." : "Property saved as a draft.")
+            : (isRtl ? "تم نشر العقار بنجاح!" : "Property listing published successfully!")
+        );
         setTimeout(() => setToastMessage(""), 4000);
+        // Non-blocking duplicate warning - the listing above is already created either way,
+        // this is purely informational (see possibleDuplicates banner in the Properties tab).
+        if (Array.isArray(data.possibleDuplicates) && data.possibleDuplicates.length > 0) {
+          setPossibleDuplicates(data.possibleDuplicates);
+        } else {
+          setPossibleDuplicates([]);
+        }
       } else {
         // Surface the backend's exact error (e.g. the Agency Authorization Letter gate for
         // INDEPENDENT_AGENT) instead of a generic message, so the agent knows exactly what's missing.
@@ -738,6 +880,72 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       console.error("Failed to add property listing", err);
       setToastMessage(isRtl ? "تعذر إضافة العقار. يرجى المحاولة مرة أخرى." : "Failed to add the property listing. Please try again.");
       setTimeout(() => setToastMessage(""), 5000);
+    }
+  };
+
+  // One-click "Confirm Still Available" - resets the listing's staleness clock server-side
+  // and, if it had been auto-paused purely for going stale, reactivates it.
+  const handleConfirmAvailable = async (propertyId: string) => {
+    setConfirmingAvailabilityId(propertyId);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/properties/${propertyId}/confirm-available`, {
+        method: "PATCH",
+        headers
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setProperties(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+        setToastMessage(isRtl ? "تم تأكيد أن العقار لا يزال متاحاً!" : "Listing availability confirmed!");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "تعذر تأكيد توفر العقار." : "Failed to confirm listing availability."));
+      }
+      setTimeout(() => setToastMessage(""), 4000);
+    } catch (err) {
+      console.error("Failed to confirm listing availability", err);
+      setToastMessage(isRtl ? "تعذر تأكيد توفر العقار." : "Failed to confirm listing availability.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setConfirmingAvailabilityId(null);
+    }
+  };
+
+  // FIX 1: agent-facing listing status control. Status changes never delete the listing -
+  // it stays fully visible here with its status and statusChangedDate, so history is preserved.
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const handleUpdateListingStatus = async (propertyId: string, status: ListingStatus) => {
+    setUpdatingStatusId(propertyId);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`/api/properties/${propertyId}/status`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ status })
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        setProperties(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+        setToastMessage(isRtl ? "تم تحديث حالة العقار!" : "Listing status updated!");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "تعذر تحديث حالة العقار." : "Failed to update listing status."));
+      }
+      setTimeout(() => setToastMessage(""), 4000);
+    } catch (err) {
+      console.error("Failed to update listing status", err);
+      setToastMessage(isRtl ? "تعذر تحديث حالة العقار." : "Failed to update listing status.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setUpdatingStatusId(null);
     }
   };
 
@@ -756,7 +964,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             {isRtl ? "مساحة عمل الوكيل العقاري" : "Agent Workspace"}
           </h2>
           <p className="text-xs text-[#6e6b66] mt-0.5">
-            {isRtl ? `الوكيل النشط: ${agent.fullName} • رخصة ممارسة المهنة موثقة` : `Active Representative: ${agent.fullName} • Certified Professional Broker`}
+            {isRtl ? `الوكيل النشط: ${agent.fullName}` : `Active Representative: ${agent.fullName}`}
+            {agent.verificationStatus === VerificationStatus.APPROVED && (
+              <span className="ml-1.5 font-semibold text-[#bf9b30]">
+                • {getVerifiedBadgeLabel(agent, agencyOrg?.name, isRtl)}
+              </span>
+            )}
           </p>
         </div>
 
@@ -796,6 +1009,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             </button>
           )}
           <button
+            onClick={() => setActiveTab("reviews")}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "reviews" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+          >
+            {isRtl ? "التقييمات" : "Reviews"}
+          </button>
+          <button
             onClick={() => setActiveTab("profile")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
           >
@@ -818,7 +1037,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       )}
 
       {/* VERIFICATION TAB */}
-      {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} />}
+      {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} agent={agent} onSaved={onRefreshAll} />}
 
       {/* SUBSCRIPTION TAB (INDEPENDENT_AGENT only) */}
       {activeTab === "subscription" && effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
@@ -977,48 +1196,183 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {/* LEADS TAB */}
       {activeTab === "leads" && (
         <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-          <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+          <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center justify-between gap-3 flex-wrap">
             <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "إدارة وتتبع تواصل العملاء" : "Assigned Lead Lifecycle Funnel"}</h4>
+            <button
+              type="button"
+              onClick={() => setShowArchivedLeads(prev => !prev)}
+              className="text-[10px] font-semibold text-[#6e6b66] hover:text-[#1a1918] underline cursor-pointer"
+            >
+              {showArchivedLeads
+                ? (isRtl ? "إخفاء العملاء المؤرشفين" : "Hide archived leads")
+                : (isRtl ? "عرض العملاء المؤرشفين" : "Show archived leads")}
+            </button>
           </div>
           <div className="divide-y divide-[#f2ede8] text-xs">
-            {leads.length === 0 ? (
-              <p className="text-center py-8 text-[#6e6b66]">{isRtl ? "لا توجد أي طلبات تواصل مسجلة." : "No leads assigned to you yet."}</p>
-            ) : (
-              leads.map(lead => (
+            {(() => {
+              const visibleLeads = leads.filter(l => (showArchivedLeads ? !!l.isArchived : !l.isArchived));
+              if (visibleLeads.length === 0) {
+                return (
+                  <p className="text-center py-8 text-[#6e6b66]">
+                    {showArchivedLeads
+                      ? (isRtl ? "لا يوجد عملاء مؤرشفون." : "No archived leads.")
+                      : (isRtl ? "لا توجد أي طلبات تواصل مسجلة." : "No leads assigned to you yet.")}
+                  </p>
+                );
+              }
+              const waPhone = (lead: Lead) => (lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "");
+              return visibleLeads.map(lead => (
                 <div key={lead.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-[#1a1918] text-sm">{lead.visitorName}</span>
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLeadId(lead.id)}
+                        className="font-bold text-[#1a1918] text-sm hover:text-[#bf9b30] cursor-pointer underline decoration-dotted"
+                      >
+                        {lead.visitorName}
+                      </button>
                       <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                         lead.status === LeadStatus.NEW ? "bg-red-50 text-red-700 border border-red-200" :
-                        lead.status === LeadStatus.CONTACTED ? "bg-yellow-50 text-yellow-700 border border-yellow-200" : "bg-green-50 text-green-700 border border-green-200"
+                        lead.status === LeadStatus.CONTACTED || lead.status === LeadStatus.VIEWING_REQUESTED || lead.status === LeadStatus.VIEWING_SCHEDULED ? "bg-yellow-50 text-yellow-700 border border-yellow-200" :
+                        lead.status === LeadStatus.LOST ? "bg-gray-100 text-gray-500 border border-gray-200" : "bg-green-50 text-green-700 border border-green-200"
                       }`}>
                         {lead.status}
                       </span>
                     </div>
                     <div className="text-[#6e6b66] space-y-0.5">
-                      <p>📱 {lead.visitorPhone} | {lead.visitorEmail || "No Email Provided"}</p>
+                      <div className="flex items-center gap-3">
+                        <a
+                          href={`https://wa.me/${waPhone(lead)}?text=${encodeURIComponent(isRtl ? `مرحباً ${lead.visitorName}، بخصوص استفساركم العقاري.` : `Hello ${lead.visitorName}, regarding your property inquiry.`)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold"
+                        >
+                          <MessageSquare size={12} /> {lead.visitorPhone}
+                        </a>
+                        {lead.visitorEmail && (
+                          <a href={`mailto:${lead.visitorEmail}`} className="flex items-center gap-1 text-[#1a1918] hover:text-[#bf9b30] font-semibold">
+                            <Mail size={12} /> {lead.visitorEmail}
+                          </a>
+                        )}
+                      </div>
                       <p className="italic">"{lead.message}"</p>
+                      {lead.propertyId && (
+                        <button type="button" onClick={() => handleViewLeadProperty(lead.propertyId!)} className="text-[10px] text-[#bf9b30] underline cursor-pointer">
+                          {isRtl ? "عرض العقار المرتبط" : "View related property"}
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleUpdateLeadStatus(lead.id, LeadStatus.CONTACTED)}
-                      className="px-3 py-1 bg-white hover:bg-[#fbfaf8] border border-[#e6e2de] text-[#1a1918] font-medium rounded cursor-pointer"
+                  <div className="flex items-center gap-2 flex-wrap shrink-0">
+                    <select
+                      value={lead.status}
+                      onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
+                      className="px-2 py-1.5 bg-white border border-[#e6e2de] rounded text-[10px] font-semibold text-[#1a1918]"
                     >
-                      {isRtl ? "تأكيد التواصل" : "Contacted"}
-                    </button>
+                      {Object.values(LeadStatus).map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
                     <button
-                      onClick={() => handleUpdateLeadStatus(lead.id, LeadStatus.CONVERTED)}
-                      className="px-3 py-1 bg-[#1a1918] hover:bg-[#bf9b30] text-white font-medium rounded cursor-pointer"
+                      type="button"
+                      onClick={() => handleArchiveLead(lead.id, !lead.isArchived)}
+                      className="px-2.5 py-1.5 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] text-[#1a1918] font-medium rounded cursor-pointer"
                     >
-                      {isRtl ? "إتمام الصفقة" : "Mark Won"}
+                      {lead.isArchived ? (isRtl ? "إعادة فتح" : "Reopen") : (isRtl ? "أرشفة" : "Archive")}
                     </button>
                   </div>
                 </div>
-              ))
-            )}
+              ));
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* FIX 2: lead detail modal - full record, notes, and quick actions */}
+      {selectedLeadId && (() => {
+        const lead = leads.find(l => l.id === selectedLeadId);
+        if (!lead) return null;
+        const waPhone = (lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "");
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedLeadId(null)}>
+            <div className="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 space-y-4 text-xs" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 className="font-serif text-base font-bold text-[#1a1918]">{lead.visitorName}</h4>
+                  <p className="text-[10px] text-[#6e6b66]">{isRtl ? "استلم بتاريخ " : "Received "}{new Date(lead.createdDate).toLocaleString()}</p>
+                </div>
+                <button type="button" onClick={() => setSelectedLeadId(null)} className="text-[#6e6b66] hover:text-[#1a1918] cursor-pointer"><X size={18} /></button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold">
+                  <MessageSquare size={14} /> {isRtl ? "واتساب" : "WhatsApp"}
+                </a>
+                <a href={`tel:${lead.visitorPhone}`} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#1a1918] hover:bg-[#33302a] text-white rounded-lg font-semibold">
+                  <Phone size={14} /> {isRtl ? "اتصال" : "Call"}
+                </a>
+              </div>
+
+              <div className="space-y-1 border-t border-[#f2ede8] pt-3">
+                <p><strong>{isRtl ? "البريد: " : "Email: "}</strong>{lead.visitorEmail || "—"}</p>
+                <p><strong>{isRtl ? "الرسالة: " : "Message: "}</strong>{lead.message}</p>
+                <p><strong>{isRtl ? "الحالة: " : "Status: "}</strong>{lead.status}</p>
+                {lead.propertyId && (
+                  <button type="button" onClick={() => handleViewLeadProperty(lead.propertyId!)} className="text-[#bf9b30] underline cursor-pointer">
+                    {isRtl ? "عرض العقار المرتبط" : "View related property"}
+                  </button>
+                )}
+              </div>
+
+              <div className="border-t border-[#f2ede8] pt-3 space-y-2">
+                <p className="font-bold text-[#1a1918]">{isRtl ? "الملاحظات" : "Notes"}</p>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={leadNoteDraft}
+                    onChange={(e) => setLeadNoteDraft(e.target.value)}
+                    placeholder={isRtl ? "أضف ملاحظة..." : "Add a note..."}
+                    className="flex-1 px-2 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg"
+                  />
+                  <button type="button" onClick={() => handleAddLeadNote(lead.id)} disabled={!leadNoteDraft.trim()} className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer">
+                    {isRtl ? "إضافة" : "Add"}
+                  </button>
+                </div>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {(lead.notes || []).length === 0 ? (
+                    <p className="text-[#a9a49d] italic">{isRtl ? "لا توجد ملاحظات بعد." : "No notes yet."}</p>
+                  ) : (
+                    (lead.notes || []).map(n => (
+                      <div key={n.id} className="bg-[#fbfaf8] border border-[#f2ede8] rounded-lg p-2">
+                        <p className="text-[#1a1918]">{n.text}</p>
+                        <p className="text-[9px] text-[#a9a49d] mt-0.5">{n.authorName} • {new Date(n.createdDate).toLocaleString()}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* FIX 2: inline property preview (no client-side router exists to deep-link into
+          VisitorExperience's property detail view, so this fetches and shows it directly). */}
+      {leadPropertyPreview && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setLeadPropertyPreview(null)}>
+          <div className="bg-white rounded-xl max-w-md w-full overflow-hidden text-xs" onClick={(e) => e.stopPropagation()}>
+            <img src={leadPropertyPreview.images?.[0]} alt={leadPropertyPreview.title} className="w-full h-40 object-cover" />
+            <div className="p-4 space-y-1">
+              <div className="flex items-start justify-between">
+                <h5 className="font-serif text-sm font-bold text-[#1a1918]">{isRtl ? leadPropertyPreview.titleAr : leadPropertyPreview.title}</h5>
+                <button type="button" onClick={() => setLeadPropertyPreview(null)} className="text-[#6e6b66] hover:text-[#1a1918] cursor-pointer"><X size={16} /></button>
+              </div>
+              <p className="text-[#6e6b66]">{leadPropertyPreview.district}, {leadPropertyPreview.city}</p>
+              <p className="font-bold text-[#bf9b30]">{leadPropertyPreview.price?.toLocaleString()} QAR</p>
+              <p className="text-[10px] text-[#6e6b66]">{isRtl ? "الحالة: " : "Status: "}{leadPropertyPreview.listingStatus} • ID: {leadPropertyPreview.listingId}</p>
+            </div>
           </div>
         </div>
       )}
@@ -1048,6 +1402,37 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   ? `يجب اعتماد "خطاب تفويض المكتب العقاري" الخاص بك قبل أن تتمكن من نشر عقاراتك للعامة. الحالة الحالية: ${authLetterStatus}. يمكنك إدارة مستنداتك من تبويب "التوثيق".`
                   : `Your Agency Authorization Letter must be approved before your listings can go live to the public. Current status: ${authLetterStatus}. Manage this under the "Verification" tab.`}
               </span>
+            </div>
+          )}
+
+          {/* Non-blocking duplicate-listing warning (Part 2 of the availability refresh cycle
+              work): shown right after a create response comes back with possibleDuplicates.
+              The new listing is already created either way - this is purely informational. */}
+          {possibleDuplicates.length > 0 && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 space-y-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1.5">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <AlertTriangle size={14} className="shrink-0" />
+                    {isRtl ? "قد يكون هذا الإعلان مشابهاً لإعلان حالي" : "This may be similar to an existing listing"}
+                  </p>
+                  {possibleDuplicates.map(dup => (
+                    <p key={dup.id}>
+                      {isRtl
+                        ? `يبدو هذا الإعلان مشابهاً لإعلانك الحالي "${dup.title}" (${dup.district}، ${dup.price.toLocaleString()} ر.ق) — يرجى التأكد من أن هذه وحدة مختلفة فعلياً، أو التفكير في تعديل الإعلان الحالي بدلاً من ذلك.`
+                        : `This looks similar to your existing listing "${dup.title}" (${dup.district}, ${dup.price.toLocaleString()} QAR) — please confirm this is a genuinely different unit, or consider editing the existing one instead.`}
+                    </p>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPossibleDuplicates([])}
+                  className="text-blue-700 hover:text-blue-900 shrink-0 cursor-pointer"
+                  aria-label={isRtl ? "إغلاق" : "Dismiss"}
+                >
+                  <X size={14} />
+                </button>
+              </div>
             </div>
           )}
 
@@ -1629,31 +2014,188 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {properties.map(prop => (
-              <div key={prop.id} className="p-4 bg-white border border-[#e6e2de] rounded-xl flex gap-4">
-                <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden shrink-0">
-                  <img src={prop.images[0]} alt={prop.title} className="w-full h-full object-cover" />
-                </div>
-                <div className="space-y-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-bold text-slate-500">{prop.listingId}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
-                      prop.verificationStatus === VerificationStatus.APPROVED ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                    }`}>
-                      {prop.verificationStatus}
-                    </span>
+            {properties.map(prop => {
+              // Availability refresh cycle: staleness is computed live from
+              // lastConfirmedAvailableDate (falling back to createdDate for pre-existing
+              // records), never stored - see getAvailabilityStaleDays() in types.ts.
+              const staleDays = getAvailabilityStaleDays(prop.lastConfirmedAvailableDate || prop.createdDate);
+              const isPausedForStaleness = prop.listingStatus === ListingStatus.PAUSED && !!prop.staleAutoPausedFromStatus;
+              const isUnconfirmed = staleDays >= AVAILABILITY_UNCONFIRMED_DAYS;
+              const isDueSoon = staleDays >= AVAILABILITY_CONFIRM_DUE_DAYS && staleDays < AVAILABILITY_UNCONFIRMED_DAYS;
+              const confirmationDue = isPausedForStaleness || isUnconfirmed || isDueSoon;
+              const isConfirming = confirmingAvailabilityId === prop.id;
+
+              return (
+                <div key={prop.id} className="p-4 bg-white border border-[#e6e2de] rounded-xl flex gap-4">
+                  <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden shrink-0">
+                    <img src={prop.images[0]} alt={prop.title} className="w-full h-full object-cover" />
                   </div>
-                  <h5 className="text-xs font-bold text-[#1a1918] truncate">{isRtl ? prop.titleAr : prop.title}</h5>
-                  <p className="text-[10px] text-[#6e6b66]">{prop.district}, {prop.city}</p>
-                  <p className="text-xs font-bold text-[#bf9b30]">{prop.price.toLocaleString()} QAR</p>
-                  {/* AGENCY_AGENT never self-triggers a boost - their agency admin does it on
-                      their behalf from AgencyWorkspace, billed to the agency ledger. */}
-                  {effectiveAgentType !== AgentType.AGENCY_AGENT && (
-                    <BoostButton propertyId={prop.id} isRtl={isRtl} />
-                  )}
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-slate-500">{prop.listingId}</span>
+                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                        prop.verificationStatus === VerificationStatus.APPROVED ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                      }`}>
+                        {prop.verificationStatus}
+                      </span>
+                      {isPausedForStaleness ? (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-50 text-red-700 border border-red-200">
+                          {isRtl ? "متوقف - يتطلب تأكيد التوفر" : "Paused - Needs Confirmation"}
+                        </span>
+                      ) : isUnconfirmed ? (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          {isRtl ? "التوفر غير مؤكد" : "Availability Unconfirmed"}
+                        </span>
+                      ) : isDueSoon ? (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-[#f2ede8] text-[#6e6b66] border border-[#e6e2de]">
+                          {isRtl ? "يستحق التأكيد قريباً" : "Confirmation Due Soon"}
+                        </span>
+                      ) : null}
+                    </div>
+                    <h5 className="text-xs font-bold text-[#1a1918] truncate">{isRtl ? prop.titleAr : prop.title}</h5>
+                    <p className="text-[10px] text-[#6e6b66]">{prop.district}, {prop.city}</p>
+                    <p className="text-xs font-bold text-[#bf9b30]">{prop.price.toLocaleString()} QAR</p>
+                    {/* FIX 8: real view counts (total / unique) for this listing */}
+                    <p className="text-[9px] text-[#a9a49d] flex items-center gap-1">
+                      <Eye size={10} /> {prop.views || 0} {isRtl ? "مشاهدة" : "views"} • {prop.uniqueViews || 0} {isRtl ? "فريدة" : "unique"}
+                    </p>
+
+                    {/* FIX 1: listing status control - Sold/Rented removes it from public search
+                        immediately but it stays here with full history; can be reverted anytime. */}
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <select
+                        value={prop.listingStatus}
+                        disabled={updatingStatusId === prop.id}
+                        onChange={(e) => handleUpdateListingStatus(prop.id, e.target.value as ListingStatus)}
+                        className="px-2 py-1 bg-[#fdfcfb] border border-[#e6e2de] rounded text-[10px] font-semibold text-[#1a1918] disabled:opacity-50"
+                      >
+                        <option value={ListingStatus.PUBLISHED}>{isRtl ? "متاح" : "Active/Available"}</option>
+                        <option value={ListingStatus.PAUSED}>{isRtl ? "غير متاح" : "Unavailable"}</option>
+                        <option value={ListingStatus.SOLD}>{isRtl ? "مباع" : "Sold"}</option>
+                        <option value={ListingStatus.RENTED}>{isRtl ? "مؤجر" : "Rented"}</option>
+                        <option value={ListingStatus.DRAFT}>{isRtl ? "مسودة" : "Draft"}</option>
+                      </select>
+                      {updatingStatusId === prop.id && <Loader2 size={10} className="animate-spin text-[#6e6b66]" />}
+                      {prop.statusChangedDate && (
+                        <span className="text-[9px] text-[#a9a49d]">
+                          {isRtl ? "منذ " : "since "}{new Date(prop.statusChangedDate).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* AGENCY_AGENT never self-triggers a boost - their agency admin does it on
+                        their behalf from AgencyWorkspace, billed to the agency ledger. */}
+                    {effectiveAgentType !== AgentType.AGENCY_AGENT && (
+                      <BoostButton propertyId={prop.id} isRtl={isRtl} />
+                    )}
+
+                    {/* One-click "Confirm Still Available" - shown prominently when confirmation
+                        is due soon/overdue or the listing was auto-paused for staleness, and
+                        unobtrusively (small text link) otherwise. */}
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmAvailable(prop.id)}
+                        disabled={isConfirming}
+                        className={
+                          confirmationDue
+                            ? "mt-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            : "mt-1 px-1.5 py-0.5 text-[9px] text-[#6e6b66] hover:text-[#1a1918] underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        }
+                      >
+                        {isConfirming ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
+                        <span>{isRtl ? "تأكيد أن العقار لا يزال متاحاً" : "Confirm Still Available"}</span>
+                      </button>
+                      {prop.lastConfirmedAvailableDate && (
+                        <p className="text-[9px] text-[#a9a49d] mt-0.5">
+                          {isRtl
+                            ? staleDays <= 0 ? "آخر تأكيد: اليوم" : `آخر تأكيد: منذ ${staleDays} يوم`
+                            : `Confirmed ${staleDays <= 0 ? "today" : `${staleDays}d ago`}`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* REVIEWS & RATINGS TAB (FIX 10) */}
+      {activeTab === "reviews" && (
+        <div className="space-y-4">
+          <div className="bg-white p-5 rounded-xl border border-[#e6e2de] flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="text-center sm:text-left">
+              <p className="text-3xl font-serif font-bold text-[#bf9b30]">{myReviewSummary?.average.toFixed(1) || "0.0"}</p>
+              <p className="text-[10px] text-[#6e6b66]">{myReviewSummary?.count || 0} {isRtl ? "تقييم" : "reviews"}</p>
+            </div>
+            <div className="flex-1 space-y-1">
+              {[5, 4, 3, 2, 1].map(star => {
+                const count = myReviewSummary?.distribution?.[star] || 0;
+                const total = myReviewSummary?.count || 0;
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                return (
+                  <div key={star} className="flex items-center gap-2 text-[10px]">
+                    <span className="w-8 text-[#6e6b66]">{star}★</span>
+                    <div className="flex-1 h-1.5 bg-[#f2ede8] rounded-full overflow-hidden">
+                      <div className="h-full bg-[#bf9b30]" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="w-6 text-[#6e6b66] text-right">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden text-xs">
+            <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+              <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "التقييمات المستلمة" : "Reviews Received"}</h4>
+            </div>
+            <div className="divide-y divide-[#f2ede8]">
+              {myReviews.length === 0 ? (
+                <p className="text-center py-8 text-[#6e6b66]">{isRtl ? "لا توجد تقييمات بعد." : "No reviews yet."}</p>
+              ) : (
+                myReviews.map(rev => (
+                  <div key={rev.id} className="p-4 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[#1a1918]">{rev.reviewerName}</span>
+                      <span className="text-[10px] text-[#6e6b66]">{new Date(rev.createdDate).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <Star key={s} size={12} className={s <= rev.rating ? "fill-[#bf9b30] text-[#bf9b30]" : "text-gray-200"} />
+                      ))}
+                    </div>
+                    <p className="text-[#4c4943]">{rev.comment}</p>
+                    {rev.reply ? (
+                      <div className="pl-3 border-l-2 border-[#bf9b30]/40 bg-[#fbfaf8] p-2 rounded">
+                        <p className="text-[10px] font-bold text-[#1a1918]">{isRtl ? "ردك" : "Your reply"}</p>
+                        <p className="text-[11px] text-[#4c4943] mt-0.5">{rev.reply.text}</p>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={replyDrafts[rev.id] || ""}
+                          onChange={(e) => setReplyDrafts(prev => ({ ...prev, [rev.id]: e.target.value }))}
+                          placeholder={isRtl ? "اكتب رداً علنياً..." : "Write a public reply..."}
+                          className="flex-1 px-2 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleReplyToReview(rev.id)}
+                          disabled={!replyDrafts[rev.id]?.trim()}
+                          className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer"
+                        >
+                          {isRtl ? "رد" : "Reply"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -126,6 +126,10 @@ export interface User {
   password?: string;
   isExpat?: boolean; // Determines whether PASSPORT is a required verification document for AGENT role
   agentType?: AgentType; // Only meaningful when role === UserRole.AGENT
+  // Declared licensed agency/brokerage an INDEPENDENT_AGENT operates under (Qatar regulation
+  // requires this even when billing independently) - a text companion to the
+  // AGENCY_AUTHORIZATION_LETTER upload, since the letter itself isn't queryable/displayable.
+  affiliatedAgencyName?: string;
   applicationStatus?: ApplicationStatus; // Onboarding pipeline state - undefined means grandfathered/active
   // Independent-agent subscription fields (same shape as Organization's equivalents below).
   // Only meaningful for an AGENT whose effective AgentType is INDEPENDENT_AGENT - an
@@ -143,6 +147,32 @@ export interface User {
 export function getEffectiveAgentType(user: { role: UserRole; orgId?: string; agentType?: AgentType }): AgentType {
   if (user.agentType) return user.agentType;
   return user.orgId ? AgentType.AGENCY_AGENT : AgentType.INDEPENDENT_AGENT;
+}
+
+// FIX 4: the verified badge must reflect the agent's actual company, never imply Nerou
+// itself employs them - Nerou is the platform, not the agent's employer. Shared between
+// server (agent-info endpoint) and client (profile/search/listing surfaces) so the exact
+// same label logic runs everywhere. Callers are responsible for only showing this when
+// verificationStatus === APPROVED.
+export function getVerifiedBadgeLabel(
+  user: { role: UserRole; orgId?: string; agentType?: AgentType; affiliatedAgencyName?: string },
+  orgName: string | undefined,
+  isRtl: boolean
+): string {
+  const effectiveType = getEffectiveAgentType(user);
+
+  if (effectiveType === AgentType.AGENCY_AGENT && orgName) {
+    return isRtl ? `✓ موثّق — ${orgName}` : `✓ Verified — ${orgName}`;
+  }
+
+  if (effectiveType === AgentType.INDEPENDENT_AGENT && user.affiliatedAgencyName) {
+    return isRtl
+      ? `✓ موثّق — يعمل تحت ${user.affiliatedAgencyName}`
+      : `✓ Verified — Operating under ${user.affiliatedAgencyName}`;
+  }
+
+  // Edge case: no agency affiliation on file at all.
+  return isRtl ? "✓ وكيل مستقل موثّق" : "✓ Verified Independent Agent";
 }
 
 export interface Organization {
@@ -205,6 +235,20 @@ export interface Property {
   createdDate: string;
   updatedDate: string;
   lastVerifiedDate?: string;
+  // Availability refresh cycle: baseline is set to createdDate at creation time (see
+  // POST /api/properties) so every listing starts "fresh" instead of immediately stale.
+  // Reset by PATCH /api/properties/:id/confirm-available. Staleness tiers (computed live,
+  // never stored) are: 0-13d normal, 14-20d due-for-confirmation reminder window, 21-29d
+  // "Availability Unconfirmed" (public badge + modest search ranking penalty), 30+d
+  // auto-paused. See getAvailabilityStaleDays()/AVAILABILITY_* constants below.
+  lastConfirmedAvailableDate?: string;
+  // Guards the 14-20 day reminder email from resending on every sweep - set when sent,
+  // cleared whenever lastConfirmedAvailableDate is refreshed via confirm-available.
+  staleReminderSentDate?: string;
+  // Set only when the staleness sweep auto-pauses a listing at 30+ days unconfirmed -
+  // records the listingStatus it held immediately before, so confirm-available can restore
+  // it exactly rather than guessing a default. Cleared once restored.
+  staleAutoPausedFromStatus?: ListingStatus;
   priceHistory: PriceHistoryItem[];
   // Extended Professional Specifications & Qatar Localization
   referenceNumber?: string;
@@ -273,6 +317,46 @@ export interface Property {
   parkingType?: "COVERED" | "UNCOVERED" | "GARAGE" | "NONE";
   parkingSpaces?: number;
   tenureType?: "FREEHOLD" | "USUFRUCT" | "LOCAL_OWNERSHIP_ONLY";
+  // FIX 1: last time the agent explicitly changed listingStatus (Active/Sold/Rented/
+  // Unavailable/Draft) via PATCH /api/properties/:id/status, or the listing was created.
+  statusChangedDate?: string;
+  // FIX 3: after-the-fact admin moderation flag, distinct from suspending (which fully
+  // unpublishes) - lets admin mark a live listing "under review" without hiding it.
+  flaggedForReview?: boolean;
+  flagReason?: string;
+  flaggedDate?: string;
+  // FIX 8: real view tracking. recentViewers is a short, continuously-pruned window (30 min)
+  // used only for unique-view dedup - never grows unbounded.
+  views?: number;
+  uniqueViews?: number;
+  viewsByDay?: Record<string, number>;
+  recentViewers?: { fingerprint: string; ts: number }[];
+}
+
+// ---------------------------------------------------------------------------
+// Listing Availability Refresh Cycle
+// ---------------------------------------------------------------------------
+
+// Days since lastConfirmedAvailableDate before a listing is due for a "please confirm"
+// reminder email (14-20 days = reminder window; below this is considered fresh/normal).
+export const AVAILABILITY_CONFIRM_DUE_DAYS = 14;
+// Days since lastConfirmedAvailableDate at which a listing is marked "Availability
+// Unconfirmed" publicly (badge + modest search ranking penalty). 21-29 days.
+export const AVAILABILITY_UNCONFIRMED_DAYS = 21;
+// Days since lastConfirmedAvailableDate at which a listing is automatically paused until
+// the agent reconfirms it. 30+ days.
+export const AVAILABILITY_AUTO_PAUSE_DAYS = 30;
+
+// Whole days elapsed since a listing's availability was last confirmed. Falls back to
+// undefined/missing dates as "0 days" (fresh) rather than throwing, since older records
+// created before this feature existed may not have the field populated yet in every path.
+export function getAvailabilityStaleDays(lastConfirmedAvailableDate?: string): number {
+  if (!lastConfirmedAvailableDate) return 0;
+  const then = Date.parse(lastConfirmedAvailableDate);
+  if (isNaN(then)) return 0;
+  const diffMs = Date.now() - then;
+  if (diffMs < 0) return 0;
+  return Math.floor(diffMs / (24 * 60 * 60 * 1000));
 }
 
 export interface Project {
@@ -311,6 +395,19 @@ export interface Lead {
     campaign?: string;
     utmSource?: string;
   };
+  // FIX 2: timestamped notes an agent leaves on a lead, newest first.
+  notes?: LeadNote[];
+  // FIX 2: soft-close - preserves history, unlike a hard delete. Archived leads are hidden
+  // from the default lead list with a toggle to reveal them.
+  isArchived?: boolean;
+}
+
+export interface LeadNote {
+  id: string;
+  text: string;
+  authorId: string;
+  authorName: string;
+  createdDate: string;
 }
 
 export interface ViewingRequest {
@@ -485,6 +582,10 @@ export interface Review {
   comment: string;
   createdDate: string;
   status: "PENDING" | "APPROVED" | "REJECTED";
+  // FIX 10: public reply from the reviewed agent/agency, shown below the original review.
+  reply?: { text: string; createdDate: string };
+  // FIX 10: number of times visitors have reported this review as abusive/policy-violating.
+  reportCount?: number;
 }
 
 export interface Invitation {

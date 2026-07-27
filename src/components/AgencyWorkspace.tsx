@@ -24,7 +24,11 @@ import {
   Camera,
   Lock,
   Loader2,
-  DollarSign
+  DollarSign,
+  Phone,
+  Mail,
+  MessageSquare,
+  X
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -106,6 +110,8 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
   const [invitations, setInvitations] = useState<any[]>([]);
   const [orgLeads, setOrgLeads] = useState<Lead[]>([]);
   const [orgProperties, setOrgProperties] = useState<Property[]>([]);
+  // FIX 2: inline property preview - AgencyWorkspace has no "properties" tab/route of its own.
+  const [leadPropertyPreview, setLeadPropertyPreview] = useState<Property | null>(null);
   const [adCharges, setAdCharges] = useState<any[]>([]);
 
   // Local toast state
@@ -197,7 +203,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
       setCampaigns(agencyCamps);
 
       // Get this agency's own listings (for self-service ad boosts)
-      const propsRes = await fetch(`/api/properties?orgId=${agency.id}`);
+      const propsRes = await fetch(`/api/properties?orgId=${agency.id}&includeAllStatuses=true`);
       if (propsRes.ok) {
         setOrgProperties(await propsRes.json());
       }
@@ -453,6 +459,60 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // FIX 6: campaign Edit/Pause/Resume/Delete - previously only Create existed.
+  const [campaignBudgetDrafts, setCampaignBudgetDrafts] = useState<Record<string, string>>({});
+  const [copiedCampaignId, setCopiedCampaignId] = useState<string>("");
+
+  const handleUpdateCampaignBudget = async (campaignId: string) => {
+    const draft = campaignBudgetDrafts[campaignId];
+    if (!draft) return;
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` },
+        body: JSON.stringify({ budget: Number(draft) })
+      });
+      if (res.ok) {
+        setCampaignBudgetDrafts(prev => ({ ...prev, [campaignId]: "" }));
+        fetchAgencyContext();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleTogglePauseCampaign = async (camp: AdCampaign) => {
+    try {
+      const res = await fetch(`/api/campaigns/${camp.id}/${camp.status === "ACTIVE" ? "pause" : "resume"}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) fetchAgencyContext();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteCampaign = async (campaignId: string) => {
+    if (!window.confirm(isRtl ? "هل تريد حذف هذه الحملة؟" : "Delete this campaign?")) return;
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) fetchAgencyContext();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCopyCampaignLink = (campaignId: string) => {
+    const link = `${window.location.origin}${window.location.pathname}?campaignId=${campaignId}`;
+    navigator.clipboard.writeText(link);
+    setCopiedCampaignId(campaignId);
+    setTimeout(() => setCopiedCampaignId(""), 2000);
   };
 
   const handleUpgradeSubscription = async (planId: string) => {
@@ -991,7 +1051,11 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
               <div key={camp.id} className="p-5 bg-white border border-[#e6e2de] rounded-xl space-y-4">
                 <div className="flex justify-between items-center border-b border-[#f2ede8] pb-2">
                   <span className="text-xs font-bold text-[#1c1a17] uppercase">{camp.type}</span>
-                  <span className="px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 text-[10px] font-bold rounded">
+                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${
+                    camp.status === "ACTIVE" ? "bg-green-50 text-green-700 border-green-200" :
+                    camp.status === "PAUSED" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                    "bg-gray-100 text-gray-600 border-gray-200"
+                  }`}>
                     {camp.status}
                   </span>
                 </div>
@@ -1006,9 +1070,62 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                     <span className="font-bold text-[#1a1918]">{camp.metrics.clicks}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-[#6e6b66] block">{isRtl ? "الميزانية الكلية" : "Total Budget"}</span>
+                    <span className="text-[10px] text-[#6e6b66] block">{isRtl ? "الحفظ" : "Saves"}</span>
+                    <span className="font-bold text-[#1a1918]">{camp.metrics.saves}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#6e6b66] block">{isRtl ? "العملاء" : "Leads"}</span>
+                    <span className="font-bold text-[#1a1918]">{camp.metrics.leads}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#6e6b66] block">{isRtl ? "الإنفاق" : "Spend"}</span>
+                    <span className="font-bold text-[#1a1918]">{camp.metrics.spend} QAR</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#6e6b66] block">{isRtl ? "الميزانية" : "Budget"}</span>
                     <span className="font-bold text-[#bf9b30]">{camp.budget} QAR</span>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-[#f2ede8] flex-wrap">
+                  <input
+                    type="number"
+                    value={campaignBudgetDrafts[camp.id] || ""}
+                    onChange={(e) => setCampaignBudgetDrafts(prev => ({ ...prev, [camp.id]: e.target.value }))}
+                    placeholder={isRtl ? "ميزانية جديدة" : "New budget"}
+                    className="w-24 px-2 py-1 bg-[#fdfcfb] border border-[#e6e2de] rounded text-[10px]"
+                  />
+                  <button
+                    type="button"
+                    disabled={!campaignBudgetDrafts[camp.id]}
+                    onClick={() => handleUpdateCampaignBudget(camp.id)}
+                    className="px-2.5 py-1 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded text-[10px] font-semibold disabled:opacity-40 cursor-pointer"
+                  >
+                    {isRtl ? "تعديل" : "Edit"}
+                  </button>
+                  {(camp.status === "ACTIVE" || camp.status === "PAUSED") && (
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePauseCampaign(camp)}
+                      className="px-2.5 py-1 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded text-[10px] font-semibold cursor-pointer"
+                    >
+                      {camp.status === "ACTIVE" ? (isRtl ? "إيقاف مؤقت" : "Pause") : (isRtl ? "استئناف" : "Resume")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleCopyCampaignLink(camp.id)}
+                    className="px-2.5 py-1 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded text-[10px] font-semibold cursor-pointer"
+                  >
+                    {copiedCampaignId === camp.id ? (isRtl ? "تم النسخ!" : "Copied!") : (isRtl ? "نسخ رابط التتبع" : "Copy Tracking Link")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCampaign(camp.id)}
+                    className="px-2.5 py-1 bg-white hover:bg-red-50 border border-[#e6e2de] hover:border-red-200 text-red-600 rounded text-[10px] font-semibold cursor-pointer"
+                  >
+                    {isRtl ? "حذف" : "Delete"}
+                  </button>
                 </div>
               </div>
             ))}
@@ -1051,13 +1168,32 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                       <tr key={lead.id} className="hover:bg-[#fcfbfa]/50 transition-colors">
                         <td className="p-4">
                           <div className="font-bold text-sm text-[#1a1918]">{lead.visitorName}</div>
-                          <div className="text-[10px] text-[#6e6b66] mt-0.5">{lead.visitorPhone} {lead.visitorEmail ? `• ${lead.visitorEmail}` : ""}</div>
+                          <div className="text-[10px] mt-0.5 flex items-center gap-2">
+                            <a href={`https://wa.me/${(lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold">
+                              <MessageSquare size={10} /> {lead.visitorPhone}
+                            </a>
+                            {lead.visitorEmail && (
+                              <a href={`mailto:${lead.visitorEmail}`} className="flex items-center gap-1 text-[#1a1918] hover:text-[#bf9b30]">
+                                <Mail size={10} /> {lead.visitorEmail}
+                              </a>
+                            )}
+                          </div>
                           <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-[9px] rounded font-mono">
                             {lead.contactMethod}
                           </span>
                         </td>
                         <td className="p-4 max-w-xs">
-                          <p className="font-semibold text-xs text-[#bf9b30] truncate">ID: {lead.propertyId || "General Inquiry"}</p>
+                          {lead.propertyId ? (
+                            <button
+                              type="button"
+                              onClick={() => setLeadPropertyPreview(orgProperties.find(p => p.id === lead.propertyId) || null)}
+                              className="font-semibold text-xs text-[#bf9b30] underline cursor-pointer"
+                            >
+                              {orgProperties.find(p => p.id === lead.propertyId)?.title || `ID: ${lead.propertyId}`}
+                            </button>
+                          ) : (
+                            <p className="font-semibold text-xs text-[#bf9b30]">{isRtl ? "استفسار عام" : "General Inquiry"}</p>
+                          )}
                           <p className="text-[#6e6b66] mt-1 line-clamp-2 leading-relaxed">{lead.message}</p>
                           <span className="text-[9px] text-[#a8a4a0] block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
                         </td>
@@ -1093,7 +1229,16 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="font-bold text-sm text-[#1a1918]">{lead.visitorName}</div>
-                        <div className="text-[11px] text-[#6e6b66] mt-0.5 break-words">{lead.visitorPhone} {lead.visitorEmail ? `• ${lead.visitorEmail}` : ""}</div>
+                        <div className="text-[11px] mt-0.5 flex flex-wrap items-center gap-2">
+                          <a href={`https://wa.me/${(lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold">
+                            <MessageSquare size={11} /> {lead.visitorPhone}
+                          </a>
+                          {lead.visitorEmail && (
+                            <a href={`mailto:${lead.visitorEmail}`} className="flex items-center gap-1 text-[#1a1918] hover:text-[#bf9b30]">
+                              <Mail size={11} /> {lead.visitorEmail}
+                            </a>
+                          )}
+                        </div>
                       </div>
                       <span className="shrink-0 px-2 py-0.5 bg-gray-100 text-gray-700 text-[9px] rounded font-mono">
                         {lead.contactMethod}
@@ -1101,7 +1246,17 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                     </div>
 
                     <div className="bg-[#fcfbfa] border border-[#f2ede8] rounded-lg p-2.5">
-                      <p className="font-semibold text-xs text-[#bf9b30] truncate">ID: {lead.propertyId || "General Inquiry"}</p>
+                      {lead.propertyId ? (
+                        <button
+                          type="button"
+                          onClick={() => setLeadPropertyPreview(orgProperties.find(p => p.id === lead.propertyId) || null)}
+                          className="font-semibold text-xs text-[#bf9b30] underline cursor-pointer"
+                        >
+                          {orgProperties.find(p => p.id === lead.propertyId)?.title || `ID: ${lead.propertyId}`}
+                        </button>
+                      ) : (
+                        <p className="font-semibold text-xs text-[#bf9b30]">{isRtl ? "استفسار عام" : "General Inquiry"}</p>
+                      )}
                       <p className="text-[#6e6b66] mt-1 line-clamp-2 leading-relaxed">{lead.message}</p>
                       <span className="text-[9px] text-[#a8a4a0] block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
                     </div>
@@ -1132,6 +1287,25 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* FIX 2: inline property preview - no client-side router exists to deep-link into a
+          property detail page from here, so this fetches/shows it directly instead. */}
+      {leadPropertyPreview && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setLeadPropertyPreview(null)}>
+          <div className="bg-white rounded-xl max-w-md w-full overflow-hidden text-xs" onClick={(e) => e.stopPropagation()}>
+            <img src={leadPropertyPreview.images?.[0]} alt={leadPropertyPreview.title} className="w-full h-40 object-cover" />
+            <div className="p-4 space-y-1">
+              <div className="flex items-start justify-between">
+                <h5 className="font-serif text-sm font-bold text-[#1a1918]">{isRtl ? leadPropertyPreview.titleAr : leadPropertyPreview.title}</h5>
+                <button type="button" onClick={() => setLeadPropertyPreview(null)} className="text-[#6e6b66] hover:text-[#1a1918] cursor-pointer"><X size={16} /></button>
+              </div>
+              <p className="text-[#6e6b66]">{leadPropertyPreview.district}, {leadPropertyPreview.city}</p>
+              <p className="font-bold text-[#bf9b30]">{leadPropertyPreview.price?.toLocaleString()} QAR</p>
+              <p className="text-[10px] text-[#6e6b66]">{isRtl ? "الحالة: " : "Status: "}{leadPropertyPreview.listingStatus} • ID: {leadPropertyPreview.listingId}</p>
+            </div>
+          </div>
         </div>
       )}
 

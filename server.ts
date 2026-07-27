@@ -48,7 +48,12 @@ import {
   Organization,
   AgentType,
   ApplicationStatus,
-  getEffectiveAgentType
+  getEffectiveAgentType,
+  getVerifiedBadgeLabel,
+  getAvailabilityStaleDays,
+  AVAILABILITY_CONFIRM_DUE_DAYS,
+  AVAILABILITY_UNCONFIRMED_DAYS,
+  AVAILABILITY_AUTO_PAUSE_DAYS
 } from "./src/types.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
@@ -623,9 +628,17 @@ app.post("/api/auth/2fa/disable", authMiddleware, (req, res) => {
 });
 
 // Real Signup
+// Security-critical: only these roles may ever be self-assigned via public signup.
+// PLATFORM_ADMIN/SUPER_ADMIN accounts must be created through a separate, protected path
+// (e.g. a trusted admin creating one directly), never handed out to whatever the client sends.
+const SELF_SIGNUP_ALLOWED_ROLES = [UserRole.AGENT, UserRole.AGENCY_ADMIN, UserRole.DEVELOPER_ADMIN, UserRole.REGISTERED];
 app.post("/api/auth/signup", authRateLimiter, (req, res) => {
   const { email, password, fullName, phone, role, orgName, orgType, selectedPlanId, inviteToken } = req.body;
   const db = readDb();
+
+  if (role && !SELF_SIGNUP_ALLOWED_ROLES.includes(role)) {
+    return res.status(400).json({ error: "Invalid role for self-service signup." });
+  }
 
   // Check if user already exists
   const exists = db.users.find(u => u.email === email);
@@ -742,6 +755,19 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
 
   logAudit(userId, fullName, effectiveRole, "USER_SIGNUP", userId, "User", { email, viaInvitation: !!consumedInvitation });
 
+  // FIX 9: welcome email to the new user themself - previously only admins were ever notified
+  // (and only for org signups), the new user got nothing.
+  sendMockEmail(
+    email,
+    "[Nerou Finder] Welcome to Nerou Finder",
+    generateNotificationEmailHtml(
+      "Welcome to Nerou Finder",
+      fullName,
+      `<p>Your account has been created successfully. You can now sign in to your dashboard.</p>`
+    ),
+    "welcome"
+  );
+
   // Issue JWT Token
   const token = jwt.sign(
     { id: newUser.id, email: newUser.email, role: newUser.role, fullName: newUser.fullName },
@@ -804,9 +830,13 @@ app.post("/api/admin/locations", (req, res) => {
   res.json({ success: true, location: newLoc });
 });
 
+// Security-critical: this endpoint is intentionally public (unauthenticated) - the public
+// storefront (VisitorExperience) uses it to resolve agent/org display names for anyone
+// browsing, and it's also the data source for the admin Users directory. It must NEVER
+// return the bcrypt password hash regardless of caller, which it previously did unconditionally.
 app.get("/api/users", (req, res) => {
   const db = readDb();
-  res.json(db.users);
+  res.json(db.users.map(({ password, ...safe }) => safe));
 });
 
 // Update own profile (Agent/Agency/Developer "Save Profile Changes" forms), or any user if PLATFORM_ADMIN
@@ -825,7 +855,7 @@ app.patch("/api/users/:id", authMiddleware, (req, res) => {
 
   // Whitelist: profile fields only. Role, email, password, verificationStatus, and orgId
   // all have their own dedicated admin/auth endpoints and must not be changed here.
-  const { fullName, phone, whatsapp, bio, languages, specialties, avatarUrl } = req.body;
+  const { fullName, phone, whatsapp, bio, languages, specialties, avatarUrl, affiliatedAgencyName } = req.body;
   const existing = db.users[idx] as any;
   if (fullName !== undefined) existing.fullName = fullName;
   if (phone !== undefined) existing.phone = phone;
@@ -834,10 +864,24 @@ app.patch("/api/users/:id", authMiddleware, (req, res) => {
   if (languages !== undefined) existing.languages = languages;
   if (specialties !== undefined) existing.specialties = specialties;
   if (avatarUrl !== undefined) existing.avatarUrl = avatarUrl;
+  if (affiliatedAgencyName !== undefined) existing.affiliatedAgencyName = affiliatedAgencyName;
 
   writeDb(db);
 
   logAudit(actor.id, actor.fullName, actor.role, "UPDATE_USER_PROFILE", id, "User", { fullName, phone, whatsapp });
+
+  if (existing.email) {
+    sendMockEmail(
+      existing.email,
+      "[Nerou Finder] Your Profile Was Updated",
+      generateNotificationEmailHtml(
+        "Profile Updated",
+        existing.fullName,
+        `<p>Your account profile was just updated. If you did not make this change, please contact support immediately.</p>`
+      ),
+      "profile_updated"
+    );
+  }
 
   res.json({ success: true, user: db.users[idx] });
 });
@@ -876,6 +920,19 @@ app.post("/api/users/:id/change-password", authMiddleware, (req, res) => {
 
   logAudit(actor.id, actor.fullName, actor.role as UserRole, "CHANGE_PASSWORD", id, "User", {});
 
+  if (user.email) {
+    sendMockEmail(
+      user.email,
+      "[Nerou Finder] Your Password Was Changed",
+      generateNotificationEmailHtml(
+        "Password Changed",
+        user.fullName,
+        `<p>Your account password was just changed. If you did not make this change, please contact support immediately.</p>`
+      ),
+      "security_password_changed"
+    );
+  }
+
   res.json({ success: true });
 });
 
@@ -898,8 +955,17 @@ app.get("/api/properties", (req, res) => {
     furnished,
     verifiedOnly,
     orgId,
-    searchQuery
+    searchQuery,
+    includeAllStatuses
   } = req.query;
+
+  // FIX 1: public/search callers only ever see live listings by default - Sold/Rented/Draft/
+  // Suspended listings used to leak into every search result because this filter didn't
+  // exist. Agent/agency/admin dashboards pass includeAllStatuses=true to see their full
+  // history (own listings in every status) instead.
+  if (includeAllStatuses !== "true") {
+    properties = properties.filter(p => p.listingStatus === ListingStatus.PUBLISHED);
+  }
 
   if (city) {
     properties = properties.filter(p => p.city.toLowerCase() === (city as string).toLowerCase());
@@ -948,6 +1014,22 @@ app.get("/api/properties", (req, res) => {
     );
   }
 
+  // Modest default-ranking penalty: no explicit sort is requested here (callers - the public
+  // search UI, agent/agency/developer dashboards - each apply their own further sort on top of
+  // this order), so the existing implicit order is "whatever the filters above produced" (most
+  // recently created first, since properties are unshifted on creation). Additively layer one
+  // rule on top: listings sitting in the "Availability Unconfirmed" window (21+ days since
+  // lastConfirmedAvailableDate, see Property.lastConfirmedAvailableDate) are stable-sorted just
+  // behind everything else, without touching relative order within either group.
+  properties = properties
+    .map((p, idx) => ({
+      p,
+      idx,
+      penalized: getAvailabilityStaleDays(p.lastConfirmedAvailableDate || p.createdDate) >= AVAILABILITY_UNCONFIRMED_DAYS
+    }))
+    .sort((a, b) => (a.penalized === b.penalized ? a.idx - b.idx : a.penalized ? 1 : -1))
+    .map(x => x.p);
+
   res.json(properties);
 });
 
@@ -959,6 +1041,36 @@ app.get("/api/properties/:id", (req, res) => {
     return res.status(404).json({ error: "Property not found" });
   }
   res.json(property);
+});
+
+// FIX 8: real view tracking. `fingerprint` is a stable per-browser id the client generates
+// once and persists in localStorage - not a security identifier, just a dedup key. A view is
+// "unique" if this fingerprint hasn't been seen for this listing in the last 30 minutes;
+// recentViewers is continuously pruned to that same window so it never grows unbounded.
+const VIEW_DEDUP_WINDOW_MS = 30 * 60 * 1000;
+app.post("/api/properties/:id/view", (req, res) => {
+  const db = readDb();
+  const property = db.properties.find(p => p.id === req.params.id);
+  if (!property) return res.status(404).json({ error: "Property not found" });
+
+  const { fingerprint } = req.body as { fingerprint?: string };
+  const now = Date.now();
+
+  if (!property.recentViewers) property.recentViewers = [];
+  property.recentViewers = property.recentViewers.filter(v => now - v.ts < VIEW_DEDUP_WINDOW_MS);
+
+  const isUnique = !fingerprint || !property.recentViewers.some(v => v.fingerprint === fingerprint);
+  if (fingerprint) property.recentViewers.push({ fingerprint, ts: now });
+
+  property.views = (property.views || 0) + 1;
+  if (isUnique) property.uniqueViews = (property.uniqueViews || 0) + 1;
+
+  const today = new Date().toISOString().split("T")[0];
+  if (!property.viewsByDay) property.viewsByDay = {};
+  property.viewsByDay[today] = (property.viewsByDay[today] || 0) + 1;
+
+  writeDb(db);
+  res.json({ success: true, views: property.views, uniqueViews: property.uniqueViews });
 });
 
 // Get correct WhatsApp contact number for property (agent specific with fallback to platform default)
@@ -1043,7 +1155,14 @@ app.get("/api/properties/:id/agent-info", (req, res) => {
     orgName: org ? org.name : null,
     phone: cleanedPhone,
     isVerifiedAgent: agent ? agent.verificationStatus === VerificationStatus.APPROVED : false,
-    hasAssignedAgent: !!agent
+    hasAssignedAgent: !!agent,
+    // FIX 4: real agency name instead of a generic "Nerou Verified Consultant" claim.
+    verifiedBadgeLabel: agent && agent.verificationStatus === VerificationStatus.APPROVED
+      ? getVerifiedBadgeLabel(agent, org?.name, false)
+      : null,
+    verifiedBadgeLabelAr: agent && agent.verificationStatus === VerificationStatus.APPROVED
+      ? getVerifiedBadgeLabel(agent, org?.name, true)
+      : null
   });
 });
 
@@ -1074,7 +1193,13 @@ app.post("/api/properties", authMiddleware, (req, res) => {
   // live. AGENCY_AGENT and org admins are not subject to this - they're covered by
   // their organization's own verification. Applies on both create and edit, since edit
   // can carry a listingStatus straight from the client.
-  const requestedListingStatus = propData.listingStatus;
+  // FIX 3: per-listing admin approval was removed - a brand-new listing now publishes
+  // immediately once this account-level gate passes, instead of always landing in a
+  // PENDING_REVIEW queue. The client may still explicitly request DRAFT to save without
+  // publishing. Edits keep respecting whatever listingStatus the client sends.
+  const requestedListingStatus = isEdit
+    ? propData.listingStatus
+    : (propData.listingStatus === ListingStatus.DRAFT ? ListingStatus.DRAFT : ListingStatus.PUBLISHED);
   if (
     actor &&
     actor.role === UserRole.AGENT &&
@@ -1140,6 +1265,7 @@ app.post("/api/properties", authMiddleware, (req, res) => {
     // New property listing
     const id = `prop-${Date.now()}`;
     const listingId = `N-${Math.floor(10000 + Math.random() * 90000)}`;
+    const nowIso = new Date().toISOString();
     const newProp: Property = {
       id,
       listingId,
@@ -1172,11 +1298,18 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       // organization, or every independently-listed property would be silently misattributed.
       orgId: propData.orgId || actor?.orgId || undefined,
       projectId: propData.projectId,
-      verificationStatus: VerificationStatus.PENDING,
-      listingStatus: ListingStatus.PENDING_REVIEW,
+      // No more manual per-listing review step to leave this PENDING - a published listing
+      // is auto-approved at the property level; admin retains suspend/flag/remove as
+      // after-the-fact moderation tools (see POST /api/admin/properties/:id/flag).
+      verificationStatus: requestedListingStatus === ListingStatus.PUBLISHED ? VerificationStatus.APPROVED : VerificationStatus.PENDING,
+      listingStatus: requestedListingStatus,
+      statusChangedDate: nowIso,
       qualityScore,
-      createdDate: new Date().toISOString(),
-      updatedDate: new Date().toISOString(),
+      createdDate: nowIso,
+      updatedDate: nowIso,
+      // Availability refresh cycle baseline: every new listing starts "confirmed available"
+      // as of its own creation instant, so it doesn't read as immediately stale.
+      lastConfirmedAvailableDate: nowIso,
       priceHistory: [{ price: Number(propData.price), date: new Date().toISOString().split("T")[0] }],
       // Qatar-specific specification fields
       completionYear: propData.completionYear !== undefined ? Number(propData.completionYear) : undefined,
@@ -1188,6 +1321,24 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       parkingSpaces: propData.parkingSpaces !== undefined ? Number(propData.parkingSpaces) : undefined,
       tenureType: propData.tenureType
     };
+
+    // Duplicate detection (informational only - never blocks creation): look for other
+    // currently-PUBLISHED listings from the same organization (or the same agent, when no
+    // orgId applies) that appear to describe the same unit - same district, same bedroom
+    // count, and price within +/-5%. Computed against the list as it stood before this new
+    // property is added, so the new listing never matches against itself.
+    const dupScopeIsOrg = !!newProp.orgId;
+    const dupPriceTolerance = newProp.price * 0.05;
+    const possibleDuplicates = db.properties
+      .filter(
+        p =>
+          p.listingStatus === ListingStatus.PUBLISHED &&
+          (dupScopeIsOrg ? p.orgId === newProp.orgId : p.agentId === newProp.agentId) &&
+          p.district === newProp.district &&
+          p.bedrooms === newProp.bedrooms &&
+          Math.abs(p.price - newProp.price) <= dupPriceTolerance
+      )
+      .map(p => ({ id: p.id, title: p.title, price: p.price, district: p.district }));
 
     db.properties.unshift(newProp);
     writeDb(db);
@@ -1202,10 +1353,143 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       { title: newProp.title, price: newProp.price }
     );
 
-    return res.json(newProp);
+    // FIX 9: confirm the listing went live (or was saved as a draft) - there was previously
+    // no notification at all for a brand-new listing.
+    if (actor?.email) {
+      const isPublished = newProp.listingStatus === ListingStatus.PUBLISHED;
+      sendMockEmail(
+        actor.email,
+        `[Nerou Finder] Listing ${isPublished ? "Published" : "Saved as Draft"}: ${newProp.title}`,
+        generateNotificationEmailHtml(
+          isPublished ? "Listing Published" : "Listing Saved as Draft",
+          actor.fullName,
+          `<p>Your listing <strong>${newProp.title}</strong> (ID: ${newProp.listingId}) ${isPublished ? "is now live." : "was saved as a draft and is not yet public."}</p>`
+        ),
+        "listing_published"
+      );
+    }
+
+    return res.json(possibleDuplicates.length > 0 ? { ...newProp, possibleDuplicates } : newProp);
   }
 });
 
+// Confirm a listing is still available - resets the staleness clock and, if this listing
+// was auto-paused purely for going stale (see checkPropertyStalenessAndReminders below),
+// reactivates it back to its prior live status. Callable by the property's own agent, or an
+// org admin (AGENCY_ADMIN/DEVELOPER_ADMIN) belonging to the property's own orgId.
+app.patch("/api/properties/:id/confirm-available", authMiddleware, (req, res) => {
+  const db = readDb();
+  const property = db.properties.find(p => p.id === req.params.id);
+  if (!property) return res.status(404).json({ error: "Property not found." });
+
+  const authReq = req as AuthenticatedRequest;
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const isOwnAgent = actor.id === property.agentId;
+  const isOrgAdmin =
+    !!property.orgId &&
+    actor.orgId === property.orgId &&
+    (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+
+  if (!isOwnAgent && !isOrgAdmin) {
+    return res.status(403).json({ error: "You are not authorized to confirm availability for this listing." });
+  }
+
+  const nowIso = new Date().toISOString();
+  property.lastConfirmedAvailableDate = nowIso;
+  property.staleReminderSentDate = undefined;
+
+  // If this listing was auto-paused purely for going stale (not a manual pause for some
+  // other reason), reactivate it back to whatever live status it held before the sweep
+  // paused it, rather than leaving the agent to manually re-publish.
+  if (property.listingStatus === ListingStatus.PAUSED && property.staleAutoPausedFromStatus) {
+    property.listingStatus = property.staleAutoPausedFromStatus;
+    property.staleAutoPausedFromStatus = undefined;
+  }
+
+  writeDb(db);
+
+  logAudit(actor.id, actor.fullName, actor.role, "CONFIRM_PROPERTY_AVAILABLE", property.id, "Property", { title: property.title });
+
+  res.json(property);
+});
+
+// FIX 1: agent-facing listing status control (Active/Sold/Rented/Unavailable/Draft). Never
+// accepts SUSPENDED or PENDING_REVIEW - those remain admin-only (see /api/admin/properties/verify
+// and /api/admin/properties/:id/flag). History is preserved - this never deletes the listing,
+// only changes its status, so it stays fully visible in the agent's own dashboard/history.
+const AGENT_SETTABLE_STATUSES = [ListingStatus.DRAFT, ListingStatus.PUBLISHED, ListingStatus.SOLD, ListingStatus.RENTED, ListingStatus.PAUSED];
+app.patch("/api/properties/:id/status", authMiddleware, (req, res) => {
+  const db = readDb();
+  const property = db.properties.find(p => p.id === req.params.id);
+  if (!property) return res.status(404).json({ error: "Property not found." });
+
+  const authReq = req as AuthenticatedRequest;
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const isOwnAgent = actor.id === property.agentId;
+  const isOrgAdmin =
+    !!property.orgId &&
+    actor.orgId === property.orgId &&
+    (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+  if (!isOwnAgent && !isOrgAdmin) {
+    return res.status(403).json({ error: "You are not authorized to change the status of this listing." });
+  }
+
+  const { status } = req.body as { status?: ListingStatus };
+  if (!status || !AGENT_SETTABLE_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `status must be one of: ${AGENT_SETTABLE_STATUSES.join(", ")}` });
+  }
+
+  // Same Qatar-regulation gate as creation: an INDEPENDENT_AGENT without an approved Agency
+  // Authorization Letter cannot (re)publish a listing.
+  if (status === ListingStatus.PUBLISHED && actor.role === UserRole.AGENT && getEffectiveAgentType(actor) === AgentType.INDEPENDENT_AGENT) {
+    if (!db.verificationDocuments) db.verificationDocuments = [];
+    const authLetter = db.verificationDocuments.find(
+      d => d.userId === actor.id && d.documentType === DocumentType.AGENCY_AUTHORIZATION_LETTER
+    );
+    if (!authLetter || authLetter.status !== DocumentStatus.APPROVED) {
+      const currentState = !authLetter ? "NOT_SUBMITTED" : authLetter.status;
+      return res.status(403).json({
+        error: `You must have your Agency Authorization Letter approved before publishing listings. Current status: ${currentState}.`
+      });
+    }
+  }
+
+  const previousStatus = property.listingStatus;
+  property.listingStatus = status;
+  property.statusChangedDate = new Date().toISOString();
+  if (status === ListingStatus.PUBLISHED) {
+    property.verificationStatus = VerificationStatus.APPROVED;
+  }
+  writeDb(db);
+
+  logAudit(actor.id, actor.fullName, actor.role, "UPDATE_PROPERTY_STATUS", property.id, "Property", { from: previousStatus, to: status });
+
+  // FIX 9: notify the agent's own record of the change (useful for agency-admin-triggered
+  // changes on an agent's listing) and, for the more consequential Sold/Rented transitions,
+  // give it its own recognizable subject line.
+  const owningAgent = db.users.find(u => u.id === property.agentId);
+  if (owningAgent?.email && previousStatus !== status) {
+    const title = status === ListingStatus.SOLD || status === ListingStatus.RENTED
+      ? `Listing Marked ${status === ListingStatus.SOLD ? "Sold" : "Rented"}`
+      : "Listing Status Changed";
+    sendMockEmail(
+      owningAgent.email,
+      `[Nerou Finder] ${title}: ${property.title}`,
+      generateNotificationEmailHtml(
+        title,
+        owningAgent.fullName,
+        `<p>Your listing <strong>${property.title}</strong> (ID: ${property.listingId}) changed status from <strong>${previousStatus}</strong> to <strong>${status}</strong>.</p>`
+      ),
+      "listing_status_changed"
+    );
+  }
+
+  res.json(property);
+});
 
 async function checkAndIncrementSavedSearches(property: Property) {
   try {
@@ -1341,6 +1625,42 @@ app.post("/api/admin/properties/verify", (req, res) => {
   res.json({ success: true, property: db.properties[idx] });
 });
 
+// FIX 3: after-the-fact admin moderation - flag a live listing "under review" without
+// unpublishing it (suspending via /verify above already fully unpublishes; this is the
+// lighter-weight alternative). Pass reason: undefined/omitted to clear an existing flag.
+app.post("/api/admin/properties/:id/flag", (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body as { reason?: string };
+  const db = readDb();
+  const idx = db.properties.findIndex(p => p.id === id);
+  if (idx === -1) return res.status(404).json({ error: "Property not found" });
+
+  const prop = db.properties[idx];
+  if (reason) {
+    prop.flaggedForReview = true;
+    prop.flagReason = reason;
+    prop.flaggedDate = new Date().toISOString();
+  } else {
+    prop.flaggedForReview = false;
+    prop.flagReason = undefined;
+    prop.flaggedDate = undefined;
+  }
+  writeDb(db);
+
+  const authReq = req as AuthenticatedRequest;
+  logAudit(
+    authReq.user?.id || "unknown",
+    authReq.user?.fullName || "Admin",
+    (authReq.user?.role as UserRole) || UserRole.PLATFORM_ADMIN,
+    reason ? "FLAG_PROPERTY" : "UNFLAG_PROPERTY",
+    id,
+    "Property",
+    { reason }
+  );
+
+  res.json({ success: true, property: prop });
+});
+
 // Delete a Property (Platform Admin action)
 app.delete("/api/admin/properties/:id", (req, res) => {
   const { id } = req.params;
@@ -1417,10 +1737,23 @@ app.post("/api/leads", (req, res) => {
   };
 
   db.leads.unshift(newLead);
+
+  // FIX 6: real ad-lead attribution - if the visitor arrived via a campaign's shareable
+  // link (?campaignId=... captured once in App.tsx and threaded through to lead creation),
+  // credit that campaign's lead count. `campaign` here is the raw client-supplied value
+  // (before the "Organic discovery" display fallback above), so it only matches a real id.
+  if (campaign) {
+    const matchedCampaign = db.campaigns.find(c => c.id === campaign);
+    if (matchedCampaign) {
+      matchedCampaign.metrics.leads = (matchedCampaign.metrics.leads || 0) + 1;
+    }
+  }
+
   writeDb(db);
 
   // If a viewing request was submitted in the inquiry
-  if (req.body.preferredDate && req.body.preferredTimeSlot) {
+  const viewingRequested = !!(req.body.preferredDate && req.body.preferredTimeSlot);
+  if (viewingRequested) {
     const viewingId = `view-${Date.now()}`;
     db.viewings.unshift({
       id: viewingId,
@@ -1439,6 +1772,21 @@ app.post("/api/leads", (req, res) => {
   // Trigger outbound mock email log for lead inquiry
   const agentObj = db.users.find(u => u.id === agentId);
   const orgObj = db.organizations.find(o => o.id === orgId);
+
+  // FIX 9: dedicated viewing-request notification, distinct from the general "inquiry"
+  // email below - a viewing request is a more time-sensitive, actionable event.
+  if (viewingRequested && agentObj?.email) {
+    sendMockEmail(
+      agentObj.email,
+      `[Nerou Finder] New Viewing Request: ${visitorName}`,
+      generateNotificationEmailHtml(
+        "New Viewing Request",
+        agentObj.fullName,
+        `<p><strong>${visitorName}</strong> requested a viewing on <strong>${req.body.preferredDate}</strong> at <strong>${req.body.preferredTimeSlot}</strong>. Contact: ${visitorPhone || "Not specified"}${visitorEmail ? ` / ${visitorEmail}` : ""}.</p>`
+      ),
+      "viewing_requested"
+    );
+  }
   const targetEmail = agentObj?.email || orgObj?.email || "agent@nerou.io";
   const propObj = db.properties.find(p => p.id === propertyId);
   const propTitle = propObj ? propObj.title : "Exclusive Property Asset";
@@ -1485,8 +1833,10 @@ app.post("/api/leads/status", authMiddleware, (req, res) => {
   const actorName = authReq.user?.fullName || "Agent";
   const actorRole = authReq.user?.role || UserRole.AGENT;
 
-  db.leads[idx].status = status;
-  db.leads[idx].updatedDate = new Date().toISOString();
+  const lead = db.leads[idx];
+  const previousStatus = lead.status;
+  lead.status = status;
+  lead.updatedDate = new Date().toISOString();
   writeDb(db);
 
   logAudit(
@@ -1499,7 +1849,86 @@ app.post("/api/leads/status", authMiddleware, (req, res) => {
     { status }
   );
 
+  // FIX 9: notify the responsible agent of the status change (skip when the agent themself
+  // is the one making the change - no need to notify yourself).
+  const owningAgent = db.users.find(u => u.id === lead.agentId);
+  if (owningAgent?.email && owningAgent.id !== actorId && previousStatus !== status) {
+    sendMockEmail(
+      owningAgent.email,
+      `[Nerou Finder] Lead Status Changed: ${lead.visitorName}`,
+      generateNotificationEmailHtml(
+        "Lead Status Changed",
+        owningAgent.fullName,
+        `<p>The lead <strong>${lead.visitorName}</strong> changed status from <strong>${previousStatus}</strong> to <strong>${status}</strong>.</p>`
+      ),
+      "lead_status_changed"
+    );
+  }
+
   res.json({ success: true, lead: db.leads[idx] });
+});
+
+// FIX 2: timestamped notes on a lead - persisted, visible on its detail view.
+app.post("/api/leads/:id/notes", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const { text } = req.body as { text?: string };
+  if (!text || !text.trim()) return res.status(400).json({ error: "text is required." });
+
+  const db = readDb();
+  const lead = db.leads.find(l => l.id === id);
+  if (!lead) return res.status(404).json({ error: "Lead not found" });
+
+  const authReq = req as AuthenticatedRequest;
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const isOwnAgent = actor.id === lead.agentId;
+  const isOrgAdmin = !!lead.orgId && actor.orgId === lead.orgId && actor.role === UserRole.AGENCY_ADMIN;
+  if (!isOwnAgent && !isOrgAdmin) {
+    return res.status(403).json({ error: "You are not authorized to add notes to this lead." });
+  }
+
+  if (!lead.notes) lead.notes = [];
+  const note = {
+    id: `note-${Date.now()}`,
+    text: text.trim(),
+    authorId: actor.id,
+    authorName: actor.fullName,
+    createdDate: new Date().toISOString()
+  };
+  lead.notes.unshift(note);
+  writeDb(db);
+
+  logAudit(actor.id, actor.fullName, actor.role, "ADD_LEAD_NOTE", id, "Lead", { text: note.text });
+
+  res.json({ success: true, lead });
+});
+
+// FIX 2: soft-close/reopen a lead - preserves history, never deletes it.
+app.patch("/api/leads/:id/archive", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const { isArchived } = req.body as { isArchived?: boolean };
+
+  const db = readDb();
+  const lead = db.leads.find(l => l.id === id);
+  if (!lead) return res.status(404).json({ error: "Lead not found" });
+
+  const authReq = req as AuthenticatedRequest;
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const isOwnAgent = actor.id === lead.agentId;
+  const isOrgAdmin = !!lead.orgId && actor.orgId === lead.orgId && actor.role === UserRole.AGENCY_ADMIN;
+  if (!isOwnAgent && !isOrgAdmin) {
+    return res.status(403).json({ error: "You are not authorized to archive this lead." });
+  }
+
+  lead.isArchived = !!isArchived;
+  writeDb(db);
+
+  logAudit(actor.id, actor.fullName, actor.role, isArchived ? "ARCHIVE_LEAD" : "UNARCHIVE_LEAD", id, "Lead", {});
+
+  res.json({ success: true, lead });
 });
 
 // Manually Reassign Lead to a Specific Agent (Agency Admin action, independent of automatic routing policy)
@@ -1541,6 +1970,20 @@ app.patch("/api/leads/:id/assign", authMiddleware, requireRole([UserRole.AGENCY_
     "Lead",
     { agentId, previousAgentId: lead.agentId }
   );
+
+  // FIX 9: notify the newly-assigned agent.
+  if (targetAgent.email) {
+    sendMockEmail(
+      targetAgent.email,
+      `[Nerou Finder] New Lead Assigned: ${lead.visitorName}`,
+      generateNotificationEmailHtml(
+        "New Lead Assigned To You",
+        targetAgent.fullName,
+        `<p>A lead, <strong>${lead.visitorName}</strong>, has been assigned to you. Contact: ${lead.visitorPhone}${lead.visitorEmail ? ` / ${lead.visitorEmail}` : ""}.</p>`
+      ),
+      "lead_assigned"
+    );
+  }
 
   res.json({ success: true, lead: db.leads[leadIdx] });
 });
@@ -1617,12 +2060,22 @@ app.post("/api/projects", authMiddleware, (req, res) => {
 
 
 // Viewings list
-app.get("/api/viewings", (req, res) => {
+// FIX 7: was previously unauthenticated (any request returned every viewing platform-wide,
+// or any agent's viewings by simply guessing an agentId). Admin roles may see everything
+// (optionally filtered by ?agentId=); everyone else may only see their own.
+app.get("/api/viewings", authMiddleware, (req, res) => {
   const db = readDb();
+  const authReq = req as AuthenticatedRequest;
+  const actor = authReq.user;
+  if (!actor) return res.status(401).json({ error: "Access token missing or invalid." });
+  const isAdmin = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
+
   const { agentId } = req.query;
   let viewings = db.viewings;
-  if (agentId) {
-    viewings = viewings.filter(v => v.agentId === agentId);
+  if (isAdmin) {
+    if (agentId) viewings = viewings.filter(v => v.agentId === agentId);
+  } else {
+    viewings = viewings.filter(v => v.agentId === actor.id);
   }
   res.json(viewings);
 });
@@ -1638,7 +2091,9 @@ app.post("/api/viewings/status", authMiddleware, (req, res) => {
   const actorName = authReq.user?.fullName || "Agent";
   const actorRole = authReq.user?.role || UserRole.AGENT;
 
-  db.viewings[idx].status = status;
+  const viewing = db.viewings[idx];
+  const previousStatus = viewing.status;
+  viewing.status = status;
   writeDb(db);
 
   logAudit(
@@ -1650,6 +2105,21 @@ app.post("/api/viewings/status", authMiddleware, (req, res) => {
     "Viewing",
     { status }
   );
+
+  // FIX 9: notify the visitor who requested the viewing, if they left an email.
+  const relatedLead = db.leads.find(l => l.id === viewing.leadId);
+  if (relatedLead?.visitorEmail && previousStatus !== status) {
+    sendMockEmail(
+      relatedLead.visitorEmail,
+      "[Nerou Finder] Your Viewing Request Status Changed",
+      generateNotificationEmailHtml(
+        "Viewing Request Update",
+        relatedLead.visitorName,
+        `<p>Your viewing request for ${viewing.preferredDate} at ${viewing.preferredTimeSlot} is now <strong>${status}</strong>.</p>`
+      ),
+      "viewing_status_changed"
+    );
+  }
 
   res.json({ success: true, viewing: db.viewings[idx] });
 });
@@ -2179,6 +2649,19 @@ function generateDocumentExpiryEmailHtml(name: string, documentType: string, day
   </div>`;
 }
 
+// Generic lightweight template for the assorted lifecycle notifications added across
+// FIX 9 (listing/lead/viewing/profile/security events) - keeps a consistent look without a
+// bespoke generator function per event, matching the styling of the other templates above.
+function generateNotificationEmailHtml(title: string, name: string, bodyHtml: string): string {
+  return `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1a1918;">${title}</h2>
+    <p>Dear ${name},</p>
+    ${bodyHtml}
+    <p>&mdash; Nerou Finder</p>
+  </div>`;
+}
+
 // Submit or resubmit a verification document (Agent / Agency Admin / Developer Admin)
 app.post("/api/verification-documents", authMiddleware, (req, res) => {
   const authReq = req as AuthenticatedRequest;
@@ -2252,6 +2735,21 @@ app.post("/api/verification-documents", authMiddleware, (req, res) => {
 
   writeDb(db);
   logAudit(actor.id, actor.fullName, actor.role, "SUBMIT_VERIFICATION_DOCUMENT", doc.id, "VerificationDocument", { documentType, context });
+
+  // FIX 9: confirm receipt of the submission - previously only the eventual approve/reject
+  // decision emailed anything, submission itself was silent.
+  if (actor.email) {
+    sendMockEmail(
+      actor.email,
+      `[Nerou Finder] Document Received: ${documentType.replace(/_/g, " ")}`,
+      generateNotificationEmailHtml(
+        "Verification Document Received",
+        actor.fullName,
+        `<p>We've received your submitted document <strong>${documentType.replace(/_/g, " ")}</strong>. It's now pending review by our compliance team.</p>`
+      ),
+      "document_submitted"
+    );
+  }
 
   res.json({ success: true, document: doc });
 });
@@ -2412,6 +2910,89 @@ export function checkDocumentExpiryAndReminders() {
   if (changed) writeDb(db);
 }
 
+function generatePropertyStaleEmailHtml(name: string, propertyTitle: string, kind: "reminder" | "paused"): string {
+  if (kind === "paused") {
+    return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #1a1918;">Listing Paused - Availability Confirmation Needed</h2>
+      <p>Dear ${name},</p>
+      <p>Your listing <strong>${propertyTitle}</strong> has not had its availability confirmed in over 30 days, so it has been automatically paused and removed from public search results.</p>
+      <p>Please log in to your workspace and click "Confirm Still Available" on this listing to reactivate it immediately.</p>
+      <p>&mdash; Nerou Finder Listings Team</p>
+    </div>`;
+  }
+  return `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1a1918;">Please Confirm Your Listing Is Still Available</h2>
+    <p>Dear ${name},</p>
+    <p>Your listing <strong>${propertyTitle}</strong> hasn't had its availability confirmed in a while. Please log in to your workspace and click "Confirm Still Available" to keep it fresh and fully visible to buyers and renters.</p>
+    <p>If it isn't reconfirmed, it may be shown lower in search results and, if left unconfirmed for 30 days total, automatically paused.</p>
+    <p>&mdash; Nerou Finder Listings Team</p>
+  </div>`;
+}
+
+// Property availability staleness sweep: sends a one-time-per-window "please confirm" reminder
+// once a listing crosses 14 days since its last confirmed-available check, and auto-pauses it
+// (with a notification email) once it crosses 30 days. The 21-29 day "Availability Unconfirmed"
+// public badge and search ranking penalty are computed live from lastConfirmedAvailableDate
+// wherever needed (see GET /api/properties and the frontend) rather than stored here. Runs on
+// the same interval as the verification document expiry sweep and can also be triggered
+// manually for testing.
+export function checkPropertyStalenessAndReminders() {
+  const db = readDb();
+  if (!db.properties || db.properties.length === 0) return;
+
+  const now = Date.now();
+  let changed = false;
+
+  for (const prop of db.properties) {
+    // Only listings that are actually live (or on their way to being live) carry a freshness
+    // clock - a SOLD/RENTED/SUSPENDED/DRAFT listing, or one already PAUSED (whether manually
+    // or by this very sweep), has nothing to "confirm" right now.
+    if (prop.listingStatus !== ListingStatus.PUBLISHED && prop.listingStatus !== ListingStatus.PENDING_REVIEW) continue;
+
+    const baseline = prop.lastConfirmedAvailableDate || prop.createdDate;
+    const baselineTime = Date.parse(baseline);
+    if (isNaN(baselineTime)) continue;
+    const daysStale = Math.floor((now - baselineTime) / (24 * 60 * 60 * 1000));
+
+    const agent = db.users.find(u => u.id === prop.agentId);
+
+    if (daysStale >= AVAILABILITY_AUTO_PAUSE_DAYS) {
+      prop.staleAutoPausedFromStatus = prop.listingStatus;
+      prop.listingStatus = ListingStatus.PAUSED;
+      changed = true;
+
+      if (agent) {
+        sendMockEmail(
+          agent.email,
+          `[Nerou Finder] Listing Paused - Availability Confirmation Needed: ${prop.title}`,
+          generatePropertyStaleEmailHtml(agent.fullName, prop.title, "paused"),
+          "listing_stale_paused"
+        );
+      }
+      logAudit("system", "System", UserRole.PLATFORM_ADMIN, "AUTO_PAUSE_STALE_PROPERTY", prop.id, "Property", { title: prop.title, daysStale });
+    } else if (
+      daysStale >= AVAILABILITY_CONFIRM_DUE_DAYS &&
+      (!prop.staleReminderSentDate || Date.parse(prop.staleReminderSentDate) < baselineTime)
+    ) {
+      prop.staleReminderSentDate = new Date().toISOString();
+      changed = true;
+
+      if (agent) {
+        sendMockEmail(
+          agent.email,
+          `[Nerou Finder] Please Confirm Your Listing Is Still Available: ${prop.title}`,
+          generatePropertyStaleEmailHtml(agent.fullName, prop.title, "reminder"),
+          "listing_stale_reminder"
+        );
+      }
+    }
+  }
+
+  if (changed) writeDb(db);
+}
+
 // Ad Campaigns (Monetization)
 app.get("/api/campaigns", (req, res) => {
   const db = readDb();
@@ -2468,6 +3049,89 @@ app.post("/api/campaigns", authMiddleware, (req, res) => {
   res.json(newCampaign);
 });
 
+// FIX 6: campaign owner-only ops (Edit/Pause/Resume/Delete) - the campaign flow previously
+// had no way to do any of these; only self-service ad-boosts (a separate flow) supported
+// pause/resume-equivalent lifecycle actions.
+function requireCampaignOwner(req: express.Request, res: express.Response, campaign: AdCampaign | undefined): boolean {
+  if (!campaign) {
+    res.status(404).json({ error: "Campaign not found" });
+    return false;
+  }
+  const authReq = req as AuthenticatedRequest;
+  const actor = readDb().users.find(u => u.id === authReq.user?.id);
+  const isOwnerOrgAdmin = !!actor?.orgId && actor.orgId === campaign.orgId &&
+    (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+  const isPlatformAdmin = actor?.role === UserRole.PLATFORM_ADMIN || actor?.role === UserRole.SUPER_ADMIN;
+  if (!isOwnerOrgAdmin && !isPlatformAdmin) {
+    res.status(403).json({ error: "You are not authorized to manage this campaign." });
+    return false;
+  }
+  return true;
+}
+
+app.put("/api/campaigns/:id", authMiddleware, (req, res) => {
+  const db = readDb();
+  const campaign = db.campaigns.find(c => c.id === req.params.id);
+  if (!requireCampaignOwner(req, res, campaign)) return;
+
+  const { budget, endDate, type } = req.body as { budget?: number; endDate?: string; type?: string };
+  if (budget !== undefined) {
+    if (Number(budget) < 0) return res.status(400).json({ error: "Campaign budget cannot be negative." });
+    campaign!.budget = Number(budget);
+  }
+  if (endDate !== undefined) campaign!.endDate = endDate;
+  if (type !== undefined) campaign!.type = type as AdCampaign["type"];
+  writeDb(db);
+
+  const authReq = req as AuthenticatedRequest;
+  logAudit(authReq.user?.id || "unknown", authReq.user?.fullName || "Agency Admin", (authReq.user?.role as UserRole) || UserRole.AGENCY_ADMIN, "UPDATE_AD_CAMPAIGN", campaign!.id, "AdCampaign", { budget, endDate, type });
+
+  res.json(campaign);
+});
+
+app.post("/api/campaigns/:id/pause", authMiddleware, (req, res) => {
+  const db = readDb();
+  const campaign = db.campaigns.find(c => c.id === req.params.id);
+  if (!requireCampaignOwner(req, res, campaign)) return;
+  if (campaign!.status !== "ACTIVE") return res.status(400).json({ error: "Only an active campaign can be paused." });
+
+  campaign!.status = "PAUSED";
+  writeDb(db);
+
+  const authReq = req as AuthenticatedRequest;
+  logAudit(authReq.user?.id || "unknown", authReq.user?.fullName || "Agency Admin", (authReq.user?.role as UserRole) || UserRole.AGENCY_ADMIN, "PAUSE_AD_CAMPAIGN", campaign!.id, "AdCampaign", {});
+
+  res.json(campaign);
+});
+
+app.post("/api/campaigns/:id/resume", authMiddleware, (req, res) => {
+  const db = readDb();
+  const campaign = db.campaigns.find(c => c.id === req.params.id);
+  if (!requireCampaignOwner(req, res, campaign)) return;
+  if (campaign!.status !== "PAUSED") return res.status(400).json({ error: "Only a paused campaign can be resumed." });
+
+  campaign!.status = "ACTIVE";
+  writeDb(db);
+
+  const authReq = req as AuthenticatedRequest;
+  logAudit(authReq.user?.id || "unknown", authReq.user?.fullName || "Agency Admin", (authReq.user?.role as UserRole) || UserRole.AGENCY_ADMIN, "RESUME_AD_CAMPAIGN", campaign!.id, "AdCampaign", {});
+
+  res.json(campaign);
+});
+
+app.delete("/api/campaigns/:id", authMiddleware, (req, res) => {
+  const db = readDb();
+  const campaign = db.campaigns.find(c => c.id === req.params.id);
+  if (!requireCampaignOwner(req, res, campaign)) return;
+
+  db.campaigns = db.campaigns.filter(c => c.id !== req.params.id);
+  writeDb(db);
+
+  const authReq = req as AuthenticatedRequest;
+  logAudit(authReq.user?.id || "unknown", authReq.user?.fullName || "Agency Admin", (authReq.user?.role as UserRole) || UserRole.AGENCY_ADMIN, "DELETE_AD_CAMPAIGN", req.params.id, "AdCampaign", {});
+
+  res.json({ success: true });
+});
 
 app.post("/api/admin/campaigns/review", (req, res) => {
   const { campaignId, status, actorId, actorName, actorRole } = req.body;
@@ -3939,8 +4603,111 @@ app.post("/api/reviews", authMiddleware, (req, res) => {
   
   db.reviews.unshift(newReview);
   writeDb(db);
-  
+
+  // FIX 9/10: notify the reviewed agent/agency of the new review immediately (not just on
+  // eventual admin approval).
+  const targetContact = targetType === "AGENT"
+    ? db.users.find(u => u.id === targetId)
+    : db.organizations.find(o => o.id === targetId);
+  if (targetContact?.email) {
+    sendMockEmail(
+      targetContact.email,
+      "[Nerou Finder] You Received a New Review",
+      generateNotificationEmailHtml(
+        "New Review Received",
+        (targetContact as any).fullName || (targetContact as any).name,
+        `<p>You received a new ${score}-star review: "${comment}". It's pending admin moderation before it appears publicly.</p>`
+      ),
+      "new_review"
+    );
+  }
+
   res.status(201).json({ success: true, message: "Review submitted for admin moderation.", review: newReview });
+});
+
+// FIX 10: aggregated rating summary (average, count, star distribution) for an agent/agency
+// or a property - computed server-side once so every surface (public profile, agent
+// dashboard reviews tab, admin moderation) shows the exact same numbers.
+app.get("/api/reviews/summary", (req, res) => {
+  const { targetType, targetId } = req.query;
+  if (!targetType || !targetId) {
+    return res.status(400).json({ error: "targetType and targetId are required." });
+  }
+  const db = readDb();
+  if (!db.reviews) db.reviews = [];
+
+  const approved = db.reviews.filter(r => r.targetType === targetType && r.targetId === targetId && r.status === "APPROVED");
+  const distribution: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (const r of approved) {
+    const bucket = Math.min(5, Math.max(1, Math.round(r.rating))) as 1 | 2 | 3 | 4 | 5;
+    distribution[bucket]++;
+  }
+  const average = approved.length > 0 ? approved.reduce((sum, r) => sum + r.rating, 0) / approved.length : 0;
+
+  res.json({ average: Math.round(average * 10) / 10, count: approved.length, distribution });
+});
+
+// FIX 10: agent/agency replies publicly to a review they received.
+app.patch("/api/reviews/:id/reply", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const { text } = req.body as { text?: string };
+  if (!text || !text.trim()) return res.status(400).json({ error: "text is required." });
+
+  const db = readDb();
+  if (!db.reviews) db.reviews = [];
+  const review = db.reviews.find(r => r.id === id);
+  if (!review) return res.status(404).json({ error: "Review not found." });
+
+  const authReq = req as AuthenticatedRequest;
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const isTargetAgent = review.targetType === "AGENT" && review.targetId === actor.id;
+  const isTargetAgencyAdmin = review.targetType === "AGENCY" && review.targetId === actor.orgId &&
+    (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+  if (!isTargetAgent && !isTargetAgencyAdmin) {
+    return res.status(403).json({ error: "You may only reply to reviews about you or your agency." });
+  }
+
+  review.reply = { text: text.trim(), createdDate: new Date().toISOString() };
+  writeDb(db);
+
+  logAudit(actor.id, actor.fullName, actor.role, "REPLY_TO_REVIEW", id, "Review", { text: review.reply.text });
+
+  // FIX 9/10: notify the original reviewer that the agent/agency replied.
+  const reviewer = db.users.find(u => u.id === review.reviewerId);
+  if (reviewer?.email) {
+    sendMockEmail(
+      reviewer.email,
+      "[Nerou Finder] You Received a Reply to Your Review",
+      generateNotificationEmailHtml(
+        "Reply to Your Review",
+        reviewer.fullName,
+        `<p>${actor.fullName} replied to your review: "${review.reply.text}"</p>`
+      ),
+      "review_reply"
+    );
+  }
+
+  res.json({ success: true, review });
+});
+
+// FIX 10: report a review as abusive/policy-violating - surfaces in the admin moderation
+// queue's "reported" filter without auto-hiding it (admin still decides).
+app.post("/api/reviews/:id/report", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  if (!db.reviews) db.reviews = [];
+  const review = db.reviews.find(r => r.id === id);
+  if (!review) return res.status(404).json({ error: "Review not found." });
+
+  review.reportCount = (review.reportCount || 0) + 1;
+  writeDb(db);
+
+  const authReq = req as AuthenticatedRequest;
+  logAudit(authReq.user?.id || "unknown", authReq.user?.fullName || "User", (authReq.user?.role as UserRole) || UserRole.REGISTERED, "REPORT_REVIEW", id, "Review", {});
+
+  res.json({ success: true, review });
 });
 
 // Admin Review Moderation endpoints
@@ -4111,6 +4878,11 @@ async function startServer() {
   // Verification document expiry sweep: flags EXPIRED docs and sends 30/7-day reminder emails.
   checkDocumentExpiryAndReminders();
   setInterval(checkDocumentExpiryAndReminders, 24 * 60 * 60 * 1000);
+
+  // Listing availability staleness sweep: 14-day "please confirm" reminder emails and 30-day
+  // auto-pause. Same interval/pattern as the verification document expiry sweep above.
+  checkPropertyStalenessAndReminders();
+  setInterval(checkPropertyStalenessAndReminders, 24 * 60 * 60 * 1000);
 
   // Dynamic SEO meta tags for properties
   app.get("/properties/:id", (req, res, next) => {

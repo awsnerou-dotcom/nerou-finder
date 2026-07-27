@@ -184,7 +184,7 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
               {isRtl ? "مستندات التوثيق المطلوبة" : "Required Verification Documents"}
             </h3>
           </div>
-          <VerificationDocumentsPanel isRtl={isRtl} />
+          <VerificationDocumentsPanel isRtl={isRtl} agent={user.role === UserRole.AGENT ? user : undefined} />
         </div>
       )}
     </div>

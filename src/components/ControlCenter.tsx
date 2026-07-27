@@ -27,7 +27,9 @@ import {
   AgentType,
   getEffectiveAgentType,
   ListingStatus,
-  LeadStatus
+  LeadStatus,
+  ViewingRequest,
+  Review
 } from "../types.js";
 import {
   ShieldAlert,
@@ -90,6 +92,9 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     | "locations"
     | "ad_billing"
     | "applications"
+    | "listings"
+    | "users"
+    | "viewing_requests"
   >("overview");
 
   // Collapsible sidebar navigation: which grouped sections are expanded
@@ -124,6 +129,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   const [adCharges, setAdCharges] = useState<any[]>([]);
   const [adBoostCaps, setAdBoostCaps] = useState<Record<string, number>>({});
   const [capDrafts, setCapDrafts] = useState<Record<string, string>>({});
+  const [viewings, setViewings] = useState<ViewingRequest[]>([]);
+  // FIX 10: reviews moderation filters
+  const [reviewRatingFilter, setReviewRatingFilter] = useState<string>("");
+  const [reviewSearch, setReviewSearch] = useState<string>("");
+  const [reviewReportedOnly, setReviewReportedOnly] = useState<boolean>(false);
+  const [listingSearch, setListingSearch] = useState<string>("");
+  const [flagReasonDraft, setFlagReasonDraft] = useState<Record<string, string>>({});
   
   // Developer Outbound SMTP Email Mock Queue states
   const [emails, setEmails] = useState<any[]>([]);
@@ -416,10 +428,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
         reviewsRes,
         locationsRes,
         verificationDocsRes,
-        adChargesRes
+        adChargesRes,
+        viewingsRes
       ] = await Promise.all([
         fetch("/api/users", { headers: authHeader }),
-        fetch("/api/properties", { headers: authHeader }),
+        // includeAllStatuses: the public /api/properties endpoint defaults to PUBLISHED-only
+        // (FIX 1) - admin needs full visibility (draft/pending/flagged/suspended too).
+        fetch("/api/properties?includeAllStatuses=true", { headers: authHeader }),
         fetch("/api/organizations", { headers: authHeader }),
         fetch("/api/leads", { headers: authHeader }),
         fetch("/api/campaigns", { headers: authHeader }),
@@ -436,7 +451,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
         fetch("/api/admin/reviews", { headers: authHeader }),
         fetch("/api/locations", { headers: authHeader }),
         fetch("/api/admin/verification-documents", { headers: authHeader }),
-        fetch("/api/ad-charges", { headers: authHeader })
+        fetch("/api/ad-charges", { headers: authHeader }),
+        fetch("/api/viewings", { headers: authHeader })
       ]);
 
       const [
@@ -458,7 +474,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
         reviewsData,
         locationsData,
         verificationDocsData,
-        adChargesData
+        adChargesData,
+        viewingsData
       ] = await Promise.all([
         usersRes.ok ? usersRes.json() : Promise.resolve([]),
         propRes.ok ? propRes.json() : Promise.resolve([]),
@@ -478,7 +495,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
         reviewsRes.ok ? reviewsRes.json() : Promise.resolve([]),
         locationsRes.ok ? locationsRes.json() : Promise.resolve([]),
         verificationDocsRes.ok ? verificationDocsRes.json() : Promise.resolve([]),
-        adChargesRes.ok ? adChargesRes.json() : Promise.resolve([])
+        adChargesRes.ok ? adChargesRes.json() : Promise.resolve([]),
+        viewingsRes.ok ? viewingsRes.json() : Promise.resolve([])
       ]);
 
       setUsers(usersData);
@@ -500,6 +518,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       setLocations(locationsData || []);
       setVerificationDocs(verificationDocsData || []);
       setAdCharges(adChargesData || []);
+      setViewings(viewingsData || []);
 
       // Load AI Config
       try {
@@ -703,6 +722,29 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     } catch (err) {
       console.error(err);
       showToast("Failed to update property verification status.");
+    }
+  };
+
+  // FIX 3: after-the-fact "flag for review" - lighter-weight than suspending, doesn't unpublish.
+  const handleFlagProperty = async (propertyId: string, reason?: string) => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch(`/api/admin/properties/${propertyId}/flag`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ reason })
+      });
+      if (res.ok) {
+        setFlagReasonDraft(prev => ({ ...prev, [propertyId]: "" }));
+        fetchControlContext();
+        onRefreshAll();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        showToast(d.error || "Failed to update flag status.");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to update flag status.");
     }
   };
 
@@ -1179,7 +1221,14 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   };
 
   // Aggregated Counters
-  const pendingProperties = properties.filter(p => p.verificationStatus === VerificationStatus.PENDING);
+  // FIX 3: new listings no longer sit in a PENDING verification queue - admin moderation is
+  // now after-the-fact (flag/suspend/delete a live listing), surfaced on the "listings" tab.
+  const flaggedProperties = properties.filter(p => p.flaggedForReview);
+  const filteredListings = properties.filter(p => {
+    if (!listingSearch.trim()) return true;
+    const q = listingSearch.trim().toLowerCase();
+    return p.title?.toLowerCase().includes(q) || p.listingId?.toLowerCase().includes(q) || p.city?.toLowerCase().includes(q);
+  });
   const pendingOrgs = organizations.filter(o => o.verificationStatus === VerificationStatus.PENDING);
   const pendingUsers = users.filter(u => u.verificationStatus === VerificationStatus.PENDING);
   const pendingCampaigns = campaigns.filter(c => c.status === "PENDING_REVIEW");
@@ -1303,7 +1352,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
         {
           id: "verifications",
           label: { en: "Verifications Queue", ar: "طلبات التوثيق" },
-          badge: pendingProperties.length + pendingOrgs.length + pendingUsers.length + pendingDocuments.length
+          badge: pendingOrgs.length + pendingUsers.length + pendingDocuments.length
         },
         {
           id: "applications",
@@ -1316,7 +1365,20 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       id: "listings_group",
       label: { en: "Listings & Locations", ar: "العقارات والمناطق" },
       icon: FolderTree,
-      tabs: [{ id: "locations", label: { en: "Location Hierarchy", ar: "إدارة المناطق" } }]
+      tabs: [
+        {
+          id: "listings",
+          label: { en: "Listing Moderation", ar: "إدارة الإعلانات" },
+          badge: flaggedProperties.length
+        },
+        { id: "locations", label: { en: "Location Hierarchy", ar: "إدارة المناطق" } }
+      ]
+    },
+    {
+      id: "users_group",
+      label: { en: "Users", ar: "المستخدمون" },
+      icon: Users,
+      tabs: [{ id: "users", label: { en: "All Users", ar: "كل المستخدمين" } }]
     },
     {
       id: "leads_group",
@@ -1324,6 +1386,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       icon: PhoneCall,
       tabs: [
         { id: "leads", label: { en: "Platform Inquiries", ar: "مراقبة الاتصالات" } },
+        { id: "viewing_requests", label: { en: "Viewing Requests", ar: "طلبات المعاينة" } },
         {
           id: "support_tickets",
           label: { en: "Support Tickets", ar: "تذاكر الدعم" },
@@ -1488,7 +1551,10 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 <div className="bg-white p-5 rounded-xl border border-[#e6e2de]">
                   <span className="text-[10px] text-[#6e6b66] block uppercase tracking-wider mb-1">{isRtl ? "إجمالي العقارات بالمنصة" : "Total Platform Listings"}</span>
                   <h3 className="text-2xl font-serif font-bold text-[#1a1918]">{properties.length}</h3>
-                  <p className="text-[9px] text-[#6e6b66] mt-2">{properties.filter(p => p.verificationStatus === VerificationStatus.APPROVED).length} verified & published</p>
+                  <p className="text-[9px] text-[#6e6b66] mt-2">
+                    {properties.filter(p => p.verificationStatus === VerificationStatus.APPROVED).length} verified & published
+                    {" • "}{properties.reduce((sum, p) => sum + (p.views || 0), 0).toLocaleString()} {isRtl ? "مشاهدة إجمالية" : "total views"}
+                  </p>
                 </div>
 
                 <div className="bg-white p-5 rounded-xl border border-[#e6e2de]">
@@ -1854,55 +1920,6 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {/* VERIFICATIONS SUB-TAB */}
           {activeSubTab === "verifications" && (
             <div className="space-y-6 text-xs">
-              {/* Properties verification queue */}
-              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                  <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "طابور مراجعة الإعلانات المنشورة حديثًا" : "Pending Property Verification Queue"}</h4>
-                </div>
-                <div className="divide-y divide-[#f2ede8]">
-                  {pendingProperties.length === 0 ? (
-                    <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "طابور الإعلانات فارغ ومحدث مائة بالمائة." : "Verification queue is clean! All listings verified."}</p>
-                  ) : (
-                    pendingProperties.map(prop => (
-                      <div key={prop.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-[#1a1918]">{prop.title}</span>
-                            <span className="text-[10px] bg-[#f2ede8] text-[#6e6b66] px-1.5 py-0.5 rounded">ID: {prop.listingId}</span>
-                          </div>
-                          <p className="text-[#6e6b66]">{prop.district}, {prop.city} | {prop.bedrooms} Beds | Price: {prop.price.toLocaleString()} QAR</p>
-                        </div>
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleVerifyProperty(prop.id, VerificationStatus.APPROVED)}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-semibold flex items-center gap-1 cursor-pointer"
-                          >
-                            <CheckCircle size={14} />
-                            <span>{isRtl ? "توثيق ونشر" : "Verify & Publish"}</span>
-                          </button>
-                          <button
-                            onClick={() => handleVerifyProperty(prop.id, VerificationStatus.REJECTED)}
-                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-semibold flex items-center gap-1 cursor-pointer"
-                          >
-                            <XCircle size={14} />
-                            <span>{isRtl ? "رفض وتعليق" : "Reject & Suspend"}</span>
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProperty(prop.id)}
-                            className="px-3 py-1.5 bg-[#1c1a17] hover:bg-[#33302a] text-white rounded font-semibold flex items-center gap-1 cursor-pointer"
-                            title={isRtl ? "حذف العقار" : "Delete Property"}
-                          >
-                            <Trash2 size={14} />
-                            <span>{isRtl ? "حذف" : "Delete"}</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
               {/* Organization queue */}
               <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
                 <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
@@ -2183,6 +2200,226 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* LISTINGS SUB-TAB (FIX 3: after-the-fact moderation, replaces the old pre-publish approval queue) */}
+          {activeSubTab === "listings" && (
+            <div className="space-y-6 text-xs">
+              {flaggedProperties.length > 0 && (
+                <div className="bg-white rounded-xl border border-amber-300 overflow-hidden">
+                  <div className="p-4 bg-amber-50 border-b border-amber-200">
+                    <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "الإعلانات المميّزة للمراجعة" : "Flagged for Review"}</h4>
+                  </div>
+                  <div className="divide-y divide-[#f2ede8]">
+                    {flaggedProperties.map(prop => (
+                      <div key={prop.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                        <div>
+                          <p className="font-bold text-[#1a1918]">{prop.title} <span className="text-[10px] text-[#6e6b66]">ID: {prop.listingId}</span></p>
+                          <p className="text-[#6e6b66]">{isRtl ? "السبب: " : "Reason: "}{prop.flagReason} — {prop.flaggedDate && new Date(prop.flaggedDate).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleFlagProperty(prop.id, undefined)} className="px-3 py-1.5 bg-[#1c1a17] hover:bg-[#bf9b30] text-white rounded font-semibold cursor-pointer">
+                            {isRtl ? "إلغاء العلامة" : "Clear Flag"}
+                          </button>
+                          <button onClick={() => handleVerifyProperty(prop.id, VerificationStatus.REJECTED)} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-semibold cursor-pointer">
+                            {isRtl ? "تعليق" : "Suspend"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
+                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center justify-between gap-3 flex-wrap">
+                  <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "جميع الإعلانات" : "All Listings"}</h4>
+                  <input
+                    type="text"
+                    value={listingSearch}
+                    onChange={(e) => setListingSearch(e.target.value)}
+                    placeholder={isRtl ? "بحث بالعنوان أو رقم الإعلان أو المدينة" : "Search title, listing ID, or city"}
+                    className="px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-[11px] min-w-[220px]"
+                  />
+                </div>
+                <div className="divide-y divide-[#f2ede8] max-h-[600px] overflow-y-auto">
+                  {filteredListings.length === 0 ? (
+                    <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "لا توجد نتائج." : "No listings match your search."}</p>
+                  ) : (
+                    filteredListings.map(prop => (
+                      <div key={prop.id} className="p-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-[#1a1918]">{prop.title}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#f2ede8] text-[#6e6b66]">{prop.listingStatus}</span>
+                            {prop.flaggedForReview && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700">{isRtl ? "مُعلّم" : "Flagged"}</span>}
+                          </div>
+                          <p className="text-[#6e6b66]">{prop.district}, {prop.city} • {prop.price?.toLocaleString()} QAR • {isRtl ? "المشاهدات" : "Views"}: {prop.views || 0}</p>
+                        </div>
+                        <div className="flex gap-2 flex-wrap items-center">
+                          {!prop.flaggedForReview ? (
+                            <>
+                              <input
+                                type="text"
+                                value={flagReasonDraft[prop.id] || ""}
+                                onChange={(e) => setFlagReasonDraft(prev => ({ ...prev, [prop.id]: e.target.value }))}
+                                placeholder={isRtl ? "سبب العلامة" : "Flag reason"}
+                                className="px-2 py-1 bg-white border border-[#e6e2de] rounded text-[10px] w-32"
+                              />
+                              <button
+                                disabled={!flagReasonDraft[prop.id]}
+                                onClick={() => handleFlagProperty(prop.id, flagReasonDraft[prop.id])}
+                                className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded font-semibold cursor-pointer"
+                              >
+                                {isRtl ? "علّم" : "Flag"}
+                              </button>
+                            </>
+                          ) : (
+                            <button onClick={() => handleFlagProperty(prop.id, undefined)} className="px-2.5 py-1.5 bg-[#1c1a17] hover:bg-[#bf9b30] text-white rounded font-semibold cursor-pointer">
+                              {isRtl ? "إلغاء العلامة" : "Clear Flag"}
+                            </button>
+                          )}
+                          {prop.listingStatus === ListingStatus.SUSPENDED ? (
+                            <button onClick={() => handleVerifyProperty(prop.id, VerificationStatus.APPROVED)} className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-semibold cursor-pointer">
+                              {isRtl ? "استعادة" : "Restore"}
+                            </button>
+                          ) : (
+                            <button onClick={() => handleVerifyProperty(prop.id, VerificationStatus.REJECTED)} className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-semibold cursor-pointer">
+                              {isRtl ? "تعليق" : "Suspend"}
+                            </button>
+                          )}
+                          <button onClick={() => handleDeleteProperty(prop.id)} className="px-2.5 py-1.5 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] text-[#1a1918] rounded font-semibold cursor-pointer" title={isRtl ? "حذف" : "Delete"}>
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* USERS SUB-TAB (FIX 5) */}
+          {activeSubTab === "users" && (
+            <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden text-xs">
+              <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center justify-between gap-3 flex-wrap">
+                <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "كل المستخدمين" : "All Users"}</h4>
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder={isRtl ? "بحث بالاسم أو البريد الإلكتروني" : "Search name or email"}
+                  className="px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-[11px] min-w-[220px]"
+                />
+              </div>
+              <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-[#fbfaf8] sticky top-0">
+                    <tr className="text-[10px] text-[#6e6b66] uppercase">
+                      <th className="p-3">{isRtl ? "الاسم" : "Full Name"}</th>
+                      <th className="p-3">{isRtl ? "البريد" : "Email"}</th>
+                      <th className="p-3">{isRtl ? "الجوال" : "Mobile"}</th>
+                      <th className="p-3">{isRtl ? "الشركة" : "Company"}</th>
+                      <th className="p-3">{isRtl ? "الدور" : "Role"}</th>
+                      <th className="p-3">{isRtl ? "حالة الحساب" : "Account Status"}</th>
+                      <th className="p-3">{isRtl ? "حالة التوثيق" : "Verification"}</th>
+                      <th className="p-3">{isRtl ? "تاريخ التسجيل" : "Registered"}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#f2ede8]">
+                    {users
+                      .filter(u => {
+                        if (!userSearch.trim()) return true;
+                        const q = userSearch.trim().toLowerCase();
+                        return u.fullName?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+                      })
+                      .map(u => {
+                        const org = organizations.find(o => o.id === u.orgId);
+                        const effType = u.role === UserRole.AGENT ? getEffectiveAgentType(u) : undefined;
+                        const company = org?.name || u.affiliatedAgencyName || "—";
+                        return (
+                          <tr key={u.id}>
+                            <td className="p-3 font-bold text-[#1a1918]">{u.fullName}</td>
+                            <td className="p-3 text-[#6e6b66]">{u.email}</td>
+                            <td className="p-3 text-[#6e6b66]">{u.phone || "—"}</td>
+                            <td className="p-3 text-[#6e6b66]">{company}</td>
+                            <td className="p-3">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#f2ede8] text-[#6e6b66]">
+                                {u.role}{effType ? ` / ${effType}` : ""}
+                              </span>
+                            </td>
+                            <td className="p-3 text-[#6e6b66]">{u.applicationStatus || "ACTIVE"}</td>
+                            <td className="p-3">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${u.verificationStatus === VerificationStatus.APPROVED ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                                {u.verificationStatus}
+                              </span>
+                            </td>
+                            <td className="p-3 text-[#6e6b66]">{u.createdDate ? new Date(u.createdDate).toLocaleDateString() : "—"}</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* VIEWING REQUESTS SUB-TAB (FIX 7) */}
+          {activeSubTab === "viewing_requests" && (
+            <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden text-xs">
+              <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
+                <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "طلبات معاينة العقارات" : "Property Viewing Requests"}</h4>
+              </div>
+              <div className="divide-y divide-[#f2ede8]">
+                {viewings.length === 0 ? (
+                  <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "لا توجد طلبات معاينة حالياً." : "No viewing requests yet."}</p>
+                ) : (
+                  viewings.map(v => {
+                    const relatedLead = leads.find(l => l.id === v.leadId);
+                    const prop = properties.find(p => p.id === v.propertyId);
+                    const agentUser = users.find(u => u.id === v.agentId);
+                    return (
+                      <div key={v.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-[#1a1918]">{relatedLead?.visitorName || (isRtl ? "زائر غير معروف" : "Unknown visitor")}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#f2ede8] text-[#6e6b66]">{v.status}</span>
+                          </div>
+                          <p className="text-[#6e6b66]">
+                            {relatedLead?.visitorPhone || "—"} {relatedLead?.visitorEmail ? `• ${relatedLead.visitorEmail}` : ""}
+                          </p>
+                          <p className="text-[#6e6b66]">
+                            {isRtl ? "العقار: " : "Property: "}{prop?.title || v.propertyId} • {isRtl ? "الوكيل: " : "Agent: "}{agentUser?.fullName || v.agentId}
+                          </p>
+                          <p className="text-[#6e6b66]">
+                            {isRtl ? "الموعد المفضل: " : "Preferred: "}{v.preferredDate} {v.preferredTimeSlot} {v.notes ? `• "${v.notes}"` : ""}
+                          </p>
+                          <p className="text-[10px] text-[#a8a4a0]">{isRtl ? "أُرسل في " : "Submitted "}{new Date(v.createdDate).toLocaleString()}</p>
+                        </div>
+                        <select
+                          value={v.status}
+                          onChange={async (e) => {
+                            const token = localStorage.getItem("token") || "";
+                            const res = await fetch("/api/viewings/status", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+                              body: JSON.stringify({ viewingId: v.id, status: e.target.value })
+                            });
+                            if (res.ok) fetchControlContext();
+                          }}
+                          className="px-2 py-1.5 bg-white border border-[#e6e2de] rounded text-[10px] font-semibold"
+                        >
+                          {["REQUESTED", "CONFIRMED", "RESCHEDULED", "COMPLETED", "CANCELLED"].map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
 
@@ -4376,12 +4613,60 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 </p>
               </div>
 
+              {/* FIX 10: platform-wide average + filters */}
+              <div className="flex flex-wrap items-center gap-3 p-3 bg-[#fbfaf8] border border-[#e6e2de] rounded-xl">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg">
+                  <Star size={13} className="fill-[#bf9b30] text-[#bf9b30]" />
+                  <span className="font-bold text-[#1a1918] text-xs">
+                    {(() => {
+                      const approved = reviews.filter((r: any) => r.status === "APPROVED");
+                      return approved.length > 0 ? (approved.reduce((s: number, r: any) => s + r.rating, 0) / approved.length).toFixed(1) : "0.0";
+                    })()}
+                  </span>
+                  <span className="text-[10px] text-[#6e6b66]">{isRtl ? "متوسط المنصة" : "Platform avg"} ({reviews.filter((r: any) => r.status === "APPROVED").length})</span>
+                </div>
+                <select
+                  value={reviewRatingFilter}
+                  onChange={(e) => setReviewRatingFilter(e.target.value)}
+                  className="px-2.5 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-[11px]"
+                >
+                  <option value="">{isRtl ? "كل التقييمات" : "All ratings"}</option>
+                  {[5, 4, 3, 2, 1].map(s => (
+                    <option key={s} value={s}>{s}★</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={reviewSearch}
+                  onChange={(e) => setReviewSearch(e.target.value)}
+                  placeholder={isRtl ? "بحث بالمقيم أو النص أو المعرف" : "Search reviewer, comment, or target ID"}
+                  className="px-2.5 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-[11px] min-w-[200px]"
+                />
+                <label className="flex items-center gap-1.5 text-[11px] text-[#6e6b66] cursor-pointer">
+                  <input type="checkbox" checked={reviewReportedOnly} onChange={(e) => setReviewReportedOnly(e.target.checked)} />
+                  {isRtl ? "المبلّغ عنها فقط" : "Reported only"}
+                </label>
+              </div>
+
               <div className="space-y-4">
-                {reviews.length === 0 ? (
+                {(() => {
+                  const filteredReviews = reviews.filter((rev: any) => {
+                    if (reviewRatingFilter && String(Math.round(rev.rating)) !== reviewRatingFilter) return false;
+                    if (reviewReportedOnly && !(rev.reportCount > 0)) return false;
+                    if (reviewSearch.trim()) {
+                      const q = reviewSearch.trim().toLowerCase();
+                      if (!rev.reviewerName?.toLowerCase().includes(q) && !rev.comment?.toLowerCase().includes(q) && !rev.targetId?.toLowerCase().includes(q)) return false;
+                    }
+                    return true;
+                  });
+                  if (filteredReviews.length === 0) {
+                  return (
                   <div className="text-center py-12 border border-dashed border-[#e6e2de] rounded-xl text-[#6e6b66] text-xs">
-                    {isRtl ? "لا توجد تقييمات معلقة حالياً في طابور المراجعة." : "No reviews found in the moderation database."}
+                    {isRtl ? "لا توجد نتائج مطابقة." : "No reviews match the current filters."}
                   </div>
-                ) : (
+                  );
+                  }
+                  return (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
@@ -4397,7 +4682,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#f2ede8]">
-                        {reviews.map((rev) => {
+                        {filteredReviews.map((rev: any) => {
                           const isPending = rev.status === "PENDING";
                           return (
                             <tr key={rev.id} className="hover:bg-gray-50">
@@ -4428,6 +4713,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 }`}>
                                   {rev.status}
                                 </span>
+                                {rev.reportCount > 0 && (
+                                  <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-100 text-rose-700">
+                                    {isRtl ? "مُبلّغ" : "Reported"} ({rev.reportCount})
+                                  </span>
+                                )}
                               </td>
                               <td className="p-3 text-right">
                                 <div className="flex justify-end items-center gap-1.5">
@@ -4464,7 +4754,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       </tbody>
                     </table>
                   </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
           )}

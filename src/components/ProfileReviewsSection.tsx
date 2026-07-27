@@ -4,10 +4,10 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Star, MessageSquare, AlertCircle, Check, Loader2 } from "lucide-react";
+import { Star, MessageSquare, AlertCircle, Check, Loader2, Flag } from "lucide-react";
 
 interface ProfileReviewsSectionProps {
-  targetType: "AGENT" | "ORGANIZATION";
+  targetType: "AGENT" | "AGENCY";
   targetId: string;
   currentUser: any;
   isRtl: boolean;
@@ -20,20 +20,41 @@ export default function ProfileReviewsSection({
   isRtl
 }: ProfileReviewsSectionProps) {
   const [reviews, setReviews] = useState<any[]>([]);
+  // FIX 10: server-computed aggregate (average/count), shared logic with the agent dashboard
+  // and admin moderation view instead of a local, non-persisted computation.
+  const [summary, setSummary] = useState<{ average: number; count: number } | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [rating, setRating] = useState<number>(5);
   const [comment, setComment] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
+  const [reportedIds, setReportedIds] = useState<string[]>([]);
+
+  // FIX 10: let visitors report a review as abusive/policy-violating - surfaces in the admin
+  // moderation queue's "reported" filter without auto-hiding it.
+  const handleReport = async (reviewId: string) => {
+    if (!currentUser) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/reviews/${reviewId}/report`, {
+        method: "POST",
+        headers: { Authorization: token ? `Bearer ${token}` : "" }
+      });
+      if (res.ok) setReportedIds(prev => [...prev, reviewId]);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchReviews = async () => {
     try {
-      const res = await fetch(`/api/reviews?targetType=${targetType}&targetId=${targetId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setReviews(data);
-      }
+      const [reviewsRes, summaryRes] = await Promise.all([
+        fetch(`/api/reviews?targetType=${targetType}&targetId=${targetId}`),
+        fetch(`/api/reviews/summary?targetType=${targetType}&targetId=${targetId}`)
+      ]);
+      if (reviewsRes.ok) setReviews(await reviewsRes.json());
+      if (summaryRes.ok) setSummary(await summaryRes.json());
     } catch (e) {
       console.error("Error loading reviews:", e);
     } finally {
@@ -87,10 +108,6 @@ export default function ProfileReviewsSection({
     }
   };
 
-  const avgRating = reviews.length > 0 
-    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1)
-    : "0.0";
-
   return (
     <div className="space-y-6 pt-4 border-t border-[#e6e2de]">
       <div className="flex items-center justify-between">
@@ -98,10 +115,10 @@ export default function ProfileReviewsSection({
           <MessageSquare size={14} className="text-[#bf9b30]" />
           <span>{isRtl ? "التقييمات والمراجعات" : "Ratings & Reviews"}</span>
         </h4>
-        {reviews.length > 0 && (
+        {summary && summary.count > 0 && (
           <div className="flex items-center gap-1 bg-[#bf9b30]/10 text-[#bf9b30] px-2 py-0.5 rounded-md text-xs font-bold">
             <Star size={12} className="fill-[#bf9b30]" />
-            <span>{avgRating} ({reviews.length})</span>
+            <span>{summary.average.toFixed(1)} ({summary.count})</span>
           </div>
         )}
       </div>
@@ -125,13 +142,26 @@ export default function ProfileReviewsSection({
                 <div key={rev.id} className="p-3 bg-white rounded-lg border border-[#e6e2de] space-y-1.5 shadow-2xs">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-[#1a1918]">{rev.reviewerName}</span>
-                    <span className="text-[#6e6b66]">
-                      {new Date(rev.createdDate).toLocaleDateString(isRtl ? "ar-QA" : "en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric"
-                      })}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#6e6b66]">
+                        {new Date(rev.createdDate).toLocaleDateString(isRtl ? "ar-QA" : "en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric"
+                        })}
+                      </span>
+                      {currentUser && (
+                        <button
+                          type="button"
+                          onClick={() => handleReport(rev.id)}
+                          disabled={reportedIds.includes(rev.id)}
+                          title={isRtl ? "الإبلاغ عن هذا التقييم" : "Report this review"}
+                          className="text-[#a9a49d] hover:text-rose-600 disabled:text-rose-600 disabled:cursor-default cursor-pointer"
+                        >
+                          <Flag size={11} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-0.5">
                     {[1, 2, 3, 4, 5].map((s) => (
@@ -143,6 +173,12 @@ export default function ProfileReviewsSection({
                     ))}
                   </div>
                   <p className="text-xs text-[#4c4943] leading-relaxed">{rev.comment}</p>
+                  {rev.reply && (
+                    <div className="mt-1.5 pl-3 border-l-2 border-[#bf9b30]/40 bg-[#fbfaf8] p-2 rounded">
+                      <p className="text-[10px] font-bold text-[#1a1918]">{isRtl ? "رد صاحب الملف" : "Response from the listing owner"}</p>
+                      <p className="text-[11px] text-[#4c4943] mt-0.5">{rev.reply.text}</p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -1,18 +1,52 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sparkles, Building2, Calendar, MapPin, Download, ArrowRight, CheckCircle2, ChevronRight } from "lucide-react";
+import { Project, Organization } from "../types.js";
 
 interface ProjectsViewProps {
   isRtl: boolean;
+  organizations: Organization[];
 }
 
-export default function ProjectsView({ isRtl }: ProjectsViewProps) {
+export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps) {
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [inquiryName, setInquiryName] = useState("");
   const [inquiryPhone, setInquiryPhone] = useState("");
   const [inquiryEmail, setInquiryEmail] = useState("");
   const [success, setSuccess] = useState(false);
+  const [liveProjects, setLiveProjects] = useState<Project[]>([]);
 
-  const projects = [
+  useEffect(() => {
+    fetch("/api/projects")
+      .then(res => res.json())
+      .then((data: Project[]) => setLiveProjects(data))
+      .catch(e => console.error("Error fetching projects:", e));
+  }, []);
+
+  const developerProjects = liveProjects.map(proj => {
+    const org = organizations.find(o => o.id === proj.developerId);
+    const developerName = org?.name || "Verified Developer";
+    const developerNameAr = org?.nameAr || developerName;
+    return {
+      id: proj.id,
+      name: proj.name,
+      nameAr: proj.nameAr || proj.name,
+      developer: developerName,
+      developerAr: developerNameAr,
+      location: `${proj.district}, ${proj.city}`,
+      locationAr: `${proj.district}، ${proj.city}`,
+      price: "Contact for Pricing",
+      priceAr: "تواصل معنا للأسعار",
+      delivery: proj.deliveryDate || "TBD",
+      deliveryAr: proj.deliveryDate || "قيد التحديد",
+      status: proj.status,
+      image: proj.images?.[0] || "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
+      description: proj.description,
+      descriptionAr: proj.description,
+      amenities: []
+    };
+  });
+
+  const demoProjects = [
     {
       id: "proj-1",
       name: "The Pearl-Qatar: Gewan Island Prestige",
@@ -68,6 +102,8 @@ export default function ProjectsView({ isRtl }: ProjectsViewProps) {
       amenities: ["Private Yachts Berths", "24/7 Concierge", "Wellness Spa Center", "Private Theater Room", "Panoramic Lounges"]
     }
   ];
+
+  const projects = [...developerProjects, ...demoProjects];
 
   const handleInquiry = async (e: React.FormEvent) => {
     e.preventDefault();

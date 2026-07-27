@@ -171,7 +171,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
       setProjects(developerProjects);
 
       // Get units / properties belonging to these projects or this developer
-      const propRes = await fetch(`/api/properties?orgId=${developer.id}`);
+      const propRes = await fetch(`/api/properties?orgId=${developer.id}&includeAllStatuses=true`);
       const propData = await propRes.json();
       setProperties(propData);
     } catch (e) {

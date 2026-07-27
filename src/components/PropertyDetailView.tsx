@@ -4,7 +4,14 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Property, VerificationStatus, TransactionType, PropertyType } from "../types.js";
+import {
+  Property,
+  VerificationStatus,
+  TransactionType,
+  PropertyType,
+  getAvailabilityStaleDays,
+  AVAILABILITY_UNCONFIRMED_DAYS
+} from "../types.js";
 import { useCurrency } from "../currencyContext.js";
 import {
   MapPin,
@@ -30,7 +37,8 @@ import {
   HelpCircle,
   MessageCircle,
   Phone,
-  Check
+  Check,
+  Clock
 } from "lucide-react";
 
 interface PropertyDetailViewProps {
@@ -94,6 +102,8 @@ export default function PropertyDetailView({
     phone: string;
     isVerifiedAgent: boolean;
     hasAssignedAgent: boolean;
+    verifiedBadgeLabel: string | null;
+    verifiedBadgeLabelAr: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -107,6 +117,25 @@ export default function PropertyDetailView({
     return () => {
       cancelled = true;
     };
+  }, [property.id]);
+
+  // FIX 8: real view tracking - fires once per genuine mount of this detail view (not on
+  // every re-render/state update), using a stable per-browser fingerprint for unique-view
+  // dedup on the server side.
+  useEffect(() => {
+    let fingerprint = localStorage.getItem("nerou_visitor_fp");
+    if (!fingerprint) {
+      fingerprint = `fp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem("nerou_visitor_fp", fingerprint);
+    }
+    fetch(`/api/properties/${property.id}/view`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fingerprint })
+    }).catch((e) => console.error("Failed to record property view:", e));
+    // Intentionally runs once per mount (property.id identity) - not re-fired by unrelated
+    // re-renders, since this effect has no other dependencies.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [property.id]);
 
   // Floor Plan State
@@ -276,7 +305,7 @@ export default function PropertyDetailView({
       );
       doc.text(`Contact: ${brochurePhone} | Email: licensing@nerou.io`, 25, footerY + 29);
       doc.text(
-        agentInfo?.isVerifiedAgent ? "Verified Nerou Finder Certified Partner" : "Nerou Finder Certified Partner Network",
+        (agentInfo?.isVerifiedAgent && agentInfo.verifiedBadgeLabel) || "Nerou Finder Certified Partner Network",
         25,
         footerY + 35
       );
@@ -304,7 +333,10 @@ export default function PropertyDetailView({
           visitorName: "Anonymous Visitor (WhatsApp Link)",
           visitorPhone: "WhatsApp Inquiry Click",
           contactMethod: "WHATSAPP",
-          message: `Visitor initiated WhatsApp inquiry for: ${property.title} (Listing ID: ${property.listingId}).`
+          message: `Visitor initiated WhatsApp inquiry for: ${property.title} (Listing ID: ${property.listingId}).`,
+          // FIX 6: credit the ad campaign that brought this visitor in, if any (see App.tsx's
+          // one-time ?campaignId= capture into sessionStorage).
+          campaign: sessionStorage.getItem("attributionCampaignId") || undefined
         })
       });
     } catch (e) {
@@ -366,6 +398,23 @@ export default function PropertyDetailView({
   const isRent = property.transactionType === TransactionType.FOR_RENT || property.transactionType === TransactionType.COMMERCIAL_LEASE;
   const currencySymbol = getCurrencySymbol(isRtl);
   const propertyPrice = convertPrice(property.price);
+
+  // Public trust signal: honest "confirmed available X days ago" freshness indicator, and
+  // the "Availability Unconfirmed" badge once a listing crosses 21+ days without a fresh
+  // confirm-available check (see getAvailabilityStaleDays()/AVAILABILITY_* in types.ts).
+  const availabilityStaleDays = getAvailabilityStaleDays(property.lastConfirmedAvailableDate || property.createdDate);
+  const isAvailabilityUnconfirmed = availabilityStaleDays >= AVAILABILITY_UNCONFIRMED_DAYS;
+  const availabilityConfirmedText = isRtl
+    ? availabilityStaleDays <= 0
+      ? "تم تأكيد التوفر اليوم"
+      : availabilityStaleDays === 1
+        ? "تم تأكيد التوفر أمس"
+        : `تم تأكيد التوفر منذ ${availabilityStaleDays} يوماً`
+    : availabilityStaleDays <= 0
+      ? "Availability confirmed today"
+      : availabilityStaleDays === 1
+        ? "Availability confirmed yesterday"
+        : `Availability confirmed ${availabilityStaleDays} days ago`;
 
   // Mortgage calculation: M = P [ i(1+i)^n ] / [ (1+i)^n - 1 ]
   const principal = propertyPrice * (1 - downpaymentPercent / 100);
@@ -460,7 +509,8 @@ export default function PropertyDetailView({
         visitorPhone: bookingPhone,
         visitorEmail: bookingEmail,
         message: `I'd like to book a viewing for this listing on ${bookingDate || "any date"} at ${bookingTime || "any time"}.`,
-        contactMethod: "INQUIRY"
+        contactMethod: "INQUIRY",
+        attribution: { campaign: sessionStorage.getItem("attributionCampaignId") || undefined }
       })
     })
     .then((res) => {
@@ -589,6 +639,12 @@ export default function PropertyDetailView({
                 <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold flex items-center gap-1 rounded-sm">
                   <Shield size={10} fill="currentColor" />
                   {isRtl ? "مؤكد ومعتمد" : "Verified Portal Listing"}
+                </span>
+              )}
+              {isAvailabilityUnconfirmed && (
+                <span className="px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold flex items-center gap-1 rounded-sm">
+                  <Clock size={10} />
+                  {isRtl ? "التوفر غير مؤكد مؤخراً" : "Availability Unconfirmed"}
                 </span>
               )}
               <span className="text-[10px] font-mono text-[#6E6B66] ml-auto">
@@ -1444,6 +1500,12 @@ export default function PropertyDetailView({
                       {isRtl ? "+ رسوم الخدمة" : "+ Service Charges"}: {property.serviceCharges.toLocaleString()} {currencySymbol}
                     </p>
                   )}
+                  {/* Public trust signal: honest freshness indicator, computed from
+                      lastConfirmedAvailableDate rather than fabricated. */}
+                  <div className={`flex items-center gap-1 pt-2 mt-1 border-t border-[#33302a] text-[10px] ${isAvailabilityUnconfirmed ? "text-amber-400" : "text-gray-400"}`}>
+                    <Clock size={11} />
+                    <span>{availabilityConfirmedText}</span>
+                  </div>
                 </div>
 
                 {/* REPRESENTATIVE AGENCY CARD */}
@@ -1463,7 +1525,7 @@ export default function PropertyDetailView({
                       {agentInfo?.isVerifiedAgent && (
                         <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
                           <Award size={11} fill="currentColor" />
-                          <span>{isRtl ? "مقدم إعلان معتمد" : "Certified Listing Provider"}</span>
+                          <span>{isRtl ? agentInfo.verifiedBadgeLabelAr : agentInfo.verifiedBadgeLabel}</span>
                         </p>
                       )}
                     </div>

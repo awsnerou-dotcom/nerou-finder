@@ -122,6 +122,21 @@ export default function App() {
     }
   }, []);
 
+  // FIX 6: ad-lead attribution - capture ?campaignId= from a campaign's shareable link once
+  // on initial load and persist it for the visitor's session, so a lead they eventually
+  // submit (potentially after browsing several properties) can be credited to the campaign
+  // that brought them in. Cleared from the visible URL so it doesn't linger in the bar.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const campaignId = params.get("campaignId");
+    if (campaignId) {
+      sessionStorage.setItem("attributionCampaignId", campaignId);
+      params.delete("campaignId");
+      const newSearch = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (newSearch ? `?${newSearch}` : ""));
+    }
+  }, []);
+
   // Keep state sync notifications
   const [syncCount, setSyncCount] = useState<number>(0);
   const handleDatabaseRefresh = () => {

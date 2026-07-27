@@ -4,11 +4,15 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { VerificationDocument } from "../types.js";
-import { UploadCloud, CheckCircle2, XCircle, Clock, AlertTriangle, Loader2, FileText } from "lucide-react";
+import { VerificationDocument, User } from "../types.js";
+import { UploadCloud, CheckCircle2, XCircle, Clock, AlertTriangle, Loader2, FileText, Building2 } from "lucide-react";
 
 interface VerificationDocumentsPanelProps {
   isRtl: boolean;
+  // Only relevant in the AGENT context - lets an INDEPENDENT_AGENT declare the licensed
+  // agency they operate under, alongside their AGENCY_AUTHORIZATION_LETTER upload.
+  agent?: User;
+  onSaved?: () => void;
 }
 
 interface ChecklistResponse {
@@ -48,13 +52,41 @@ function statusBadge(status: string | undefined, isRtl: boolean) {
   );
 }
 
-export default function VerificationDocumentsPanel({ isRtl }: VerificationDocumentsPanelProps) {
+export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: VerificationDocumentsPanelProps) {
   const [data, setData] = useState<ChecklistResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [expiryDrafts, setExpiryDrafts] = useState<Record<string, string>>({});
   const [showOptionalPassport, setShowOptionalPassport] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [agencyNameDraft, setAgencyNameDraft] = useState(agent?.affiliatedAgencyName || "");
+  const [savingAgencyName, setSavingAgencyName] = useState(false);
+
+  useEffect(() => {
+    setAgencyNameDraft(agent?.affiliatedAgencyName || "");
+  }, [agent?.affiliatedAgencyName]);
+
+  const handleSaveAgencyName = async () => {
+    if (!agent) return;
+    setSavingAgencyName(true);
+    try {
+      const res = await fetch(`/api/users/${agent.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ affiliatedAgencyName: agencyNameDraft })
+      });
+      if (res.ok) {
+        showToast(isRtl ? "تم حفظ اسم الوكالة." : "Agency name saved.");
+        onSaved?.();
+      } else {
+        showToast(isRtl ? "فشل حفظ اسم الوكالة." : "Failed to save agency name.");
+      }
+    } catch (e) {
+      showToast(isRtl ? "فشل حفظ اسم الوكالة." : "Failed to save agency name.");
+    } finally {
+      setSavingAgencyName(false);
+    }
+  };
 
   const authHeaders = (): HeadersInit => {
     const token = localStorage.getItem("token");
@@ -188,6 +220,27 @@ export default function VerificationDocumentsPanel({ isRtl }: VerificationDocume
             />
           </label>
         </div>
+
+        {type === "AGENCY_AUTHORIZATION_LETTER" && agent && (
+          <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-[#f0eee9] mt-1">
+            <Building2 size={14} className="text-[#6e6b66] shrink-0" />
+            <input
+              type="text"
+              value={agencyNameDraft}
+              onChange={(e) => setAgencyNameDraft(e.target.value)}
+              placeholder={isRtl ? "اسم الوكالة العقارية المرخصة التي تعمل تحتها" : "Name of the licensed agency you operate under"}
+              className="flex-1 min-w-[200px] px-2 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg text-[10px] text-[#1a1918]"
+            />
+            <button
+              type="button"
+              onClick={handleSaveAgencyName}
+              disabled={savingAgencyName || agencyNameDraft === (agent.affiliatedAgencyName || "")}
+              className="px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-[#1c1a17] hover:bg-[#bf9b30] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {savingAgencyName ? (isRtl ? "جارٍ الحفظ..." : "Saving...") : (isRtl ? "حفظ" : "Save")}
+            </button>
+          </div>
+        )}
       </div>
     );
   };
