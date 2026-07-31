@@ -783,6 +783,12 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
   const { email, password, fullName, phone, role, orgName, orgType, selectedPlanId, inviteToken } = req.body;
   const db = readDb();
 
+  if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: "A valid email address is required." });
+  }
+  if (!fullName || typeof fullName !== "string" || !fullName.trim()) {
+    return res.status(400).json({ error: "Full name is required." });
+  }
   if (role && !SELF_SIGNUP_ALLOWED_ROLES.includes(role)) {
     return res.status(400).json({ error: "Invalid role for self-service signup." });
   }
@@ -933,8 +939,15 @@ app.get("/api/locations", (req, res) => {
 });
 
 // Admin Manage Locations
+const VALID_LOCATION_TYPES = ["COUNTRY", "MUNICIPALITY", "CITY", "AREA", "DISTRICT", "SUB_AREA"];
 app.post("/api/admin/locations", (req, res) => {
   const { id, name, nameAr, type, parentId, latitude, longitude, seoSlug, isActive } = req.body;
+  if (!name || typeof name !== "string" || !name.trim()) {
+    return res.status(400).json({ error: "name is required." });
+  }
+  if (!VALID_LOCATION_TYPES.includes(type)) {
+    return res.status(400).json({ error: `type must be one of: ${VALID_LOCATION_TYPES.join(", ")}` });
+  }
   const actor = getAuditActor(req);
   const db = readDb();
   if (!db.locations) db.locations = [];
@@ -1210,6 +1223,18 @@ app.get("/api/properties", (req, res) => {
     })
     .map(x => x.p);
 
+  // Optional, backward-compatible pagination - only applied when the caller explicitly asks
+  // for it via ?limit=, so every existing caller that expects the full array back keeps
+  // working unchanged. Without this an ever-growing catalog had no way to cap response size.
+  const { limit, offset } = req.query;
+  if (limit !== undefined) {
+    const limitNum = Math.max(0, Number(limit)) || 0;
+    const offsetNum = Math.max(0, Number(offset)) || 0;
+    const total = properties.length;
+    properties = properties.slice(offsetNum, offsetNum + limitNum);
+    return res.json({ items: properties, total, limit: limitNum, offset: offsetNum });
+  }
+
   res.json(properties);
 });
 
@@ -1360,6 +1385,19 @@ app.post("/api/properties", authMiddleware, (req, res) => {
   }
   if (Array.isArray(propData.images) && propData.images.length > 14) {
     return res.status(400).json({ error: "A listing may have a maximum of 14 photos." });
+  }
+  if (!isEdit) {
+    const REQUIRED_CREATE_FIELDS = ["title", "propertyType", "transactionType", "city", "district"];
+    const missing = REQUIRED_CREATE_FIELDS.filter(f => !propData[f] || (typeof propData[f] === "string" && !propData[f].trim()));
+    if (missing.length > 0) {
+      return res.status(400).json({ error: `Missing required field(s): ${missing.join(", ")}` });
+    }
+    if (propData.price === undefined || Number.isNaN(Number(propData.price))) {
+      return res.status(400).json({ error: "A valid price is required." });
+    }
+    if (propData.area === undefined || Number.isNaN(Number(propData.area))) {
+      return res.status(400).json({ error: "A valid area is required." });
+    }
   }
 
   const authReq = req as AuthenticatedRequest;
@@ -1907,6 +1945,12 @@ app.post("/api/leads", publicWriteRateLimiter, (req, res) => {
     campaign,
     utmSource
   } = req.body;
+
+  // Format-validate contact fields when provided (not required - WhatsApp/call-initiated
+  // leads may only carry a phone, and some carry neither beyond the contact action itself).
+  if (visitorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(visitorEmail)) {
+    return res.status(400).json({ error: "visitorEmail must be a valid email address." });
+  }
 
   // Identify responsible agent and organization
   let agentId = "user-agent-1"; // Fallback
@@ -2583,6 +2627,12 @@ app.get("/api/plans", (req, res) => {
 // CREATE or UPDATE subscription plan
 app.post("/api/admin/plans", (req, res) => {
   const { id, name, priceMonthly, priceYearly, propertyLimit, agentLimit, aiLimit, analyticsAccess, featuredListingsLimit } = req.body;
+  const NUMERIC_PLAN_FIELDS: Record<string, unknown> = { priceMonthly, priceYearly, propertyLimit, agentLimit, aiLimit, featuredListingsLimit };
+  for (const [field, value] of Object.entries(NUMERIC_PLAN_FIELDS)) {
+    if (value !== undefined && (Number.isNaN(Number(value)) || Number(value) < 0)) {
+      return res.status(400).json({ error: `${field} must be a non-negative number.` });
+    }
+  }
   const actor = getAuditActor(req);
   const db = readDb();
   if (!db.subscriptionPlans) {
@@ -3860,6 +3910,17 @@ app.post("/api/admin/reports/resolve", (req, res) => {
 // Audit Logs list for Admin Panel
 app.get("/api/admin/audits", (req, res) => {
   const db = readDb();
+  const { limit, offset } = req.query;
+  if (limit !== undefined) {
+    const limitNum = Math.max(0, Number(limit)) || 0;
+    const offsetNum = Math.max(0, Number(offset)) || 0;
+    return res.json({
+      items: db.auditLogs.slice(offsetNum, offsetNum + limitNum),
+      total: db.auditLogs.length,
+      limit: limitNum,
+      offset: offsetNum
+    });
+  }
   res.json(db.auditLogs);
 });
 
@@ -3904,10 +3965,15 @@ app.post("/api/ai/search", aiSearchRateLimiter, async (req, res) => {
     }
   };
 
-  // Filter active and published properties for visitors
-  const availableProperties = db.properties.filter(
-    p => p.listingStatus === ListingStatus.PUBLISHED && p.verificationStatus === VerificationStatus.APPROVED
-  );
+  // Filter active and published properties for visitors. Capped so prompt size/cost/latency
+  // don't scale unbounded with total catalog size - this is a simple recency cap, not real
+  // relevance filtering (a proper fix would pre-filter by extracted criteria or use vector
+  // search server-side before ever building the prompt; flagged as follow-up work).
+  const AI_SEARCH_CANDIDATE_CAP = 200;
+  const availableProperties = db.properties
+    .filter(p => p.listingStatus === ListingStatus.PUBLISHED && p.verificationStatus === VerificationStatus.APPROVED)
+    .sort((a, b) => new Date(b.updatedDate || b.createdDate).getTime() - new Date(a.updatedDate || a.createdDate).getTime())
+    .slice(0, AI_SEARCH_CANDIDATE_CAP);
 
   try {
     const ai = getGeminiClient();
