@@ -1,32 +1,29 @@
-import fs from "fs";
-import path from "path";
+// Read-only debug utility: prints how many LocationItem rows exist in PostgreSQL, broken
+// down by type. Queries Postgres directly (the sole source of truth) rather than data.json.
+import { PrismaClient } from "@prisma/client";
 
-const DB_FILE = path.join(process.cwd(), "data.json");
+const prisma = new PrismaClient();
 
-function main() {
+async function main() {
   console.log("=== Location Records Count ===");
-  if (!fs.existsSync(DB_FILE)) {
-    console.log("data.json does not exist yet.");
-    return;
-  }
-  
   try {
-    const raw = fs.readFileSync(DB_FILE, "utf-8");
-    const dbState = JSON.parse(raw);
-    const locations = dbState.locations || [];
-    
+    const rows = await prisma.locationItem.findMany();
+    const locations = rows.map(r => JSON.parse(r.data));
+
     console.log(`Total location records: ${locations.length}`);
-    
+
     const counts: Record<string, number> = {};
     for (const item of locations) {
       const type = item.type || "UNKNOWN";
       counts[type] = (counts[type] || 0) + 1;
     }
-    
+
     console.log("Count by type:");
     console.log(JSON.stringify(counts, null, 2));
   } catch (err) {
-    console.error("Error reading data.json:", err);
+    console.error("Error reading locations from PostgreSQL:", err);
+  } finally {
+    await prisma.$disconnect();
   }
 }
 

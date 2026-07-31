@@ -1,36 +1,34 @@
+// Legacy one-time recovery script. Postgres is now the app's sole source of truth - it no
+// longer dual-writes to data.json at runtime, so this script has nothing to migrate FROM in
+// normal operation. It only exists in case you have an old data.json snapshot (e.g. a backup
+// from before that change) that you need to import into Postgres by hand. It is NOT part of
+// the boot path and is safe to run more than once (every row is upserted by id).
 import fs from "fs";
 import path from "path";
-import { writeDb } from "./server-db.js";
+import { writeDb, flushPendingWrites } from "./server-db.js";
 
 async function runMigration() {
-  console.log("=== STARTING SQLITE TO POSTGRESQL DATA MIGRATION ===");
+  console.log("=== IMPORTING data.json SNAPSHOT INTO POSTGRESQL ===");
   const dbFile = path.join(process.cwd(), "data.json");
-  
+
   if (!fs.existsSync(dbFile)) {
-    console.error(`Error: SQLite snapshot file 'data.json' not found at ${dbFile}.`);
-    console.error("Please run the app once with SQLite to ensure data.json is fully populated before migrating.");
+    console.error(`Error: 'data.json' not found at ${dbFile}. Nothing to import.`);
     process.exit(1);
   }
 
   try {
-    console.log("Reading SQLite snapshot from data.json...");
+    console.log("Reading data.json snapshot...");
     const rawData = fs.readFileSync(dbFile, "utf-8");
     const state = JSON.parse(rawData);
-    
-    console.log("Connecting to PostgreSQL database...");
-    console.log("Syncing snapshot data into PostgreSQL...");
-    
-    // writeDb will queue the background write to PostgreSQL via Prisma Client
+
+    console.log("Upserting snapshot data into PostgreSQL...");
     writeDb(state);
-    
-    // Wait for a short duration to ensure syncQueue completes
-    console.log("Writing to database...");
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    
-    console.log("Migration complete! Database has been successfully populated in PostgreSQL with zero data loss.");
+    await flushPendingWrites();
+
+    console.log("Import complete - data.json has been upserted into PostgreSQL.");
     process.exit(0);
   } catch (error) {
-    console.error("Migration failed with error:", error);
+    console.error("Import failed with error:", error);
     process.exit(1);
   }
 }

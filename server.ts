@@ -14,7 +14,7 @@ import multer from "multer";
 import fs from "fs";
 import sharp from "sharp";
 import { Resend } from "resend";
-import { readDb, writeDb, DatabaseState, initDb, prisma } from "./server-db.js";
+import { readDb, writeDb, DatabaseState, initDb, prisma, getLastSyncError, flushPendingWrites } from "./server-db.js";
 import {
   UserRole,
   VerificationStatus,
@@ -585,15 +585,40 @@ function sanitizeUser<T extends { password?: string }>(user: T): Omit<T, "passwo
 // REST API ENDPOINTS
 // -----------------------------------------------------------------------------
 
-// System Health Check
-app.get("/api/health", (req, res) => {
+// System Health Check. Serves both the admin Control Center's health tab (systemHealth
+// object) and external uptime monitors (status/database/uptime fields per OPERATIONS.md) -
+// previously registered twice, where the first (this one) always shadowed the second, more
+// thorough handler, which checked real Postgres connectivity but could never actually run.
+app.get("/api/health", async (req, res) => {
   const db = readDb();
   db.systemHealth.lastCheck = new Date().toISOString();
   writeDb(db);
-  res.json({
-    status: "ok",
-    systemHealth: db.systemHealth
-  });
+
+  const syncError = getLastSyncError();
+  try {
+    await prisma.user.count();
+    res.status(200).json({
+      status: "ok",
+      systemHealth: db.systemHealth,
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      database: "CONNECTED",
+      environment: process.env.NODE_ENV || "development",
+      lastSyncError: syncError
+    });
+  } catch (error: any) {
+    logStructuredError("/api/health", error, req);
+    res.status(500).json({
+      status: "error",
+      systemHealth: db.systemHealth,
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      database: "DISCONNECTED",
+      environment: process.env.NODE_ENV || "development",
+      error: error.message,
+      lastSyncError: syncError
+    });
+  }
 });
 
 app.use("/api/admin", authMiddleware, requireRole([UserRole.PLATFORM_ADMIN]));
@@ -1748,7 +1773,7 @@ async function checkAndIncrementSavedSearches(property: Property) {
 }
 
 // Admin Approval/Rejection of Property Listing
-app.post("/api/admin/properties/verify", (req, res) => {
+app.post("/api/admin/properties/verify", async (req, res) => {
   const { propertyId, status } = req.body;
   const actor = getAuditActor(req);
   const db = readDb();
@@ -1779,7 +1804,7 @@ app.post("/api/admin/properties/verify", (req, res) => {
   if (status === VerificationStatus.APPROVED) {
     db.properties[idx].listingStatus = ListingStatus.PUBLISHED;
     db.properties[idx].lastVerifiedDate = new Date().toISOString();
-    checkAndIncrementSavedSearches(db.properties[idx]);
+    await checkAndIncrementSavedSearches(db.properties[idx]);
   } else if (status === VerificationStatus.REJECTED) {
     db.properties[idx].listingStatus = ListingStatus.SUSPENDED;
   }
@@ -5322,29 +5347,6 @@ app.get("/api/admin/export", (req, res, next) => {
   }
 });
 
-// Uptime Monitoring Health Check
-app.get("/api/health", async (req, res, next) => {
-  try {
-    await prisma.user.count();
-    res.status(200).json({
-      status: "OK",
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-      database: "CONNECTED",
-      environment: process.env.NODE_ENV || "development"
-    });
-  } catch (error: any) {
-    logStructuredError("/api/health", error, req);
-    res.status(500).json({
-      status: "ERROR",
-      uptime: process.uptime(),
-      timestamp: new Date().toISOString(),
-      database: "DISCONNECTED",
-      error: error.message
-    });
-  }
-});
-
 // Express Error Handling Middleware (must be after routes but before static files)
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   logStructuredError(req.originalUrl || req.path, err, req);
@@ -5362,7 +5364,11 @@ async function startServer() {
     await initDb();
     console.log("PostgreSQL database initialized successfully.");
   } catch (err) {
-    console.error("Failed to initialize PostgreSQL database on startup:", err);
+    // Postgres is the sole source of truth now (no more data.json fallback store), so a
+    // failed init means the app has nowhere to read or persist real data - starting anyway
+    // would silently serve/collect data that goes nowhere. Fail the boot instead.
+    console.error("FATAL: Failed to initialize the database on startup. Refusing to start.", err);
+    process.exit(1);
   }
 
   // Verification document expiry sweep: flags EXPIRED docs and sends 30/7-day reminder emails.
@@ -5446,9 +5452,25 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
+
+  // On a redeploy/restart (e.g. Render sends SIGTERM), stop accepting new connections and
+  // wait for any already-queued database writes to finish before exiting, so a request that
+  // already got a 200 response never silently loses its write.
+  const shutdown = (signal: string) => {
+    console.log(`${signal} received: draining pending writes before shutdown...`);
+    server.close(() => {
+      flushPendingWrites()
+        .catch(() => {})
+        .finally(() => process.exit(0));
+    });
+    // Safety net in case something hangs indefinitely.
+    setTimeout(() => process.exit(1), 10000).unref();
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 startServer();

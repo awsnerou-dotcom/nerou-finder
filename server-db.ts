@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import fs from "fs";
-import path from "path";
 import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcrypt";
 
@@ -42,8 +40,6 @@ import {
   AdCharge,
   DEFAULT_MONTHLY_BOOST_CAPS
 } from "./src/types.js";
-
-const DB_FILE = path.join(process.cwd(), "data.json");
 
 export interface DatabaseState {
   users: User[];
@@ -932,46 +928,40 @@ const DEFAULT_AI_CONFIG = {
 let dbCache: DatabaseState | null = null;
 let syncQueue: Promise<any> = Promise.resolve();
 
+// Postgres is the sole source of truth (there is no more data.json fallback store - a
+// prior version of this app dual-wrote every change to a local JSON file and fell back to
+// reading it at boot, which caused a class of data-loss bugs when Postgres and that file
+// disagreed, especially across more than one running instance). If Postgres is reachable
+// but empty, we seed it from the hardcoded defaults below. If Postgres is unreachable at
+// all, boot fails loudly instead of silently running on stale/default in-memory data that
+// never gets persisted anywhere.
 export async function initDb(): Promise<DatabaseState> {
   if (dbCache) return dbCache;
 
-  try {
-    const count = await prisma.user.count();
-    if (count > 0) {
-      console.log("Loading existing database state from SQLite...");
-      dbCache = await loadStateFromDb();
-      // ensureStateDefaults was previously only ever called on a true first-time seed, so if
-      // any defaulted collection (locations, subscriptionPlans, etc.) ever ended up empty in a
-      // synced state - e.g. from a race during an earlier load - it stayed permanently empty on
-      // every subsequent restart, since this "existing state" branch never re-applied defaults.
-      // Re-run it here too so a corrupted/empty collection self-heals on the next boot. Compare
-      // the whole state (not just one field) so this catches any collection ensureStateDefaults
-      // covers today or in the future, not just the ones we've already caught it wiping.
-      const beforeHeal = JSON.stringify(dbCache);
-      ensureStateDefaults(dbCache);
-      if (JSON.stringify(dbCache) !== beforeHeal) {
-        console.log("Healed one or more empty/corrupted default collections - persisting the restored defaults.");
-        writeDb(dbCache);
-      }
-      return dbCache;
+  const count = await prisma.user.count();
+
+  if (count > 0) {
+    console.log("Loading existing database state from PostgreSQL...");
+    dbCache = await loadStateFromDb();
+    initSyncSnapshots(dbCache);
+    // ensureStateDefaults was previously only ever called on a true first-time seed, so if
+    // any defaulted collection (locations, subscriptionPlans, etc.) ever ended up empty in a
+    // synced state - e.g. from a race during an earlier load - it stayed permanently empty on
+    // every subsequent restart, since this "existing state" branch never re-applied defaults.
+    // Re-run it here too so a corrupted/empty collection self-heals on the next boot. Compare
+    // the whole state (not just one field) so this catches any collection ensureStateDefaults
+    // covers today or in the future, not just the ones we've already caught it wiping.
+    const beforeHeal = JSON.stringify(dbCache);
+    ensureStateDefaults(dbCache);
+    if (JSON.stringify(dbCache) !== beforeHeal) {
+      console.log("Healed one or more empty/corrupted default collections - persisting the restored defaults.");
+      writeDb(dbCache);
     }
-  } catch (err) {
-    console.warn("Could not check SQLite tables or database is uninitialized, proceeding with migration/defaults...", err);
+    return dbCache;
   }
 
-  console.log("Database is empty or missing. Migrating data.json or seeding defaults...");
-  let initialState: DatabaseState;
-  if (fs.existsSync(DB_FILE)) {
-    try {
-      const data = fs.readFileSync(DB_FILE, "utf-8");
-      initialState = JSON.parse(data);
-    } catch (err) {
-      initialState = getDefaults();
-    }
-  } else {
-    initialState = getDefaults();
-  }
-
+  console.log("Database is empty. Seeding default data...");
+  const initialState = getDefaults();
   ensureStateDefaults(initialState);
 
   // Auto bcrypt-hash user passwords that are plaintext
@@ -981,7 +971,9 @@ export async function initDb(): Promise<DatabaseState> {
     }
   }
 
-  // Seed the SQLite tables
+  // Seed the Postgres tables and establish the initial sync snapshot from an empty baseline
+  // so the very first syncStateToDb() call inserts every seeded row.
+  initSyncSnapshots();
   await syncStateToDb(initialState);
 
   dbCache = initialState;
@@ -1018,8 +1010,19 @@ function getDefaults(): DatabaseState {
 }
 
 function ensureStateDefaults(db: DatabaseState): void {
-  // Always load the complete default locations list to ensure the full official Qatar hierarchy is fully seeded
-  db.locations = DEFAULT_LOCATIONS;
+  // Seed the default Qatar location hierarchy if empty, otherwise merge in only whatever
+  // default entries are still missing by id - previously this unconditionally overwrote
+  // db.locations with DEFAULT_LOCATIONS on every single boot, silently discarding any
+  // admin-added or admin-edited location the moment the server restarted.
+  if (!db.locations || db.locations.length === 0) {
+    db.locations = DEFAULT_LOCATIONS;
+  } else {
+    for (const loc of DEFAULT_LOCATIONS) {
+      if (!db.locations.some(existing => existing.id === loc.id)) {
+        db.locations.push(loc);
+      }
+    }
+  }
   if (!db.legalDocuments || db.legalDocuments.length === 0) {
     db.legalDocuments = DEFAULT_LEGAL_DOCUMENTS;
   } else {
@@ -1126,79 +1129,139 @@ async function loadStateFromDb(): Promise<DatabaseState> {
   };
 }
 
-async function syncStateToDb(state: DatabaseState): Promise<void> {
-  // Synchronously update data.json for robust filesystem-level persistence
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(state, null, 2), "utf-8");
-  } catch (e) {
-    console.error("Failed to write state to data.json:", e);
+// --- Targeted-upsert sync engine -------------------------------------------------------
+//
+// The old implementation deleted and recreated every row of all 24 tables on every single
+// write, anywhere in the app - even a single property-view increment cost O(total rows in
+// the database), and in a horizontally-scaled deployment two instances doing this
+// concurrently from their own stale in-memory snapshots could silently clobber each
+// other's unrelated writes. Since every table is already just an `{id, data}` row (plus a
+// few indexed scalar columns), this compares each collection's current items against a
+// snapshot of what was last synced and only upserts changed/added rows and deletes removed
+// ones, still inside one transaction so a partial failure rolls back cleanly.
+type RowSnapshot = Map<string, string>; // id -> JSON.stringify(item), as of the last sync
+
+interface SyncSnapshots {
+  users: RowSnapshot; organizations: RowSnapshot; projects: RowSnapshot; properties: RowSnapshot;
+  leads: RowSnapshot; viewings: RowSnapshot; reports: RowSnapshot; campaigns: RowSnapshot;
+  auditLogs: RowSnapshot; subscriptionPlans: RowSnapshot; locations: RowSnapshot;
+  legalDocuments: RowSnapshot; helpArticles: RowSnapshot; supportTickets: RowSnapshot;
+  jobListings: RowSnapshot; pressReleases: RowSnapshot; partnershipRequests: RowSnapshot;
+  reviews: RowSnapshot; invitations: RowSnapshot; jobApplications: RowSnapshot;
+  verificationDocuments: RowSnapshot; adCharges: RowSnapshot;
+  systemHealth: string | null; aiConfig: string | null;
+}
+
+let snapshots: SyncSnapshots = {
+  users: new Map(), organizations: new Map(), projects: new Map(), properties: new Map(),
+  leads: new Map(), viewings: new Map(), reports: new Map(), campaigns: new Map(),
+  auditLogs: new Map(), subscriptionPlans: new Map(), locations: new Map(),
+  legalDocuments: new Map(), helpArticles: new Map(), supportTickets: new Map(),
+  jobListings: new Map(), pressReleases: new Map(), partnershipRequests: new Map(),
+  reviews: new Map(), invitations: new Map(), jobApplications: new Map(),
+  verificationDocuments: new Map(), adCharges: new Map(),
+  systemHealth: null, aiConfig: null,
+};
+
+// Called once at boot with the freshly-loaded state, so the first real syncStateToDb() call
+// only pushes ops for rows that actually changed since boot, not the whole database. When
+// called with no argument (empty-database bootstrap), every collection starts empty so the
+// first sync correctly inserts every seeded row.
+function initSyncSnapshots(state?: DatabaseState): void {
+  snapshots = {
+    users: new Map((state?.users ?? []).map(u => [u.id, JSON.stringify(u)])),
+    organizations: new Map((state?.organizations ?? []).map(o => [o.id, JSON.stringify(o)])),
+    projects: new Map((state?.projects ?? []).map(p => [p.id, JSON.stringify(p)])),
+    properties: new Map((state?.properties ?? []).map(p => [p.id, JSON.stringify(p)])),
+    leads: new Map((state?.leads ?? []).map(l => [l.id, JSON.stringify(l)])),
+    viewings: new Map((state?.viewings ?? []).map(v => [v.id, JSON.stringify(v)])),
+    reports: new Map((state?.reports ?? []).map(r => [r.id, JSON.stringify(r)])),
+    campaigns: new Map((state?.campaigns ?? []).map(c => [c.id, JSON.stringify(c)])),
+    auditLogs: new Map((state?.auditLogs ?? []).map(a => [a.id, JSON.stringify(a)])),
+    subscriptionPlans: new Map((state?.subscriptionPlans ?? []).map(p => [p.id, JSON.stringify(p)])),
+    locations: new Map((state?.locations ?? []).map(l => [l.id, JSON.stringify(l)])),
+    legalDocuments: new Map((state?.legalDocuments ?? []).map(l => [l.id, JSON.stringify(l)])),
+    helpArticles: new Map((state?.helpArticles ?? []).map(h => [h.id, JSON.stringify(h)])),
+    supportTickets: new Map((state?.supportTickets ?? []).map(s => [s.id, JSON.stringify(s)])),
+    jobListings: new Map((state?.jobListings ?? []).map(j => [j.id, JSON.stringify(j)])),
+    pressReleases: new Map((state?.pressReleases ?? []).map(p => [p.id, JSON.stringify(p)])),
+    partnershipRequests: new Map((state?.partnershipRequests ?? []).map(p => [p.id, JSON.stringify(p)])),
+    reviews: new Map((state?.reviews ?? []).map(r => [r.id, JSON.stringify(r)])),
+    invitations: new Map((state?.invitations ?? []).map(i => [i.id, JSON.stringify(i)])),
+    jobApplications: new Map((state?.jobApplications ?? []).map(j => [j.id, JSON.stringify(j)])),
+    verificationDocuments: new Map((state?.verificationDocuments ?? []).map(v => [v.id, JSON.stringify(v)])),
+    adCharges: new Map((state?.adCharges ?? []).map(a => [a.id, JSON.stringify(a)])),
+    systemHealth: null,
+    aiConfig: null,
+  };
+}
+
+// A snapshot update that must NOT be applied until the Postgres transaction it corresponds
+// to has actually committed - json: null means "delete this id from the snapshot".
+interface PendingSnapshotUpdate { map: RowSnapshot; id: string; json: string | null; }
+
+// Diffs `items` against `prev`, pushing one upsert per changed/new row and a single
+// deleteMany for removed rows into `ops`, and queuing the matching snapshot updates into
+// `pending` (NOT applied yet - see the comment above syncStateToDb's `pending` array for why).
+function diffCollection<T extends { id: string }>(
+  ops: Prisma.PrismaPromise<any>[],
+  pending: PendingSnapshotUpdate[],
+  prev: RowSnapshot,
+  items: T[],
+  upsert: (item: T) => Prisma.PrismaPromise<any>,
+  deleteMany: (ids: string[]) => Prisma.PrismaPromise<any>
+): void {
+  const seen = new Set<string>();
+  for (const item of items) {
+    const json = JSON.stringify(item);
+    seen.add(item.id);
+    if (prev.get(item.id) !== json) {
+      ops.push(upsert(item));
+      pending.push({ map: prev, id: item.id, json });
+    }
   }
+  const removedIds: string[] = [];
+  for (const id of prev.keys()) {
+    if (!seen.has(id)) removedIds.push(id);
+  }
+  if (removedIds.length > 0) {
+    ops.push(deleteMany(removedIds));
+    for (const id of removedIds) pending.push({ map: prev, id, json: null });
+  }
+}
 
+let lastSyncError: { message: string; timestamp: string } | null = null;
+export function getLastSyncError(): { message: string; timestamp: string } | null {
+  return lastSyncError;
+}
+
+async function syncStateToDb(state: DatabaseState): Promise<void> {
   try {
-    // Delete-then-recreate every table in a single transaction, so a failure
-    // partway through (e.g. a createMany rejecting bad data) rolls back the
-    // deletes too, instead of leaving tables permanently emptied.
-    const ops: Prisma.PrismaPromise<any>[] = [
-      prisma.user.deleteMany(),
-      prisma.organization.deleteMany(),
-      prisma.project.deleteMany(),
-      prisma.property.deleteMany(),
-      prisma.lead.deleteMany(),
-      prisma.viewingRequest.deleteMany(),
-      prisma.supportReport.deleteMany(),
-      prisma.adCampaign.deleteMany(),
-      prisma.auditLog.deleteMany(),
-      prisma.systemHealth.deleteMany(),
-      prisma.subscriptionPlan.deleteMany(),
-      prisma.locationItem.deleteMany(),
-      prisma.legalDocument.deleteMany(),
-      prisma.helpArticle.deleteMany(),
-      prisma.supportTicket.deleteMany(),
-      prisma.jobListing.deleteMany(),
-      prisma.pressRelease.deleteMany(),
-      prisma.partnershipRequest.deleteMany(),
-      prisma.aiConfig.deleteMany(),
-      prisma.review.deleteMany(),
-      prisma.invitation.deleteMany(),
-      prisma.jobApplication.deleteMany(),
-      prisma.verificationDocument.deleteMany(),
-      prisma.adCharge.deleteMany(),
-    ];
+    const ops: Prisma.PrismaPromise<any>[] = [];
+    // Snapshot updates are collected here but only actually applied to `snapshots` after
+    // the transaction below commits successfully. Mutating snapshots eagerly (as an earlier
+    // version of this function did) would mark a row "synced" even if the transaction that
+    // was supposed to persist it then failed and rolled back - the next write to touch that
+    // same row would see no diff against the (wrongly) already-updated snapshot and skip
+    // re-syncing it, permanently losing that change. Deferring the commit keeps a failed
+    // sync retryable instead of silently dropping data.
+    const pending: PendingSnapshotUpdate[] = [];
 
-    // Re-insert everything from state
-    if (state.users.length > 0) {
-      ops.push(prisma.user.createMany({
-        data: state.users.map(u => ({
-          id: u.id,
-          email: u.email,
-          role: u.role,
-          data: JSON.stringify(u),
-        }))
-      }));
-    }
+    diffCollection(ops, pending, snapshots.users, state.users,
+      u => prisma.user.upsert({ where: { id: u.id }, create: { id: u.id, email: u.email, role: u.role, data: JSON.stringify(u) }, update: { email: u.email, role: u.role, data: JSON.stringify(u) } }),
+      ids => prisma.user.deleteMany({ where: { id: { in: ids } } }));
 
-    if (state.organizations.length > 0) {
-      ops.push(prisma.organization.createMany({
-        data: state.organizations.map(o => ({
-          id: o.id,
-          data: JSON.stringify(o),
-        }))
-      }));
-    }
+    diffCollection(ops, pending, snapshots.organizations, state.organizations,
+      o => prisma.organization.upsert({ where: { id: o.id }, create: { id: o.id, data: JSON.stringify(o) }, update: { data: JSON.stringify(o) } }),
+      ids => prisma.organization.deleteMany({ where: { id: { in: ids } } }));
 
-    if (state.projects.length > 0) {
-      ops.push(prisma.project.createMany({
-        data: state.projects.map(p => ({
-          id: p.id,
-          data: JSON.stringify(p),
-        }))
-      }));
-    }
+    diffCollection(ops, pending, snapshots.projects, state.projects,
+      p => prisma.project.upsert({ where: { id: p.id }, create: { id: p.id, data: JSON.stringify(p) }, update: { data: JSON.stringify(p) } }),
+      ids => prisma.project.deleteMany({ where: { id: { in: ids } } }));
 
-    if (state.properties.length > 0) {
-      ops.push(prisma.property.createMany({
-        data: state.properties.map(p => ({
-          id: p.id,
+    diffCollection(ops, pending, snapshots.properties, state.properties,
+      p => {
+        const row = {
           listingStatus: p.listingStatus,
           verificationStatus: p.verificationStatus,
           agentId: p.agentId,
@@ -1207,226 +1270,153 @@ async function syncStateToDb(state: DatabaseState): Promise<void> {
           propertyType: p.propertyType || null,
           price: typeof p.price === "number" ? p.price : null,
           data: JSON.stringify(p),
-        }))
-      }));
-    }
+        };
+        return prisma.property.upsert({ where: { id: p.id }, create: { id: p.id, ...row }, update: row });
+      },
+      ids => prisma.property.deleteMany({ where: { id: { in: ids } } }));
 
-    if (state.leads.length > 0) {
-      ops.push(prisma.lead.createMany({
-        data: state.leads.map(l => ({
-          id: l.id,
-          data: JSON.stringify(l),
-        }))
-      }));
-    }
+    diffCollection(ops, pending, snapshots.leads, state.leads,
+      l => prisma.lead.upsert({ where: { id: l.id }, create: { id: l.id, data: JSON.stringify(l) }, update: { data: JSON.stringify(l) } }),
+      ids => prisma.lead.deleteMany({ where: { id: { in: ids } } }));
 
-    if (state.viewings.length > 0) {
-      ops.push(prisma.viewingRequest.createMany({
-        data: state.viewings.map(v => ({
-          id: v.id,
-          data: JSON.stringify(v),
-        }))
-      }));
-    }
+    diffCollection(ops, pending, snapshots.viewings, state.viewings,
+      v => prisma.viewingRequest.upsert({ where: { id: v.id }, create: { id: v.id, data: JSON.stringify(v) }, update: { data: JSON.stringify(v) } }),
+      ids => prisma.viewingRequest.deleteMany({ where: { id: { in: ids } } }));
 
-    if (state.reports.length > 0) {
-      ops.push(prisma.supportReport.createMany({
-        data: state.reports.map(r => ({
-          id: r.id,
+    diffCollection(ops, pending, snapshots.reports, state.reports,
+      r => prisma.supportReport.upsert({ where: { id: r.id }, create: { id: r.id, data: JSON.stringify(r) }, update: { data: JSON.stringify(r) } }),
+      ids => prisma.supportReport.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.campaigns, state.campaigns,
+      c => prisma.adCampaign.upsert({ where: { id: c.id }, create: { id: c.id, data: JSON.stringify(c) }, update: { data: JSON.stringify(c) } }),
+      ids => prisma.adCampaign.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.auditLogs, state.auditLogs,
+      a => prisma.auditLog.upsert({ where: { id: a.id }, create: { id: a.id, data: JSON.stringify(a) }, update: { data: JSON.stringify(a) } }),
+      ids => prisma.auditLog.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.subscriptionPlans, state.subscriptionPlans,
+      p => prisma.subscriptionPlan.upsert({ where: { id: p.id }, create: { id: p.id, data: JSON.stringify(p) }, update: { data: JSON.stringify(p) } }),
+      ids => prisma.subscriptionPlan.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.locations, state.locations ?? [],
+      l => prisma.locationItem.upsert({ where: { id: l.id }, create: { id: l.id, data: JSON.stringify(l) }, update: { data: JSON.stringify(l) } }),
+      ids => prisma.locationItem.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.legalDocuments, state.legalDocuments ?? [],
+      l => prisma.legalDocument.upsert({ where: { id: l.id }, create: { id: l.id, data: JSON.stringify(l) }, update: { data: JSON.stringify(l) } }),
+      ids => prisma.legalDocument.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.helpArticles, state.helpArticles ?? [],
+      h => prisma.helpArticle.upsert({ where: { id: h.id }, create: { id: h.id, data: JSON.stringify(h) }, update: { data: JSON.stringify(h) } }),
+      ids => prisma.helpArticle.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.supportTickets, state.supportTickets ?? [],
+      s => prisma.supportTicket.upsert({ where: { id: s.id }, create: { id: s.id, data: JSON.stringify(s) }, update: { data: JSON.stringify(s) } }),
+      ids => prisma.supportTicket.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.jobListings, state.jobListings ?? [],
+      j => prisma.jobListing.upsert({ where: { id: j.id }, create: { id: j.id, data: JSON.stringify(j) }, update: { data: JSON.stringify(j) } }),
+      ids => prisma.jobListing.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.pressReleases, state.pressReleases ?? [],
+      p => prisma.pressRelease.upsert({ where: { id: p.id }, create: { id: p.id, data: JSON.stringify(p) }, update: { data: JSON.stringify(p) } }),
+      ids => prisma.pressRelease.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.partnershipRequests, state.partnershipRequests ?? [],
+      p => prisma.partnershipRequest.upsert({ where: { id: p.id }, create: { id: p.id, data: JSON.stringify(p) }, update: { data: JSON.stringify(p) } }),
+      ids => prisma.partnershipRequest.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.reviews, state.reviews ?? [],
+      r => {
+        const row = {
+          reviewerId: r.reviewerId, targetType: r.targetType, targetId: r.targetId,
+          rating: r.rating, comment: r.comment, createdDate: r.createdDate, status: r.status,
           data: JSON.stringify(r),
-        }))
-      }));
+        };
+        return prisma.review.upsert({ where: { id: r.id }, create: { id: r.id, ...row }, update: row });
+      },
+      ids => prisma.review.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.invitations, state.invitations ?? [],
+      i => prisma.invitation.upsert({ where: { id: i.id }, create: { id: i.id, data: JSON.stringify(i) }, update: { data: JSON.stringify(i) } }),
+      ids => prisma.invitation.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.jobApplications, state.jobApplications ?? [],
+      j => prisma.jobApplication.upsert({ where: { id: j.id }, create: { id: j.id, data: JSON.stringify(j) }, update: { data: JSON.stringify(j) } }),
+      ids => prisma.jobApplication.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.verificationDocuments, state.verificationDocuments ?? [],
+      v => {
+        const row = { context: v.context, userId: v.userId || null, orgId: v.orgId || null, status: v.status, data: JSON.stringify(v) };
+        return prisma.verificationDocument.upsert({ where: { id: v.id }, create: { id: v.id, ...row }, update: row });
+      },
+      ids => prisma.verificationDocument.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.adCharges, state.adCharges ?? [],
+      a => {
+        const row = { orgId: a.orgId, billingPeriod: a.billingPeriod, settled: a.settled, data: JSON.stringify(a) };
+        return prisma.adCharge.upsert({ where: { id: a.id }, create: { id: a.id, ...row }, update: row });
+      },
+      ids => prisma.adCharge.deleteMany({ where: { id: { in: ids } } }));
+
+    // Singleton rows - only upsert when the serialized value actually changed.
+    const healthJson = JSON.stringify(state.systemHealth);
+    if (snapshots.systemHealth !== healthJson) {
+      ops.push(prisma.systemHealth.upsert({ where: { id: "health" }, create: { id: "health", data: healthJson }, update: { data: healthJson } }));
+    }
+    const aiConfigJson = JSON.stringify(state.aiConfig);
+    if (snapshots.aiConfig !== aiConfigJson) {
+      ops.push(prisma.aiConfig.upsert({ where: { id: "config" }, create: { id: "config", data: aiConfigJson }, update: { data: aiConfigJson } }));
     }
 
-    if (state.campaigns.length > 0) {
-      ops.push(prisma.adCampaign.createMany({
-        data: state.campaigns.map(c => ({
-          id: c.id,
-          data: JSON.stringify(c),
-        }))
-      }));
+    if (ops.length > 0) {
+      await prisma.$transaction(ops);
     }
 
-    if (state.auditLogs.length > 0) {
-      ops.push(prisma.auditLog.createMany({
-        data: state.auditLogs.map(a => ({
-          id: a.id,
-          data: JSON.stringify(a),
-        }))
-      }));
+    // Only now that the transaction has actually committed do we commit the snapshot
+    // updates collected above - see the comment on `pending`'s declaration for why.
+    for (const update of pending) {
+      if (update.json === null) update.map.delete(update.id);
+      else update.map.set(update.id, update.json);
     }
-
-    ops.push(prisma.systemHealth.create({
-      data: {
-        id: "health",
-        data: JSON.stringify(state.systemHealth),
-      }
-    }));
-
-    if (state.subscriptionPlans.length > 0) {
-      ops.push(prisma.subscriptionPlan.createMany({
-        data: state.subscriptionPlans.map(p => ({
-          id: p.id,
-          data: JSON.stringify(p),
-        }))
-      }));
-    }
-
-    if (state.locations && state.locations.length > 0) {
-      ops.push(prisma.locationItem.createMany({
-        data: state.locations.map(l => ({
-          id: l.id,
-          data: JSON.stringify(l),
-        }))
-      }));
-    }
-
-    if (state.legalDocuments && state.legalDocuments.length > 0) {
-      ops.push(prisma.legalDocument.createMany({
-        data: state.legalDocuments.map(l => ({
-          id: l.id,
-          data: JSON.stringify(l),
-        }))
-      }));
-    }
-
-    if (state.helpArticles && state.helpArticles.length > 0) {
-      ops.push(prisma.helpArticle.createMany({
-        data: state.helpArticles.map(h => ({
-          id: h.id,
-          data: JSON.stringify(h),
-        }))
-      }));
-    }
-
-    if (state.supportTickets && state.supportTickets.length > 0) {
-      ops.push(prisma.supportTicket.createMany({
-        data: state.supportTickets.map(s => ({
-          id: s.id,
-          data: JSON.stringify(s),
-        }))
-      }));
-    }
-
-    if (state.jobListings && state.jobListings.length > 0) {
-      ops.push(prisma.jobListing.createMany({
-        data: state.jobListings.map(j => ({
-          id: j.id,
-          data: JSON.stringify(j),
-        }))
-      }));
-    }
-
-    if (state.pressReleases && state.pressReleases.length > 0) {
-      ops.push(prisma.pressRelease.createMany({
-        data: state.pressReleases.map(p => ({
-          id: p.id,
-          data: JSON.stringify(p),
-        }))
-      }));
-    }
-
-    if (state.partnershipRequests && state.partnershipRequests.length > 0) {
-      ops.push(prisma.partnershipRequest.createMany({
-        data: state.partnershipRequests.map(p => ({
-          id: p.id,
-          data: JSON.stringify(p),
-        }))
-      }));
-    }
-
-    if (state.reviews && state.reviews.length > 0) {
-      ops.push(prisma.review.createMany({
-        data: state.reviews.map(r => ({
-          id: r.id,
-          reviewerId: r.reviewerId,
-          targetType: r.targetType,
-          targetId: r.targetId,
-          rating: r.rating,
-          comment: r.comment,
-          createdDate: r.createdDate,
-          status: r.status,
-          data: JSON.stringify(r),
-        }))
-      }));
-    }
-
-    if (state.invitations && state.invitations.length > 0) {
-      ops.push(prisma.invitation.createMany({
-        data: state.invitations.map(i => ({
-          id: i.id,
-          data: JSON.stringify(i),
-        }))
-      }));
-    }
-
-    if (state.jobApplications && state.jobApplications.length > 0) {
-      ops.push(prisma.jobApplication.createMany({
-        data: state.jobApplications.map(j => ({
-          id: j.id,
-          data: JSON.stringify(j),
-        }))
-      }));
-    }
-
-    if (state.verificationDocuments && state.verificationDocuments.length > 0) {
-      ops.push(prisma.verificationDocument.createMany({
-        data: state.verificationDocuments.map(v => ({
-          id: v.id,
-          context: v.context,
-          userId: v.userId || null,
-          orgId: v.orgId || null,
-          status: v.status,
-          data: JSON.stringify(v),
-        }))
-      }));
-    }
-
-    if (state.adCharges && state.adCharges.length > 0) {
-      ops.push(prisma.adCharge.createMany({
-        data: state.adCharges.map(a => ({
-          id: a.id,
-          orgId: a.orgId,
-          billingPeriod: a.billingPeriod,
-          settled: a.settled,
-          data: JSON.stringify(a),
-        }))
-      }));
-    }
-
-    ops.push(prisma.aiConfig.create({
-      data: {
-        id: "config",
-        data: JSON.stringify(state.aiConfig),
-      }
-    }));
-
-    await prisma.$transaction(ops);
-  } catch (err) {
-    console.error("Critical error in syncStateToDb background worker:", err);
+    snapshots.systemHealth = healthJson;
+    snapshots.aiConfig = aiConfigJson;
+    lastSyncError = null;
+  } catch (err: any) {
+    // Deliberately not rethrown: this runs off the fire-and-forget syncQueue chain (see
+    // writeDb below), and letting it throw here would both produce an unhandled rejection
+    // and permanently wedge the queue for every write after it. Instead the failure is
+    // logged and recorded so GET /api/health can surface it - a persistence failure is no
+    // longer silent, even though it also isn't fatal to the running process.
+    console.error("Critical error in syncStateToDb:", err);
+    lastSyncError = { message: err?.message || String(err), timestamp: new Date().toISOString() };
   }
 }
 
 export function readDb(): DatabaseState {
   if (!dbCache) {
-    if (fs.existsSync(DB_FILE)) {
-      try {
-        const data = fs.readFileSync(DB_FILE, "utf-8");
-        dbCache = JSON.parse(data);
-      } catch (err) {
-        dbCache = getDefaults();
-      }
-    } else {
-      dbCache = getDefaults();
-    }
+    // initDb() always runs (and populates dbCache) before the server starts accepting
+    // requests, so this should be unreachable in practice; it exists only as a defensive
+    // fallback rather than a real runtime data source.
+    console.error("readDb() called before initDb() completed - returning uninitialized defaults.");
+    dbCache = getDefaults();
   }
-  return dbCache!;
+  return dbCache;
 }
 
 export function writeDb(state: DatabaseState): void {
   dbCache = state;
   // Queue background write to serialize SQL transactions and avoid race conditions
   syncQueue = syncQueue.then(() => syncStateToDb(state));
+}
+
+// Lets the server wait for any in-flight/queued writes to actually reach Postgres before
+// the process exits (e.g. on a Render redeploy's SIGTERM) - without this, a write that had
+// already returned "success" to an HTTP caller could still be lost if the process is killed
+// before its queued syncStateToDb() call runs.
+export function flushPendingWrites(): Promise<any> {
+  return syncQueue;
 }
 
 
