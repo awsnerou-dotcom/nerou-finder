@@ -657,12 +657,18 @@ app.post("/api/auth/login", authRateLimiter, (req, res) => {
   if (!user) {
     return res.status(404).json({ error: "User not found." });
   }
-  // Validate password if it is set in user record
-  if (user.password) {
-    const isMatched = bcrypt.compareSync(password, user.password);
-    if (!isMatched) {
-      return res.status(401).json({ error: "Incorrect password. Please try again." });
-    }
+  // CRITICAL: every account must have a password to log in. The previous "skip verification
+  // if user.password is unset" behavior meant any account with no password hash - including
+  // every seeded default account (SUPER_ADMIN, PLATFORM_ADMIN, etc., none of which have a
+  // `password` field in DEFAULT_USERS) - could be logged into by anyone using that email and
+  // any arbitrary string as the password, with zero verification. There is no legitimate
+  // passwordless-login flow in this app; every real signup always sets a password hash.
+  if (!user.password) {
+    return res.status(401).json({ error: "This account has no password set. Please contact support." });
+  }
+  const isMatched = bcrypt.compareSync(password, user.password);
+  if (!isMatched) {
+    return res.status(401).json({ error: "Incorrect password. Please try again." });
   }
 
   // 2FA check
