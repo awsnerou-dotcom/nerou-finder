@@ -60,7 +60,7 @@ import crypto from "crypto";
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 // Render (and most PaaS hosts) sit behind a reverse proxy - without this, express-rate-limit
@@ -204,7 +204,7 @@ const EMAIL_FROM = process.env.EMAIL_FROM || "Nerou Finder <onboarding@resend.de
 // names/messages and signup fields are attacker-controlled and otherwise flow straight
 // into raw HTML - both sent to real recipients via Resend and rendered unescaped in the
 // admin Control Center's Email Logs viewer (which uses dangerouslySetInnerHTML).
-function escapeHtml(value: unknown): string {
+export function escapeHtml(value: unknown): string {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -496,7 +496,7 @@ const ALLOWED_UPLOAD_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gi
 // attacker-controlled - a file with arbitrary bytes and a spoofed "image/jpeg" header would
 // otherwise be accepted and served back statically from /assets/uploads. This checks the
 // actual leading bytes on disk against each allowed type's real file signature.
-function fileMatchesDeclaredType(buffer: Buffer, mimetype: string): boolean {
+export function fileMatchesDeclaredType(buffer: Buffer, mimetype: string): boolean {
   const startsWith = (bytes: number[]) => bytes.every((b, i) => buffer[i] === b);
   switch (mimetype) {
     case "image/jpeg": return startsWith([0xff, 0xd8, 0xff]);
@@ -576,7 +576,7 @@ function getAuditActor(req: express.Request): { id: string; name: string; role: 
 // Strips the bcrypt password hash before a user record is ever sent over the wire -
 // used on every response that includes a full user object (login/signup/profile
 // updates/admin lookups), not just the plain GET /api/users list.
-function sanitizeUser<T extends { password?: string }>(user: T): Omit<T, "password"> {
+export function sanitizeUser<T extends { password?: string }>(user: T): Omit<T, "password"> {
   const { password, ...safe } = user;
   return safe;
 }
@@ -5479,4 +5479,9 @@ async function startServer() {
   process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
-startServer();
+// Skipped under the test runner (Vitest sets NODE_ENV=test automatically) - tests import
+// `app` directly and drive it with supertest, calling initDb() themselves against a test
+// database instead of binding a real port or starting the interval-based background sweeps.
+if (process.env.NODE_ENV !== "test") {
+  startServer();
+}

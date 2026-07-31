@@ -980,7 +980,7 @@ export async function initDb(): Promise<DatabaseState> {
   return dbCache;
 }
 
-function getDefaults(): DatabaseState {
+export function getDefaults(): DatabaseState {
   return {
     users: DEFAULT_USERS,
     organizations: DEFAULT_ORGANIZATIONS,
@@ -1009,7 +1009,7 @@ function getDefaults(): DatabaseState {
   };
 }
 
-function ensureStateDefaults(db: DatabaseState): void {
+export function ensureStateDefaults(db: DatabaseState): void {
   // Seed the default Qatar location hierarchy if empty, otherwise merge in only whatever
   // default entries are still missing by id - previously this unconditionally overwrote
   // db.locations with DEFAULT_LOCATIONS on every single boot, silently discarding any
@@ -1139,7 +1139,7 @@ async function loadStateFromDb(): Promise<DatabaseState> {
 // few indexed scalar columns), this compares each collection's current items against a
 // snapshot of what was last synced and only upserts changed/added rows and deletes removed
 // ones, still inside one transaction so a partial failure rolls back cleanly.
-type RowSnapshot = Map<string, string>; // id -> JSON.stringify(item), as of the last sync
+export type RowSnapshot = Map<string, string>; // id -> JSON.stringify(item), as of the last sync
 
 interface SyncSnapshots {
   users: RowSnapshot; organizations: RowSnapshot; projects: RowSnapshot; properties: RowSnapshot;
@@ -1198,12 +1198,12 @@ function initSyncSnapshots(state?: DatabaseState): void {
 
 // A snapshot update that must NOT be applied until the Postgres transaction it corresponds
 // to has actually committed - json: null means "delete this id from the snapshot".
-interface PendingSnapshotUpdate { map: RowSnapshot; id: string; json: string | null; }
+export interface PendingSnapshotUpdate { map: RowSnapshot; id: string; json: string | null; }
 
 // Diffs `items` against `prev`, pushing one upsert per changed/new row and a single
 // deleteMany for removed rows into `ops`, and queuing the matching snapshot updates into
 // `pending` (NOT applied yet - see the comment above syncStateToDb's `pending` array for why).
-function diffCollection<T extends { id: string }>(
+export function diffCollection<T extends { id: string }>(
   ops: Prisma.PrismaPromise<any>[],
   pending: PendingSnapshotUpdate[],
   prev: RowSnapshot,
