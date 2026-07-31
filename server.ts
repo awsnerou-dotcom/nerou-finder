@@ -63,11 +63,35 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+// Render (and most PaaS hosts) sit behind a reverse proxy - without this, express-rate-limit
+// and any req.ip usage see the proxy's single IP for every request, so the login rate limit
+// would be effectively shared across all users (one attacker's failed logins could lock out
+// everyone else's login attempts platform-wide).
+app.set("trust proxy", 1);
+
+// Baseline security headers on every response. CSP is deliberately not set here - this app
+// loads Leaflet/Unsplash/QR-code assets from several third-party origins, and a CSP added
+// without carefully allowlisting all of them would break those features; that needs its own
+// dedicated pass rather than being bolted on as a one-line default.
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use("/assets", express.static(path.join(process.cwd(), "assets")));
 
-const JWT_SECRET = process.env.JWT_SECRET || "nerou-secret-key-12345";
+// Fail fast rather than silently signing every session token with a public, guessable
+// string - a missing JWT_SECRET in production would otherwise let anyone forge a valid
+// admin token by signing their own JWT with this same hardcoded value.
+if (!process.env.JWT_SECRET) {
+  console.error("FATAL: JWT_SECRET environment variable is not set. Refusing to start with an insecure default secret.");
+  process.exit(1);
+}
+const JWT_SECRET: string = process.env.JWT_SECRET;
 
 // Rate limiters for auth and discovery
 const authRateLimiter = rateLimit({
@@ -82,6 +106,26 @@ const aiSearchRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 30, // Limit each IP to 30 AI searches per hour
   message: { error: "Too many AI discovery searches from this IP. Please try again in an hour." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Shared limiter for public write endpoints that were previously completely unprotected
+// (leads, reports, career/partnership applications, support tickets, reviews, uploads) -
+// without this, any of them could be spammed/resource-exhausted from a single IP.
+const publicWriteRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30,
+  message: { error: "Too many requests. Please try again in a few minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Uploads (image/PDF watermarking via sharp) are CPU-intensive per file - a tighter limit.
+const uploadRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "Too many upload requests. Please try again in a few minutes." },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -156,7 +200,25 @@ const resendApiKey = process.env.RESEND_API_KEY;
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null;
 const EMAIL_FROM = process.env.EMAIL_FROM || "Nerou Finder <onboarding@resend.dev>";
 
+// Escapes user-supplied text before it's interpolated into an HTML email template. Lead
+// names/messages and signup fields are attacker-controlled and otherwise flow straight
+// into raw HTML - both sent to real recipients via Resend and rendered unescaped in the
+// admin Control Center's Email Logs viewer (which uses dangerouslySetInnerHTML).
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export function generateInquiryEmailHtml(leadName: string, leadPhone: string, leadEmail: string, propTitle: string, propPrice: number, propId: string) {
+  leadName = escapeHtml(leadName);
+  leadPhone = escapeHtml(leadPhone);
+  leadEmail = escapeHtml(leadEmail);
+  propTitle = escapeHtml(propTitle);
+  propId = escapeHtml(propId);
   return `
 <div style="font-family: serif, 'Playfair Display', sans-serif; background-color: #1a1918; color: #fdfcfb; padding: 30px; max-width: 600px; margin: 0 auto; border: 2px solid #bf9b30; border-radius: 8px;">
   <div style="text-align: center; border-bottom: 1px solid #bf9b30; padding-bottom: 20px; margin-bottom: 20px;">
@@ -214,6 +276,11 @@ export function generateInquiryEmailHtml(leadName: string, leadPhone: string, le
 }
 
 export function generateSubscriptionRequestEmailHtml(orgName: string, adminName: string, email: string, phone: string, planName: string, price: number) {
+  orgName = escapeHtml(orgName);
+  adminName = escapeHtml(adminName);
+  email = escapeHtml(email);
+  phone = escapeHtml(phone);
+  planName = escapeHtml(planName);
   return `
 <div style="font-family: serif, 'Playfair Display', sans-serif; background-color: #1a1918; color: #fdfcfb; padding: 30px; max-width: 600px; margin: 0 auto; border: 2px solid #bf9b30; border-radius: 8px;">
   <div style="text-align: center; border-bottom: 1px solid #bf9b30; padding-bottom: 20px; margin-bottom: 20px;">
@@ -276,6 +343,8 @@ export function generateSubscriptionRequestEmailHtml(orgName: string, adminName:
 }
 
 export function generateSubscriptionApprovedEmailHtml(orgName: string, planName: string, expiryDate: string, limits: { properties: number; agents: number; aiQuota: number }) {
+  orgName = escapeHtml(orgName);
+  planName = escapeHtml(planName);
   return `
 <div style="font-family: serif, 'Playfair Display', sans-serif; background-color: #1a1918; color: #fdfcfb; padding: 30px; max-width: 600px; margin: 0 auto; border: 2px solid #bf9b30; border-radius: 8px;">
   <div style="text-align: center; border-bottom: 1px solid #bf9b30; padding-bottom: 20px; margin-bottom: 20px;">
@@ -423,6 +492,22 @@ const storage = multer.diskStorage({
 
 const ALLOWED_UPLOAD_MIMES = ["image/jpeg", "image/png", "image/webp", "image/gif", "application/pdf"];
 
+// multer's fileFilter only checks the client-supplied Content-Type header, which is fully
+// attacker-controlled - a file with arbitrary bytes and a spoofed "image/jpeg" header would
+// otherwise be accepted and served back statically from /assets/uploads. This checks the
+// actual leading bytes on disk against each allowed type's real file signature.
+function fileMatchesDeclaredType(buffer: Buffer, mimetype: string): boolean {
+  const startsWith = (bytes: number[]) => bytes.every((b, i) => buffer[i] === b);
+  switch (mimetype) {
+    case "image/jpeg": return startsWith([0xff, 0xd8, 0xff]);
+    case "image/png": return startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    case "image/gif": return startsWith([0x47, 0x49, 0x46, 0x38]); // "GIF8"
+    case "image/webp": return startsWith([0x52, 0x49, 0x46, 0x46]) && buffer.slice(8, 12).toString("ascii") === "WEBP";
+    case "application/pdf": return startsWith([0x25, 0x50, 0x44, 0x46]); // "%PDF"
+    default: return false;
+  }
+}
+
 const upload = multer({
   storage,
   limits: {
@@ -476,6 +561,26 @@ function logAudit(actorId: string, actorName: string, role: UserRole | string, a
   writeDb(db);
 }
 
+// Derives the audit-log actor from the verified JWT (req.user), never from req.body -
+// req.body is client-controlled, so trusting it here would let any caller attribute
+// admin actions to an arbitrary actorId/actorName/actorRole in the audit trail.
+function getAuditActor(req: express.Request): { id: string; name: string; role: UserRole } {
+  const user = (req as AuthenticatedRequest).user;
+  return {
+    id: user?.id || "unknown",
+    name: user?.fullName || "Unknown",
+    role: (user?.role as UserRole) || UserRole.PLATFORM_ADMIN,
+  };
+}
+
+// Strips the bcrypt password hash before a user record is ever sent over the wire -
+// used on every response that includes a full user object (login/signup/profile
+// updates/admin lookups), not just the plain GET /api/users list.
+function sanitizeUser<T extends { password?: string }>(user: T): Omit<T, "password"> {
+  const { password, ...safe } = user;
+  return safe;
+}
+
 // -----------------------------------------------------------------------------
 // REST API ENDPOINTS
 // -----------------------------------------------------------------------------
@@ -495,7 +600,8 @@ app.use("/api/admin", authMiddleware, requireRole([UserRole.PLATFORM_ADMIN]));
 
 // Update System Health Indicator (Platform Admin action)
 app.post("/api/admin/health/update", (req, res) => {
-  const { api, database, ai, payment, whatsapp, actorId, actorName, actorRole } = req.body;
+  const { api, database, ai, payment, whatsapp } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   if (api) db.systemHealth.api = api;
   if (database) db.systemHealth.database = database;
@@ -504,11 +610,11 @@ app.post("/api/admin/health/update", (req, res) => {
   if (whatsapp) db.systemHealth.whatsapp = whatsapp;
   db.systemHealth.lastCheck = new Date().toISOString();
   writeDb(db);
-  
+
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     "UPDATE_SYSTEM_HEALTH",
     "system-health",
     "SystemHealth",
@@ -546,7 +652,7 @@ app.post("/api/auth/login", authRateLimiter, (req, res) => {
     { expiresIn: "7d" }
   );
 
-  res.json({ user, token });
+  res.json({ user: sanitizeUser(user), token });
 });
 
 // TOTP 2FA Login Verification
@@ -573,7 +679,7 @@ app.post("/api/auth/login-2fa", authRateLimiter, (req, res) => {
     { expiresIn: "7d" }
   );
 
-  res.json({ user, token });
+  res.json({ user: sanitizeUser(user), token });
 });
 
 // 2FA Setup Setup (generate secret + qr code)
@@ -614,10 +720,20 @@ app.post("/api/auth/2fa/enable", authMiddleware, (req, res) => {
 // 2FA Disable
 app.post("/api/auth/2fa/disable", authMiddleware, (req, res) => {
   const authUser = (req as any).user;
+  const { password } = req.body;
   const db = readDb();
   const idx = db.users.findIndex(u => u.id === authUser.id);
   if (idx === -1) {
     return res.status(404).json({ error: "User not found." });
+  }
+
+  // Require the current password before disabling 2FA - without this, a stolen/hijacked
+  // JWT alone (e.g. via XSS) would be enough to permanently strip 2FA off an account.
+  const currentPasswordHash = db.users[idx].password;
+  if (currentPasswordHash) {
+    if (!password || !bcrypt.compareSync(password, currentPasswordHash)) {
+      return res.status(401).json({ error: "Current password is required to disable Two-Factor Authentication." });
+    }
   }
 
   (db.users[idx] as any).twoFactorEnabled = false;
@@ -775,7 +891,7 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
     { expiresIn: "7d" }
   );
 
-  res.json({ user: newUser, token });
+  res.json({ user: sanitizeUser(newUser), token });
 });
 
 
@@ -787,7 +903,8 @@ app.get("/api/locations", (req, res) => {
 
 // Admin Manage Locations
 app.post("/api/admin/locations", (req, res) => {
-  const { id, name, nameAr, type, parentId, latitude, longitude, seoSlug, isActive, actorId, actorName, actorRole } = req.body;
+  const { id, name, nameAr, type, parentId, latitude, longitude, seoSlug, isActive } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   if (!db.locations) db.locations = [];
 
@@ -807,7 +924,7 @@ app.post("/api/admin/locations", (req, res) => {
         isActive: isActive !== undefined ? !!isActive : true
       };
       writeDb(db);
-      logAudit(actorId || "admin", actorName || "Admin", actorRole || UserRole.PLATFORM_ADMIN, "EDIT_LOCATION", id, "Location", { name });
+      logAudit(actor.id, actor.name, actor.role, "EDIT_LOCATION", id, "Location", { name });
       return res.json({ success: true, location: db.locations[idx] });
     }
   }
@@ -826,7 +943,7 @@ app.post("/api/admin/locations", (req, res) => {
   };
   db.locations.push(newLoc);
   writeDb(db);
-  logAudit(actorId || "admin", actorName || "Admin", actorRole || UserRole.PLATFORM_ADMIN, "CREATE_LOCATION", newId, "Location", { name });
+  logAudit(actor.id, actor.name, actor.role, "CREATE_LOCATION", newId, "Location", { name });
   res.json({ success: true, location: newLoc });
 });
 
@@ -883,7 +1000,7 @@ app.patch("/api/users/:id", authMiddleware, (req, res) => {
     );
   }
 
-  res.json({ success: true, user: db.users[idx] });
+  res.json({ success: true, user: sanitizeUser(db.users[idx]) });
 });
 
 // Change own password. A user may only change their own password - never another user's,
@@ -1220,6 +1337,13 @@ app.post("/api/properties", authMiddleware, (req, res) => {
   const actorRole = authReq.user?.role || UserRole.AGENT;
   const actor = db.users.find(u => u.id === actorId);
 
+  // Only listing-capable roles may ever create a property; a plain REGISTERED/visitor
+  // account must never be able to publish a listing just by posting to this endpoint.
+  const LISTING_CREATOR_ROLES = [UserRole.AGENT, UserRole.AGENCY_ADMIN, UserRole.DEVELOPER_ADMIN, UserRole.PLATFORM_ADMIN];
+  if (!isEdit && !LISTING_CREATOR_ROLES.includes(actorRole as UserRole)) {
+    return res.status(403).json({ error: "Your account type is not permitted to create property listings." });
+  }
+
   // Qatar regulation gate: an INDEPENDENT_AGENT must declare (and have approved) the
   // licensed agency/brokerage they operate under before any listing of theirs can go
   // live. AGENCY_AGENT and org admins are not subject to this - they're covered by
@@ -1258,22 +1382,40 @@ app.post("/api/properties", authMiddleware, (req, res) => {
   if (isEdit) {
     const idx = db.properties.findIndex(p => p.id === propData.id);
     if (idx === -1) return res.status(404).json({ error: "Property not found" });
-    
+
     const existing = db.properties[idx];
-    
-    // Track price changes in price history
+
+    // Ownership gate: only the listing's own agent, an org admin of the same org, or a
+    // platform admin may edit it. Without this, any authenticated account could POST an
+    // edit for someone else's listing (including reassigning it to themselves below).
+    const isOwnAgent = actorId === existing.agentId;
+    const isOrgAdmin = !!existing.orgId && actor?.orgId === existing.orgId &&
+      (actorRole === UserRole.AGENCY_ADMIN || actorRole === UserRole.DEVELOPER_ADMIN);
+    const isPlatformAdmin = actorRole === UserRole.PLATFORM_ADMIN;
+    if (!isOwnAgent && !isOrgAdmin && !isPlatformAdmin) {
+      return res.status(403).json({ error: "You do not have permission to edit this listing." });
+    }
+
+    // Only push a price-history entry when a valid new price was actually provided -
+    // Number(undefined) is NaN, and NaN !== existing.price is always true, so without this
+    // guard every edit that omits price would silently corrupt priceHistory with a NaN entry.
+    const newPrice = propData.price !== undefined ? Number(propData.price) : existing.price;
     const priceHistory = [...existing.priceHistory];
-    if (existing.price !== Number(propData.price)) {
-      priceHistory.push({ price: Number(propData.price), date: new Date().toISOString().split("T")[0] });
+    if (Number.isFinite(newPrice) && existing.price !== newPrice) {
+      priceHistory.push({ price: newPrice, date: new Date().toISOString().split("T")[0] });
     }
 
     const updatedProp: Property = {
       ...existing,
       ...propData,
-      price: Number(propData.price),
-      area: Number(propData.area),
-      bedrooms: Number(propData.bedrooms),
-      bathrooms: Number(propData.bathrooms),
+      // agentId/orgId are ownership fields, not editable listing content - never let them
+      // be overwritten from client-supplied propData (that's how a listing gets hijacked).
+      agentId: existing.agentId,
+      orgId: existing.orgId,
+      price: Number.isFinite(newPrice) ? newPrice : existing.price,
+      area: propData.area !== undefined ? Number(propData.area) : existing.area,
+      bedrooms: propData.bedrooms !== undefined ? Number(propData.bedrooms) : existing.bedrooms,
+      bathrooms: propData.bathrooms !== undefined ? Number(propData.bathrooms) : existing.bathrooms,
       priceHistory,
       qualityScore,
       updatedDate: new Date().toISOString()
@@ -1607,7 +1749,8 @@ async function checkAndIncrementSavedSearches(property: Property) {
 
 // Admin Approval/Rejection of Property Listing
 app.post("/api/admin/properties/verify", (req, res) => {
-  const { propertyId, status, actorId, actorName, actorRole } = req.body;
+  const { propertyId, status } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   const idx = db.properties.findIndex(p => p.id === propertyId);
   if (idx === -1) return res.status(404).json({ error: "Property not found" });
@@ -1645,9 +1788,9 @@ app.post("/api/admin/properties/verify", (req, res) => {
   writeDb(db);
 
   logAudit(
-    actorId,
-    actorName,
-    actorRole,
+    actor.id,
+    actor.name,
+    actor.role,
     status === VerificationStatus.APPROVED ? "APPROVE_PROPERTY" : "REJECT_PROPERTY",
     propertyId,
     "Property",
@@ -1718,7 +1861,7 @@ app.delete("/api/admin/properties/:id", (req, res) => {
 });
 
 // Lead Capture (Visitor submits inquiry or triggers Call/WhatsApp event)
-app.post("/api/leads", (req, res) => {
+app.post("/api/leads", publicWriteRateLimiter, (req, res) => {
   const db = readDb();
   const {
     propertyId,
@@ -1837,17 +1980,30 @@ app.post("/api/leads", (req, res) => {
   res.json({ success: true, lead: newLead });
 });
 
-// Retrieve Leads for Agent or Agency Workspace
-app.get("/api/leads", (req, res) => {
+// Retrieve Leads for Agent or Agency Workspace. Leads carry visitor PII (name, phone,
+// email, message) - this must never be reachable without auth, and every caller other
+// than a platform admin is hard-scoped to their own agentId/org, regardless of what
+// agentId/orgId query params they pass (previously this endpoint had no auth at all and
+// trusted those params outright, leaking every lead in the system to anonymous callers).
+app.get("/api/leads", authMiddleware, (req, res) => {
   const db = readDb();
-  const { agentId, orgId } = req.query;
+  const authReq = req as AuthenticatedRequest;
+  const actor = authReq.user;
+  if (!actor) return res.status(401).json({ error: "Access token missing or invalid." });
+
+  const isPlatformAdmin = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
   let leads = db.leads;
 
-  if (agentId) {
-    leads = leads.filter(l => l.agentId === agentId);
-  }
-  if (orgId) {
-    leads = leads.filter(l => l.orgId === orgId);
+  if (isPlatformAdmin) {
+    const { agentId, orgId } = req.query;
+    if (agentId) leads = leads.filter(l => l.agentId === agentId);
+    if (orgId) leads = leads.filter(l => l.orgId === orgId);
+  } else {
+    const dbUser = db.users.find(u => u.id === actor.id);
+    const isOrgAdmin = !!dbUser?.orgId && (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+    leads = isOrgAdmin
+      ? leads.filter(l => l.orgId === dbUser!.orgId)
+      : leads.filter(l => l.agentId === actor.id);
   }
 
   res.json(leads);
@@ -2196,6 +2352,15 @@ app.post("/api/organizations/upgrade", authMiddleware, (req, res) => {
   const actorName = authReq.user?.fullName || "Agency Admin";
   const actorRole = authReq.user?.role || UserRole.AGENCY_ADMIN;
 
+  // Ownership gate: without this, any authenticated user could upgrade any organization's
+  // subscription for free by just supplying its orgId - mirrors the PATCH /:id auth pattern.
+  const actor = db.users.find(u => u.id === actorId);
+  const isAdmin = actorRole === UserRole.PLATFORM_ADMIN || actorRole === UserRole.SUPER_ADMIN;
+  const isOrgAdmin = actor?.orgId === orgId && (actorRole === UserRole.AGENCY_ADMIN || actorRole === UserRole.DEVELOPER_ADMIN);
+  if (!isAdmin && !isOrgAdmin) {
+    return res.status(403).json({ error: "Only an organization admin may upgrade this organization's subscription." });
+  }
+
   // Update subscription
   db.organizations[idx].subscriptionPlanId = planId;
   // Expire in 1 year
@@ -2386,7 +2551,8 @@ app.get("/api/plans", (req, res) => {
 
 // CREATE or UPDATE subscription plan
 app.post("/api/admin/plans", (req, res) => {
-  const { id, name, priceMonthly, priceYearly, propertyLimit, agentLimit, aiLimit, analyticsAccess, featuredListingsLimit, actorId, actorName, actorRole } = req.body;
+  const { id, name, priceMonthly, priceYearly, propertyLimit, agentLimit, aiLimit, analyticsAccess, featuredListingsLimit } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   if (!db.subscriptionPlans) {
     db.subscriptionPlans = [];
@@ -2408,7 +2574,7 @@ app.post("/api/admin/plans", (req, res) => {
         featuredListingsLimit: Number(featuredListingsLimit)
       };
       writeDb(db);
-      logAudit(actorId || "admin", actorName || "Admin", actorRole || UserRole.PLATFORM_ADMIN, "EDIT_SUBSCRIPTION_PLAN", id, "SubscriptionPlan", { name });
+      logAudit(actor.id, actor.name, actor.role, "EDIT_SUBSCRIPTION_PLAN", id, "SubscriptionPlan", { name });
       return res.json({ success: true, plan: db.subscriptionPlans[idx] });
     }
   }
@@ -2428,13 +2594,14 @@ app.post("/api/admin/plans", (req, res) => {
   };
   db.subscriptionPlans.push(newPlan);
   writeDb(db);
-  logAudit(actorId || "admin", actorName || "Admin", actorRole || UserRole.PLATFORM_ADMIN, "CREATE_SUBSCRIPTION_PLAN", newId, "SubscriptionPlan", { name });
+  logAudit(actor.id, actor.name, actor.role, "CREATE_SUBSCRIPTION_PLAN", newId, "SubscriptionPlan", { name });
   res.json({ success: true, plan: newPlan });
 });
 
 // MANUALLY OVERRIDE ORGANIZATION SUBSCRIPTION
 app.post("/api/admin/organizations/subscription", (req, res) => {
-  const { orgId, planId, startDate, expiryDate, status, notes, activationMethod, actorId, actorName, actorRole } = req.body;
+  const { orgId, planId, startDate, expiryDate, status, notes, activationMethod } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   const idx = db.organizations.findIndex(o => o.id === orgId);
   if (idx === -1) return res.status(404).json({ error: "Organization not found" });
@@ -2475,9 +2642,9 @@ app.post("/api/admin/organizations/subscription", (req, res) => {
   }
 
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     "MANUAL_MANAGE_SUBSCRIPTION",
     orgId,
     "Organization",
@@ -2491,7 +2658,8 @@ app.post("/api/admin/organizations/subscription", (req, res) => {
 // subscription endpoint above, for AGENT accounts with no orgId (INDEPENDENT_AGENT).
 app.post("/api/admin/users/:id/subscription", (req, res) => {
   const { id } = req.params;
-  const { planId, expiryDate, status, notes, activationMethod, actorId, actorName, actorRole } = req.body;
+  const { planId, expiryDate, status, notes, activationMethod } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   const idx = db.users.findIndex(u => u.id === id);
   if (idx === -1) return res.status(404).json({ error: "User not found" });
@@ -2512,16 +2680,17 @@ app.post("/api/admin/users/:id/subscription", (req, res) => {
   writeDb(db);
 
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     "CONFIRM_AGENT_SUBSCRIPTION",
     id,
     "User",
     { planId, status, activationMethod }
   );
 
-  res.json({ success: true, user });
+  const { password: _pw1, ...safeUser } = user as any;
+  res.json({ success: true, user: safeUser });
 });
 
 // Manually nudge a user's onboarding applicationStatus (e.g. PENDING_APPROVAL -> AWAITING_PAYMENT).
@@ -2553,12 +2722,13 @@ app.patch("/api/admin/users/:id/application-status", (req, res) => {
     { status }
   );
 
-  res.json({ success: true, user: db.users[idx] });
+  res.json({ success: true, user: sanitizeUser(db.users[idx]) });
 });
 
 // Admin verification of Agents/Organizations
 app.post("/api/admin/verify-org", (req, res) => {
-  const { orgId, status, actorId, actorName, actorRole } = req.body;
+  const { orgId, status } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   const idx = db.organizations.findIndex(o => o.id === orgId);
   if (idx === -1) return res.status(404).json({ error: "Organization not found" });
@@ -2567,9 +2737,9 @@ app.post("/api/admin/verify-org", (req, res) => {
   writeDb(db);
 
   logAudit(
-    actorId,
-    actorName,
-    actorRole,
+    actor.id,
+    actor.name,
+    actor.role,
     "VERIFY_ORGANIZATION",
     orgId,
     "Organization",
@@ -2580,7 +2750,8 @@ app.post("/api/admin/verify-org", (req, res) => {
 });
 
 app.post("/api/admin/verify-user", (req, res) => {
-  const { userId, status, actorId, actorName, actorRole } = req.body;
+  const { userId, status } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   const idx = db.users.findIndex(u => u.id === userId);
   if (idx === -1) return res.status(404).json({ error: "User not found" });
@@ -2589,16 +2760,16 @@ app.post("/api/admin/verify-user", (req, res) => {
   writeDb(db);
 
   logAudit(
-    actorId,
-    actorName,
-    actorRole,
+    actor.id,
+    actor.name,
+    actor.role,
     "VERIFY_USER",
     userId,
     "User",
     { status }
   );
 
-  res.json({ success: true, user: db.users[idx] });
+  res.json({ success: true, user: sanitizeUser(db.users[idx]) });
 });
 
 // -----------------------------------------------------------------------------
@@ -2658,6 +2829,8 @@ function recomputeAccountVerification(db: DatabaseState, context: VerificationCo
 }
 
 function generateDocumentReviewEmailHtml(name: string, documentType: string, status: string, rejectionReason?: string): string {
+  name = escapeHtml(name);
+  rejectionReason = rejectionReason ? escapeHtml(rejectionReason) : rejectionReason;
   const statusColor = status === DocumentStatus.APPROVED ? "#059669" : "#dc2626";
   return `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -2671,6 +2844,7 @@ function generateDocumentReviewEmailHtml(name: string, documentType: string, sta
 }
 
 function generateDocumentExpiryEmailHtml(name: string, documentType: string, daysLeft: number, expired: boolean): string {
+  name = escapeHtml(name);
   return `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <h2 style="color: #1a1918;">${expired ? "Verification Document Expired" : "Verification Document Expiring Soon"}</h2>
@@ -2685,6 +2859,8 @@ function generateDocumentExpiryEmailHtml(name: string, documentType: string, day
 // FIX 9 (listing/lead/viewing/profile/security events) - keeps a consistent look without a
 // bespoke generator function per event, matching the styling of the other templates above.
 function generateNotificationEmailHtml(title: string, name: string, bodyHtml: string): string {
+  title = escapeHtml(title);
+  name = escapeHtml(name);
   return `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <h2 style="color: #1a1918;">${title}</h2>
@@ -2838,7 +3014,8 @@ app.get("/api/admin/verification-documents", (req, res) => {
 
 // Admin: review (approve/reject) a single document - rejection requires a reason
 app.post("/api/admin/verification-documents/review", (req, res) => {
-  const { documentId, status, rejectionReason, actorId, actorName, actorRole } = req.body;
+  const { documentId, status, rejectionReason } = req.body;
+  const actor = getAuditActor(req);
   if (!documentId || !status) return res.status(400).json({ error: "documentId and status are required." });
   if (status !== DocumentStatus.APPROVED && status !== DocumentStatus.REJECTED) {
     return res.status(400).json({ error: "status must be APPROVED or REJECTED." });
@@ -2856,15 +3033,15 @@ app.post("/api/admin/verification-documents/review", (req, res) => {
   doc.status = status;
   doc.rejectionReason = status === DocumentStatus.REJECTED ? rejectionReason : undefined;
   doc.reviewedDate = new Date().toISOString();
-  doc.reviewedBy = actorId || "admin";
+  doc.reviewedBy = actor.id;
 
   recomputeAccountVerification(db, doc.context, doc.userId, doc.orgId);
   writeDb(db);
 
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     "REVIEW_VERIFICATION_DOCUMENT",
     documentId,
     "VerificationDocument",
@@ -2943,6 +3120,8 @@ export function checkDocumentExpiryAndReminders() {
 }
 
 function generatePropertyStaleEmailHtml(name: string, propertyTitle: string, kind: "reminder" | "paused"): string {
+  name = escapeHtml(name);
+  propertyTitle = escapeHtml(propertyTitle);
   if (kind === "paused") {
     return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -3045,9 +3224,18 @@ app.post("/api/campaigns", authMiddleware, (req, res) => {
   const actorName = authReq.user?.fullName || "Agency Admin";
   const actorRole = authReq.user?.role || UserRole.AGENCY_ADMIN;
 
+  // orgId always comes from the actor's own org, never from the client body - otherwise
+  // any authenticated account could spam another org's campaign list by supplying its id.
+  const actorUser = db.users.find(u => u.id === actorId);
+  const isPlatformAdmin = actorRole === UserRole.PLATFORM_ADMIN || actorRole === UserRole.SUPER_ADMIN;
+  const resolvedOrgId = isPlatformAdmin ? (campData.orgId || actorUser?.orgId) : actorUser?.orgId;
+  if (!resolvedOrgId) {
+    return res.status(403).json({ error: "You must belong to an organization to create an ad campaign." });
+  }
+
   const newCampaign: AdCampaign = {
     id,
-    orgId: campData.orgId || "org-agency-1",
+    orgId: resolvedOrgId,
     propertyId: campData.propertyId,
     projectId: campData.projectId,
     type: campData.type || "FEATURED_LISTING",
@@ -3166,7 +3354,8 @@ app.delete("/api/campaigns/:id", authMiddleware, (req, res) => {
 });
 
 app.post("/api/admin/campaigns/review", (req, res) => {
-  const { campaignId, status, actorId, actorName, actorRole } = req.body;
+  const { campaignId, status } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   const idx = db.campaigns.findIndex(c => c.id === campaignId);
   if (idx === -1) return res.status(404).json({ error: "Campaign not found" });
@@ -3175,9 +3364,9 @@ app.post("/api/admin/campaigns/review", (req, res) => {
   writeDb(db);
 
   logAudit(
-    actorId,
-    actorName,
-    actorRole,
+    actor.id,
+    actor.name,
+    actor.role,
     "REVIEW_AD_CAMPAIGN",
     campaignId,
     "AdCampaign",
@@ -3362,7 +3551,8 @@ app.get("/api/ad-charges", authMiddleware, (req, res) => {
 // Admin: mark a billing period as settled for an org (mirrors the existing manual
 // subscription-payment-confirmation pattern at /api/admin/organizations/subscription)
 app.post("/api/admin/ad-charges/settle", (req, res) => {
-  const { orgId, billingPeriod, actorId, actorName, actorRole } = req.body;
+  const { orgId, billingPeriod } = req.body;
+  const actor = getAuditActor(req);
   if (!orgId || !billingPeriod) return res.status(400).json({ error: "orgId and billingPeriod are required." });
 
   const db = readDb();
@@ -3374,14 +3564,14 @@ app.post("/api/admin/ad-charges/settle", (req, res) => {
   matching.forEach(c => {
     c.settled = true;
     c.settledDate = now;
-    c.settledBy = actorId || "admin";
+    c.settledBy = actor.id;
   });
   writeDb(db);
 
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     "SETTLE_AD_BILLING_PERIOD",
     orgId,
     "Organization",
@@ -3591,7 +3781,7 @@ app.get("/api/reports", (req, res) => {
   res.json(db.reports);
 });
 
-app.post("/api/reports", (req, res) => {
+app.post("/api/reports", publicWriteRateLimiter, (req, res) => {
   const db = readDb();
   const reportData = req.body;
   const id = `rep-${Date.now()}`;
@@ -3614,7 +3804,8 @@ app.post("/api/reports", (req, res) => {
 });
 
 app.post("/api/admin/reports/resolve", (req, res) => {
-  const { reportId, status, actorId, actorName, actorRole } = req.body;
+  const { reportId, status } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   const idx = db.reports.findIndex(r => r.id === reportId);
   if (idx === -1) return res.status(404).json({ error: "Report not found" });
@@ -3623,9 +3814,9 @@ app.post("/api/admin/reports/resolve", (req, res) => {
   writeDb(db);
 
   logAudit(
-    actorId,
-    actorName,
-    actorRole,
+    actor.id,
+    actor.name,
+    actor.role,
     "RESOLVE_SUPPORT_REPORT",
     reportId,
     "SupportReport",
@@ -3812,7 +4003,8 @@ app.get("/api/legal/:slug", (req, res) => {
 
 app.put("/api/admin/legal/:id", (req, res) => {
   const { id } = req.params;
-  const { slug, title, titleAr, content, contentAr, version, effectiveDate, status, author, legalReviewStatus, actorId, actorName, actorRole } = req.body;
+  const { slug, title, titleAr, content, contentAr, version, effectiveDate, status, author, legalReviewStatus } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   if (!db.legalDocuments) db.legalDocuments = [];
 
@@ -3840,9 +4032,9 @@ app.put("/api/admin/legal/:id", (req, res) => {
 
   writeDb(db);
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     idx !== -1 ? "UPDATE_LEGAL_DOC" : "CREATE_LEGAL_DOC",
     id,
     "LegalDocument",
@@ -3874,7 +4066,8 @@ app.post("/api/help/:id/view", (req, res) => {
 });
 
 app.post("/api/admin/help", (req, res) => {
-  const { id, category, title, titleAr, content, contentAr, isPublished, actorId, actorName, actorRole } = req.body;
+  const { id, category, title, titleAr, content, contentAr, isPublished } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   if (!db.helpArticles) db.helpArticles = [];
 
@@ -3900,9 +4093,9 @@ app.post("/api/admin/help", (req, res) => {
 
   writeDb(db);
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     idx !== -1 ? "UPDATE_HELP_ARTICLE" : "CREATE_HELP_ARTICLE",
     targetId,
     "HelpArticle",
@@ -3926,7 +4119,7 @@ app.get("/api/support/tickets", authMiddleware, (req, res) => {
   res.json(tickets);
 });
 
-app.post("/api/support/tickets", (req, res) => {
+app.post("/api/support/tickets", publicWriteRateLimiter, (req, res) => {
   const { userId, userEmail, userName, category, priority, subject, description } = req.body;
   const db = readDb();
   if (!db.supportTickets) db.supportTickets = [];
@@ -3961,28 +4154,43 @@ app.post("/api/support/tickets", (req, res) => {
   res.json({ success: true, ticket: newTicket });
 });
 
-app.post("/api/support/tickets/:id/reply", (req, res) => {
+// Auth required, and the sender identity/role is always derived from the verified JWT -
+// previously this endpoint was fully unauthenticated and trusted senderId/senderName/
+// senderRole straight from the body, so anyone could reply to any ticket by guessing its
+// id, and could set senderRole: PLATFORM_ADMIN to impersonate support staff.
+app.post("/api/support/tickets/:id/reply", authMiddleware, (req, res) => {
   const { id } = req.params;
-  const { senderId, senderName, senderRole, message } = req.body;
+  const { message } = req.body;
+  const authReq = req as AuthenticatedRequest;
+  const actor = authReq.user;
+  if (!actor) return res.status(401).json({ error: "Access token missing or invalid." });
+
   const db = readDb();
   if (!db.supportTickets) db.supportTickets = [];
 
   const idx = db.supportTickets.findIndex(t => t.id === id);
   if (idx === -1) return res.status(404).json({ error: "Ticket not found" });
 
+  const ticket = db.supportTickets[idx];
+  const isPlatformAdmin = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
+  const isTicketOwner = ticket.userId === actor.id || ticket.userEmail === actor.email;
+  if (!isPlatformAdmin && !isTicketOwner) {
+    return res.status(403).json({ error: "You do not have permission to reply to this ticket." });
+  }
+
   const reply = {
     id: `reply-${Date.now()}`,
-    senderId: senderId || "guest",
-    senderName: senderName || "Respondent",
-    senderRole: senderRole || "VISITOR",
+    senderId: actor.id,
+    senderName: actor.fullName || "Respondent",
+    senderRole: actor.role,
     message: message || "",
     createdDate: new Date().toISOString()
   };
 
   db.supportTickets[idx].replies.push(reply);
-  
+
   // Auto switch status
-  if (senderRole === UserRole.PLATFORM_ADMIN || senderRole === UserRole.SUPER_ADMIN) {
+  if (isPlatformAdmin) {
     db.supportTickets[idx].status = "WAITING_FOR_USER";
   } else {
     db.supportTickets[idx].status = "OPEN";
@@ -3999,7 +4207,8 @@ app.get("/api/admin/support/tickets", (req, res) => {
 
 app.put("/api/admin/support/tickets/:id", (req, res) => {
   const { id } = req.params;
-  const { status, priority, actorId, actorName, actorRole } = req.body;
+  const { status, priority } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   if (!db.supportTickets) db.supportTickets = [];
 
@@ -4012,9 +4221,9 @@ app.put("/api/admin/support/tickets/:id", (req, res) => {
   writeDb(db);
 
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     "UPDATE_SUPPORT_TICKET",
     id,
     "SupportTicket",
@@ -4033,7 +4242,8 @@ app.get("/api/careers", (req, res) => {
 });
 
 app.post("/api/admin/careers", (req, res) => {
-  const { id, title, titleAr, department, departmentAr, location, locationAr, type, typeAr, description, descriptionAr, requirements, requirementsAr, actorId, actorName, actorRole } = req.body;
+  const { id, title, titleAr, department, departmentAr, location, locationAr, type, typeAr, description, descriptionAr, requirements, requirementsAr } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   if (!db.jobListings) db.jobListings = [];
 
@@ -4064,9 +4274,9 @@ app.post("/api/admin/careers", (req, res) => {
 
   writeDb(db);
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     idx !== -1 ? "UPDATE_JOB" : "CREATE_JOB",
     targetId,
     "JobListing",
@@ -4077,7 +4287,7 @@ app.post("/api/admin/careers", (req, res) => {
 });
 
 // Public: submit a job application (no auth - applicants aren't platform users)
-app.post("/api/careers/apply", (req, res) => {
+app.post("/api/careers/apply", publicWriteRateLimiter, (req, res) => {
   const { jobId, applicantName, applicantEmail, applicantPhone, coverLetter, cvUrl } = req.body;
   if (!jobId || !applicantName || !applicantEmail || !applicantPhone) {
     return res.status(400).json({ error: "jobId, applicantName, applicantEmail, and applicantPhone are required." });
@@ -4123,7 +4333,8 @@ app.get("/api/press", (req, res) => {
 });
 
 app.post("/api/admin/press", (req, res) => {
-  const { id, title, titleAr, date, summary, summaryAr, content, contentAr, actorId, actorName, actorRole } = req.body;
+  const { id, title, titleAr, date, summary, summaryAr, content, contentAr } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   if (!db.pressReleases) db.pressReleases = [];
 
@@ -4149,9 +4360,9 @@ app.post("/api/admin/press", (req, res) => {
 
   writeDb(db);
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     idx !== -1 ? "UPDATE_PRESS" : "CREATE_PRESS",
     targetId,
     "PressRelease",
@@ -4166,7 +4377,7 @@ app.get("/api/admin/partnerships", (req, res) => {
   res.json(db.partnershipRequests || []);
 });
 
-app.post("/api/partnerships", (req, res) => {
+app.post("/api/partnerships", publicWriteRateLimiter, (req, res) => {
   const { companyName, contactName, email, phone, type, message } = req.body;
   const db = readDb();
   if (!db.partnershipRequests) db.partnershipRequests = [];
@@ -4191,7 +4402,8 @@ app.post("/api/partnerships", (req, res) => {
 
 app.put("/api/admin/partnerships/:id", (req, res) => {
   const { id } = req.params;
-  const { status, actorId, actorName, actorRole } = req.body;
+  const { status } = req.body;
+  const actor = getAuditActor(req);
   const db = readDb();
   if (!db.partnershipRequests) db.partnershipRequests = [];
 
@@ -4202,9 +4414,9 @@ app.put("/api/admin/partnerships/:id", (req, res) => {
   writeDb(db);
 
   logAudit(
-    actorId || "admin",
-    actorName || "Admin",
-    actorRole || UserRole.PLATFORM_ADMIN,
+    actor.id,
+    actor.name,
+    actor.role,
     "UPDATE_PARTNERSHIP",
     id,
     "PartnershipRequest",
@@ -4538,7 +4750,7 @@ async function applyWatermark(inputPath: string, outputPath: string) {
   }
 }
 
-app.post("/api/media/upload", authMiddleware, (req, res, next) => {
+app.post("/api/media/upload", authMiddleware, uploadRateLimiter, (req, res, next) => {
   upload.array("files")(req, res, (err: any) => {
     if (err) {
       return res.status(400).json({ error: err.message || "File upload failed." });
@@ -4549,6 +4761,22 @@ app.post("/api/media/upload", authMiddleware, (req, res, next) => {
   const files = req.files as Express.Multer.File[];
   if (!files || files.length === 0) {
     return res.status(400).json({ error: "No files uploaded." });
+  }
+
+  // Content-sniff every file against its declared mimetype before doing anything else with
+  // it - reject (and clean up) the whole batch if any file's real bytes don't match what it
+  // claimed to be, rather than trusting the client-supplied Content-Type header alone.
+  for (const file of files) {
+    const head = Buffer.alloc(12);
+    const fd = fs.openSync(path.join(uploadsDir, file.filename), "r");
+    fs.readSync(fd, head, 0, 12, 0);
+    fs.closeSync(fd);
+    if (!fileMatchesDeclaredType(head, file.mimetype)) {
+      for (const f of files) {
+        try { fs.unlinkSync(path.join(uploadsDir, f.filename)); } catch {}
+      }
+      return res.status(400).json({ error: "One or more files do not match their declared file type." });
+    }
   }
 
   // Profile/org avatar & logo uploads should never carry the visible property-photo
@@ -4596,8 +4824,6 @@ app.post("/api/user/delete-account", authMiddleware, (req, res) => {
   const requestedUserId = req.body.userId;
   // Users may only scrub their own account; only a platform admin may act on someone else's behalf
   const userId = isAdmin && requestedUserId ? requestedUserId : authReq.user?.id;
-  const actorName = req.body.actorName || authReq.user?.fullName || "Self";
-  const actorRole = req.body.actorRole || authReq.user?.role || UserRole.REGISTERED;
   if (!userId) return res.status(400).json({ error: "User ID is required" });
   if (!isAdmin && requestedUserId && requestedUserId !== authReq.user?.id) {
     return res.status(403).json({ error: "You may only delete your own account." });
@@ -4629,11 +4855,13 @@ app.post("/api/user/delete-account", authMiddleware, (req, res) => {
 
   writeDb(db);
 
-  // 3. Log into Audit Trail
+  // 3. Log into Audit Trail - actor is always the authenticated caller (which may be an
+  // admin acting on someone else's behalf), never client-supplied, so the trail always
+  // shows who actually performed the deletion, not just who was deleted.
   logAudit(
-    userId,
-    actorName || "Self",
-    actorRole || UserRole.REGISTERED,
+    authReq.user?.id || "unknown",
+    authReq.user?.fullName || "Self",
+    (authReq.user?.role as UserRole) || UserRole.REGISTERED,
     "PERMANENT_ACCOUNT_DELETION_SCRUB",
     userId,
     "User",
@@ -4809,7 +5037,7 @@ app.get("/api/reviews", (req, res) => {
 });
 
 // POST /api/reviews - submit review, requires auth
-app.post("/api/reviews", authMiddleware, (req, res) => {
+app.post("/api/reviews", authMiddleware, publicWriteRateLimiter, (req, res) => {
   const { targetType, targetId, rating, comment } = req.body;
   const user = (req as any).user;
   

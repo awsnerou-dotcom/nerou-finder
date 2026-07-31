@@ -143,13 +143,11 @@ export default function SupportTicketsView({
     if (!replyText.trim() || !selectedTicket) return;
 
     try {
+      const token = localStorage.getItem("token") || "";
       const res = await fetch(`/api/support/tickets/${selectedTicket.id}/reply`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({
-          senderId: userId,
-          senderName: userName,
-          senderRole: "VISITOR",
           message: replyText
         })
       });

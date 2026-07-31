@@ -392,8 +392,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
   const fetchLeadsAndProperties = async () => {
     try {
-      // Fetch leads assigned to this agent
-      const leadsRes = await fetch(`/api/leads?agentId=${agent.id}`);
+      // Fetch leads assigned to this agent. GET /api/leads now requires auth (it used to be
+      // open and leaked every lead in the system to anonymous callers).
+      const leadsRes = await fetch(`/api/leads?agentId=${agent.id}`, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
       const leadsData = await leadsRes.json();
       setLeads(leadsData);
 

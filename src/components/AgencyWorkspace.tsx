@@ -190,8 +190,11 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
         setInvitations(invData);
       }
 
-      // Get org leads
-      const leadsRes = await fetch(`/api/leads?orgId=${agency.id}`);
+      // Get org leads. GET /api/leads now requires auth (it used to be open and leaked
+      // every lead in the system to anonymous callers).
+      const leadsRes = await fetch(`/api/leads?orgId=${agency.id}`, {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
       if (leadsRes.ok) {
         const leadsData = await leadsRes.json();
         setOrgLeads(leadsData);

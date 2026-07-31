@@ -12,6 +12,18 @@ interface InteractiveMapProps {
   isRtl: boolean;
 }
 
+// Leaflet's bindPopup() sets innerHTML directly - any agent-supplied listing field
+// (title/city/district) interpolated into that HTML unescaped would execute as script
+// in every visitor's browser viewing the map.
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export default function InteractiveMap({ properties, onPropertyClick, isRtl }: InteractiveMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [leafletLoaded, setLeafletLoaded] = useState(false);
@@ -120,14 +132,14 @@ export default function InteractiveMap({ properties, onPropertyClick, isRtl }: I
       const formattedPrice = prop.price.toLocaleString();
       const popupContent = `
         <div class="p-1 min-w-[200px] text-left leading-normal font-sans">
-          <img src="${prop.images[0]}" class="w-full h-24 object-cover rounded-md mb-2 border border-[#e6e2de]" />
-          <h4 class="font-bold text-xs text-[#1a1918] truncate mb-0.5">${prop.title}</h4>
-          <p class="text-[10px] text-[#6e6b66] mb-1">${prop.city}, ${prop.district}</p>
+          <img src="${escapeHtml(prop.images[0])}" alt="${escapeHtml(prop.title)}" class="w-full h-24 object-cover rounded-md mb-2 border border-[#e6e2de]" />
+          <h4 class="font-bold text-xs text-[#1a1918] truncate mb-0.5">${escapeHtml(prop.title)}</h4>
+          <p class="text-[10px] text-[#6e6b66] mb-1">${escapeHtml(prop.city)}, ${escapeHtml(prop.district)}</p>
           <div class="flex justify-between items-center mt-1">
             <span class="text-xs font-semibold text-[#bf9b30]">${formattedPrice} QAR</span>
-            <span class="text-[9px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-bold uppercase">${prop.propertyType}</span>
+            <span class="text-[9px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-bold uppercase">${escapeHtml(prop.propertyType)}</span>
           </div>
-          <button onclick="window.viewMapPropertyDetails('${prop.id}')" class="mt-2.5 w-full text-center bg-[#bf9b30] hover:bg-[#967923] text-white font-bold py-1 px-2 rounded text-[10px] cursor-pointer transition-colors border-none">
+          <button onclick="window.viewMapPropertyDetails('${escapeHtml(prop.id)}')" class="mt-2.5 w-full text-center bg-[#bf9b30] hover:bg-[#967923] text-white font-bold py-1 px-2 rounded text-[10px] cursor-pointer transition-colors border-none">
             ${isRtl ? "عرض التفاصيل" : "View Details"}
           </button>
         </div>

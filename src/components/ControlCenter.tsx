@@ -169,6 +169,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   const [tfaCode, setTfaCode] = useState<string>("");
   const [tfaLoading, setTfaLoading] = useState<boolean>(false);
   const [tfaError, setTfaError] = useState<string>("");
+  const [showDisable2faConfirm, setShowDisable2faConfirm] = useState<boolean>(false);
+  const [disable2faPassword, setDisable2faPassword] = useState<string>("");
 
   // Search filter
   const [userSearch, setUserSearch] = useState<string>("");
@@ -672,24 +674,28 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       const res = await fetch("/api/auth/2fa/disable", {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ password: disable2faPassword })
       });
       const data = await res.json();
       if (!res.ok) {
         setTfaError(data.error || "Failed to disable Two-Factor Authentication.");
       } else {
         showToast(isRtl ? "تم إيقاف التحقق الثنائي بنجاح." : "Two-Factor Authentication disabled successfully.");
-        
+
         // Update local state and storage
         const updatedUser = { ...adminUser, twoFactorEnabled: false };
         setAdminUser(updatedUser);
         localStorage.setItem("nerou_user", JSON.stringify(updatedUser));
-        
+
         setShow2faSetup(false);
         setTfaSecret("");
         setTfaQrCode("");
         setTfaCode("");
+        setShowDisable2faConfirm(false);
+        setDisable2faPassword("");
       }
     } catch (err) {
       setTfaError("Failed to communicate with authentication servers.");
@@ -1731,7 +1737,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <div className="shrink-0">
                       {adminUser?.twoFactorEnabled ? (
                         <button
-                          onClick={handleDisable2fa}
+                          onClick={() => setShowDisable2faConfirm(true)}
                           disabled={tfaLoading}
                           className="px-3.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
                         >
@@ -1753,6 +1759,36 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 {tfaError && (
                   <div className="p-3 bg-red-50 text-red-800 border border-red-100 rounded-lg text-xs">
                     {tfaError}
+                  </div>
+                )}
+
+                {showDisable2faConfirm && (
+                  <div className="p-4 bg-red-50 border border-red-100 rounded-xl space-y-3">
+                    <p className="text-xs text-red-800 font-bold">
+                      {isRtl ? "أدخل كلمة المرور الحالية لتأكيد إيقاف المصادقة الثنائية." : "Enter your current password to confirm disabling Two-Factor Authentication."}
+                    </p>
+                    <input
+                      type="password"
+                      value={disable2faPassword}
+                      onChange={(e) => setDisable2faPassword(e.target.value)}
+                      placeholder={isRtl ? "كلمة المرور" : "Password"}
+                      className="w-full px-3 py-2 border border-red-200 rounded-lg text-xs"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleDisable2fa}
+                        disabled={tfaLoading || !disable2faPassword}
+                        className="px-3.5 py-1.5 bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                      >
+                        {isRtl ? "تأكيد الإيقاف" : "Confirm Disable"}
+                      </button>
+                      <button
+                        onClick={() => { setShowDisable2faConfirm(false); setDisable2faPassword(""); setTfaError(""); }}
+                        className="px-3.5 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                      >
+                        {isRtl ? "إلغاء" : "Cancel"}
+                      </button>
+                    </div>
                   </div>
                 )}
 
