@@ -165,13 +165,23 @@ export default function VisitorExperience({
   // Sorting
   const [sortBy, setSortBy] = useState<string>("default");
 
+  // Debounced separately from `searchQuery` itself so the input stays instantly responsive
+  // while typing, but a network request only fires 400ms after the user pauses - previously
+  // every keystroke triggered its own /api/properties request (request storms + result
+  // flicker while typing).
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearchQuery(searchQuery), 400);
+    return () => clearTimeout(handle);
+  }, [searchQuery]);
+
   useEffect(() => {
     fetchTaxonomyData();
   }, []);
 
   useEffect(() => {
     fetchProperties();
-  }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, searchQuery, locations]);
+  }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, debouncedSearchQuery, locations]);
 
   useEffect(() => {
     if (selectedProperty) {
@@ -242,7 +252,7 @@ export default function VisitorExperience({
       if (minPrice) params.append("minPrice", minPrice);
       if (maxPrice) params.append("maxPrice", maxPrice);
       if (beds) params.append("bedrooms", beds);
-      if (searchQuery) params.append("searchQuery", searchQuery);
+      if (debouncedSearchQuery) params.append("searchQuery", debouncedSearchQuery);
 
       const res = await fetch(`/api/properties?${params.toString()}`);
       const data = await res.json();
@@ -583,9 +593,12 @@ export default function VisitorExperience({
   };
 
   // Sort function
-  const getSortedProperties = () => {
+  // Memoized - this used to be a plain function called 3+ times per render (count badge,
+  // empty-check, list render), each call re-filtering/re-sorting the full properties array
+  // and scanning campaigns via isFeatured() inside the sort comparator.
+  const sortedProperties = React.useMemo(() => {
     let list = [...properties];
-    
+
     // If AI Search is active, prioritize recommended properties
     if (aiSearchActive && aiResults.length > 0) {
       const matchIds = aiResults.map(r => r.propertyId);
@@ -608,7 +621,8 @@ export default function VisitorExperience({
       if (!aFeat && bFeat) return 1;
       return 0;
     });
-  };
+  }, [properties, aiSearchActive, aiResults, sortBy, campaigns]);
+  const getSortedProperties = () => sortedProperties;
 
   // Find municipality choices
   const municipalities = locations.filter(l => l.type === "MUNICIPALITY" && l.isActive);
@@ -1154,7 +1168,16 @@ export default function VisitorExperience({
               <div
                 key={property.id}
                 onClick={() => setSelectedProperty(property)}
-                className={`bg-white rounded-xl border transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col justify-between hover:shadow-xl hover:-translate-y-0.5 ${
+                role="button"
+                tabIndex={0}
+                aria-label={isRtl ? property.titleAr || property.title : property.title}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedProperty(property);
+                  }
+                }}
+                className={`bg-white rounded-xl border transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col justify-between hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-[#bf9b30] focus-visible:outline-offset-2 ${
                   feat
                     ? "border-[#bf9b30] bg-[#bf9b30]/2 shadow-md hover:border-[#967923] ring-1 ring-[#bf9b30]/20"
                     : "border-[#e6e2de] hover:border-[#bf9b30] shadow-sm"
@@ -1165,6 +1188,7 @@ export default function VisitorExperience({
                     <img
                       src={property.images[0]}
                       alt={property.title}
+                      loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
@@ -1464,7 +1488,7 @@ export default function VisitorExperience({
 
       {/* 6. FULLY FUNCTIONAL AGENT PROFILE OVERLAY MODAL */}
       {selectedAgentProfile && (
-        <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-[#fcfbfa] rounded-xl border border-[#e6e2de] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedAgentProfile(null)}
@@ -1599,7 +1623,7 @@ export default function VisitorExperience({
 
       {/* 7. FULLY FUNCTIONAL AGENCY/DEVELOPER PROFILE OVERLAY MODAL */}
       {selectedOrgProfile && (
-        <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-[#fcfbfa] rounded-xl border border-[#e6e2de] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedOrgProfile(null)}
@@ -1708,7 +1732,7 @@ export default function VisitorExperience({
 
       {/* Saved Searches Drawer */}
       {isAlertsOpen && (
-        <div className="fixed inset-0 z-55 overflow-hidden">
+        <div className="fixed inset-0 z-[55] overflow-hidden">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={() => setIsAlertsOpen(false)} />
           <div className={`fixed inset-y-0 ${isRtl ? "left-0" : "right-0"} pl-10 max-w-full flex`}>
             <div className="w-screen max-w-md bg-[#fcfbfa] border-l border-[#e6e2de] shadow-2xl flex flex-col">
@@ -1821,7 +1845,7 @@ export default function VisitorExperience({
 
       {/* Save Search Confirmation Modal */}
       {isSaveSearchModalOpen && (
-        <div className="fixed inset-0 z-55 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
           <div className="bg-[#fcfbfa] rounded-xl border border-[#e6e2de] w-full max-w-md overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setIsSaveSearchModalOpen(false)}

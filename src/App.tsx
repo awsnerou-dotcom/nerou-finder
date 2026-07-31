@@ -80,6 +80,16 @@ export default function App() {
   }, []);
   const heroTransparent = viewMode === "MARKETPLACE" && !isScrolled;
 
+  // Keep the browser tab title in sync with which top-level view is active - previously the
+  // whole SPA shared one static <title> from index.html regardless of marketplace vs.
+  // dashboard, which showed up wrong in browser history/tab-switching and any share action.
+  useEffect(() => {
+    const base = "Nerou Finder";
+    document.title = viewMode === "DASHBOARD"
+      ? (isRtl ? `لوحة التحكم | ${base}` : `Dashboard | ${base}`)
+      : (isRtl ? `${base} | السوق العقاري في قطر` : `${base} | Qatar Real Estate Marketplace`);
+  }, [viewMode, isRtl]);
+
   // Form states
   const [loginEmail, setLoginEmail] = useState<string>("");
   const [loginPassword, setLoginPassword] = useState<string>("");

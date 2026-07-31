@@ -792,7 +792,7 @@ export default function PropertyDetailView({
                             : "border-[#E6E2DE] opacity-75 hover:opacity-100"
                         }`}
                       >
-                        <img src={img} alt="Thumb" className="w-full h-full object-cover" />
+                        <img src={img} alt={`${isRtl ? "صورة" : "Photo"} ${idx + 1}`} loading="lazy" className="w-full h-full object-cover" />
                       </button>
                     ))}
                   </div>

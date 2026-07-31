@@ -36,7 +36,14 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => cached);
+        .catch(() => {
+          // A first-time offline visit to a deep link (e.g. a shared /properties/:id URL)
+          // has nothing precached for that exact URL - fall back to the cached app shell so
+          // the SPA can at least boot and show something, instead of failing outright.
+          if (cached) return cached;
+          if (request.mode === "navigate") return caches.match("/");
+          return undefined;
+        });
       return cached || networkFetch;
     })
   );
