@@ -1,9 +1,189 @@
 @import "tailwindcss";
 
+/* =============================================================================
+   DESIGN TOKENS
+   Formalizes the app's de facto gold/charcoal/warm-neutral palette (previously
+   thousands of raw `bg-[#bf9b30]`/`text-[#6e6b66]` arbitrary-value classes
+   repeated per-component, never centralized) into named, themeable tokens.
+
+   Pattern: `@theme` declares the token names Tailwind turns into utility
+   classes (e.g. `--color-canvas` -> `bg-canvas`/`text-canvas`), but each one
+   points at a plain runtime CSS custom property (`var(--canvas)` etc.) defined
+   below under `:root`. Only the plain custom properties are redefined for dark
+   mode - the `@theme` layer itself never changes, so utility classes generated
+   from it automatically pick up the new values with no rebuild.
+   ========================================================================== */
 @theme {
   --font-serif: "Playfair Display", "Amiri", ui-serif, Georgia, serif;
   --font-sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Surfaces */
+  --color-canvas: var(--canvas);       /* page background */
+  --color-surface: var(--surface);     /* card / panel background */
+  --color-surface-2: var(--surface-2); /* subtle fill - hover states, stripes, wells */
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  /* Text */
+  --color-ink: var(--ink);             /* primary text */
+  --color-ink-muted: var(--ink-muted); /* secondary text */
+  --color-ink-faint: var(--ink-faint); /* placeholder / disabled / tertiary text */
+  --color-ink-inverse: var(--ink-inverse); /* text on filled/dark surfaces */
+
+  /* Brand accent (gold) */
+  --color-gold: var(--gold);
+  --color-gold-hover: var(--gold-hover);
+  --color-gold-active: var(--gold-active);
+  --color-gold-soft: var(--gold-soft);   /* tinted background, e.g. badges/highlights */
+  --color-gold-ink: var(--gold-ink);     /* text color safe to place on --color-gold */
+
+  /* Semantic status */
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  /* Elevation */
+  --shadow-card: 0 1px 2px rgba(20, 18, 14, 0.04), 0 1px 3px rgba(20, 18, 14, 0.06);
+  --shadow-popover: 0 4px 12px rgba(20, 18, 14, 0.10), 0 2px 4px rgba(20, 18, 14, 0.06);
+  --shadow-modal: 0 20px 50px rgba(20, 18, 14, 0.22), 0 4px 14px rgba(20, 18, 14, 0.10);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --animate-toast-in: toast-in var(--duration-base) var(--ease-out);
+  --animate-overlay-in: overlay-in var(--duration-fast) var(--ease-out);
+  --animate-modal-in: modal-in var(--duration-base) var(--ease-out);
 }
+
+/* Light theme (default) */
+:root {
+  --canvas: #fcfbfa;
+  --surface: #ffffff;
+  --surface-2: #f2ede8;
+  --border: #e6e2de;
+  --border-strong: #d6d1ca;
+
+  --ink: #1a1918;
+  --ink-muted: #6e6b66;
+  --ink-faint: #a8a4a0;
+  --ink-inverse: #fdfcfb;
+
+  --gold: #bf9b30;
+  --gold-hover: #a68628;
+  --gold-active: #8c6d1d;
+  --gold-soft: #f7efdb;
+  --gold-ink: #1a1918;
+
+  --success: #1d7a5f;
+  --success-soft: #e2f2ec;
+  --warning: #b06a12;
+  --warning-soft: #faf0df;
+  --danger: #c23b3b;
+  --danger-soft: #fbe9e9;
+  --info: #3a5fc4;
+  --info-soft: #e8ecfb;
+}
+
+/* Dark theme - via OS preference (unless explicitly overridden by the toggle)... */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #14181c;
+    --surface: #1b2025;
+    --surface-2: #232a30;
+    --border: #2e363d;
+    --border-strong: #3c454d;
+
+    --ink: #f0eeec;
+    --ink-muted: #a4adb6;
+    --ink-faint: #6d7680;
+    --ink-inverse: #14181c;
+
+    --gold: #d9b658;
+    --gold-hover: #e6c876;
+    --gold-active: #f0d896;
+    --gold-soft: #332a17;
+    --gold-ink: #14181c;
+
+    --success: #57c9a4;
+    --success-soft: #16302a;
+    --warning: #f0b360;
+    --warning-soft: #332a17;
+    --danger: #ef7d7d;
+    --danger-soft: #331e21;
+    --info: #8fa6f2;
+    --info-soft: #1e2438;
+  }
+}
+
+/* ...or via the explicit toggle (src/lib/theme.ts), which stamps data-theme on <html>
+   and always wins over the OS preference in both directions. */
+:root[data-theme="dark"] {
+  --canvas: #14181c;
+  --surface: #1b2025;
+  --surface-2: #232a30;
+  --border: #2e363d;
+  --border-strong: #3c454d;
+
+  --ink: #f0eeec;
+  --ink-muted: #a4adb6;
+  --ink-faint: #6d7680;
+  --ink-inverse: #14181c;
+
+  --gold: #d9b658;
+  --gold-hover: #e6c876;
+  --gold-active: #f0d896;
+  --gold-soft: #332a17;
+  --gold-ink: #14181c;
+
+  --success: #57c9a4;
+  --success-soft: #16302a;
+  --warning: #f0b360;
+  --warning-soft: #332a17;
+  --danger: #ef7d7d;
+  --danger-soft: #331e21;
+  --info: #8fa6f2;
+  --info-soft: #1e2438;
+}
+
+:root[data-theme="light"] {
+  --canvas: #fcfbfa;
+  --surface: #ffffff;
+  --surface-2: #f2ede8;
+  --border: #e6e2de;
+  --border-strong: #d6d1ca;
+
+  --ink: #1a1918;
+  --ink-muted: #6e6b66;
+  --ink-faint: #a8a4a0;
+  --ink-inverse: #fdfcfb;
+
+  --gold: #bf9b30;
+  --gold-hover: #a68628;
+  --gold-active: #8c6d1d;
+  --gold-soft: #f7efdb;
+  --gold-ink: #1a1918;
+
+  --success: #1d7a5f;
+  --success-soft: #e2f2ec;
+  --warning: #b06a12;
+  --warning-soft: #faf0df;
+  --danger: #c23b3b;
+  --danger-soft: #fbe9e9;
+  --info: #3a5fc4;
+  --info-soft: #e8ecfb;
+}
+
+html {
+  color-scheme: light dark;
+}
+:root[data-theme="dark"] { color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
 
 html, body {
   width: 100%;
@@ -13,6 +193,9 @@ html, body {
 
 body {
   font-family: var(--font-sans);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  transition: background-color var(--duration-base) var(--ease-out), color var(--duration-base) var(--ease-out);
 }
 
 /* Mobile-only safety net: form controls below 16px trigger an automatic zoom-in on focus in
@@ -60,5 +243,24 @@ body {
   }
   .kenburns-slow {
     animation-name: kenburns-mobile;
+  }
+}
+
+/* Toast enter/exit + modal enter, shared by src/components/ui/Toast.tsx and Modal.tsx. */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-toast-in, .animate-modal-in, .animate-overlay-in {
+    animation-duration: 0.001ms !important;
   }
 }
