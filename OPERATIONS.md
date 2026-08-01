@@ -62,10 +62,13 @@ Postgres is unreachable at boot, the server refuses to start rather than silentl
 stale or default data (see `initDb()` in `server-db.ts`). This means:
 
 - Database backups are not optional - there is nothing else to recover from.
-- `render.yaml`'s `buildCommand` runs `npx prisma migrate deploy` before every deploy, so
-  schema migrations in `prisma/migrations/` are applied automatically. If you change the
-  Prisma schema, always generate a migration (`npx prisma migrate dev` locally) and commit it
-  - never edit the live schema by hand.
+- **Migrations are applied manually, not automatically.** `render.yaml`'s `buildCommand` does
+  *not* run `npx prisma migrate deploy` (it was tried and started hard-failing every build with
+  Prisma error P1013, undiagnosed so far) - after adding a migration under `prisma/migrations/`,
+  apply it on production yourself via Render's **Shell** tab: `npx prisma migrate deploy`. If
+  you change the Prisma schema, always generate a migration (`npx prisma migrate dev` locally)
+  and commit it - never edit the live schema by hand, and don't forget to actually apply it on
+  Render afterward since nothing does that step for you.
 
 ## 5. Uploaded media
 
