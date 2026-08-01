@@ -6,6 +6,19 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 import bcrypt from "bcrypt";
 
+// TEMPORARY DIAGNOSTIC - remove once the P1013 "scheme is not recognized" boot failure is
+// resolved. Prints only the shape of the connection strings (first chars, length, whether the
+// scheme regex matches) - never the password portion - to the Render deploy/runtime logs, so
+// this can be diagnosed from the same log view already in use, without needing shell access.
+for (const name of ["DATABASE_URL", "DIRECT_URL"]) {
+  const val = process.env[name];
+  console.log(
+    `[diag] ${name}: present=${val !== undefined} length=${val?.length ?? 0} ` +
+    `first20=${JSON.stringify(val?.slice(0, 20) ?? null)} ` +
+    `matchesPgScheme=${/^postgres(ql)?:\/\//.test(val ?? "")}`
+  );
+}
+
 export const prisma = new PrismaClient();
 import {
   User,
