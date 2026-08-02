@@ -1934,6 +1934,7 @@ app.post("/api/leads", publicWriteRateLimiter, (req, res) => {
   const db = readDb();
   const {
     propertyId,
+    projectId,
     visitorName,
     visitorPhone,
     visitorWhatsapp,
@@ -1952,14 +1953,27 @@ app.post("/api/leads", publicWriteRateLimiter, (req, res) => {
     return res.status(400).json({ error: "visitorEmail must be a valid email address." });
   }
 
-  // Identify responsible agent and organization
-  let agentId = "user-agent-1"; // Fallback
-  let orgId = "org-agency-1";
+  // Identify the responsible agent/organization so this lead correctly counts toward their
+  // dashboard AND toward review eligibility (a reviewer must have a Lead whose orgId/agentId
+  // matches the profile they're reviewing - see POST /api/reviews). Previously this only ever
+  // looked at propertyId, so every project-based inquiry (ProjectsView.tsx posts projectId,
+  // never propertyId) silently fell through to hardcoded seed defaults ("user-agent-1"/
+  // "org-agency-1") instead of the real developer - misattributing the lead to an unrelated
+  // account and breaking eligibility for the actual developer being contacted.
+  let agentId: string | undefined;
+  let orgId: string | undefined;
   if (propertyId) {
     const prop = db.properties.find(p => p.id === propertyId);
     if (prop) {
       agentId = prop.agentId;
       orgId = prop.orgId;
+    }
+  } else if (projectId) {
+    const project = db.projects.find(p => p.id === projectId);
+    if (project) {
+      orgId = project.developerId;
+      const developerAdmin = db.users.find(u => u.orgId === project.developerId && u.role === UserRole.DEVELOPER_ADMIN);
+      agentId = developerAdmin?.id;
     }
   }
 
@@ -1967,6 +1981,7 @@ app.post("/api/leads", publicWriteRateLimiter, (req, res) => {
   const newLead: Lead = {
     id,
     propertyId,
+    projectId,
     visitorName,
     visitorPhone: visitorPhone || "Not specified",
     visitorWhatsapp,
@@ -5143,7 +5158,7 @@ app.post("/api/reviews", authMiddleware, publicWriteRateLimiter, (req, res) => {
   }
   
   const score = Number(rating);
-  if (isNaN(score) || score < 1 || score > 5) {
+  if (isNaN(score) || !Number.isInteger(score) || score < 1 || score > 5) {
     return res.status(400).json({ error: "Rating must be an integer between 1 and 5." });
   }
   
