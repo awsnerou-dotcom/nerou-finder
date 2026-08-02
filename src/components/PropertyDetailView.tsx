@@ -29,7 +29,6 @@ import {
   AlertTriangle,
   Building,
   DollarSign,
-  TrendingUp,
   Activity,
   Award,
   Download,
@@ -437,20 +436,6 @@ export default function PropertyDetailView({
   const estimatedMonthlyMortgage = principal > 0 && monthlyInterest > 0
     ? (principal * monthlyInterest * Math.pow(1 + monthlyInterest, numberOfPayments)) / (Math.pow(1 + monthlyInterest, numberOfPayments) - 1)
     : 0;
-
-  // Investment Yield estimation (for sale)
-  // Dynamic yield averages in Qatar based on area
-  const getAverageYieldForArea = (district: string) => {
-    const d = district.toLowerCase();
-    if (d.includes("pearl")) return 8.2;
-    if (d.includes("lusail")) return 7.8;
-    if (d.includes("west bay")) return 7.5;
-    if (d.includes("mushaireb")) return 7.2;
-    return 6.5;
-  };
-  const averageYield = getAverageYieldForArea(property.district);
-  const estimatedAnnualRent = propertyPrice * (averageYield / 100);
-  const estimatedMonthlyRent = estimatedAnnualRent / 12;
 
   // SQM to SQFT calculation
   const getAreaDisplay = (areaSqm: number) => {
@@ -1306,8 +1291,8 @@ export default function PropertyDetailView({
                   <span>{isRtl ? "أدوات التخطيط المالي والاستثماري" : "Interactive Financial Planning Suite"}</span>
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
+                <div className="grid grid-cols-1 gap-6">
+
                   {/* Mortgage Calculator */}
                   <div className="space-y-4">
                     <h4 className="font-serif text-sm font-bold text-[#1A1918] flex items-center gap-1.5">
@@ -1366,39 +1351,6 @@ export default function PropertyDetailView({
                         <span className="text-[10px] text-[#6E6B66] uppercase block mb-1">{isRtl ? "القسط الشهري المقدر" : "ESTIMATED MONTHLY INSTALLMENT"}</span>
                         <strong className="text-xl text-[#BF9B30]">{Math.round(estimatedMonthlyMortgage).toLocaleString()} QAR / {isRtl ? "شهر" : "Mo"}</strong>
                         <p className="text-[9px] text-[#6E6B66] mt-1">{isRtl ? "هذا الحساب مبدئي ويخضع لموافقة البنك" : "Calculated purely based on central banking baseline guidelines"}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Investment ROI Estimation / Yield */}
-                  <div className="space-y-4">
-                    <h4 className="font-serif text-sm font-bold text-[#1A1918] flex items-center gap-1.5">
-                      <TrendingUp size={15} />
-                      <span>{isRtl ? "مؤشرات العائد على الاستثمار" : "Rental Yield & ROI Analytics"}</span>
-                    </h4>
-
-                    <div className="space-y-3 text-xs text-[#6E6B66]">
-                      <div className="p-4 bg-white rounded-xl border border-[#E6E2DE] space-y-3">
-                        <div className="flex justify-between border-b border-[#F2EDE8] pb-1.5">
-                          <span>{isRtl ? "متوسط العائد الإيجاري في" : "Average Rental Yield in"} {property.district}</span>
-                          <strong className="text-emerald-600">{averageYield}%</strong>
-                        </div>
-                        <div className="flex justify-between border-b border-[#F2EDE8] pb-1.5">
-                          <span>{isRtl ? "الإيجار السنوي المقدر" : "Estimated Annual Income"}</span>
-                          <strong className="text-[#1A1918]">{Math.round(estimatedAnnualRent).toLocaleString()} QAR</strong>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>{isRtl ? "الإيجار الشهري المقابل" : "Corresponding Monthly Rent"}</span>
-                          <strong className="text-[#1A1918]">{Math.round(estimatedMonthlyRent).toLocaleString()} QAR</strong>
-                        </div>
-                      </div>
-
-                      <div className="p-3 bg-stone-50 border border-dashed border-[#E6E2DE] rounded-lg">
-                        <p className="text-[10px] leading-relaxed italic text-[#6E6B66]">
-                          💡 {isRtl 
-                            ? `تعتبر منطقة ${property.district} من أكثر مناطق قطر طلباً للإيجار الفاخر، مما يحمي محفظتك العقارية ويرفع من فرصة زيادة رأس المال السنوية.` 
-                            : `As a premium sector, ${property.district} maintains historic occupancy rates exceeding 88%, validating it as an absolute institutional hedge.`}
-                        </p>
                       </div>
                     </div>
                   </div>
