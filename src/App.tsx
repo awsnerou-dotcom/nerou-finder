@@ -436,6 +436,7 @@ export default function App() {
           {/* Brand Logo + AI badge */}
           <div className="flex items-center gap-3">
             <div
+              dir="ltr"
               className="flex items-center gap-2 select-none cursor-pointer"
               onClick={() => setViewMode("MARKETPLACE")}
             >
@@ -719,7 +720,7 @@ export default function App() {
       <footer className="bg-[#1c1a17] text-gray-300 mt-8">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1 space-y-3">
-            <div className="flex items-center gap-2">
+            <div dir="ltr" className="flex items-center gap-2">
               <span className="font-serif text-lg tracking-[0.2em] text-white font-semibold">NEROU</span>
               <span className="font-serif text-lg tracking-wider text-[#bf9b30] font-bold">FINDER</span>
             </div>
