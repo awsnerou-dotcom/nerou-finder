@@ -13,6 +13,7 @@ import {
   AVAILABILITY_UNCONFIRMED_DAYS
 } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
+import { getNearbyPlaces, LandmarkType } from "../lib/nearbyPlaces.js";
 import {
   MapPin,
   Calendar,
@@ -39,6 +40,25 @@ import {
   Check,
   Clock
 } from "lucide-react";
+
+const NEARBY_TYPE_ICON: Record<LandmarkType, string> = {
+  EDUCATION: "🏫",
+  METRO: "🚇",
+  MALL: "🛍️",
+  LANDMARK: "📍"
+};
+const NEARBY_TYPE_LABEL_EN: Record<LandmarkType, string> = {
+  EDUCATION: "SCHOOLS & CARE",
+  METRO: "METRO ACCESS",
+  MALL: "LIFESTYLE MALLS",
+  LANDMARK: "LANDMARKS"
+};
+const NEARBY_TYPE_LABEL_AR: Record<LandmarkType, string> = {
+  EDUCATION: "المدارس القريبة",
+  METRO: "محطات المترو",
+  MALL: "التسوق والترفيه",
+  LANDMARK: "معالم قريبة"
+};
 
 interface PropertyDetailViewProps {
   property: Property;
@@ -436,6 +456,11 @@ export default function PropertyDetailView({
   const estimatedMonthlyMortgage = principal > 0 && monthlyInterest > 0
     ? (principal * monthlyInterest * Math.pow(1 + monthlyInterest, numberOfPayments)) / (Math.pow(1 + monthlyInterest, numberOfPayments) - 1)
     : 0;
+
+  // Nearby places genuinely computed from this property's own coordinates (see
+  // src/lib/nearbyPlaces.ts) - previously this panel showed the same 3 hardcoded place
+  // names/distances on every single listing regardless of its actual location.
+  const nearbyPlaces = getNearbyPlaces(property.latitude, property.longitude, 3);
 
   // SQM to SQFT calculation
   const getAreaDisplay = (areaSqm: number) => {
@@ -1212,28 +1237,30 @@ export default function PropertyDetailView({
                   </div>
                 </div>
 
-                {/* Nearby places structured data list */}
+                {/* Nearby places - genuinely computed (haversine distance) from this property's
+                    own stored coordinates against a real Doha landmarks list, not the same
+                    static three places shown on every listing regardless of location. */}
                 <div className="space-y-2 text-xs">
                   <h4 className="font-bold text-[#1A1918] uppercase tracking-wider text-[10px]">{isRtl ? "مؤشر المسافات والمرافق الحيوية" : "Verified Commutes & Facilities"}</h4>
-                  
+
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="p-3 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg">
-                      <span className="text-[10px] font-bold text-[#6E6B66] uppercase block mb-1">🏫 {isRtl ? "المدارس القريبة" : "SCHOOLS & CARE"}</span>
-                      <p className="font-bold text-[#1A1918]">{isRtl ? "مدرسة قطر الدولية" : "Qatar International School"}</p>
-                      <span className="text-[#6E6B66] text-[10px]">{isRtl ? "٤ دقائق بالسيارة (١.٨ كم)" : "4 min drive (1.8 km)"}</span>
-                    </div>
-
-                    <div className="p-3 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg">
-                      <span className="text-[10px] font-bold text-[#6E6B66] uppercase block mb-1">🚇 {isRtl ? "محطات المترو" : "METRO ACCESS"}</span>
-                      <p className="font-bold text-[#1A1918]">{isRtl ? "محطة مركز الدوحة للمعارض" : "DECC Metro Station"}</p>
-                      <span className="text-[#6E6B66] text-[10px]">{isRtl ? "٨ دقائق سيراً (٦٥٠ متر)" : "8 min walk (650 m)"}</span>
-                    </div>
-
-                    <div className="p-3 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg">
-                      <span className="text-[10px] font-bold text-[#6E6B66] uppercase block mb-1">🛍️ {isRtl ? "التسوق والترفيه" : "LIFESTYLE MALLS"}</span>
-                      <p className="font-bold text-[#1A1918]">{isRtl ? "سيتي سنتر الدوحة" : "City Center Mall"}</p>
-                      <span className="text-[#6E6B66] text-[10px]">{isRtl ? "٦ دقائق سيراً (٤٥٠ متر)" : "6 min walk (450 m)"}</span>
-                    </div>
+                    {nearbyPlaces.map((place) => (
+                      <div key={place.name} className="p-3 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg">
+                        <span className="text-[10px] font-bold text-[#6E6B66] uppercase block mb-1">
+                          {NEARBY_TYPE_ICON[place.type]} {isRtl ? NEARBY_TYPE_LABEL_AR[place.type] : NEARBY_TYPE_LABEL_EN[place.type]}
+                        </span>
+                        <p className="font-bold text-[#1A1918]">{isRtl ? place.nameAr : place.name}</p>
+                        <span className="text-[#6E6B66] text-[10px]">
+                          {place.distanceKm < 1.2
+                            ? (isRtl
+                                ? `${place.walkingMinutes} دقيقة سيراً (${Math.round(place.distanceKm * 1000)} متر)`
+                                : `${place.walkingMinutes} min walk (${Math.round(place.distanceKm * 1000)} m)`)
+                            : (isRtl
+                                ? `${place.drivingMinutes} دقيقة بالسيارة (${place.distanceKm.toFixed(1)} كم)`
+                                : `${place.drivingMinutes} min drive (${place.distanceKm.toFixed(1)} km)`)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
