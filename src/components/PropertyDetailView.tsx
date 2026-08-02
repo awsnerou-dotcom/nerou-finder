@@ -323,6 +323,13 @@ export default function PropertyDetailView({
   };
 
   const handleWhatsAppAction = async () => {
+    // Open the tab SYNCHRONOUSLY, before any `await` - popup blockers require window.open to
+    // fire within the original click's "user gesture" window, which ends the moment this
+    // function first suspends at an await. Opening a blank tab now and redirecting it once the
+    // async work below finishes keeps it tied to the click instead of being silently blocked
+    // (window.open's return value was never checked, so the failure was invisible before).
+    const waTab = window.open("", "_blank");
+
     // 1. Fire Lead tracking POST
     try {
       await fetch("/api/leads", {
@@ -367,7 +374,14 @@ export default function PropertyDetailView({
       ? `مرحباً، أنا مهتم بهذا العقار:\nالعقار: ${titleText}\nالموقع: ${locationText}\nالسعر: ${priceText}\nرقم الإعلان: ${property.listingId}\nالرابط: ${shareUrl}`
       : `Hello, I am interested in this property:\nProperty: ${titleText}\nLocation: ${locationText}\nPrice: ${priceText}\nProperty ID: ${property.listingId}\nLink: ${shareUrl}`;
 
-    window.open(`https://wa.me/${contactNumber}?text=${encodeURIComponent(messageText)}`, "_blank");
+    const waUrl = `https://wa.me/${contactNumber}?text=${encodeURIComponent(messageText)}`;
+    if (waTab) {
+      waTab.location.href = waUrl;
+    } else {
+      // Popup was blocked even with the synchronous open attempt (some browsers still block
+      // it) - fall back to navigating the current tab so the action isn't silently a no-op.
+      window.location.href = waUrl;
+    }
   };
 
   // Divide images into categories for advanced media gallery
