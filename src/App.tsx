@@ -10,6 +10,7 @@ import CookieConsent from "./components/CookieConsent.js";
 import { trackEvent } from "./lib/analytics.js";
 import { User, UserRole, Organization, OrganizationType, VerificationStatus, TransactionType, ApplicationStatus, AgentType, getEffectiveAgentType } from "./types.js";
 import { useCurrency, CURRENCIES, CurrencyCode } from "./currencyContext.js";
+import { useTheme } from "./hooks/useTheme.js";
 import {
   Globe,
   UserCheck,
@@ -25,7 +26,9 @@ import {
   X,
   Check,
   ArrowRight,
-  Menu
+  Menu,
+  Sun,
+  Moon
 } from "lucide-react";
 
 const AgentWorkspace = lazy(() => import("./components/AgentWorkspace.js"));
@@ -46,6 +49,7 @@ const DashboardLoader = ({ isRtl }: { isRtl: boolean }) => (
 export default function App() {
   const [isRtl, setIsRtl] = useState<boolean>(false);
   const { activeCurrency, setActiveCurrency } = useCurrency();
+  const { resolved: resolvedTheme, toggle: toggleTheme } = useTheme();
   const [viewMode, setViewMode] = useState<"MARKETPLACE" | "DASHBOARD">("MARKETPLACE");
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem("nerou_user");
@@ -496,6 +500,20 @@ export default function App() {
               <span>{isRtl ? "English" : "العربية"}</span>
             </button>
 
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 bg-[#fdfcfb] border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg transition-colors cursor-pointer text-[#1c1a17]"
+              title={
+                resolvedTheme === "dark"
+                  ? (isRtl ? "التحويل إلى الوضع الفاتح" : "Switch to light mode")
+                  : (isRtl ? "التحويل إلى الوضع الداكن" : "Switch to dark mode")
+              }
+              aria-label={resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {resolvedTheme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+
             {/* Currency Selector */}
             <div className="flex items-center bg-[#fdfcfb] border border-[#e6e2de] rounded-lg p-0.5 shadow-xs">
               {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => {
@@ -621,6 +639,19 @@ export default function App() {
             >
               <Globe size={16} />
               <span>{isRtl ? "English" : "العربية"}</span>
+            </button>
+
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleTheme}
+              className="w-full p-3 bg-[#fdfcfb] border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg transition-colors cursor-pointer text-[#1c1a17] flex items-center justify-center gap-2 text-sm font-bold"
+            >
+              {resolvedTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+              <span>
+                {resolvedTheme === "dark"
+                  ? (isRtl ? "الوضع الفاتح" : "Light Mode")
+                  : (isRtl ? "الوضع الداكن" : "Dark Mode")}
+              </span>
             </button>
 
             {/* Currency Selector */}
@@ -1104,20 +1135,24 @@ export default function App() {
                       />
                     </div>
 
-                    <button
-                      type="submit"
-                      disabled={authLoading}
-                      className="w-full py-2.5 bg-[#1c1a17] hover:bg-[#33302a] disabled:bg-[#a8a4a0] text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      {authLoading ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      ) : (
-                        <>
-                          <UserPlus size={14} />
-                          <span>{isRtl ? "إنشاء حسابي وتفعيل الشراكة" : "Register and Onboard"}</span>
-                        </>
-                      )}
-                    </button>
+                    {/* Sticky footer so the submit button stays reachable on short viewports
+                        instead of requiring a scroll to the very bottom of a long form. */}
+                    <div className="sticky bottom-0 -mx-6 md:-mx-8 -mb-6 md:-mb-8 px-6 md:px-8 pt-3 pb-6 md:pb-8 bg-white/95 backdrop-blur-sm border-t border-[#e6e2de]">
+                      <button
+                        type="submit"
+                        disabled={authLoading}
+                        className="w-full py-2.5 bg-[#1c1a17] hover:bg-[#33302a] disabled:bg-[#a8a4a0] text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        {authLoading ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <>
+                            <UserPlus size={14} />
+                            <span>{isRtl ? "إنشاء حسابي وتفعيل الشراكة" : "Register and Onboard"}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </form>
                 </>
               )}
