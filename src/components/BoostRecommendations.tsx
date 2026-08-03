@@ -4,9 +4,10 @@
  */
 
 import React, { useEffect, useState } from "react";
-import { Sparkles, Loader2, TrendingDown } from "lucide-react";
+import { Sparkles, TrendingDown } from "lucide-react";
 import { Property } from "../types.js";
 import BoostButton from "./BoostButton.js";
+import { RowSkeleton } from "./ui/Skeleton.js";
 
 interface BoostRecommendation {
   propertyId: string;
@@ -90,8 +91,9 @@ export default function BoostRecommendations({ properties, agentId, orgId, isRtl
       </div>
 
       {loading ? (
-        <div className="p-6 flex justify-center">
-          <Loader2 className="animate-spin text-[#6e6b66]" size={18} />
+        <div className="p-4 divide-y divide-[#f2ede8]">
+          <RowSkeleton columns={3} />
+          <RowSkeleton columns={3} />
         </div>
       ) : error ? (
         <p className="p-4 text-[11px] text-red-600">{error}</p>

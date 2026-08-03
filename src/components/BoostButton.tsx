@@ -155,22 +155,26 @@ export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonP
               ))}
             </div>
           </div>
+          {/* "Cancel" (go fix the listing first) is the visually primary action - the warning
+              should nudge toward improving the listing, not just be a formality on the way to
+              "Boost anyway" (which stays available, just de-emphasized, since agents can always
+              choose to boost a lower-quality listing if they want to). */}
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={handleBoostAnyway}
-              disabled={loading !== null}
-              className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded text-[9px] font-bold cursor-pointer disabled:opacity-50"
-            >
-              {isRtl ? "الرفع على أي حال" : "Boost anyway"}
-            </button>
             <button
               type="button"
               onClick={handleCancelPendingBoost}
               disabled={loading !== null}
-              className="px-2 py-1 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] text-[#1a1918] rounded text-[9px] font-semibold cursor-pointer disabled:opacity-50"
+              className="px-2 py-1 bg-[#1a1918] hover:bg-[#33302a] text-white rounded text-[9px] font-bold cursor-pointer disabled:opacity-50"
             >
-              {isRtl ? "إلغاء" : "Cancel"}
+              {isRtl ? "الرجوع للتحسين أولاً" : "Go fix it first"}
+            </button>
+            <button
+              type="button"
+              onClick={handleBoostAnyway}
+              disabled={loading !== null}
+              className="px-2 py-1 bg-transparent hover:bg-amber-100 border border-amber-300 text-amber-800 rounded text-[9px] font-semibold cursor-pointer disabled:opacity-50"
+            >
+              {isRtl ? "الرفع على أي حال" : "Boost anyway"}
             </button>
           </div>
         </div>

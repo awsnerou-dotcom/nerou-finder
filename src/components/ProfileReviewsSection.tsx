@@ -91,7 +91,7 @@ export default function ProfileReviewsSection({
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to submit review.");
+        setError(data.error || (isRtl ? "تعذر إرسال التقييم." : "Failed to submit review."));
       } else {
         setSuccess(isRtl 
           ? "تم تقديم تقييمك بنجاح وهو قيد المراجعة الإدارية الآن." 
@@ -102,7 +102,7 @@ export default function ProfileReviewsSection({
         fetchReviews();
       }
     } catch (err) {
-      setError("An unexpected error occurred.");
+      setError(isRtl ? "حدث خطأ غير متوقع." : "An unexpected error occurred.");
     } finally {
       setSubmitting(false);
     }
@@ -137,7 +137,8 @@ export default function ProfileReviewsSection({
                 : "No verified reviews yet. Be the first to share your experience!"}
             </p>
           ) : (
-            <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
+            <div className="relative">
+              <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
               {reviews.map((rev) => (
                 <div key={rev.id} className="p-3 bg-white rounded-lg border border-[#e6e2de] space-y-1.5 shadow-2xs">
                   <div className="flex items-center justify-between text-[11px]">
@@ -181,6 +182,12 @@ export default function ProfileReviewsSection({
                   )}
                 </div>
               ))}
+              </div>
+              {/* Scroll affordance: hints that more reviews exist below the fixed-height,
+                  scrollable list instead of the cut-off just looking like the end of content. */}
+              {reviews.length > 3 && (
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent rounded-b-lg" />
+              )}
             </div>
           )}
 
