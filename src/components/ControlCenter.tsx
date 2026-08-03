@@ -31,6 +31,7 @@ import {
   ViewingRequest,
   Review
 } from "../types.js";
+import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import {
   ShieldAlert,
   Users,
@@ -177,6 +178,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
   // Toast notifications (replaces window.alert for better visual UX and sandbox iframe compliance)
   const [toastMessage, setToastMessage] = useState<string>("");
+  const [pendingDelete, setPendingDelete] = useState<{ type: "REVIEW" | "PROPERTY" | "LEAD"; id: string } | null>(null);
+  const [deletingPending, setDeletingPending] = useState(false);
 
   // Plan Form State
   const [isAddingPlan, setIsAddingPlan] = useState<boolean>(false);
@@ -577,10 +580,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     }
   };
 
-  const handleDeleteReview = async (reviewId: string) => {
-    if (!window.confirm(isRtl ? "هل تريد حذف هذا التقييم؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this review? This cannot be undone.")) {
-      return;
-    }
+  const handleDeleteReview = (reviewId: string) => {
+    setPendingDelete({ type: "REVIEW", id: reviewId });
+  };
+
+  const executeDeleteReview = async (reviewId: string) => {
     try {
       const token = localStorage.getItem("token") || "";
       const res = await fetch(`/api/admin/reviews/${reviewId}`, {
@@ -757,10 +761,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     }
   };
 
-  const handleDeleteProperty = async (propertyId: string) => {
-    if (!window.confirm(isRtl ? "هل تريد حذف هذا العقار؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this property? This cannot be undone.")) {
-      return;
-    }
+  const handleDeleteProperty = (propertyId: string) => {
+    setPendingDelete({ type: "PROPERTY", id: propertyId });
+  };
+
+  const executeDeleteProperty = async (propertyId: string) => {
     try {
       const token = localStorage.getItem("token") || "";
       const res = await fetch(`/api/admin/properties/${propertyId}`, {
@@ -783,10 +788,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     }
   };
 
-  const handleDeleteLead = async (leadId: string) => {
-    if (!window.confirm(isRtl ? "هل تريد حذف هذا العميل المحتمل؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this lead? This cannot be undone.")) {
-      return;
-    }
+  const handleDeleteLead = (leadId: string) => {
+    setPendingDelete({ type: "LEAD", id: leadId });
+  };
+
+  const executeDeleteLead = async (leadId: string) => {
     try {
       const token = localStorage.getItem("token") || "";
       const res = await fetch(`/api/admin/leads/${leadId}`, {
@@ -807,6 +813,25 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       showToast("Failed to delete lead.");
     }
   };
+
+  const confirmPendingDelete = async () => {
+    if (!pendingDelete) return;
+    setDeletingPending(true);
+    try {
+      if (pendingDelete.type === "REVIEW") await executeDeleteReview(pendingDelete.id);
+      else if (pendingDelete.type === "PROPERTY") await executeDeleteProperty(pendingDelete.id);
+      else await executeDeleteLead(pendingDelete.id);
+    } finally {
+      setDeletingPending(false);
+      setPendingDelete(null);
+    }
+  };
+
+  const pendingDeleteTitle = pendingDelete?.type === "REVIEW"
+    ? (isRtl ? "هل تريد حذف هذا التقييم؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this review? This cannot be undone.")
+    : pendingDelete?.type === "PROPERTY"
+    ? (isRtl ? "هل تريد حذف هذا العقار؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this property? This cannot be undone.")
+    : (isRtl ? "هل تريد حذف هذا العميل المحتمل؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this lead? This cannot be undone.");
 
   const handleVerifyOrg = async (orgId: string, status: VerificationStatus) => {
     try {
@@ -1471,6 +1496,16 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           <span className="text-xs font-semibold">{toastMessage}</span>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={confirmPendingDelete}
+        title={pendingDeleteTitle}
+        tone="danger"
+        loading={deletingPending}
+        isRtl={isRtl}
+      />
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Collapsible grouped sidebar navigation (FIX 2) */}

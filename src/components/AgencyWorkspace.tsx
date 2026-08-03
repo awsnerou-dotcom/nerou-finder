@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Organization, User, UserRole, AdCampaign, SubscriptionPlan, Lead, Property } from "../types.js";
+import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import {
   CreditCard,
   Briefcase,
@@ -397,6 +398,8 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
   // FIX 6: campaign Edit/Pause/Resume/Delete - previously only Create existed.
   const [campaignBudgetDrafts, setCampaignBudgetDrafts] = useState<Record<string, string>>({});
   const [copiedCampaignId, setCopiedCampaignId] = useState<string>("");
+  const [pendingDeleteCampaignId, setPendingDeleteCampaignId] = useState<string | null>(null);
+  const [deletingCampaign, setDeletingCampaign] = useState(false);
 
   const handleUpdateCampaignBudget = async (campaignId: string) => {
     const draft = campaignBudgetDrafts[campaignId];
@@ -428,16 +431,24 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
     }
   };
 
-  const handleDeleteCampaign = async (campaignId: string) => {
-    if (!window.confirm(isRtl ? "هل تريد حذف هذه الحملة؟" : "Delete this campaign?")) return;
+  const handleDeleteCampaign = (campaignId: string) => {
+    setPendingDeleteCampaignId(campaignId);
+  };
+
+  const confirmDeleteCampaign = async () => {
+    if (!pendingDeleteCampaignId) return;
+    setDeletingCampaign(true);
     try {
-      const res = await fetch(`/api/campaigns/${campaignId}`, {
+      const res = await fetch(`/api/campaigns/${pendingDeleteCampaignId}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
       });
       if (res.ok) fetchAgencyContext();
     } catch (err) {
       console.error(err);
+    } finally {
+      setDeletingCampaign(false);
+      setPendingDeleteCampaignId(null);
     }
   };
 
@@ -1349,6 +1360,16 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
           <span className="text-xs font-medium">{toastMessage}</span>
         </div>
       )}
+
+      <ConfirmDialog
+        open={pendingDeleteCampaignId !== null}
+        onCancel={() => setPendingDeleteCampaignId(null)}
+        onConfirm={confirmDeleteCampaign}
+        title={isRtl ? "هل تريد حذف هذه الحملة؟" : "Delete this campaign?"}
+        tone="danger"
+        loading={deletingCampaign}
+        isRtl={isRtl}
+      />
     </div>
   );
 }
