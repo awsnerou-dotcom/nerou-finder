@@ -120,16 +120,28 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
             return (
               <React.Fragment key={step.en}>
                 <div className="flex sm:flex-col items-center sm:flex-1 gap-3 sm:gap-2 sm:text-center">
-                  <div
-                    className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center border-2 ${
-                      isDone
-                        ? "bg-[#bf9b30] border-[#bf9b30] text-black"
-                        : isCurrent
-                        ? "border-[#bf9b30] text-[#bf9b30] bg-white"
-                        : "border-[#e6e2de] text-[#6e6b66] bg-white"
-                    }`}
-                  >
-                    {isDone ? <CheckCircle2 size={16} /> : isCurrent ? <Clock size={16} /> : <Circle size={14} />}
+                  <div className="relative shrink-0">
+                    <div
+                      className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center border-2 ${
+                        isDone
+                          ? "bg-[#bf9b30] border-[#bf9b30] text-black"
+                          : isCurrent
+                          ? "border-[#bf9b30] text-[#bf9b30] bg-white"
+                          : "border-[#e6e2de] text-[#6e6b66] bg-white"
+                      }`}
+                    >
+                      {isDone ? <CheckCircle2 size={16} /> : isCurrent ? <Clock size={16} /> : <Circle size={14} />}
+                    </div>
+                    {/* Mobile-only vertical connector - the horizontal one below is sm:block
+                        (desktop only), so without this the steps looked like a disconnected
+                        list of icons once the layout stacks vertically on small screens. */}
+                    {idx < STEPS.length - 1 && (
+                      <div
+                        className={`sm:hidden absolute left-1/2 -translate-x-1/2 top-8 w-0.5 h-6 ${
+                          stepNumber < completedSteps ? "bg-[#bf9b30]" : "bg-[#e6e2de]"
+                        }`}
+                      />
+                    )}
                   </div>
                   <span
                     className={`text-[10px] font-semibold ${

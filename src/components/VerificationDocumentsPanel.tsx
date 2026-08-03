@@ -59,6 +59,7 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
   const [expiryDrafts, setExpiryDrafts] = useState<Record<string, string>>({});
   const [showOptionalPassport, setShowOptionalPassport] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [dragOverType, setDragOverType] = useState<string | null>(null);
   const [agencyNameDraft, setAgencyNameDraft] = useState(agent?.affiliatedAgencyName || "");
   const [savingAgencyName, setSavingAgencyName] = useState(false);
 
@@ -165,9 +166,30 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
     const doc = findDoc(type);
     const label = DOC_LABELS[type] ? (isRtl ? DOC_LABELS[type].ar : DOC_LABELS[type].en) : type;
     const isUploading = uploadingType === type;
+    const isDragOver = dragOverType === type;
 
     return (
-      <div key={type} className="p-4 bg-white border border-[#e6e2de] rounded-xl space-y-2">
+      <div
+        key={type}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (!isUploading) setDragOverType(type);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setDragOverType((prev) => (prev === type ? null : prev));
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOverType(null);
+          if (isUploading) return;
+          const file = e.dataTransfer.files?.[0];
+          if (file) handleUpload(type, file);
+        }}
+        className={`p-4 bg-white border rounded-xl space-y-2 transition-colors ${
+          isDragOver ? "border-[#bf9b30] border-2 bg-[#bf9b30]/5" : "border-[#e6e2de]"
+        }`}
+      >
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <p className="text-xs font-bold text-[#1a1918]">{label}</p>
@@ -179,6 +201,13 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
           </div>
           {statusBadge(doc?.status, isRtl)}
         </div>
+
+        {isDragOver && (
+          <div className="flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#bf9b30] rounded-lg text-[#bf9b30] text-[11px] font-semibold bg-white/60 pointer-events-none">
+            <UploadCloud size={14} />
+            <span>{isRtl ? "أفلت الملف هنا للرفع" : "Drop file here to upload"}</span>
+          </div>
+        )}
 
         {doc?.status === "REJECTED" && doc.rejectionReason && (
           <div className="text-[10px] bg-rose-50 text-rose-700 border border-rose-200 rounded-lg p-2">
