@@ -46,64 +46,12 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
     };
   });
 
-  const demoProjects = [
-    {
-      id: "proj-1",
-      name: "The Pearl-Qatar: Gewan Island Prestige",
-      nameAr: "اللؤلؤة قطر: جزيرة جيوان المتميزة",
-      developer: "United Development Company (UDC)",
-      developerAr: "الشركة المتحدة للتنمية",
-      location: "The Pearl-Qatar, Doha",
-      locationAr: "اللؤلؤة قطر، الدوحة",
-      price: "From 1,850,000 QAR",
-      priceAr: "تبدأ من ١,٨٥٠,٠٠٠ ر.ق",
-      delivery: "Q4 2027",
-      deliveryAr: "الربع الرابع ٢٠٢٧",
-      status: "UNDER_CONSTRUCTION",
-      image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80",
-      description: "Gewan Island is UDC's latest master plan project, featuring premium waterfront villas, crystal residences, and an air-conditioned outdoor promenade.",
-      descriptionAr: "جزيرة جيوان هي أحدث مشروع رئيسي للشركة المتحدة للتنمية، حيث تضم فيلات فاخرة مطلة على الماء، ومساكن كريستال، وممشى خارجي مكيف الهواء.",
-      amenities: ["Golf Course Access", "Beach Club", "Banana Park", "Climatic Promenade", "Marina Berths"]
-    },
-    {
-      id: "proj-2",
-      name: "Yasmeen City: Boulevard Residences",
-      nameAr: "مدينة الياسمين: مساكن البوليفارد",
-      developer: "Qatari Diar",
-      developerAr: "الديار القطرية",
-      location: "Yasmeen City, Lusail",
-      locationAr: "مدينة الياسمين، لوسيل",
-      price: "From 1,100,000 QAR",
-      priceAr: "تبدأ من ١,١٠٠,٠٠٠ ر.ق",
-      delivery: "Q2 2028",
-      deliveryAr: "الربع الثاني ٢٠٢٨",
-      status: "UNDER_CONSTRUCTION",
-      image: "https://images.unsplash.com/photo-1582407947304-fd86f028f716?auto=format&fit=crop&w=800&q=80",
-      description: "A smart-city residential master plan situated in Lusail, Yasmeen City is designed as a sustainable district integrating schools, mosques, and retail greenery.",
-      descriptionAr: "مشروع سكني رئيسي للمدينة الذكية يقع في لوسيل، وقد تم تصميم مدينة الياسمين كمنطقة مستدامة تدمج المدارس والمساجد والحدائق الخضراء للمحلات التجارية.",
-      amenities: ["Integrated Smart Hub", "Tramway Stations", "Public Parks", "Rooftop Infinity Pools", "School District"]
-    },
-    {
-      id: "proj-3",
-      name: "Marina Waterfront Towers",
-      nameAr: "أبراج الواجهة البحرية مارينا",
-      developer: "Barwa Real Estate Group",
-      developerAr: "مجموعة بروة العقارية",
-      location: "Marina District, Lusail",
-      locationAr: "منطقة المارينا، لوسيل",
-      price: "From 2,400,000 QAR",
-      priceAr: "تبدأ من ٢,٤٠٠,٠٠٠ ر.ق",
-      delivery: "Q3 2026",
-      deliveryAr: "الربع الثالث ٢٠٢٦",
-      status: "NEAR_COMPLETION",
-      image: "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80",
-      description: "Premium high-rise waterfront apartments in Lusail's bustling Marina district, featuring panoramic views of the Persian Gulf and bespoke smart automated interiors.",
-      descriptionAr: "شقق شاهقة فاخرة على الواجهة البحرية في منطقة مارينا الصاخبة في لوسيل، وتتميز بإطلالات بانورامية على الخليج العربي وتصميمات داخلية ذكية ومؤتمتة بالكامل.",
-      amenities: ["Private Yachts Berths", "24/7 Concierge", "Wellness Spa Center", "Private Theater Room", "Panoramic Lounges"]
-    }
-  ];
-
-  const projects = [...developerProjects, ...demoProjects];
+  // Previously this concatenated three fabricated placeholder projects (using the real names
+  // of actual Qatari developers - UDC, Qatari Diar, Barwa - none of which are registered on
+  // this platform) with genuine API results, rendered indistinguishably from real listings.
+  // Their "Download Brochure" inquiry form also silently submitted leads against a projectId
+  // that doesn't exist in the database. Only real developer-submitted projects are shown now.
+  const projects = developerProjects;
 
   const handleInquiry = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -152,6 +100,19 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
         </p>
       </div>
 
+      {projects.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-xl border border-[#e6e2de]">
+          <Building2 size={32} className="mx-auto text-[#e6e2de] mb-3" />
+          <p className="text-sm font-semibold text-[#1a1918]">
+            {isRtl ? "لا توجد مشاريع منشورة حالياً" : "No published projects yet"}
+          </p>
+          <p className="text-xs text-[#6e6b66] mt-1">
+            {isRtl
+              ? "يقوم المطورون الموثّقون حالياً بإعداد مخططاتهم الرئيسية. تحقق مرة أخرى قريباً."
+              : "Verified developers are still setting up their master plans. Check back soon."}
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {projects.map((proj) => (
           <div key={proj.id} className="bg-white border border-[#e6e2de] rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
@@ -191,6 +152,7 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
           </div>
         ))}
       </div>
+      )}
 
       {/* DETAIL MODAL */}
       {selectedProject && (

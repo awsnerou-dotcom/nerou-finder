@@ -12,9 +12,36 @@ export default function CareersView({ isRtl }: CareersViewProps) {
   const [applicantEmail, setApplicantEmail] = useState("");
   const [applicantPhone, setApplicantPhone] = useState("");
   const [applicantCover, setApplicantCover] = useState("");
+  const [applicantResume, setApplicantResume] = useState<File | null>(null);
+  const [resumeError, setResumeError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [applyError, setApplyError] = useState("");
+  const [applySubmitting, setApplySubmitting] = useState(false);
+
+  const MAX_RESUME_BYTES = 5 * 1024 * 1024;
+
+  const handleResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setResumeError("");
+    if (!file) {
+      setApplicantResume(null);
+      return;
+    }
+    if (file.type !== "application/pdf") {
+      setResumeError(isRtl ? "يجب أن يكون الملف بصيغة PDF." : "File must be a PDF.");
+      e.target.value = "";
+      setApplicantResume(null);
+      return;
+    }
+    if (file.size > MAX_RESUME_BYTES) {
+      setResumeError(isRtl ? "الحد الأقصى لحجم الملف هو ٥ ميجابايت." : "Maximum file size is 5MB.");
+      e.target.value = "";
+      setApplicantResume(null);
+      return;
+    }
+    setApplicantResume(file);
+  };
 
   useEffect(() => {
     fetchJobs();
@@ -38,18 +65,20 @@ export default function CareersView({ isRtl }: CareersViewProps) {
     e.preventDefault();
     if (!applicantName || !applicantEmail || !applicantPhone) return;
     setApplyError("");
+    setApplySubmitting(true);
 
     try {
+      const formData = new FormData();
+      formData.append("jobId", selectedJob.id);
+      formData.append("applicantName", applicantName);
+      formData.append("applicantEmail", applicantEmail);
+      formData.append("applicantPhone", applicantPhone);
+      formData.append("coverLetter", applicantCover);
+      if (applicantResume) formData.append("resume", applicantResume);
+
       const res = await fetch("/api/careers/apply", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobId: selectedJob.id,
-          applicantName,
-          applicantEmail,
-          applicantPhone,
-          coverLetter: applicantCover
-        })
+        body: formData
       });
       if (res.ok) {
         setSuccess(true);
@@ -59,13 +88,16 @@ export default function CareersView({ isRtl }: CareersViewProps) {
           setApplicantEmail("");
           setApplicantPhone("");
           setApplicantCover("");
+          setApplicantResume(null);
           setSelectedJob(null);
         }, 2500);
       } else {
+        const data = await res.json().catch(() => null);
         setApplyError(
-          isRtl
-            ? "تعذر إرسال طلبك. يرجى المحاولة مرة أخرى."
-            : "We couldn't submit your application. Please try again."
+          data?.error ||
+            (isRtl
+              ? "تعذر إرسال طلبك. يرجى المحاولة مرة أخرى."
+              : "We couldn't submit your application. Please try again.")
         );
       }
     } catch (err) {
@@ -75,6 +107,8 @@ export default function CareersView({ isRtl }: CareersViewProps) {
           ? "تعذر إرسال طلبك. يرجى المحاولة مرة أخرى."
           : "We couldn't submit your application. Please try again."
       );
+    } finally {
+      setApplySubmitting(false);
     }
   };
 
@@ -230,17 +264,41 @@ export default function CareersView({ isRtl }: CareersViewProps) {
                   ></textarea>
                 </div>
 
-                <div className="border border-dashed border-[#e6e2de] p-4 rounded-lg bg-[#fdfcfb] text-center space-y-1">
-                  <Upload className="mx-auto text-[#bf9b30]" size={16} />
-                  <span className="text-[10px] block font-semibold">{isRtl ? "قم بتحميل السيرة الذاتية (PDF)" : "Upload CV/Resume (PDF)"}</span>
-                  <span className="text-[8px] text-gray-400 block">{isRtl ? "الحد الأقصى للملف: ٥ ميجابايت" : "Maximum file size: 5MB"}</span>
+                <div>
+                  <label
+                    htmlFor="resume-upload"
+                    className="border border-dashed border-[#e6e2de] hover:border-[#bf9b30] p-4 rounded-lg bg-[#fdfcfb] text-center space-y-1 flex flex-col items-center cursor-pointer transition-colors"
+                  >
+                    <Upload className="mx-auto text-[#bf9b30]" size={16} />
+                    <span className="text-[10px] block font-semibold">
+                      {applicantResume
+                        ? applicantResume.name
+                        : isRtl ? "قم بتحميل السيرة الذاتية (PDF)" : "Upload CV/Resume (PDF)"}
+                    </span>
+                    <span className="text-[8px] text-gray-400 block">{isRtl ? "الحد الأقصى للملف: ٥ ميجابايت" : "Maximum file size: 5MB"}</span>
+                  </label>
+                  <input
+                    id="resume-upload"
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleResumeChange}
+                    className="hidden"
+                  />
+                  {resumeError && (
+                    <p className="text-[10px] text-red-600 mt-1">{resumeError}</p>
+                  )}
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-2 bg-[#bf9b30] hover:bg-[#a68628] text-black font-bold text-xs rounded-lg uppercase tracking-wider cursor-pointer"
+                  disabled={applySubmitting}
+                  className="w-full py-2 bg-[#bf9b30] hover:bg-[#a68628] disabled:bg-[#dcc98a] disabled:cursor-not-allowed text-black font-bold text-xs rounded-lg uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2"
                 >
-                  {isRtl ? "إرسال طلب التوظيف" : "Submit Job Application"}
+                  {applySubmitting ? (
+                    <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span>{isRtl ? "إرسال طلب التوظيف" : "Submit Job Application"}</span>
+                  )}
                 </button>
               </form>
             )}

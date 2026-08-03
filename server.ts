@@ -4504,9 +4504,18 @@ app.post("/api/admin/careers", (req, res) => {
   res.json({ success: true, job: updatedJob });
 });
 
-// Public: submit a job application (no auth - applicants aren't platform users)
-app.post("/api/careers/apply", publicWriteRateLimiter, (req, res) => {
-  const { jobId, applicantName, applicantEmail, applicantPhone, coverLetter, cvUrl } = req.body;
+// Public: submit a job application (no auth - applicants aren't platform users). Accepts an
+// optional multipart "resume" PDF field - previously the careers page showed an "Upload
+// CV/Resume" box with no file input actually wired to it, so cvUrl (which this endpoint and
+// the JobApplication type already supported) was always undefined. Falls back gracefully for
+// callers with no file (multer only engages for multipart/form-data requests).
+app.post("/api/careers/apply", publicWriteRateLimiter, (req, res, next) => {
+  upload.single("resume")(req, res, (err: any) => {
+    if (err) return res.status(400).json({ error: err.message || "Resume upload failed." });
+    next();
+  });
+}, (req, res) => {
+  const { jobId, applicantName, applicantEmail, applicantPhone, coverLetter } = req.body;
   if (!jobId || !applicantName || !applicantEmail || !applicantPhone) {
     return res.status(400).json({ error: "jobId, applicantName, applicantEmail, and applicantPhone are required." });
   }
@@ -4515,6 +4524,24 @@ app.post("/api/careers/apply", publicWriteRateLimiter, (req, res) => {
   if (!db.jobListings) db.jobListings = [];
   const job = db.jobListings.find(j => j.id === jobId);
   if (!job) return res.status(404).json({ error: "Job listing not found." });
+
+  let cvUrl: string | undefined;
+  const resumeFile = req.file;
+  if (resumeFile) {
+    if (resumeFile.mimetype !== "application/pdf") {
+      try { fs.unlinkSync(path.join(uploadsDir, resumeFile.filename)); } catch {}
+      return res.status(400).json({ error: "Resume must be a PDF file." });
+    }
+    const head = Buffer.alloc(4);
+    const fd = fs.openSync(path.join(uploadsDir, resumeFile.filename), "r");
+    fs.readSync(fd, head, 0, 4, 0);
+    fs.closeSync(fd);
+    if (!fileMatchesDeclaredType(head, "application/pdf")) {
+      try { fs.unlinkSync(path.join(uploadsDir, resumeFile.filename)); } catch {}
+      return res.status(400).json({ error: "Uploaded file does not appear to be a valid PDF." });
+    }
+    cvUrl = `/assets/uploads/${resumeFile.filename}`;
+  }
 
   if (!db.jobApplications) db.jobApplications = [];
   const application: JobApplication = {
@@ -4536,9 +4563,10 @@ app.post("/api/careers/apply", publicWriteRateLimiter, (req, res) => {
   const notifyHtml = `
   <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
     <h2 style="color: #1a1918;">New Job Application</h2>
-    <p><strong>Position:</strong> ${job.title}</p>
-    <p><strong>Applicant:</strong> ${applicantName} (${applicantEmail}, ${applicantPhone})</p>
-    ${coverLetter ? `<p><strong>Cover Letter:</strong></p><p>${coverLetter}</p>` : ""}
+    <p><strong>Position:</strong> ${escapeHtml(job.title)}</p>
+    <p><strong>Applicant:</strong> ${escapeHtml(applicantName)} (${escapeHtml(applicantEmail)}, ${escapeHtml(applicantPhone)})</p>
+    ${cvUrl ? `<p><strong>Resume:</strong> <a href="${escapeHtml(cvUrl)}">${escapeHtml(cvUrl)}</a></p>` : ""}
+    ${coverLetter ? `<p><strong>Cover Letter:</strong></p><p>${escapeHtml(coverLetter)}</p>` : ""}
   </div>`;
   sendMockEmail("careers@nerou.io", `[Nerou Finder] New Application: ${job.title}`, notifyHtml, "job_application");
 
