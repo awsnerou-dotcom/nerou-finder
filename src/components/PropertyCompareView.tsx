@@ -5,7 +5,7 @@
 
 import React, { useState } from "react";
 import { Property, TransactionType } from "../types.js";
-import { X, Check, Shield, Star, RefreshCw } from "lucide-react";
+import { X, Check, Shield, Star, RefreshCw, Plus } from "lucide-react";
 
 interface PropertyCompareViewProps {
   properties: Property[];
@@ -21,6 +21,13 @@ export default function PropertyCompareView({
   isRtl,
 }: PropertyCompareViewProps) {
   const [displayUnit, setDisplayUnit] = useState<"SQM" | "SQFT">("SQM");
+
+  // Only render as many columns as there are selected properties, plus one open "add" slot
+  // (capped at 4) - previously this always rendered all 4 slots regardless of how many
+  // properties were actually selected, forcing a wide, mostly-empty horizontal-scroll table
+  // on mobile even when comparing just 1-2 listings.
+  const slotCount = Math.min(4, properties.length + 1);
+  const gridTemplateColumns = `140px repeat(${slotCount}, minmax(150px, 1fr))`;
 
   const getAreaDisplay = (areaSqm: number) => {
     if (displayUnit === "SQFT") {
@@ -79,15 +86,24 @@ export default function PropertyCompareView({
           </div>
         </div>
 
+        {slotCount > 1 && (
+          <p className="md:hidden text-[10px] text-[#6E6B66] text-center py-1.5 bg-[#FCFAF7] border-b border-[#E6E2DE] shrink-0">
+            {isRtl ? "مرر أفقياً لعرض المزيد ←" : "→ Swipe to see more"}
+          </p>
+        )}
+
         {/* COMPRESSION GRID TABLE SCROLLABLE BODY */}
         <div className="overflow-auto flex-1 p-4 md:p-6">
-          <div className="grid grid-cols-5 min-w-[700px] border border-[#E6E2DE] rounded-xl overflow-hidden bg-white text-xs divide-x divide-y divide-[#E6E2DE] [grid-auto-rows:minmax(0,1fr)]">
-            
+          <div
+            className="grid border border-[#E6E2DE] rounded-xl overflow-hidden bg-white text-xs divide-x divide-y divide-[#E6E2DE] [grid-auto-rows:minmax(0,1fr)]"
+            style={{ gridTemplateColumns, minWidth: `${140 + slotCount * 150}px` }}
+          >
+
             {/* ROW 1: HEADER LABELS & PROPERTY IMAGES */}
             <div className="p-4 bg-stone-50 font-bold flex items-center">
               {isRtl ? "العقار" : "Property Profile"}
             </div>
-            {Array.from({ length: 4 }).map((_, idx) => {
+            {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
                 <div key={idx} className="p-3 relative bg-white flex flex-col justify-between">
@@ -111,9 +127,14 @@ export default function PropertyCompareView({
                       </div>
                     </>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-[#6E6B66] italic text-[11px] py-8">
-                      <span>{isRtl ? "+ أضف عقاراً آخر" : "+ Vacant compare slot"}</span>
-                    </div>
+                    <button
+                      onClick={onClose}
+                      className="flex flex-col items-center justify-center h-full w-full text-[#BF9B30] text-[11px] py-8 gap-1.5 cursor-pointer hover:bg-[#FCFAF7] transition-colors rounded-lg font-semibold"
+                      title={isRtl ? "العودة للمعرض لإضافة عقار" : "Back to the marketplace to add a property"}
+                    >
+                      <Plus size={18} />
+                      <span>{isRtl ? "أضف عقاراً آخر" : "Add another property"}</span>
+                    </button>
                   )}
                 </div>
               );
@@ -123,7 +144,7 @@ export default function PropertyCompareView({
             <div className="p-4 bg-stone-50 font-bold flex items-center">
               {isRtl ? "نوع المعاملة" : "Transaction"}
             </div>
-            {Array.from({ length: 4 }).map((_, idx) => {
+            {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
                 <div key={idx} className="p-4 flex items-center">
@@ -142,7 +163,7 @@ export default function PropertyCompareView({
             <div className="p-4 bg-stone-50 font-bold flex items-center">
               {isRtl ? "السعر" : "Asking Price"}
             </div>
-            {Array.from({ length: 4 }).map((_, idx) => {
+            {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
                 <div key={idx} className="p-4 flex items-center text-[#BF9B30] font-bold text-sm">
@@ -160,7 +181,7 @@ export default function PropertyCompareView({
             <div className="p-4 bg-stone-50 font-bold flex items-center">
               {isRtl ? "المساحة الكلية" : "Total Size"}
             </div>
-            {Array.from({ length: 4 }).map((_, idx) => {
+            {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
                 <div key={idx} className="p-4 flex items-center font-bold text-[#1A1918]">
@@ -173,7 +194,7 @@ export default function PropertyCompareView({
             <div className="p-4 bg-stone-50 font-bold flex items-center">
               {isRtl ? "الغرف والحمامات" : "Beds / Baths"}
             </div>
-            {Array.from({ length: 4 }).map((_, idx) => {
+            {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
                 <div key={idx} className="p-4 flex items-center text-[#1A1918]">
@@ -186,7 +207,7 @@ export default function PropertyCompareView({
             <div className="p-4 bg-stone-50 font-bold flex items-center">
               {isRtl ? "حالة التأثيث" : "Furnishing"}
             </div>
-            {Array.from({ length: 4 }).map((_, idx) => {
+            {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
                 <div key={idx} className="p-4 flex items-center text-[#6E6B66]">
@@ -204,7 +225,7 @@ export default function PropertyCompareView({
             <div className="p-4 bg-stone-50 font-bold flex items-center">
               {isRtl ? "تقييم جودة الإعلان" : "Listing Quality Score"}
             </div>
-            {Array.from({ length: 4 }).map((_, idx) => {
+            {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
                 <div key={idx} className="p-4 flex items-center">
@@ -224,7 +245,7 @@ export default function PropertyCompareView({
             <div className="p-4 bg-stone-50 font-bold flex items-center">
               {isRtl ? "التوثيق القانوني" : "Portal Verification"}
             </div>
-            {Array.from({ length: 4 }).map((_, idx) => {
+            {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
                 <div key={idx} className="p-4 flex items-center">
@@ -248,7 +269,7 @@ export default function PropertyCompareView({
             <div className="p-4 bg-stone-50 font-bold flex items-center">
               {isRtl ? "أبرز المرافق" : "Key Amenities"}
             </div>
-            {Array.from({ length: 4 }).map((_, idx) => {
+            {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
                 <div key={idx} className="p-4 flex flex-col gap-1 text-[#6E6B66] text-[10px]">
