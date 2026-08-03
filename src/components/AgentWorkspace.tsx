@@ -2116,11 +2116,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         <Star key={s} size={12} className={s <= rev.rating ? "fill-gold text-gold" : "text-gray-200"} />
                       ))}
                     </div>
-                    <p className="text-[#4c4943]">{rev.comment}</p>
+                    <p className="text-ink-muted">{rev.comment}</p>
                     {rev.reply ? (
                       <div className="pl-3 border-l-2 border-gold/40 bg-canvas p-2 rounded">
                         <p className="text-[10px] font-bold text-ink">{isRtl ? "ردك" : "Your reply"}</p>
-                        <p className="text-[11px] text-[#4c4943] mt-0.5">{rev.reply.text}</p>
+                        <p className="text-[11px] text-ink-muted mt-0.5">{rev.reply.text}</p>
                       </div>
                     ) : (
                       <div className="flex gap-2 pt-1">

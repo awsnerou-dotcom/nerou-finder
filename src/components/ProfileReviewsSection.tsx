@@ -173,11 +173,11 @@ export default function ProfileReviewsSection({
                       />
                     ))}
                   </div>
-                  <p className="text-xs text-[#4c4943] leading-relaxed">{rev.comment}</p>
+                  <p className="text-xs text-ink-muted leading-relaxed">{rev.comment}</p>
                   {rev.reply && (
                     <div className="mt-1.5 pl-3 border-l-2 border-gold/40 bg-canvas p-2 rounded">
                       <p className="text-[10px] font-bold text-ink">{isRtl ? "رد صاحب الملف" : "Response from the listing owner"}</p>
-                      <p className="text-[11px] text-[#4c4943] mt-0.5">{rev.reply.text}</p>
+                      <p className="text-[11px] text-ink-muted mt-0.5">{rev.reply.text}</p>
                     </div>
                   )}
                 </div>
