@@ -44,6 +44,13 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
     setIsVisible(false);
   };
 
+  // Dismissing via the corner X is not an affirmative choice - it should behave like "not now"
+  // (the banner just closes, no consent status is recorded, so it reappears next visit) rather
+  // than silently recording the same outcome as clicking the explicit "Decline All" button.
+  const handleDismiss = () => {
+    setIsVisible(false);
+  };
+
   const handleDeclineAll = () => {
     localStorage.setItem("cookie_consent_status", "DECLINED");
     localStorage.setItem("cookie_consent_essential", "true");
@@ -81,10 +88,10 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               : "We use cookies and telemetry to analyze visitor patterns, customize premium features, and ensure the platform runs securely. Select your options below."}
           </p>
         </div>
-        <button 
-          onClick={handleDeclineAll} 
+        <button
+          onClick={handleDismiss}
           className="text-[#a8a4a0] hover:text-white transition-colors"
-          title={isRtl ? "إغلاق" : "Close"}
+          title={isRtl ? "إغلاق مؤقت (لن يتم حفظ أي خيار)" : "Dismiss for now (no choice will be saved)"}
         >
           <X size={16} />
         </button>
@@ -119,7 +126,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               type="checkbox"
               checked={consentFunctional}
               onChange={(e) => setConsentFunctional(e.target.checked)}
-              className="accent-[#bf9b30] h-4 w-4 md:h-3 md:w-3 cursor-pointer"
+              className="accent-[#bf9b30] h-4 w-4 cursor-pointer"
             />
           </div>
 
@@ -136,7 +143,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               type="checkbox"
               checked={consentAnalytics}
               onChange={(e) => setConsentAnalytics(e.target.checked)}
-              className="accent-[#bf9b30] h-4 w-4 md:h-3 md:w-3 cursor-pointer"
+              className="accent-[#bf9b30] h-4 w-4 cursor-pointer"
             />
           </div>
 

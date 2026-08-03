@@ -6,9 +6,15 @@
 export default function PhotoHero() {
   return (
     <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
+      {/* This is the page's LCP image. A real srcset with multiple pre-resized variants would
+          be the fuller fix (mobile visitors currently download the same full-resolution file
+          as desktop) but that needs an image pipeline to actually generate those variants,
+          which isn't wired up in this project - fetchpriority is a safe, real improvement in
+          the meantime, telling the browser to prioritize this fetch immediately. */}
       <img
         src="/assets/images/hero-doha-skyline.jpg"
         alt=""
+        fetchPriority="high"
         className="w-full h-full object-cover kenburns-slow"
         draggable={false}
       />
