@@ -14,6 +14,14 @@
 // If the email doesn't exist yet, this creates a new SUPER_ADMIN account with it instead of
 // failing - lets an operator stand up a personal admin login without a separate signup step.
 //
+// IMPORTANT: this writes straight to Postgres via Prisma, bypassing the running server
+// entirely. The app itself keeps its data in an in-memory cache (see readDb()/writeDb() in
+// server-db.ts) that's only loaded from Postgres once, at server startup - it is NOT queried
+// live per-request. That means the running server process will keep serving the OLD password
+// (or "no password") until it restarts and reloads from Postgres. After running this script,
+// you must restart the Render web service (Render dashboard -> the service -> Manual Deploy ->
+// "Restart Service", or trigger a redeploy) before the new password actually takes effect.
+//
 // Usage (run from the Render Shell tab, where DATABASE_URL is already set):
 //   npx tsx scripts/set-admin-password.ts <email> <newPassword> [fullName]
 //
@@ -48,7 +56,8 @@ async function main() {
         where: { email },
         data: { data: JSON.stringify(userData) }
       });
-      console.log(`Password set for ${email} (role: ${userData.role}). You can now log in with the new password.`);
+      console.log(`Password set for ${email} (role: ${userData.role}).`);
+      console.log(`IMPORTANT: restart the Render web service now (Render dashboard -> service -> Manual Deploy -> Restart Service) - the running server won't see this change until it restarts. Then log in with the new password.`);
       return;
     }
 
@@ -71,7 +80,8 @@ async function main() {
       data: { id: userId, email, role: "SUPER_ADMIN", data: JSON.stringify(userData) }
     });
 
-    console.log(`New SUPER_ADMIN account created for ${email}. You can now log in with the password you set.`);
+    console.log(`New SUPER_ADMIN account created for ${email}.`);
+    console.log(`IMPORTANT: restart the Render web service now (Render dashboard -> service -> Manual Deploy -> Restart Service) - the running server won't see this new account until it restarts. Then log in with the password you set.`);
   } finally {
     await prisma.$disconnect();
   }
