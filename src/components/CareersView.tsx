@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Briefcase, MapPin, Clock, ArrowRight, CheckCircle2, User, Mail, Phone, Upload } from "lucide-react";
+import { Briefcase, MapPin, Clock, ArrowRight, CheckCircle2, User, Mail, Phone, Upload, X } from "lucide-react";
 
 interface CareersViewProps {
   isRtl: boolean;
@@ -204,9 +204,10 @@ export default function CareersView({ isRtl }: CareersViewProps) {
               </div>
               <button
                 onClick={() => setSelectedJob(null)}
-                className="p-1 text-[#6e6b66] hover:text-[#1a1918]"
+                className="p-1 text-[#6e6b66] hover:text-[#1a1918] cursor-pointer"
+                aria-label={isRtl ? "إغلاق" : "Close"}
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 

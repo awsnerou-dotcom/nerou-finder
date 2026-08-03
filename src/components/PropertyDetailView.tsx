@@ -38,14 +38,17 @@ import {
   MessageCircle,
   Phone,
   Check,
-  Clock
+  Clock,
+  School,
+  TrainFront,
+  ShoppingBag
 } from "lucide-react";
 
-const NEARBY_TYPE_ICON: Record<LandmarkType, string> = {
-  EDUCATION: "🏫",
-  METRO: "🚇",
-  MALL: "🛍️",
-  LANDMARK: "📍"
+const NEARBY_TYPE_ICON: Record<LandmarkType, React.ComponentType<{ size?: number; className?: string }>> = {
+  EDUCATION: School,
+  METRO: TrainFront,
+  MALL: ShoppingBag,
+  LANDMARK: MapPin
 };
 const NEARBY_TYPE_LABEL_EN: Record<LandmarkType, string> = {
   EDUCATION: "SCHOOLS & CARE",
@@ -1227,12 +1230,14 @@ export default function PropertyDetailView({
                       <MapPin size={24} className="text-[#BF9B30]" />
                     </div>
 
-                    <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 border border-[#E6E2DE] rounded text-[10px] text-[#6E6B66] font-bold">
-                      📍 {property.district}, {property.city}
+                    <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 border border-[#E6E2DE] rounded text-[10px] text-[#6E6B66] font-bold flex items-center gap-1">
+                      <MapPin size={11} className="text-[#BF9B30]" />
+                      <span>{property.district}, {property.city}</span>
                     </div>
 
-                    <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-xs p-2 border border-[#E6E2DE] rounded text-[9px] text-[#6E6B66] text-center font-medium">
-                      ⚠️ {isRtl ? "العنوان الدقيق مخفي لخصوصية البائع. الدائرة تمثل النطاق التقريبي للحي." : "Approximate area only to safeguard property owner's absolute privacy rights."}
+                    <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-xs p-2 border border-[#E6E2DE] rounded text-[9px] text-[#6E6B66] text-center font-medium flex items-center justify-center gap-1">
+                      <AlertTriangle size={11} className="text-amber-600 shrink-0" />
+                      <span>{isRtl ? "العنوان الدقيق مخفي لخصوصية البائع. الدائرة تمثل النطاق التقريبي للحي." : "Approximate area only to safeguard property owner's absolute privacy rights."}</span>
                     </div>
                   </div>
                 </div>
@@ -1244,10 +1249,13 @@ export default function PropertyDetailView({
                   <h4 className="font-bold text-[#1A1918] uppercase tracking-wider text-[10px]">{isRtl ? "مؤشر المسافات والمرافق الحيوية" : "Verified Commutes & Facilities"}</h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {nearbyPlaces.map((place) => (
+                    {nearbyPlaces.map((place) => {
+                      const NearbyIcon = NEARBY_TYPE_ICON[place.type];
+                      return (
                       <div key={place.name} className="p-3 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg">
-                        <span className="text-[10px] font-bold text-[#6E6B66] uppercase block mb-1">
-                          {NEARBY_TYPE_ICON[place.type]} {isRtl ? NEARBY_TYPE_LABEL_AR[place.type] : NEARBY_TYPE_LABEL_EN[place.type]}
+                        <span className="text-[10px] font-bold text-[#6E6B66] uppercase mb-1 flex items-center gap-1">
+                          <NearbyIcon size={11} />
+                          <span>{isRtl ? NEARBY_TYPE_LABEL_AR[place.type] : NEARBY_TYPE_LABEL_EN[place.type]}</span>
                         </span>
                         <p className="font-bold text-[#1A1918]">{isRtl ? place.nameAr : place.name}</p>
                         <span className="text-[#6E6B66] text-[10px]">
@@ -1260,7 +1268,8 @@ export default function PropertyDetailView({
                                 : `${place.drivingMinutes} min drive (${place.distanceKm.toFixed(1)} km)`)}
                         </span>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

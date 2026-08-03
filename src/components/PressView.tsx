@@ -56,7 +56,10 @@ export default function PressView({ isRtl }: PressViewProps) {
                 <span className="px-2 py-0.5 bg-[#fcfbfa] border border-[#f2ede8] text-[#bf9b30] text-[9px] font-bold rounded uppercase">
                   {isRtl ? "بيان صحفي" : "Press Release"}
                 </span>
-                <span className="block text-gray-400 font-mono mt-1">🗓 {release.date ? release.date.split("T")[0] : "2026-07-20"}</span>
+                <span className="flex items-center gap-1 text-gray-400 font-mono mt-1">
+                  <Calendar size={11} className="shrink-0" />
+                  {release.date ? release.date.split("T")[0] : "2026-07-20"}
+                </span>
                 <span className="block text-[10px] text-[#6e6b66]">Doha, Qatar</span>
               </div>
               

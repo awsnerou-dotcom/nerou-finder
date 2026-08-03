@@ -5,7 +5,7 @@
 
 import React, { useState } from "react";
 import { Property, TransactionType } from "../types.js";
-import { X, Check, Shield, Star, RefreshCw, Plus } from "lucide-react";
+import { X, Check, Shield, Star, RefreshCw, Plus, MapPin, Bed, Bath } from "lucide-react";
 
 interface PropertyCompareViewProps {
   properties: Property[];
@@ -123,7 +123,10 @@ export default function PropertyCompareView({
                         <h4 className="font-bold text-[#1A1918] line-clamp-2">
                           {isRtl ? prop.titleAr || prop.title : prop.title}
                         </h4>
-                        <p className="text-[10px] text-[#6E6B66]">📍 {prop.district}, {prop.city}</p>
+                        <p className="text-[10px] text-[#6E6B66] flex items-center gap-1">
+                          <MapPin size={10} className="shrink-0" />
+                          <span>{prop.district}, {prop.city}</span>
+                        </p>
                       </div>
                     </>
                   ) : (
@@ -198,7 +201,12 @@ export default function PropertyCompareView({
               const prop = properties[idx];
               return (
                 <div key={idx} className="p-4 flex items-center text-[#1A1918]">
-                  {prop && <span>🛏️ {prop.bedrooms} | 🚿 {prop.bathrooms}</span>}
+                  {prop && (
+                    <span className="flex items-center gap-2.5">
+                      <span className="flex items-center gap-1"><Bed size={12} />{prop.bedrooms}</span>
+                      <span className="flex items-center gap-1"><Bath size={12} />{prop.bathrooms}</span>
+                    </span>
+                  )}
                 </div>
               );
             })}

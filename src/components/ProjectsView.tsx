@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, Building2, Calendar, MapPin, Download, ArrowRight, CheckCircle2, ChevronRight } from "lucide-react";
+import { Sparkles, Building2, Calendar, MapPin, Download, ArrowRight, CheckCircle2, ChevronRight, X, DollarSign } from "lucide-react";
 import { Project, Organization } from "../types.js";
 
 interface ProjectsViewProps {
@@ -170,8 +170,9 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
               <button
                 onClick={() => setSelectedProject(null)}
                 className="p-1.5 bg-gray-50 border border-[#e6e2de] rounded-lg hover:bg-gray-100 cursor-pointer"
+                aria-label={isRtl ? "إغلاق" : "Close"}
               >
-                ✕
+                <X size={15} />
               </button>
             </div>
 
@@ -184,9 +185,9 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
 
                 <div className="bg-[#fcfbfa] p-3 rounded-lg border border-[#f2ede8] space-y-2">
                   <span className="font-bold text-[10px] text-[#bf9b30] uppercase block">{isRtl ? "المواصفات الرئيسية" : "Key Specifications"}</span>
-                  <p>📍 {isRtl ? "الموقع: " : "Location: "} <strong>{isRtl ? selectedProject.locationAr : selectedProject.location}</strong></p>
-                  <p>🗓 {isRtl ? "التسليم المتوقع: " : "Expected Delivery: "} <strong>{isRtl ? selectedProject.deliveryAr : selectedProject.delivery}</strong></p>
-                  <p>💵 {isRtl ? "تبدأ من: " : "Price: "} <strong>{isRtl ? selectedProject.priceAr : selectedProject.price}</strong></p>
+                  <p className="flex items-center gap-1.5"><MapPin size={12} className="text-[#bf9b30] shrink-0" /> {isRtl ? "الموقع: " : "Location: "} <strong>{isRtl ? selectedProject.locationAr : selectedProject.location}</strong></p>
+                  <p className="flex items-center gap-1.5"><Calendar size={12} className="text-[#bf9b30] shrink-0" /> {isRtl ? "التسليم المتوقع: " : "Expected Delivery: "} <strong>{isRtl ? selectedProject.deliveryAr : selectedProject.delivery}</strong></p>
+                  <p className="flex items-center gap-1.5"><DollarSign size={12} className="text-[#bf9b30] shrink-0" /> {isRtl ? "تبدأ من: " : "Price: "} <strong>{isRtl ? selectedProject.priceAr : selectedProject.price}</strong></p>
                 </div>
               </div>
 

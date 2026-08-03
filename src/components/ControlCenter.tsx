@@ -64,7 +64,10 @@ import {
   Layers,
   ClipboardList,
   TrendingUp,
-  Clock
+  Clock,
+  X,
+  Calendar,
+  MapPin
 } from "lucide-react";
 
 interface ControlCenterProps {
@@ -3300,9 +3303,10 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <button
                           type="button"
                           onClick={() => setIsAddingPlan(false)}
-                          className="text-[#6e6b66] hover:text-[#1a1918] font-bold"
+                          className="text-[#6e6b66] hover:text-[#1a1918] font-bold cursor-pointer"
+                          aria-label={isRtl ? "إغلاق" : "Close"}
                         >
-                          ✕
+                          <X size={15} />
                         </button>
                       </h4>
 
@@ -3445,7 +3449,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
                             <div className="bg-[#fcfbfa] p-2 rounded-lg border border-[#f2ede8] text-[10px] space-y-1 text-[#6e6b66]">
                               <p>📦 Current tier: <strong className="text-[#1a1918]">{plan?.name || org.subscriptionPlanId}</strong></p>
-                              <p>🗓 Expiry: <strong className="text-[#1a1918]">{org.subscriptionExpiry ? org.subscriptionExpiry.split("T")[0] : "No Expiry Set"}</strong></p>
+                              <p className="flex items-center gap-1"><Calendar size={11} className="shrink-0" /> Expiry: <strong className="text-[#1a1918]">{org.subscriptionExpiry ? org.subscriptionExpiry.split("T")[0] : "No Expiry Set"}</strong></p>
                               {org.subscriptionStartDate && <p>🚀 Activated: <strong className="text-[#1a1918]">{org.subscriptionStartDate}</strong></p>}
                               {org.subscriptionActivationMethod && <p>💳 Method: <strong className="text-[#1a1918]">{org.subscriptionActivationMethod}</strong></p>}
                               {org.subscriptionNotes && <p className="italic text-gray-500 mt-1">Notes: "{org.subscriptionNotes}"</p>}
@@ -4389,7 +4393,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <h4 className="font-bold text-sm text-[#1a1918]">{job.title} / {job.titleAr}</h4>
                         <div className="flex flex-wrap gap-2 text-[10px] text-[#6e6b66] mt-1">
                           <span>🏢 {job.department} ({job.departmentAr})</span>
-                          <span>📍 {job.location}</span>
+                          <span className="inline-flex items-center gap-1"><MapPin size={11} /> {job.location}</span>
                           <span>⏳ {job.type}</span>
                         </div>
                         <p className="text-[10px] text-[#6e6b66] mt-2 italic">"{job.description}"</p>
@@ -5060,7 +5064,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 <div key={area.id} className="space-y-1.5">
                                   <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded border border-[#e6e2de]">
                                     <span className="text-xs font-semibold text-[#1a1918] flex items-center gap-1.5">
-                                      📍 {area.name} <span className="text-[10px] text-[#6e6b66]">({area.nameAr})</span>
+                                      <MapPin size={12} className="shrink-0" /> {area.name} <span className="text-[10px] text-[#6e6b66]">({area.nameAr})</span>
                                     </span>
                                     <span className="text-[10px] text-gray-400">
                                       {districtsUnderArea.length} {isRtl ? "محلات فرعية" : "sub-zones"}
