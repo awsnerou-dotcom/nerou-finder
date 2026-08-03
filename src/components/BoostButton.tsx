@@ -164,7 +164,7 @@ export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonP
               type="button"
               onClick={handleCancelPendingBoost}
               disabled={loading !== null}
-              className="px-2 py-1 bg-ink hover:bg-chrome-hover text-white rounded text-[9px] font-bold cursor-pointer disabled:opacity-50"
+              className="px-2 py-1 bg-chrome hover:bg-chrome-hover text-white rounded text-[9px] font-bold cursor-pointer disabled:opacity-50"
             >
               {isRtl ? "الرجوع للتحسين أولاً" : "Go fix it first"}
             </button>

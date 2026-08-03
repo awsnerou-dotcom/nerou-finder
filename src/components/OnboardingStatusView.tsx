@@ -97,7 +97,7 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
     <div className="space-y-6 max-w-3xl mx-auto" dir={isRtl ? "rtl" : "ltr"}>
       {/* Header */}
       <div className="text-center space-y-2 border-b border-border pb-6">
-        <div className="w-14 h-14 mx-auto rounded-full bg-ink flex items-center justify-center">
+        <div className="w-14 h-14 mx-auto rounded-full bg-chrome flex items-center justify-center">
           <ShieldCheck className="text-gold" size={26} />
         </div>
         <h2 className="text-2xl font-serif text-ink font-medium">
@@ -111,7 +111,7 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
       </div>
 
       {/* Progress Tracker */}
-      <div className="bg-white p-6 rounded-xl border border-border">
+      <div className="bg-surface p-6 rounded-xl border border-border">
         <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-0">
           {STEPS.map((step, idx) => {
             const stepNumber = idx + 1;
@@ -126,8 +126,8 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
                         isDone
                           ? "bg-gold border-gold text-black"
                           : isCurrent
-                          ? "border-gold text-gold bg-white"
-                          : "border-border text-ink-muted bg-white"
+                          ? "border-gold text-gold bg-surface"
+                          : "border-border text-ink-muted bg-surface"
                       }`}
                     >
                       {isDone ? <CheckCircle2 size={16} /> : isCurrent ? <Clock size={16} /> : <Circle size={14} />}
@@ -166,7 +166,7 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
 
       {/* Plan + Next Action Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-1 bg-white p-5 rounded-xl border border-border space-y-2">
+        <div className="md:col-span-1 bg-surface p-5 rounded-xl border border-border space-y-2">
           <div className="flex items-center gap-2 text-ink-muted">
             <CreditCard size={14} />
             <span className="text-[10px] font-bold uppercase tracking-wider">{isRtl ? "الخطة المختارة" : "Selected Plan"}</span>

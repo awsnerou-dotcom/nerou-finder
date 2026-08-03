@@ -63,7 +63,7 @@ export default function SupportTicketsView({
 
   if (!currentUser) {
     return (
-      <div className="bg-white p-8 md:p-12 rounded-xl border border-border text-center max-w-lg mx-auto space-y-6 my-12 animate-in fade-in duration-200" dir={isRtl ? "rtl" : "ltr"}>
+      <div className="bg-surface p-8 md:p-12 rounded-xl border border-border text-center max-w-lg mx-auto space-y-6 my-12 animate-in fade-in duration-200" dir={isRtl ? "rtl" : "ltr"}>
         <div className="w-16 h-16 bg-gold/10 border border-gold/30 text-gold rounded-full flex items-center justify-center mx-auto shadow-sm">
           <ShieldAlert size={28} />
         </div>
@@ -89,7 +89,7 @@ export default function SupportTicketsView({
           </button>
           <button
             onClick={onSignupTrigger}
-            className="px-5 py-2.5 bg-white border border-border hover:bg-gray-50 text-ink text-xs font-bold rounded-lg uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            className="px-5 py-2.5 bg-surface border border-border hover:bg-gray-50 text-ink text-xs font-bold rounded-lg uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
             <UserPlus size={14} />
             <span>{isRtl ? "شريك جديد" : "Sign Up"}</span>
@@ -192,7 +192,7 @@ export default function SupportTicketsView({
         <div className="flex gap-2">
           <button
             onClick={fetchUserTickets}
-            className="p-1.5 bg-white border border-border rounded-lg hover:bg-gray-50 text-ink-muted cursor-pointer"
+            className="p-1.5 bg-surface border border-border rounded-lg hover:bg-gray-50 text-ink-muted cursor-pointer"
             title={isRtl ? "تحديث" : "Refresh"}
           >
             <RefreshCw size={14} />
@@ -210,7 +210,7 @@ export default function SupportTicketsView({
       </div>
 
       {isCreating ? (
-        <form onSubmit={handleSubmitTicket} className="bg-white p-5 border border-gold/30 rounded-xl space-y-4 text-xs">
+        <form onSubmit={handleSubmitTicket} className="bg-surface p-5 border border-gold/30 rounded-xl space-y-4 text-xs">
           <h3 className="font-serif font-bold text-sm text-ink border-b border-surface-2 pb-1">
             {isRtl ? "تفاصيل تذكرة الدعم الفني" : "Describe Technical/Billing Issue"}
           </h3>
@@ -234,7 +234,7 @@ export default function SupportTicketsView({
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                 >
                   <option value="TECHNICAL">{isRtl ? "فني" : "Technical"}</option>
                   <option value="BILLING">{isRtl ? "الفواتير" : "Billing"}</option>
@@ -249,7 +249,7 @@ export default function SupportTicketsView({
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                 >
                   <option value="LOW">{isRtl ? "منخفضة" : "Low"}</option>
                   <option value="MEDIUM">{isRtl ? "متوسطة" : "Medium"}</option>
@@ -276,7 +276,7 @@ export default function SupportTicketsView({
             <button
               type="button"
               onClick={() => setIsCreating(false)}
-              className="px-3 py-1.5 bg-white border border-border rounded-lg cursor-pointer"
+              className="px-3 py-1.5 bg-surface border border-border rounded-lg cursor-pointer"
             >
               {isRtl ? "إلغاء" : "Cancel"}
             </button>
@@ -291,7 +291,7 @@ export default function SupportTicketsView({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
           {/* List queue */}
-          <div className="md:col-span-1 border border-border rounded-xl overflow-hidden divide-y divide-surface-2 bg-white h-fit">
+          <div className="md:col-span-1 border border-border rounded-xl overflow-hidden divide-y divide-surface-2 bg-surface h-fit">
             <div className="bg-ink-inverse p-3 border-b border-border font-bold text-ink">
               {isRtl ? "بطاقاتي المفتوحة والمغلقة" : "My Open Inquiries"}
             </div>
@@ -336,12 +336,12 @@ export default function SupportTicketsView({
                       {isRtl ? "رقم المرجع: " : "Ref: "} {selectedTicket.id} • Status: <strong className="text-gold">{selectedTicket.status}</strong>
                     </span>
                   </div>
-                  <span className="px-2 py-0.5 bg-white border border-border rounded-full text-[9px] font-bold uppercase text-ink-muted">
+                  <span className="px-2 py-0.5 bg-surface border border-border rounded-full text-[9px] font-bold uppercase text-ink-muted">
                     {selectedTicket.priority}
                   </span>
                 </div>
 
-                <div className="space-y-3 max-h-[300px] overflow-y-auto p-2 bg-white rounded-lg border border-surface-2">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto p-2 bg-surface rounded-lg border border-surface-2">
                   <div className="bg-canvas p-3 rounded-lg border border-surface-2 space-y-1">
                     <span className="font-bold text-[9px] text-ink block">{userName} ({isRtl ? "العميل" : "Creator"})</span>
                     <p className="text-xs text-ink-muted whitespace-pre-wrap">{selectedTicket.description}</p>
@@ -372,7 +372,7 @@ export default function SupportTicketsView({
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
                       placeholder={isRtl ? "اكتب ردك الدعم هنا..." : "Type your message to technical support here..."}
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                     ></textarea>
                     <div className="flex justify-end">
                       <button
@@ -391,7 +391,7 @@ export default function SupportTicketsView({
                 )}
               </div>
             ) : (
-              <div className="h-64 border border-dashed border-border rounded-xl flex items-center justify-center text-ink-muted p-8 text-center bg-white">
+              <div className="h-64 border border-dashed border-border rounded-xl flex items-center justify-center text-ink-muted p-8 text-center bg-surface">
                 {isRtl
                   ? "اختر بطاقة دعم فني من القائمة لعرض المحادثة والردود الرسمية من إدارة نيرو بروبرتي."
                   : "Select a support ticket from the side menu to view technical responses and official resolutions."}

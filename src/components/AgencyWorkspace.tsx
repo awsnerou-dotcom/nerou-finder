@@ -507,7 +507,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Agency Header Banner */}
-      <div className="bg-white p-6 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-surface p-6 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-xl border border-border overflow-hidden bg-gray-50">
             <img src={agency.logoUrl} alt={agency.name} className="w-full h-full object-cover" />
@@ -526,43 +526,43 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
         <div className="flex flex-wrap bg-surface-2 p-0.5 rounded-lg text-xs font-medium">
           <button
             onClick={() => setActiveTab("team")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "team" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "team" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "فريق العمل" : "Agents Team"}
           </button>
           <button
             onClick={() => setActiveTab("leads")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "leads" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "leads" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "إدارة العملاء" : "Leads Panel"}
           </button>
           <button
             onClick={() => setActiveTab("routing")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "routing" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "routing" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "توزيع العملاء" : "Lead Routing"}
           </button>
           <button
             onClick={() => setActiveTab("campaigns")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "campaigns" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "campaigns" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الحملات الإعلانية" : "Ad Campaigns"}
           </button>
           <button
             onClick={() => setActiveTab("subscription")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "subscription" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "subscription" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الاشتراكات SaaS" : "SaaS Billing"}
           </button>
           <button
             onClick={() => setActiveTab("verification")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "verification" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "verification" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
           <button
             onClick={() => setActiveTab("profile")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "profile" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "profile" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الإعدادات" : "Profile"}
           </button>
@@ -575,7 +575,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
       {/* PROFILE / SETTINGS TAB */}
       {activeTab === "profile" && (
         <div className="space-y-6">
-          <form onSubmit={handleSaveOrgProfile} className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs">
+          <form onSubmit={handleSaveOrgProfile} className="bg-surface p-6 rounded-xl border border-border space-y-4 text-xs">
             <div className="flex items-center gap-4 border-b border-surface-2 pb-4">
               <div className="relative shrink-0">
                 {orgLogoUrl ? (
@@ -664,7 +664,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
             </div>
           </form>
 
-          <form onSubmit={handleChangePassword} className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs">
+          <form onSubmit={handleChangePassword} className="bg-surface p-6 rounded-xl border border-border space-y-4 text-xs">
             <div className="border-b border-surface-2 pb-3 flex items-center gap-2">
               <Lock size={16} className="text-gold" />
               <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "تغيير كلمة المرور" : "Change Password"}</h4>
@@ -722,7 +722,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
       {activeTab === "team" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Active Agents list */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-border overflow-hidden">
+          <div className="lg:col-span-2 bg-surface rounded-xl border border-border overflow-hidden">
             <div className="p-4 bg-ink-inverse border-b border-border">
               <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "قائمة المستشارين العقاريين" : "Active Certified Brokers"}</h4>
             </div>
@@ -783,7 +783,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
           </div>
 
           {/* Invite broker */}
-          <div className="bg-white p-5 rounded-xl border border-border space-y-4 h-fit">
+          <div className="bg-surface p-5 rounded-xl border border-border space-y-4 h-fit">
             <h4 className="font-serif text-base font-semibold text-ink">{isRtl ? "دعوة وسيط عقاري جديد" : "Invite Licensed Broker"}</h4>
             <p className="text-[11px] text-ink-muted leading-relaxed">
               {isRtl ? "أدخل البريد الإلكتروني للوسيط التابع للوكالة لإضافته إلى حساب مساحة العمل وترحيل العقارات والعملاء تلقائيًا." : "Send joining credentials to brokers. Once registered, they gain full assigned lead tracking privileges under your organization."}
@@ -797,7 +797,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                   value={newAgentName}
                   onChange={(e) => setNewAgentName(e.target.value)}
                   placeholder="e.g. Faisal Hassan"
-                  className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold"
                 />
               </div>
 
@@ -809,7 +809,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                   value={newAgentEmail}
                   onChange={(e) => setNewAgentEmail(e.target.value)}
                   placeholder="e.g. broker@elitegulf.qa"
-                  className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold"
                 />
               </div>
 
@@ -826,7 +826,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
 
       {/* LEAD ROUTING TAB */}
       {activeTab === "routing" && (
-        <div className="bg-white p-6 rounded-xl border border-border space-y-6 max-w-2xl text-xs">
+        <div className="bg-surface p-6 rounded-xl border border-border space-y-6 max-w-2xl text-xs">
           <div>
             <h4 className="font-serif text-base font-semibold text-ink">{isRtl ? "توزيع وتوجيه العملاء آليًا" : "SaaS Automated Lead Routing Policy"}</h4>
             <p className="text-ink-muted mt-1 leading-relaxed">
@@ -849,7 +849,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
               </div>
             </label>
 
-            <label className="p-4 bg-white border border-border rounded-xl flex items-center gap-3 cursor-pointer hover:border-gray-300">
+            <label className="p-4 bg-surface border border-border rounded-xl flex items-center gap-3 cursor-pointer hover:border-gray-300">
               <input
                 type="radio"
                 name="routing"
@@ -863,7 +863,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
               </div>
             </label>
 
-            <label className="p-4 bg-white border border-border rounded-xl flex items-center gap-3 cursor-pointer hover:border-gray-300">
+            <label className="p-4 bg-surface border border-border rounded-xl flex items-center gap-3 cursor-pointer hover:border-gray-300">
               <input
                 type="radio"
                 name="routing"
@@ -891,7 +891,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
       {activeTab === "campaigns" && (
         <div className="space-y-6">
           {/* Self-service ad boosts (instant, no admin approval - independent of the campaign flow below) */}
-          <div className="bg-white rounded-xl border border-border overflow-hidden">
+          <div className="bg-surface rounded-xl border border-border overflow-hidden">
             <div className="p-4 bg-ink-inverse border-b border-border">
               <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "رفع فوري للإعلانات (بدون موافقة إدارية)" : "Self-Service Listing Boosts"}</h4>
               <p className="text-[10px] text-ink-muted mt-0.5">
@@ -922,7 +922,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
             <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إعلانات العقارات المميزة والمدعومة" : "Promoted Listings Marketing campaigns"}</h4>
             <button
               onClick={() => setIsCreatingCampaign(!isCreatingCampaign)}
-              className="px-3 py-1.5 bg-ink hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
               <span>{isRtl ? "بدء حملة إعلانية" : "Launch Promotion"}</span>
@@ -930,7 +930,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
           </div>
 
           {isCreatingCampaign && (
-            <form onSubmit={handleCreateCampaign} className="bg-white p-5 rounded-xl border border-gold/30 space-y-4 max-w-xl text-xs animate-in slide-in-from-top duration-200">
+            <form onSubmit={handleCreateCampaign} className="bg-surface p-5 rounded-xl border border-gold/30 space-y-4 max-w-xl text-xs animate-in slide-in-from-top duration-200">
               <h5 className="font-serif text-sm font-bold text-ink border-b border-surface-2 pb-2">
                 {isRtl ? "تفاصيل ترويج العقار المختار" : "Configure Promoted Campaign Parameters"}
               </h5>
@@ -946,7 +946,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                     value={campBudget}
                     onChange={(e) => setCampBudget(e.target.value)}
                     placeholder="e.g. 1500"
-                    className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                   />
                 </div>
 
@@ -957,7 +957,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                     required
                     value={campEndDate}
                     onChange={(e) => setCampEndDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                   />
                 </div>
               </div>
@@ -967,7 +967,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                 <select
                   value={campType}
                   onChange={(e) => setCampType(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-border rounded-lg"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg"
                 >
                   <option value="FEATURED_LISTING">Featured Listing (Top of Grid / تمييز الإعلان في الصدر)</option>
                   <option value="SPONSORED_SEARCH">Sponsored Search (AI Recommended / مطابقة مفضلة بالذكاء الاصطناعي)</option>
@@ -978,7 +978,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                 <button
                   type="button"
                   onClick={() => setIsCreatingCampaign(false)}
-                  className="px-4 py-2 bg-white hover:bg-surface-2 border border-border rounded-lg font-semibold"
+                  className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold"
                 >
                   Cancel
                 </button>
@@ -995,7 +995,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
           {/* Active Campaigns list */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {campaigns.map(camp => (
-              <div key={camp.id} className="p-5 bg-white border border-border rounded-xl space-y-4">
+              <div key={camp.id} className="p-5 bg-surface border border-border rounded-xl space-y-4">
                 <div className="flex justify-between items-center border-b border-surface-2 pb-2">
                   <span className="text-xs font-bold text-chrome uppercase">{camp.type}</span>
                   <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${
@@ -1046,7 +1046,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                     type="button"
                     disabled={!campaignBudgetDrafts[camp.id]}
                     onClick={() => handleUpdateCampaignBudget(camp.id)}
-                    className="px-2.5 py-1 bg-white hover:bg-surface-2 border border-border rounded text-[10px] font-semibold disabled:opacity-40 cursor-pointer"
+                    className="px-2.5 py-1 bg-surface hover:bg-surface-2 border border-border rounded text-[10px] font-semibold disabled:opacity-40 cursor-pointer"
                   >
                     {isRtl ? "تعديل" : "Edit"}
                   </button>
@@ -1054,7 +1054,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                     <button
                       type="button"
                       onClick={() => handleTogglePauseCampaign(camp)}
-                      className="px-2.5 py-1 bg-white hover:bg-surface-2 border border-border rounded text-[10px] font-semibold cursor-pointer"
+                      className="px-2.5 py-1 bg-surface hover:bg-surface-2 border border-border rounded text-[10px] font-semibold cursor-pointer"
                     >
                       {camp.status === "ACTIVE" ? (isRtl ? "إيقاف مؤقت" : "Pause") : (isRtl ? "استئناف" : "Resume")}
                     </button>
@@ -1062,14 +1062,14 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                   <button
                     type="button"
                     onClick={() => handleCopyCampaignLink(camp.id)}
-                    className="px-2.5 py-1 bg-white hover:bg-surface-2 border border-border rounded text-[10px] font-semibold cursor-pointer"
+                    className="px-2.5 py-1 bg-surface hover:bg-surface-2 border border-border rounded text-[10px] font-semibold cursor-pointer"
                   >
                     {copiedCampaignId === camp.id ? (isRtl ? "تم النسخ!" : "Copied!") : (isRtl ? "نسخ رابط التتبع" : "Copy Tracking Link")}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDeleteCampaign(camp.id)}
-                    className="px-2.5 py-1 bg-white hover:bg-red-50 border border-border hover:border-red-200 text-red-600 rounded text-[10px] font-semibold cursor-pointer"
+                    className="px-2.5 py-1 bg-surface hover:bg-red-50 border border-border hover:border-red-200 text-red-600 rounded text-[10px] font-semibold cursor-pointer"
                   >
                     {isRtl ? "حذف" : "Delete"}
                   </button>
@@ -1082,13 +1082,13 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
 
       {/* LEADS PANEL TAB */}
       {activeTab === "leads" && (
-        <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+        <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
           <div className="p-4 bg-ink-inverse border-b border-border flex justify-between items-center">
             <div>
               <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إدارة وتوزيع العملاء المحتملين" : "Leads Management Suite"}</h4>
               <p className="text-[11px] text-ink-muted mt-0.5">{isRtl ? "عرض وإعادة تعيين العملاء المحتملين لوسطاء الوكالة يدوياً." : "Oversee team leads and reassign clients to optimize representative response times."}</p>
             </div>
-            <span className="px-2.5 py-1 bg-ink text-white text-[10px] font-bold rounded-full">
+            <span className="px-2.5 py-1 bg-chrome text-white text-[10px] font-bold rounded-full">
               {orgLeads.length} {isRtl ? "عملاء كلي" : "Total Leads"}
             </span>
           </div>
@@ -1241,7 +1241,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
           property detail page from here, so this fetches/shows it directly instead. */}
       {leadPropertyPreview && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setLeadPropertyPreview(null)}>
-          <div className="bg-white rounded-xl max-w-md w-full overflow-hidden text-xs" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-surface rounded-xl max-w-md w-full overflow-hidden text-xs" onClick={(e) => e.stopPropagation()}>
             <img src={leadPropertyPreview.images?.[0]} alt={leadPropertyPreview.title} className="w-full h-40 object-cover" />
             <div className="p-4 space-y-1">
               <div className="flex items-start justify-between">
@@ -1260,7 +1260,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
       {activeTab === "subscription" && (
         <div className="space-y-6">
           {/* Ad billing summary (Part C) - self-service boost charges, separate from the SaaS plan fee below */}
-          <div className="bg-white p-5 rounded-xl border border-border space-y-3">
+          <div className="bg-surface p-5 rounded-xl border border-border space-y-3">
             <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
               <DollarSign size={14} className="text-gold" />
               <span>{isRtl ? "ملخص فوترة الإعلانات (الرفع الفوري)" : "Ad Billing Summary (Self-Service Boosts)"}</span>
@@ -1293,7 +1293,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-xl border border-border space-y-4 flex flex-col justify-between">
+            <div className="bg-surface p-6 rounded-xl border border-border space-y-4 flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-50 text-yellow-700 border border-yellow-200 text-[10px] font-bold uppercase rounded">
                   <Zap size={11} />

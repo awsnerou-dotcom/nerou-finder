@@ -119,7 +119,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
               onClick={() => setBillingCycle("monthly")}
               className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer ${
                 billingCycle === "monthly"
-                  ? "bg-ink text-white shadow-xs"
+                  ? "bg-chrome text-white shadow-xs"
                   : "text-ink-muted hover:text-ink"
               }`}
             >
@@ -150,7 +150,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
               key={tier.id}
               onMouseEnter={() => setHoveredTier(tier.id)}
               onMouseLeave={() => setHoveredTier(null)}
-              className={`relative bg-white rounded-xl border p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 ${
+              className={`relative bg-surface rounded-xl border p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 ${
                 tier.popular
                   ? "ring-2 ring-gold shadow-xl md:-translate-y-2 bg-gold/2"
                   : "hover:border-gold shadow-xs"
@@ -234,8 +234,8 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
                   onClick={() => onSelectPlan(tier.id)}
                   className={`w-full py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
                     tier.popular
-                      ? "bg-ink hover:bg-gold hover:text-ink text-white shadow-md hover:shadow-lg"
-                      : "bg-white border border-ink hover:bg-ink hover:text-white text-ink"
+                      ? "bg-chrome hover:bg-gold hover:text-ink text-white shadow-md hover:shadow-lg"
+                      : "bg-surface border border-ink hover:bg-chrome hover:text-white text-ink"
                   }`}
                 >
                   <span>{t.requestPlan}</span>
@@ -248,7 +248,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
       </div>
 
       {/* 3. Deep-Dive Detailed Features Comparison Table */}
-      <div className="max-w-5xl mx-auto bg-white rounded-xl border border-border overflow-hidden shadow-xs">
+      <div className="max-w-5xl mx-auto bg-surface rounded-xl border border-border overflow-hidden shadow-xs">
         <div className="p-5 bg-ink-inverse border-b border-border">
           <h3 className="font-serif text-base font-semibold text-ink flex items-center gap-2">
             <ShieldCheck className="text-gold" size={18} />
@@ -316,7 +316,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
 
       {/* 4. Payment Assurance Guarantee */}
       <div className="max-w-4xl mx-auto bg-ink-inverse rounded-xl border border-dashed border-border p-6 sm:p-8 flex flex-col md:flex-row items-center gap-6">
-        <div className="p-4 bg-white border border-border rounded-full text-gold shadow-xs">
+        <div className="p-4 bg-surface border border-border rounded-full text-gold shadow-xs">
           <Zap size={32} />
         </div>
         <div className="space-y-1.5 text-center md:text-left">
@@ -331,7 +331,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
       <div className="max-w-4xl mx-auto space-y-6">
         <h3 className="font-serif text-lg font-bold text-ink text-center">{t.faqTitle}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-5 rounded-xl border border-border space-y-2">
+          <div className="bg-surface p-5 rounded-xl border border-border space-y-2">
             <h4 className="font-semibold text-xs text-ink flex items-center gap-1.5">
               <HelpCircle size={14} className="text-gold" />
               <span>{t.faqQ1}</span>
@@ -340,7 +340,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
               {t.faqA1}
             </p>
           </div>
-          <div className="bg-white p-5 rounded-xl border border-border space-y-2">
+          <div className="bg-surface p-5 rounded-xl border border-border space-y-2">
             <h4 className="font-semibold text-xs text-ink flex items-center gap-1.5">
               <HelpCircle size={14} className="text-gold" />
               <span>{t.faqQ2}</span>

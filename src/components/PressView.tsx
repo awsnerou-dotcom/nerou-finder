@@ -44,14 +44,14 @@ export default function PressView({ isRtl }: PressViewProps) {
       {loading ? (
         <div className="py-12 text-center text-xs text-ink-muted">{isRtl ? "جاري تحميل البيانات الصحفية..." : "Loading publications..."}</div>
       ) : press.length === 0 ? (
-        <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl bg-white p-8">
+        <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl bg-surface p-8">
           <p className="font-semibold text-sm mb-1">{isRtl ? "لا توجد بيانات صحفية منشورة حاليًا" : "No press releases available"}</p>
           <p className="text-[11px] text-gray-400">{isRtl ? "يرجى التحقق لاحقًا لمعرفة المزيد من التحديثات الإعلامية." : "We'll announce new technological breakthroughs shortly."}</p>
         </div>
       ) : (
         <div className="space-y-4">
           {press.map((release) => (
-            <div key={release.id} className="p-6 bg-white border border-border rounded-xl hover:shadow-xs transition-shadow flex flex-col md:flex-row gap-6">
+            <div key={release.id} className="p-6 bg-surface border border-border rounded-xl hover:shadow-xs transition-shadow flex flex-col md:flex-row gap-6">
               <div className="md:w-1/4 space-y-1 text-xs">
                 <span className="px-2 py-0.5 bg-canvas border border-surface-2 text-gold text-[9px] font-bold rounded uppercase">
                   {isRtl ? "بيان صحفي" : "Press Release"}

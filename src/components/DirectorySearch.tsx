@@ -106,14 +106,14 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholderText}
-            className="w-full pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2.5 bg-white border border-border rounded-lg text-sm focus:outline-none focus:border-gold text-ink"
+            className="w-full pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2.5 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-gold text-ink"
           />
           <Search size={16} className={`absolute ${isRtl ? "right-3" : "left-3"} top-3 text-ink-faint`} />
         </div>
         <select
           value={minRating}
           onChange={(e) => setMinRating(Number(e.target.value))}
-          className="px-3 py-2.5 bg-white border border-border rounded-lg text-sm text-ink cursor-pointer"
+          className="px-3 py-2.5 bg-surface border border-border rounded-lg text-sm text-ink cursor-pointer"
         >
           <option value={0}>{isRtl ? "كل التقييمات" : "Any rating"}</option>
           <option value={3}>{isRtl ? "٣ نجوم فأعلى" : "3+ stars"}</option>
@@ -125,11 +125,11 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-border p-4 animate-pulse h-32" />
+            <div key={i} className="bg-surface rounded-xl border border-border p-4 animate-pulse h-32" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-border">
+        <div className="text-center py-16 bg-surface rounded-xl border border-border">
           <p className="text-sm text-ink-muted">
             {isRtl ? "لا توجد نتائج مطابقة." : "No matching results found."}
           </p>
@@ -140,7 +140,7 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
             <button
               key={item.id}
               onClick={() => onSelect(item.type, item.id)}
-              className="text-left rtl:text-right bg-white rounded-xl border border-border hover:border-gold hover:shadow-md transition-all p-4 flex gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+              className="text-left rtl:text-right bg-surface rounded-xl border border-border hover:border-gold hover:shadow-md transition-all p-4 flex gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
             >
               <img
                 src={item.photoUrl || (type === "AGENT" ? PLACEHOLDER_PHOTO : PLACEHOLDER_LOGO)}

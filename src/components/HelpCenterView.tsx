@@ -80,7 +80,7 @@ export default function HelpCenterView({ isRtl }: HelpCenterViewProps) {
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
                 selectedCategory === cat.id
                   ? "bg-gold text-black border border-gold"
-                  : "bg-white text-ink-muted border border-border hover:border-gold"
+                  : "bg-surface text-ink-muted border border-border hover:border-gold"
               }`}
             >
               <Icon size={14} />
@@ -99,7 +99,7 @@ export default function HelpCenterView({ isRtl }: HelpCenterViewProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredArticles.map((art) => (
-            <div key={art.id} className="p-5 bg-white border border-border rounded-xl hover:shadow-xs transition-shadow flex flex-col justify-between">
+            <div key={art.id} className="p-5 bg-surface border border-border rounded-xl hover:shadow-xs transition-shadow flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex justify-between items-start">
                   <span className="px-2 py-0.5 bg-ink-inverse border border-surface-2 text-gold text-[9px] font-bold rounded uppercase">

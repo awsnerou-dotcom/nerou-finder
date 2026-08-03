@@ -1494,7 +1494,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
       {/* Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-xl border border-gold shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom duration-300">
+        <div className="fixed bottom-6 right-6 z-50 bg-chrome text-white px-5 py-3 rounded-xl border border-gold shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom duration-300">
           <span className="w-2 h-2 bg-gold rounded-full animate-ping"></span>
           <span className="text-xs font-semibold">{toastMessage}</span>
         </div>
@@ -1544,7 +1544,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <button
                           key={tab.id}
                           onClick={() => setActiveSubTab(tab.id as any)}
-                          className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === tab.id ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink hover:bg-white/50"}`}
+                          className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === tab.id ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink hover:bg-white/50"}`}
                         >
                           <span>{isRtl ? tab.label.ar : tab.label.en}</span>
                           {!!tab.badge && (
@@ -1586,7 +1586,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   <p className="text-[9px] text-gray-400 mt-2">Aggregated from active subscriptions</p>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-border">
+                <div className="bg-surface p-5 rounded-xl border border-border">
                   <span className="text-[10px] text-ink-muted block uppercase tracking-wider mb-1">{isRtl ? "عائدات الترويج والإعلانات" : "Boosted Ad Revenue"}</span>
                   <h3 className="text-2xl font-serif font-bold text-ink flex items-center gap-1">
                     <DollarSign size={20} className="text-ink-muted" />
@@ -1595,7 +1595,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   <p className="text-[9px] text-ink-muted mt-2">{campaigns.filter(c => c.status === "ACTIVE").length} {isRtl ? "حملة نشطة من" : "active campaigns of"} {campaigns.length}</p>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-border">
+                <div className="bg-surface p-5 rounded-xl border border-border">
                   <span className="text-[10px] text-ink-muted block uppercase tracking-wider mb-1">{isRtl ? "إجمالي العقارات بالمنصة" : "Total Platform Listings"}</span>
                   <h3 className="text-2xl font-serif font-bold text-ink">{properties.length}</h3>
                   <p className="text-[9px] text-ink-muted mt-2">
@@ -1604,7 +1604,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   </p>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-border">
+                <div className="bg-surface p-5 rounded-xl border border-border">
                   <span className="text-[10px] text-ink-muted block uppercase tracking-wider mb-1">{isRtl ? "قنوات التواصل المسجلة" : "Capturing Client Leads"}</span>
                   <h3 className="text-2xl font-serif font-bold text-ink">{leads.length}</h3>
                   <p className="text-[9px] text-emerald-600 font-bold mt-2">
@@ -1615,7 +1615,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               {/* Users by type + Listings by status */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
-                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="bg-surface rounded-xl border border-border overflow-hidden">
                   <div className="p-4 bg-ink-inverse border-b border-border">
                     <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
                       <Users size={14} className="text-gold" />
@@ -1632,7 +1632,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="bg-surface rounded-xl border border-border overflow-hidden">
                   <div className="p-4 bg-ink-inverse border-b border-border">
                     <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
                       <Layers size={14} className="text-gold" />
@@ -1652,7 +1652,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               {/* Pending applications by stage + Active vs expired subscriptions */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
-                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="bg-surface rounded-xl border border-border overflow-hidden">
                   <div className="p-4 bg-ink-inverse border-b border-border">
                     <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
                       <ClipboardList size={14} className="text-gold" />
@@ -1672,7 +1672,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="bg-surface rounded-xl border border-border overflow-hidden">
                   <div className="p-4 bg-ink-inverse border-b border-border">
                     <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
                       <CalendarRange size={14} className="text-gold" />
@@ -1696,7 +1696,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               {/* Leads this month + conversion rate, Current-period ad billing total */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
-                <div className="bg-white rounded-xl border border-border p-4 space-y-2">
+                <div className="bg-surface rounded-xl border border-border p-4 space-y-2">
                   <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
                     <TrendingUp size={14} className="text-gold" />
                     <span>{isRtl ? "العملاء المحتملون هذا الشهر ومعدل التحويل" : "Leads This Month & Conversion Rate"}</span>
@@ -1713,7 +1713,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-border p-4 space-y-2">
+                <div className="bg-surface rounded-xl border border-border p-4 space-y-2">
                   <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
                     <DollarSign size={14} className="text-gold" />
                     <span>{isRtl ? "فوترة الإعلانات للفترة الحالية" : "Current-Period Ad Billing"}</span>
@@ -1732,7 +1732,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* Recent activity feed */}
-              <div className="bg-white rounded-xl border border-border overflow-hidden">
+              <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between">
                   <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
                     <Clock size={14} className="text-gold" />
@@ -1758,7 +1758,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* ADMIN SECURITY PORTAL (Two-Factor Authentication Setup) */}
-              <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+              <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-surface-2 pb-3">
                   <div>
                     <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
@@ -1785,7 +1785,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <button
                           onClick={handleStart2faSetup}
                           disabled={tfaLoading}
-                          className="px-3.5 py-1.5 bg-ink hover:bg-gold hover:text-ink text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                          className="px-3.5 py-1.5 bg-chrome hover:bg-gold hover:text-ink text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
                         >
                           {isRtl ? "تفعيل المصادقة الثنائية" : "Configure TOTP 2FA"}
                         </button>
@@ -1822,7 +1822,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       </button>
                       <button
                         onClick={() => { setShowDisable2faConfirm(false); setDisable2faPassword(""); setTfaError(""); }}
-                        className="px-3.5 py-1.5 bg-white hover:bg-gray-50 border border-gray-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                        className="px-3.5 py-1.5 bg-surface hover:bg-gray-50 border border-gray-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
                       >
                         {isRtl ? "إلغاء" : "Cancel"}
                       </button>
@@ -1832,7 +1832,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
                 {show2faSetup && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-ink-inverse rounded-xl border border-border items-center">
-                    <div className="flex justify-center bg-white p-3 rounded-lg border border-border">
+                    <div className="flex justify-center bg-surface p-3 rounded-lg border border-border">
                       <img src={tfaQrCode} alt="TOTP QR Code" className="w-40 h-40 object-contain" />
                     </div>
                     <div className="space-y-2 md:col-span-2">
@@ -1852,20 +1852,20 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           value={tfaCode}
                           onChange={(e) => setTfaCode(e.target.value.replace(/\D/g, ""))}
                           placeholder="e.g. 123456"
-                          className="px-3 py-2 bg-white border border-border focus:border-gold focus:outline-none rounded-lg text-xs font-bold tracking-widest text-center"
+                          className="px-3 py-2 bg-surface border border-border focus:border-gold focus:outline-none rounded-lg text-xs font-bold tracking-widest text-center"
                         />
                         <div className="flex gap-2">
                           <button
                             type="submit"
                             disabled={tfaLoading}
-                            className="px-3.5 py-2 bg-ink hover:bg-gold hover:text-ink text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex-grow sm:flex-grow-0"
+                            className="px-3.5 py-2 bg-chrome hover:bg-gold hover:text-ink text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex-grow sm:flex-grow-0"
                           >
                             {isRtl ? "تأكيد وتفعيل" : "Verify & Enable"}
                           </button>
                           <button
                             type="button"
                             onClick={() => { setShow2faSetup(false); setTfaSecret(""); setTfaQrCode(""); setTfaCode(""); }}
-                            className="px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-border text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                            className="px-3.5 py-2 bg-surface hover:bg-gray-50 text-gray-700 border border-border text-xs font-bold rounded-lg transition-colors cursor-pointer"
                           >
                             {isRtl ? "إلغاء" : "Cancel"}
                           </button>
@@ -1898,7 +1898,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* DATABASE MANAGEMENT & BACKUPS */}
-              <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+              <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
                 <div>
                   <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
                     <FolderTree size={16} className="text-gold" />
@@ -1949,7 +1949,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               {/* Audit logs & Recent reports queue */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
                 {/* Audit Logs */}
-                <div className="lg:col-span-2 bg-white rounded-xl border border-border overflow-hidden">
+                <div className="lg:col-span-2 bg-surface rounded-xl border border-border overflow-hidden">
                   <div className="p-4 bg-ink-inverse border-b border-border flex justify-between items-center">
                     <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "سجل تدقيق العمليات والعمليات الأمنية" : "Cryptographic Immutable Audit Logs"}</h4>
                     <span className="px-2 py-0.5 bg-surface-2 rounded text-[10px] text-ink-muted">Live Stream</span>
@@ -1968,7 +1968,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 </div>
 
                 {/* Abuse Reports */}
-                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="bg-surface rounded-xl border border-border overflow-hidden">
                   <div className="p-4 bg-ink-inverse border-b border-border">
                     <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "بلاغات إساءة الاستخدام والأسعار الوهمية" : "Moderation & Spam Queue"}</h4>
                   </div>
@@ -1998,7 +1998,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {activeSubTab === "verifications" && (
             <div className="space-y-6 text-xs">
               {/* Organization queue */}
-              <div className="bg-white rounded-xl border border-border overflow-hidden">
+              <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <div className="p-4 bg-ink-inverse border-b border-border">
                   <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "توثيق شركات التطوير والمكاتب العقارية" : "Pending Tenant Organization Approvals"}</h4>
                 </div>
@@ -2033,7 +2033,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* Per-document verification review (FIX 1: Document Verification System) */}
-              <div className="bg-white rounded-xl border border-border overflow-hidden">
+              <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <div className="p-4 bg-ink-inverse border-b border-border">
                   <h4 className="font-serif text-sm font-semibold text-ink">
                     {isRtl ? "مراجعة مستندات التوثيق" : "Document Verification Review"}
@@ -2108,7 +2108,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                         value={rejectionReasonDraft}
                                         onChange={(e) => setRejectionReasonDraft(e.target.value)}
                                         placeholder={isRtl ? "سبب الرفض (مطلوب)" : "Rejection reason (required)"}
-                                        className="px-2 py-1 bg-white border border-border rounded text-[10px] w-56"
+                                        className="px-2 py-1 bg-surface border border-border rounded text-[10px] w-56"
                                         autoFocus
                                       />
                                       <button
@@ -2147,7 +2147,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* NEW APPLICATIONS SUB-TAB (FIX3: onboarding approval-gate pipeline) */}
           {activeSubTab === "applications" && (
-            <div className="bg-white rounded-xl border border-border overflow-hidden">
+            <div className="bg-surface rounded-xl border border-border overflow-hidden">
               <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between">
                 <h4 className="font-serif text-sm font-semibold text-ink">
                   {isRtl ? "طلبات الانضمام الجديدة" : "New Applications Pipeline"}
@@ -2185,7 +2185,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             {app.applicationStatus === ApplicationStatus.PENDING_APPROVAL && (
                               <button
                                 onClick={() => handleMoveToAwaitingPayment(app.id)}
-                                className="px-3 py-1.5 bg-ink hover:bg-gold text-white font-semibold rounded-lg cursor-pointer"
+                                className="px-3 py-1.5 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer"
                               >
                                 {isRtl ? "نقل إلى انتظار الدفع" : "Move to Awaiting Payment"}
                               </button>
@@ -2203,7 +2203,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                   setAppActivationMethod("MANUAL");
                                   setAppNotes("");
                                 }}
-                                className="px-3 py-1.5 bg-white hover:bg-surface-2 border border-border text-ink font-semibold rounded-lg cursor-pointer"
+                                className="px-3 py-1.5 bg-surface hover:bg-surface-2 border border-border text-ink font-semibold rounded-lg cursor-pointer"
                               >
                                 {isConfirming ? (isRtl ? "إغلاق النموذج" : "Close Form") : (isRtl ? "تأكيد الدفع" : "Confirm Payment")}
                               </button>
@@ -2223,7 +2223,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               <select
                                 value={appPlanId}
                                 onChange={(e) => setAppPlanId(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-border rounded-lg text-xs"
+                                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs"
                               >
                                 <option value="">-- {isRtl ? "اختر خطة" : "Select Plan"} --</option>
                                 {plans.map(p => (
@@ -2237,7 +2237,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 type="date"
                                 value={appExpiryDate}
                                 onChange={(e) => setAppExpiryDate(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-border rounded-lg text-xs font-mono"
+                                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs font-mono"
                               />
                             </div>
                             <div>
@@ -2245,7 +2245,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               <select
                                 value={appActivationMethod}
                                 onChange={(e) => setAppActivationMethod(e.target.value as any)}
-                                className="w-full px-3 py-2 bg-white border border-border rounded-lg text-xs"
+                                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs"
                               >
                                 <option value="MANUAL">MANUAL</option>
                                 <option value="BANK_TRANSFER">BANK_TRANSFER</option>
@@ -2259,13 +2259,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 type="text"
                                 value={appNotes}
                                 onChange={(e) => setAppNotes(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-border rounded-lg text-xs"
+                                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs"
                               />
                             </div>
                             <div className="md:col-span-2 flex justify-end">
                               <button
                                 onClick={() => handleConfirmApplicationPayment(app)}
-                                className="px-4 py-2 bg-ink hover:bg-gold text-white font-bold rounded-lg cursor-pointer"
+                                className="px-4 py-2 bg-chrome hover:bg-gold text-white font-bold rounded-lg cursor-pointer"
                               >
                                 {isRtl ? "تأكيد وتفعيل الاشتراك" : "Confirm & Activate Subscription"}
                               </button>
@@ -2284,7 +2284,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {activeSubTab === "listings" && (
             <div className="space-y-6 text-xs">
               {flaggedProperties.length > 0 && (
-                <div className="bg-white rounded-xl border border-amber-300 overflow-hidden">
+                <div className="bg-surface rounded-xl border border-amber-300 overflow-hidden">
                   <div className="p-4 bg-amber-50 border-b border-amber-200">
                     <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "الإعلانات المميّزة للمراجعة" : "Flagged for Review"}</h4>
                   </div>
@@ -2309,7 +2309,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 </div>
               )}
 
-              <div className="bg-white rounded-xl border border-border overflow-hidden">
+              <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">
                   <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "جميع الإعلانات" : "All Listings"}</h4>
                   <input
@@ -2317,7 +2317,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     value={listingSearch}
                     onChange={(e) => setListingSearch(e.target.value)}
                     placeholder={isRtl ? "بحث بالعنوان أو رقم الإعلان أو المدينة" : "Search title, listing ID, or city"}
-                    className="px-3 py-1.5 bg-white border border-border rounded-lg text-[11px] min-w-[220px]"
+                    className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] min-w-[220px]"
                   />
                 </div>
                 <div className="divide-y divide-surface-2 max-h-[600px] overflow-y-auto">
@@ -2342,7 +2342,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 value={flagReasonDraft[prop.id] || ""}
                                 onChange={(e) => setFlagReasonDraft(prev => ({ ...prev, [prop.id]: e.target.value }))}
                                 placeholder={isRtl ? "سبب العلامة" : "Flag reason"}
-                                className="px-2 py-1 bg-white border border-border rounded text-[10px] w-32"
+                                className="px-2 py-1 bg-surface border border-border rounded text-[10px] w-32"
                               />
                               <button
                                 disabled={!flagReasonDraft[prop.id]}
@@ -2366,7 +2366,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               {isRtl ? "تعليق" : "Suspend"}
                             </button>
                           )}
-                          <button onClick={() => handleDeleteProperty(prop.id)} className="px-2.5 py-1.5 bg-white hover:bg-surface-2 border border-border text-ink rounded font-semibold cursor-pointer" title={isRtl ? "حذف" : "Delete"}>
+                          <button onClick={() => handleDeleteProperty(prop.id)} className="px-2.5 py-1.5 bg-surface hover:bg-surface-2 border border-border text-ink rounded font-semibold cursor-pointer" title={isRtl ? "حذف" : "Delete"}>
                             <Trash2 size={12} />
                           </button>
                         </div>
@@ -2380,7 +2380,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* USERS SUB-TAB (FIX 5) */}
           {activeSubTab === "users" && (
-            <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+            <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
               <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">
                 <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "كل المستخدمين" : "All Users"}</h4>
                 <input
@@ -2388,7 +2388,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
                   placeholder={isRtl ? "بحث بالاسم أو البريد الإلكتروني" : "Search name or email"}
-                  className="px-3 py-1.5 bg-white border border-border rounded-lg text-[11px] min-w-[220px]"
+                  className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] min-w-[220px]"
                 />
               </div>
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
@@ -2445,7 +2445,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* VIEWING REQUESTS SUB-TAB (FIX 7) */}
           {activeSubTab === "viewing_requests" && (
-            <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+            <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
               <div className="p-4 bg-ink-inverse border-b border-border">
                 <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "طلبات معاينة العقارات" : "Property Viewing Requests"}</h4>
               </div>
@@ -2486,7 +2486,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             });
                             if (res.ok) fetchControlContext();
                           }}
-                          className="px-2 py-1.5 bg-white border border-border rounded text-[10px] font-semibold"
+                          className="px-2 py-1.5 bg-surface border border-border rounded text-[10px] font-semibold"
                         >
                           {["REQUESTED", "CONFIRMED", "RESCHEDULED", "COMPLETED", "CANCELLED"].map(s => (
                             <option key={s} value={s}>{s}</option>
@@ -2502,7 +2502,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* LEADS SUB-TAB */}
           {activeSubTab === "leads" && (
-            <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+            <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
               <div className="p-4 bg-ink-inverse border-b border-border">
                 <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "مراقبة قنوات الاتصالات وتوجيه الصفقات" : "Platform Unified Inquiries & Lead Router Monitor"}</h4>
               </div>
@@ -2541,7 +2541,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* CAMPAIGNS TAB */}
           {activeSubTab === "campaigns" && (
-            <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+            <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
               <div className="p-4 bg-ink-inverse border-b border-border">
                 <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "طلبات ترويج وتمييز الإعلانات" : "Boosted Ad Campaigns Approval Center"}</h4>
               </div>
@@ -2580,7 +2580,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {activeSubTab === "ad_billing" && (
             <div className="space-y-6 text-xs">
               {/* Monthly self-service boost caps per plan */}
-              <div className="bg-white rounded-xl border border-border overflow-hidden">
+              <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <div className="p-4 bg-ink-inverse border-b border-border">
                   <h4 className="font-serif text-sm font-semibold text-ink">
                     {isRtl ? "الحد الأقصى الشهري للرفع الذاتي حسب الباقة" : "Monthly Self-Service Boost Cap per Plan"}
@@ -2601,11 +2601,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           placeholder={String(adBoostCaps[plan.id] ?? "")}
                           value={capDrafts[plan.id] ?? ""}
                           onChange={(e) => setCapDrafts(prev => ({ ...prev, [plan.id]: e.target.value }))}
-                          className="w-20 px-2 py-1 bg-white border border-border rounded"
+                          className="w-20 px-2 py-1 bg-surface border border-border rounded"
                         />
                         <button
                           onClick={() => handleSaveBoostCap(plan.id)}
-                          className="px-3 py-1 bg-ink hover:bg-gold text-white rounded font-semibold cursor-pointer"
+                          className="px-3 py-1 bg-chrome hover:bg-gold text-white rounded font-semibold cursor-pointer"
                         >
                           {isRtl ? "حفظ" : "Save"}
                         </button>
@@ -2616,7 +2616,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* Running per-org billing ledger */}
-              <div className="bg-white rounded-xl border border-border overflow-hidden">
+              <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <div className="p-4 bg-ink-inverse border-b border-border">
                   <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "دفتر إعلانات الترويج الذاتي" : "Ad Billing Ledger"}</h4>
                   <p className="text-[10px] text-ink-muted mt-0.5">
@@ -2672,7 +2672,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                     return next;
                                   });
                                 }}
-                                className="px-2 py-1 bg-white hover:bg-surface-2 border border-border text-ink rounded font-semibold cursor-pointer"
+                                className="px-2 py-1 bg-surface hover:bg-surface-2 border border-border text-ink rounded font-semibold cursor-pointer"
                               >
                                 {isExpanded
                                   ? (isRtl ? "إخفاء التفاصيل" : "Hide breakdown")
@@ -2685,7 +2685,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               ) : (
                                 <button
                                   onClick={() => handleSettleBillingPeriod(group.orgId, group.billingPeriod)}
-                                  className="px-3 py-1.5 bg-ink hover:bg-gold text-white rounded font-semibold cursor-pointer"
+                                  className="px-3 py-1.5 bg-chrome hover:bg-gold text-white rounded font-semibold cursor-pointer"
                                 >
                                   {isRtl ? "وضع علامة كمسواة" : "Mark as Settled"}
                                 </button>
@@ -2738,7 +2738,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {activeSubTab === "ai" && (
             <div className="space-y-6 text-xs" dir={isRtl ? "rtl" : "ltr"}>
               {/* Header */}
-              <div className="bg-white p-5 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="bg-surface p-5 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                   <h3 className="text-base font-serif font-bold text-ink flex items-center gap-2">
                     <Cpu className="text-gold" size={18} />
@@ -2752,7 +2752,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left side: AI Configuration Form (CMS) */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-border space-y-4">
+                <div className="lg:col-span-2 bg-surface p-6 rounded-xl border border-border space-y-4">
                   <h4 className="font-serif text-sm font-semibold text-ink border-b border-surface-2 pb-2 flex items-center gap-2">
                     <Sliders size={16} className="text-gold" />
                     <span>{isRtl ? "إعدادات تهيئة محرك البحث الذكي (CMS)" : "AI Discovery Configuration Center (CMS)"}</span>
@@ -2766,7 +2766,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           type="text"
                           value={aiName}
                           onChange={(e) => setAiName(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
                           required
                         />
                       </div>
@@ -2775,7 +2775,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <select
                           value={aiModel}
                           onChange={(e) => setAiModel(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
                         >
                           <option value="gemini-3.5-flash">Gemini 3.5 Flash (Default)</option>
                           <option value="gemini-3.6-flash">Gemini 3.6 Flash (Recommended)</option>
@@ -2792,7 +2792,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={whatsappDefaultNumber}
                         onChange={(e) => setWhatsappDefaultNumber(e.target.value)}
                         placeholder="e.g. 97433334444"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
                       />
                       <p className="text-[10px] text-ink-muted mt-0.5">
                         {isRtl
@@ -2809,7 +2809,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           value={watermarkText}
                           onChange={(e) => setWatermarkText(e.target.value)}
                           placeholder="e.g. Nerou Finder"
-                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
                         />
                         <p className="text-[10px] text-ink-muted mt-0.5">
                           {isRtl ? "النص المعروض في الزاوية السفلية من صور العقارات المرفوعة." : "The main text brand shown in the bottom corner of uploaded property photos."}
@@ -2820,7 +2820,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <select
                           value={watermarkLogoType}
                           onChange={(e) => setWatermarkLogoType(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
                         >
                           <option value="gold_diamond">{isRtl ? "مربع ذهبي فاخر (افتراضي)" : "Luxury Golden Diamond (Default)"}</option>
                           <option value="simple_circle">{isRtl ? "حلقة ذهبية كلاسيكية" : "Classic Gold Circle"}</option>
@@ -2840,7 +2840,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={aiDescription}
                         onChange={(e) => setAiDescription(e.target.value)}
                         placeholder="e.g. AI-Powered Property Discovery for Qatar Real Estate"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold"
                       />
                     </div>
 
@@ -2851,7 +2851,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={aiPersonality}
                         onChange={(e) => setAiPersonality(e.target.value)}
                         placeholder="Define how the AI answers, its tone, and style..."
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-sans"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold font-sans"
                       />
                     </div>
 
@@ -2862,7 +2862,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={aiRules}
                         onChange={(e) => setAiRules(e.target.value)}
                         placeholder="Enter direct constraints, e.g. strict QAR values, only existing list..."
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold"
                       />
                     </div>
 
@@ -2874,7 +2874,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           value={restrictedTopics}
                           onChange={(e) => setRestrictedTopics(e.target.value)}
                           placeholder="e.g. Financial advice, direct legal contracts representation..."
-                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold"
                         />
                       </div>
                       <div>
@@ -2884,7 +2884,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           value={aiDisclaimers}
                           onChange={(e) => setAiDisclaimers(e.target.value)}
                           placeholder="Note: Nerou Finder is a technology-first discovery marketplace and does not act as a broker..."
-                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold"
                         />
                       </div>
                     </div>
@@ -2912,7 +2912,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           type="number"
                           value={aiMaxTokens}
                           onChange={(e) => setAiMaxTokens(parseInt(e.target.value) || 1000)}
-                          className="w-full px-3 py-1.5 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
+                          className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg focus:outline-none focus:border-gold"
                         />
                       </div>
                     </div>
@@ -2942,7 +2942,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 {/* Right side: Token Tracker & Analytics */}
                 <div className="space-y-6">
                   {/* Token Cost Tracker */}
-                  <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+                  <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
                     <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
                       <Zap size={14} className="text-gold" />
                       <span>{isRtl ? "متتبع استهلاك توكن Gemini" : "Gemini LLM Token Tracker"}</span>
@@ -2965,7 +2965,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   </div>
 
                   {/* AI Search Analytics */}
-                  <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+                  <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
                     <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
                       <Activity size={14} className="text-gold" />
                       <span>{isRtl ? "مؤشرات أداء محرك البحث نيرو" : "AI Search Engine KPIs"}</span>
@@ -3036,7 +3036,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 {health && Object.entries(health).map(([provider, status]) => {
                   if (provider === "lastCheck") return null;
                   return (
-                    <div key={provider} className="bg-white p-4 rounded-xl border border-border flex flex-col justify-between h-28">
+                    <div key={provider} className="bg-surface p-4 rounded-xl border border-border flex flex-col justify-between h-28">
                       <div>
                         <span className="text-[10px] text-ink-muted uppercase block font-bold">{provider} Provider</span>
                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold mt-1 ${
@@ -3098,7 +3098,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 <div className="lg:col-span-7 space-y-8">
                   
                   {/* MANUAL SUBSCRIPTION ALLOCATOR FORM */}
-                  <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+                  <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
                     <h4 className="font-serif text-sm font-bold text-ink border-b border-surface-2 pb-2 flex items-center gap-1.5">
                       <span className="w-1.5 h-3 bg-gold rounded-full inline-block"></span>
                       <span>{isRtl ? "تخصيص وتحديث الاشتراكات يدويًا للمؤسسات" : "Manual SaaS Subscription Allocator & Override"}</span>
@@ -3216,7 +3216,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <button
                           type="submit"
                           disabled={!selectedOrgId}
-                          className="px-6 py-2 bg-ink hover:bg-gold text-white font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-40"
+                          className="px-6 py-2 bg-chrome hover:bg-gold text-white font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-40"
                         >
                           {isRtl ? "تحديث وحفظ اشتراك المنشأة" : "Apply Manual Subscription Plan"}
                         </button>
@@ -3225,7 +3225,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   </div>
 
                   {/* CONFIGURED PLANS LIST */}
-                  <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+                  <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
                     <div className="flex justify-between items-center border-b border-surface-2 pb-2">
                       <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
                         <span className="w-1.5 h-3 bg-gold rounded-full inline-block"></span>
@@ -3243,7 +3243,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           setPlanFeaturedListingsLimit("");
                           setIsAddingPlan(true);
                         }}
-                        className="px-2.5 py-1 bg-ink hover:bg-gold text-white text-[10px] font-bold rounded cursor-pointer"
+                        className="px-2.5 py-1 bg-chrome hover:bg-gold text-white text-[10px] font-bold rounded cursor-pointer"
                       >
                         + Create Package
                       </button>
@@ -3297,7 +3297,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   
                   {/* PLAN CREATOR / EDITOR FORM */}
                   {isAddingPlan && (
-                    <form onSubmit={handleSavePlan} className="bg-white p-5 rounded-xl border border-gold/30 space-y-4 text-xs animate-in slide-in-from-right duration-200">
+                    <form onSubmit={handleSavePlan} className="bg-surface p-5 rounded-xl border border-gold/30 space-y-4 text-xs animate-in slide-in-from-right duration-200">
                       <h4 className="font-serif text-sm font-bold text-ink border-b border-surface-2 pb-1 flex justify-between items-center">
                         <span>{editingPlan ? "Modify Plan Specifications" : "Create New SaaS Plan"}</span>
                         <button
@@ -3409,7 +3409,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <button
                           type="button"
                           onClick={() => setIsAddingPlan(false)}
-                          className="px-3 py-1.5 bg-white border border-border rounded-lg"
+                          className="px-3 py-1.5 bg-surface border border-border rounded-lg"
                         >
                           Cancel
                         </button>
@@ -3424,7 +3424,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   )}
 
                   {/* ACTIVE TENANTS MONITOR LIST */}
-                  <div className="bg-white rounded-xl border border-border overflow-hidden">
+                  <div className="bg-surface rounded-xl border border-border overflow-hidden">
                     <div className="p-4 bg-ink-inverse border-b border-border">
                       <h4 className="font-serif text-sm font-semibold text-ink">Active Tenants Verification & Expire Tracking</h4>
                     </div>
@@ -3467,7 +3467,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* LEGAL CMS TAB */}
           {activeSubTab === "legal_cms" && (
-            <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+            <div className="bg-surface p-6 rounded-xl border border-border space-y-6">
               <div className="flex justify-between items-center border-b border-surface-2 pb-4">
                 <div>
                   <h3 className="text-lg font-serif text-ink font-semibold flex items-center gap-2">
@@ -3543,7 +3543,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={legalSlug}
                         onChange={(e) => setLegalSlug(e.target.value)}
                         placeholder="e.g. privacy-policy"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
@@ -3554,7 +3554,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={legalVersion}
                         onChange={(e) => setLegalVersion(e.target.value)}
                         placeholder="e.g. 1.5.0"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
@@ -3567,7 +3567,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         required
                         value={legalTitle}
                         onChange={(e) => setLegalTitle(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
@@ -3578,7 +3578,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={legalTitleAr}
                         onChange={(e) => setLegalTitleAr(e.target.value)}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
@@ -3590,7 +3590,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       value={legalContent}
                       onChange={(e) => setLegalContent(e.target.value)}
                       rows={6}
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -3602,7 +3602,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       onChange={(e) => setLegalContentAr(e.target.value)}
                       rows={6}
                       dir="rtl"
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -3612,7 +3612,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <select
                         value={legalStatus}
                         onChange={(e: any) => setLegalStatus(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       >
                         <option value="DRAFT">Draft</option>
                         <option value="PUBLISHED">Published (Visible on Web)</option>
@@ -3625,7 +3625,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <select
                         value={legalReview}
                         onChange={(e: any) => setLegalReview(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       >
                         <option value="PENDING">Under Platform Audit</option>
                         <option value="APPROVED">Certified & Valid (Approved)</option>
@@ -3638,7 +3638,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsEditingLegalDoc(false)}
-                      className="px-3 py-1.5 bg-white border border-border rounded-lg"
+                      className="px-3 py-1.5 bg-surface border border-border rounded-lg"
                     >
                       Cancel
                     </button>
@@ -3665,7 +3665,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           {doc.status}
                         </span>
                       </div>
-                      <p className="text-[10px] text-ink-muted line-clamp-3 bg-white p-2 rounded border border-surface-2">{doc.content}</p>
+                      <p className="text-[10px] text-ink-muted line-clamp-3 bg-surface p-2 rounded border border-surface-2">{doc.content}</p>
                       <div className="flex justify-between items-center text-[10px] text-ink-muted">
                         <span>Review: <strong className={doc.legalReviewStatus === "APPROVED" ? "text-emerald-600" : "text-amber-600"}>{doc.legalReviewStatus}</strong></span>
                         <button
@@ -3695,7 +3695,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* HELP ARTICLES DESK */}
           {activeSubTab === "help_articles" && (
-            <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+            <div className="bg-surface p-6 rounded-xl border border-border space-y-6">
               <div className="flex justify-between items-center border-b border-surface-2 pb-4">
                 <div>
                   <h3 className="text-lg font-serif text-ink font-semibold flex items-center gap-2">
@@ -3765,7 +3765,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <select
                         value={artCategory}
                         onChange={(e: any) => setArtCategory(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       >
                         <option value="VISITORS">Visitors & Seekers</option>
                         <option value="AGENTS">Registered Brokers & Agents</option>
@@ -3780,7 +3780,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <select
                         value={artPublished ? "true" : "false"}
                         onChange={(e) => setArtPublished(e.target.value === "true")}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       >
                         <option value="true">Published (Live)</option>
                         <option value="false">Draft (Hidden)</option>
@@ -3796,7 +3796,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         required
                         value={artTitle}
                         onChange={(e) => setArtTitle(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
@@ -3807,7 +3807,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={artTitleAr}
                         onChange={(e) => setArtTitleAr(e.target.value)}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
@@ -3819,7 +3819,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       value={artContent}
                       onChange={(e) => setArtContent(e.target.value)}
                       rows={6}
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -3831,7 +3831,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       onChange={(e) => setArtContentAr(e.target.value)}
                       rows={6}
                       dir="rtl"
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -3839,7 +3839,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsEditingArticle(false)}
-                      className="px-3 py-1.5 bg-white border border-border rounded-lg"
+                      className="px-3 py-1.5 bg-surface border border-border rounded-lg"
                     >
                       Cancel
                     </button>
@@ -3889,7 +3889,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* SUPPORT TICKETS QUEUE */}
           {activeSubTab === "support_tickets" && (
-            <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+            <div className="bg-surface p-6 rounded-xl border border-border space-y-6">
               <div className="border-b border-surface-2 pb-4">
                 <h3 className="text-lg font-serif text-ink font-semibold flex items-center gap-2">
                   <AlertOctagon className="text-red-500" size={20} />
@@ -3968,7 +3968,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 console.error(e);
                               }
                             }}
-                            className="bg-white border border-border rounded-lg p-1 text-[10px]"
+                            className="bg-surface border border-border rounded-lg p-1 text-[10px]"
                           >
                             <option value="OPEN">Open</option>
                             <option value="IN_PROGRESS">In Progress</option>
@@ -3980,7 +3980,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       </div>
 
                       {/* Conversation log */}
-                      <div className="space-y-3 max-h-[300px] overflow-y-auto p-2 bg-white rounded-lg border border-surface-2">
+                      <div className="space-y-3 max-h-[300px] overflow-y-auto p-2 bg-surface rounded-lg border border-surface-2">
                         <div className="bg-canvas p-3 rounded-lg border border-surface-2 space-y-1">
                           <div className="flex justify-between font-bold text-[10px] text-ink">
                             <span>{selectedTicket.userName} (Creator)</span>
@@ -4039,7 +4039,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           onChange={(e) => setTicketReplyText(e.target.value)}
                           rows={3}
                           required
-                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                         ></textarea>
                         <div className="flex justify-end">
                           <button
@@ -4064,7 +4064,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* PARTNERSHIP REQUESTS BOARD */}
           {activeSubTab === "partnerships" && (
-            <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+            <div className="bg-surface p-6 rounded-xl border border-border space-y-6">
               <div className="border-b border-surface-2 pb-4">
                 <h3 className="text-lg font-serif text-ink font-semibold flex items-center gap-2">
                   <Award className="text-gold" size={20} />
@@ -4175,7 +4175,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* CAREERS OPERATIONS BOARD */}
           {activeSubTab === "careers" && (
-            <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+            <div className="bg-surface p-6 rounded-xl border border-border space-y-6">
               <div className="flex justify-between items-center border-b border-surface-2 pb-4">
                 <div>
                   <h3 className="text-lg font-serif text-ink font-semibold flex items-center gap-2">
@@ -4259,7 +4259,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         required
                         value={jobTitle}
                         onChange={(e) => setJobTitle(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
@@ -4270,7 +4270,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={jobTitleAr}
                         onChange={(e) => setJobTitleAr(e.target.value)}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
@@ -4283,7 +4283,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         required
                         value={jobDept}
                         onChange={(e) => setJobDept(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
@@ -4294,7 +4294,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={jobDeptAr}
                         onChange={(e) => setJobDeptAr(e.target.value)}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
@@ -4307,7 +4307,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         required
                         value={jobLoc}
                         onChange={(e) => setJobLoc(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
@@ -4318,7 +4318,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={jobLocAr}
                         onChange={(e) => setJobLocAr(e.target.value)}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
@@ -4330,7 +4330,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       value={jobDesc}
                       onChange={(e) => setJobDesc(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -4342,7 +4342,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       onChange={(e) => setJobDescAr(e.target.value)}
                       rows={4}
                       dir="rtl"
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -4353,7 +4353,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       value={jobReqs}
                       onChange={(e) => setJobReqs(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -4365,7 +4365,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       onChange={(e) => setJobReqsAr(e.target.value)}
                       rows={4}
                       dir="rtl"
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -4373,7 +4373,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsEditingJob(false)}
-                      className="px-3 py-1.5 bg-white border border-border rounded-lg"
+                      className="px-3 py-1.5 bg-surface border border-border rounded-lg"
                     >
                       Cancel
                     </button>
@@ -4428,7 +4428,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* PRESS CMS TAB */}
           {activeSubTab === "press" && (
-            <div className="bg-white p-5 md:p-6 rounded-xl border border-border space-y-6">
+            <div className="bg-surface p-5 md:p-6 rounded-xl border border-border space-y-6">
               <div className="flex justify-between items-center border-b border-surface-2 pb-3">
                 <div>
                   <h3 className="font-serif text-lg font-bold text-ink">
@@ -4472,7 +4472,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         value={pressTitle}
                         onChange={(e) => setPressTitle(e.target.value)}
                         placeholder="e.g. Nerou Finder Launches AI Search Engine"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
@@ -4484,7 +4484,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         onChange={(e) => setPressTitleAr(e.target.value)}
                         placeholder="مثال: نيرو فايندر تطلق محرك الاكتشاف الذكي التفاعلي بالذكاء الاصطناعي"
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
@@ -4497,7 +4497,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         required
                         value={pressDate}
                         onChange={(e) => setPressDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
@@ -4517,7 +4517,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         onChange={(e) => setPressSummary(e.target.value)}
                         placeholder="A short snippet for social media cards and listings..."
                         rows={2}
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                       ></textarea>
                     </div>
                     <div>
@@ -4529,7 +4529,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         placeholder="ملخص الخبر للمنصات الرقمية..."
                         rows={2}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                        className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                       ></textarea>
                     </div>
                   </div>
@@ -4542,7 +4542,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       onChange={(e) => setPressContent(e.target.value)}
                       placeholder="Type the full detailed article content in English..."
                       rows={6}
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -4555,7 +4555,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       placeholder="اكتب المحتوى الكامل للمقال باللغة العربية..."
                       rows={6}
                       dir="rtl"
-                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -4563,7 +4563,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsEditingPress(false)}
-                      className="px-3 py-1.5 bg-white border border-border rounded-lg"
+                      className="px-3 py-1.5 bg-surface border border-border rounded-lg"
                     >
                       Cancel
                     </button>
@@ -4615,7 +4615,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* EMAIL LOGS TAB */}
           {activeSubTab === "email_logs" && (
-            <div className="bg-white p-5 md:p-6 rounded-xl border border-border space-y-6">
+            <div className="bg-surface p-5 md:p-6 rounded-xl border border-border space-y-6">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-surface-2 pb-4">
                 <div>
                   <h3 className="font-serif text-lg font-bold text-ink">
@@ -4692,7 +4692,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     {selectedEmail ? (
                       <div className="flex flex-col h-full">
                         {/* Header Details */}
-                        <div className="p-4 bg-white border-b border-border space-y-1.5 text-xs">
+                        <div className="p-4 bg-surface border-b border-border space-y-1.5 text-xs">
                           <div className="flex justify-between items-center">
                             <span className="font-mono text-[10px] text-gold bg-gold/10 px-2 py-0.5 rounded">
                               {selectedEmail.id}
@@ -4715,7 +4715,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         {/* Sandbox HTML Render Frame */}
                         <div className="p-6 bg-surface-2 overflow-y-auto flex-grow flex justify-center">
                           <div
-                            className="bg-white rounded-lg shadow-sm border border-border p-1 overflow-auto max-w-full w-full max-h-[500px]"
+                            className="bg-surface rounded-lg shadow-sm border border-border p-1 overflow-auto max-w-full w-full max-h-[500px]"
                             dangerouslySetInnerHTML={{ __html: selectedEmail.html }}
                           />
                         </div>
@@ -4734,7 +4734,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* REVIEWS MODERATION TAB */}
           {activeSubTab === "reviews" && (
-            <div className="bg-white p-5 md:p-6 rounded-xl border border-border space-y-6">
+            <div className="bg-surface p-5 md:p-6 rounded-xl border border-border space-y-6">
               <div>
                 <h3 className="font-serif text-lg font-bold text-ink">
                   {isRtl ? "إدارة وتقييم مراجعات المستشارين" : "Ratings & Reviews Moderation Queue"}
@@ -4748,7 +4748,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               {/* FIX 10: platform-wide average + filters */}
               <div className="flex flex-wrap items-center gap-3 p-3 bg-canvas border border-border rounded-xl">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-border rounded-lg">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border rounded-lg">
                   <Star size={13} className="fill-gold text-gold" />
                   <span className="font-bold text-ink text-xs">
                     {(() => {
@@ -4761,7 +4761,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 <select
                   value={reviewRatingFilter}
                   onChange={(e) => setReviewRatingFilter(e.target.value)}
-                  className="px-2.5 py-1.5 bg-white border border-border rounded-lg text-[11px]"
+                  className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[11px]"
                 >
                   <option value="">{isRtl ? "كل التقييمات" : "All ratings"}</option>
                   {[5, 4, 3, 2, 1].map(s => (
@@ -4773,7 +4773,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   value={reviewSearch}
                   onChange={(e) => setReviewSearch(e.target.value)}
                   placeholder={isRtl ? "بحث بالمقيم أو النص أو المعرف" : "Search reviewer, comment, or target ID"}
-                  className="px-2.5 py-1.5 bg-white border border-border rounded-lg text-[11px] min-w-[200px]"
+                  className="px-2.5 py-1.5 bg-surface border border-border rounded-lg text-[11px] min-w-[200px]"
                 />
                 <label className="flex items-center gap-1.5 text-[11px] text-ink-muted cursor-pointer">
                   <input type="checkbox" checked={reviewReportedOnly} onChange={(e) => setReviewReportedOnly(e.target.checked)} />
@@ -4894,7 +4894,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           )}
 
           {activeSubTab === "locations" && (
-            <div className="bg-white p-5 md:p-6 rounded-xl border border-border space-y-6">
+            <div className="bg-surface p-5 md:p-6 rounded-xl border border-border space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h3 className="font-serif text-lg font-bold text-ink">
@@ -4932,7 +4932,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         required
                         value={newLocName}
                         onChange={(e) => setNewLocName(e.target.value)}
-                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-white"
+                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-surface"
                         placeholder="e.g. Marina District, Porto Arabia"
                       />
                     </div>
@@ -4943,7 +4943,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         required
                         value={newLocNameAr}
                         onChange={(e) => setNewLocNameAr(e.target.value)}
-                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-white text-right"
+                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-surface text-right"
                         placeholder="مثال: منطقة المارينا، بورتو أرابيا"
                       />
                     </div>
@@ -4955,7 +4955,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           setNewLocType(e.target.value);
                           setNewLocParentId("");
                         }}
-                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-white"
+                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-surface"
                       >
                         <option value="MUNICIPALITY">{isRtl ? "بلدية رئيسية" : "Municipality"}</option>
                         <option value="AREA">{isRtl ? "منطقة عقارية فرعية" : "Area"}</option>
@@ -4974,7 +4974,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           required
                           value={newLocParentId}
                           onChange={(e) => setNewLocParentId(e.target.value)}
-                          className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-white"
+                          className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-surface"
                         >
                           <option value="">-- {isRtl ? "اختر الموقع الأب" : "Select Parent Location"} --</option>
                           {locations
@@ -4996,7 +4996,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         step="any"
                         value={newLocLatitude}
                         onChange={(e) => setNewLocLatitude(e.target.value)}
-                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-white"
+                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-surface"
                         placeholder="25.385"
                       />
                     </div>
@@ -5007,7 +5007,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         step="any"
                         value={newLocLongitude}
                         onChange={(e) => setNewLocLongitude(e.target.value)}
-                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-white"
+                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-surface"
                         placeholder="51.538"
                       />
                     </div>
@@ -5062,7 +5062,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               const districtsUnderArea = locations.filter(l => l.parentId === area.id);
                               return (
                                 <div key={area.id} className="space-y-1.5">
-                                  <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded border border-border">
+                                  <div className="flex items-center justify-between bg-surface px-2 py-1.5 rounded border border-border">
                                     <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
                                       <MapPin size={12} className="shrink-0" /> {area.name} <span className="text-[10px] text-ink-muted">({area.nameAr})</span>
                                     </span>

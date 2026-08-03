@@ -140,7 +140,7 @@ export default function ProfileReviewsSection({
             <div className="relative">
               <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
               {reviews.map((rev) => (
-                <div key={rev.id} className="p-3 bg-white rounded-lg border border-border space-y-1.5 shadow-2xs">
+                <div key={rev.id} className="p-3 bg-surface rounded-lg border border-border space-y-1.5 shadow-2xs">
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="font-bold text-ink">{rev.reviewerName}</span>
                     <div className="flex items-center gap-2">
@@ -228,7 +228,7 @@ export default function ProfileReviewsSection({
                     onChange={(e) => setComment(e.target.value)}
                     placeholder={isRtl ? "اكتب تعليقك هنا..." : "Share your experience with this profile..."}
                     rows={2}
-                    className="w-full p-2.5 bg-white border border-border rounded-lg text-xs focus:outline-none focus:border-gold text-ink"
+                    className="w-full p-2.5 bg-surface border border-border rounded-lg text-xs focus:outline-none focus:border-gold text-ink"
                     required
                   />
                 </div>
@@ -256,7 +256,7 @@ export default function ProfileReviewsSection({
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-3.5 py-1.5 bg-ink hover:bg-gold hover:text-ink text-white text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-55"
+                    className="px-3.5 py-1.5 bg-chrome hover:bg-gold hover:text-ink text-white text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-55"
                   >
                     {submitting && <Loader2 className="animate-spin" size={12} />}
                     <span>{isRtl ? "إرسال التقييم" : "Submit"}</span>

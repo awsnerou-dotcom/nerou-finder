@@ -129,14 +129,14 @@ export default function CareersView({ isRtl }: CareersViewProps) {
       {loading ? (
         <div className="py-12 text-center text-xs text-ink-muted">{isRtl ? "جاري تحميل الفرص الوظيفية..." : "Loading career listings..."}</div>
       ) : jobs.length === 0 ? (
-        <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl bg-white p-8">
+        <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl bg-surface p-8">
           <p className="font-semibold text-sm mb-1">{isRtl ? "لا توجد وظائف شاغرة حاليًا" : "No open positions right now"}</p>
           <p className="text-[11px] text-gray-400">{isRtl ? "يرجى التحقق لاحقًا لمعرفة المزيد من الشواغر." : "Please check back later or send an email to careers@nerou.qa"}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {jobs.map((job) => (
-            <div key={job.id} className="p-5 bg-white border border-border rounded-xl hover:shadow-xs transition-shadow flex flex-col justify-between">
+            <div key={job.id} className="p-5 bg-surface border border-border rounded-xl hover:shadow-xs transition-shadow flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex justify-between items-start">
                   <div>
@@ -192,7 +192,7 @@ export default function CareersView({ isRtl }: CareersViewProps) {
       {/* APPLICATION MODAL */}
       {selectedJob && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl border border-border shadow-2xl max-w-md w-full p-6 space-y-4">
+          <div className="bg-surface rounded-xl border border-border shadow-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex justify-between items-start border-b border-surface-2 pb-2">
               <div>
                 <span className="text-[10px] text-gold font-bold uppercase tracking-wider block">

@@ -75,7 +75,7 @@ export default function BoostRecommendations({ properties, agentId, orgId, isRtl
   if (!loading && !error && recommendations.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-gold/30 overflow-hidden">
+    <div className="bg-surface rounded-xl border border-gold/30 overflow-hidden">
       <div className="p-4 bg-ink-inverse border-b border-border flex items-center gap-2">
         <Sparkles size={16} className="text-gold shrink-0" />
         <div>

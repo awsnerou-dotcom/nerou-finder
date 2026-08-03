@@ -981,7 +981,7 @@ export default function VisitorExperience({
           {/* 2. Central Qatar Parent-Child Location & Property Type Filters */}
       {!aiSearchActive && (
         <div className="space-y-3 mb-6">
-          <div className="bg-white p-4 rounded-xl border border-border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="bg-surface p-4 rounded-xl border border-border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
 
             {/* Keyword search query */}
             <div className="sm:col-span-2 md:col-span-2">
@@ -1147,7 +1147,7 @@ export default function VisitorExperience({
               onClick={() => setViewFormat("LIST")}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 viewFormat === "LIST"
-                  ? "bg-white text-gold shadow-xs"
+                  ? "bg-surface text-gold shadow-xs"
                   : "text-ink-muted hover:text-ink"
               }`}
               title={isRtl ? "عرض القائمة" : "List View"}
@@ -1159,7 +1159,7 @@ export default function VisitorExperience({
               onClick={() => setViewFormat("MAP")}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 viewFormat === "MAP"
-                  ? "bg-white text-gold shadow-xs"
+                  ? "bg-surface text-gold shadow-xs"
                   : "text-ink-muted hover:text-ink"
               }`}
               title={isRtl ? "عرض الخريطة" : "Map View"}
@@ -1176,7 +1176,7 @@ export default function VisitorExperience({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-border rounded-lg text-xs focus:outline-none focus:border-gold text-ink"
+            className="px-3 py-1.5 bg-surface border border-border rounded-lg text-xs focus:outline-none focus:border-gold text-ink"
           >
             <option value="default">{isRtl ? "الأحدث" : "Latest"}</option>
             <option value="priceAsc">{isRtl ? "السعر (من الأقل)" : "Price (Low to High)"}</option>
@@ -1206,7 +1206,7 @@ export default function VisitorExperience({
           ))}
         </div>
       ) : getSortedProperties().length === 0 ? (
-        <div className="text-center py-20 bg-white border border-border rounded-xl">
+        <div className="text-center py-20 bg-surface border border-border rounded-xl">
           <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#faf6ea] border border-gold/30 flex items-center justify-center">
             <Info size={24} className="text-gold" />
           </div>
@@ -1242,7 +1242,7 @@ export default function VisitorExperience({
                     setSelectedProperty(property);
                   }
                 }}
-                className={`bg-white rounded-xl border transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col justify-between hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-gold focus-visible:outline-offset-2 ${
+                className={`bg-surface rounded-xl border transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col justify-between hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-gold focus-visible:outline-offset-2 ${
                   feat
                     ? "border-gold bg-gold/2 shadow-md hover:border-gold-hover ring-1 ring-gold/20"
                     : "border-border hover:border-gold shadow-sm"
@@ -1282,7 +1282,7 @@ export default function VisitorExperience({
                           className={`p-2 rounded-full shadow-sm hover:scale-110 transition-transform cursor-pointer ${
                             comparedPropertyIds.includes(property.id)
                               ? "bg-gold text-white"
-                              : "bg-white text-ink-muted"
+                              : "bg-surface text-ink-muted"
                           }`}
                           title={isRtl ? "مقارنة العقار" : "Compare Side-by-Side"}
                         >
@@ -1291,7 +1291,7 @@ export default function VisitorExperience({
 
                         <button
                           onClick={(e) => toggleSaveProperty(property.id, e)}
-                          className="p-2 bg-white rounded-full shadow-sm hover:scale-110 transition-transform cursor-pointer"
+                          className="p-2 bg-surface rounded-full shadow-sm hover:scale-110 transition-transform cursor-pointer"
                         >
                           <Bookmark
                             size={15}
@@ -1457,7 +1457,7 @@ export default function VisitorExperience({
 
       {/* Floating comparison status & triggers */}
       {comparedPropertyIds.length > 0 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-ink border border-gold/30 shadow-2xl rounded-full px-5 py-3 flex items-center gap-4 text-white animate-in slide-in-from-bottom duration-300">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-chrome border border-gold/30 shadow-2xl rounded-full px-5 py-3 flex items-center gap-4 text-white animate-in slide-in-from-bottom duration-300">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 bg-gold text-black font-bold text-xs rounded-full flex items-center justify-center">
               {comparedPropertyIds.length}
@@ -1533,12 +1533,12 @@ export default function VisitorExperience({
 
           <div className="space-y-4">
             {legalDocs.length === 0 ? (
-              <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl bg-white p-8">
+              <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl bg-surface p-8">
                 {isRtl ? "لا توجد مستندات قانونية منشورة حالياً." : "No certified documents in repository currently."}
               </div>
             ) : (
               legalDocs.map((doc) => (
-                <div key={doc.id} className="p-6 bg-white border border-border rounded-xl space-y-4 text-xs">
+                <div key={doc.id} className="p-6 bg-surface border border-border rounded-xl space-y-4 text-xs">
                   <div className="flex justify-between items-start border-b border-surface-2 pb-3">
                     <div>
                       <h3 className="font-serif font-bold text-sm text-ink">{isRtl ? doc.titleAr : doc.title}</h3>
@@ -1566,7 +1566,7 @@ export default function VisitorExperience({
           <div className="bg-canvas rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedAgentProfile(null)}
-              className="absolute top-4 right-4 p-1.5 bg-white hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
             >
               <X size={15} />
             </button>
@@ -1598,7 +1598,7 @@ export default function VisitorExperience({
               </div>
 
               {/* Contact methods */}
-              <div className="bg-white p-4 rounded-xl border border-border space-y-2.5">
+              <div className="bg-surface p-4 rounded-xl border border-border space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-ink-muted font-medium">{isRtl ? "الهاتف المباشر" : "Direct Telephone"}</span>
                   <a href={`tel:${selectedAgentProfile.phone}`} className="font-bold text-chrome hover:text-gold flex items-center gap-1">
@@ -1633,7 +1633,7 @@ export default function VisitorExperience({
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {selectedAgentProfile.specialties?.map((s, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-white border border-border rounded text-[10px] font-semibold text-ink-muted">
+                      <span key={i} className="px-2 py-0.5 bg-surface border border-border rounded text-[10px] font-semibold text-ink-muted">
                         {s}
                       </span>
                     )) || <span className="text-[10px] text-gray-400">General Qatar</span>}
@@ -1646,7 +1646,7 @@ export default function VisitorExperience({
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {selectedAgentProfile.languages?.map((l, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-white border border-border rounded text-[10px] font-semibold text-ink-muted">
+                      <span key={i} className="px-2 py-0.5 bg-surface border border-border rounded text-[10px] font-semibold text-ink-muted">
                         {l}
                       </span>
                     )) || <span className="text-[10px] text-gray-400">English, Arabic</span>}
@@ -1677,7 +1677,7 @@ export default function VisitorExperience({
                         <div
                           key={prop.id}
                           onClick={() => { setSelectedProperty(prop); setSelectedAgentProfile(null); }}
-                          className="p-2 bg-white hover:bg-gold/5 border border-border hover:border-gold/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
+                          className="p-2 bg-surface hover:bg-gold/5 border border-border hover:border-gold/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
                         >
                           <div className="flex items-center gap-2 overflow-hidden">
                             <img src={prop.images[0]} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
@@ -1701,7 +1701,7 @@ export default function VisitorExperience({
           <div className="bg-canvas rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedOrgProfile(null)}
-              className="absolute top-4 right-4 p-1.5 bg-white hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
             >
               <X size={15} />
             </button>
@@ -1735,7 +1735,7 @@ export default function VisitorExperience({
               </div>
 
               {/* Contact methods */}
-              <div className="bg-white p-4 rounded-xl border border-border space-y-2.5 shadow-2xs">
+              <div className="bg-surface p-4 rounded-xl border border-border space-y-2.5 shadow-2xs">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-ink-muted font-medium">{isRtl ? "هاتف المكتب الرئيسي" : "Main HQ Telephone"}</span>
                   <a href={`tel:${selectedOrgProfile.phone}`} className="font-bold text-chrome hover:text-gold flex items-center gap-1">
@@ -1786,7 +1786,7 @@ export default function VisitorExperience({
                         <div
                           key={prop.id}
                           onClick={() => { setSelectedProperty(prop); setSelectedOrgProfile(null); }}
-                          className="p-2 bg-white hover:bg-gold/5 border border-border hover:border-gold/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
+                          className="p-2 bg-surface hover:bg-gold/5 border border-border hover:border-gold/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
                         >
                           <div className="flex items-center gap-2 overflow-hidden">
                             <img src={prop.images[0]} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
@@ -1834,7 +1834,7 @@ export default function VisitorExperience({
                   savedSearches.map((search) => {
                     const filters = typeof search.filters === 'string' ? JSON.parse(search.filters) : search.filters;
                     return (
-                      <div key={search.id} className="p-4 bg-white rounded-xl border border-border shadow-2xs hover:shadow-xs transition-all space-y-3">
+                      <div key={search.id} className="p-4 bg-surface rounded-xl border border-border shadow-2xs hover:shadow-xs transition-all space-y-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <h4 className="text-sm font-bold text-chrome">{search.name}</h4>
@@ -1923,7 +1923,7 @@ export default function VisitorExperience({
           <div className="bg-canvas rounded-xl border border-border w-full max-w-md overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setIsSaveSearchModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 bg-white hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
             >
               <X size={15} />
             </button>
@@ -1941,12 +1941,12 @@ export default function VisitorExperience({
                   type="text"
                   value={customSearchName}
                   onChange={(e) => setCustomSearchName(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:border-gold text-ink"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-gold text-ink"
                   placeholder={isRtl ? "أدخل اسماً مخصصاً لهذا البحث" : "Enter a descriptive name"}
                 />
               </div>
 
-              <div className="bg-white p-3 rounded-lg border border-border space-y-1.5 text-xs text-ink-muted">
+              <div className="bg-surface p-3 rounded-lg border border-border space-y-1.5 text-xs text-ink-muted">
                 <p className="font-bold">{isRtl ? "معايير التصفية التي سيتم مراقبتها:" : "Active filters being monitored:"}</p>
                 <ul className="list-disc list-inside space-y-0.5 opacity-80 pl-1">
                   {selectedMunicipality && (

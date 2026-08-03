@@ -38,7 +38,7 @@ const ControlCenter = lazy(() => import("./components/ControlCenter.js"));
 const OnboardingStatusView = lazy(() => import("./components/OnboardingStatusView.js"));
 
 const DashboardLoader = ({ isRtl }: { isRtl: boolean }) => (
-  <div className="text-center py-12 bg-white rounded-xl border border-border">
+  <div className="text-center py-12 bg-surface rounded-xl border border-border">
     <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
     <p className="text-sm text-ink-muted">
       {isRtl ? "جاري تحميل لوحة التحكم..." : "Loading workspace environment..."}
@@ -368,7 +368,7 @@ export default function App() {
             isRtl={isRtl}
           />
         ) : (
-          <div className="text-center py-12 bg-white rounded-xl border border-border">
+          <div className="text-center py-12 bg-surface rounded-xl border border-border">
             <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-sm text-ink-muted">
               {isRtl ? "جاري تحميل بيانات المكتب..." : "Loading organization environment..."}
@@ -383,7 +383,7 @@ export default function App() {
             isRtl={isRtl}
           />
         ) : (
-          <div className="text-center py-12 bg-white rounded-xl border border-border">
+          <div className="text-center py-12 bg-surface rounded-xl border border-border">
             <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-sm text-ink-muted">
               {isRtl ? "جاري تحميل بيانات المطور..." : "Loading developer enterprise portal..."}
@@ -401,7 +401,7 @@ export default function App() {
         );
       default:
         return (
-          <div className="text-center py-12 bg-white rounded-xl border border-border max-w-md mx-auto space-y-4">
+          <div className="text-center py-12 bg-surface rounded-xl border border-border max-w-md mx-auto space-y-4">
             <ShieldCheck size={48} className="mx-auto text-amber-500" />
             <h4 className="text-lg font-bold font-serif">
               {isRtl ? "حساب قيد الانتظار" : "Awaiting Verification"}
@@ -469,7 +469,7 @@ export default function App() {
                   onClick={() => setViewMode("MARKETPLACE")}
                   className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     viewMode === "MARKETPLACE"
-                      ? "bg-white text-ink shadow-xs border border-border"
+                      ? "bg-surface text-ink shadow-xs border border-border"
                       : "text-ink-muted hover:text-ink"
                   }`}
                 >
@@ -602,7 +602,7 @@ export default function App() {
 
         {/* Mobile Nav Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-border bg-white px-4 py-4 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="md:hidden border-t border-border bg-surface px-4 py-4 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
 
             {/* View switcher for logged in users */}
             {currentUser && (
@@ -611,7 +611,7 @@ export default function App() {
                   onClick={() => { setViewMode("MARKETPLACE"); setIsMobileMenuOpen(false); }}
                   className={`flex-1 px-3 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     viewMode === "MARKETPLACE"
-                      ? "bg-white text-ink shadow-xs border border-border"
+                      ? "bg-surface text-ink shadow-xs border border-border"
                       : "text-ink-muted hover:text-ink"
                   }`}
                 >
@@ -840,7 +840,7 @@ export default function App() {
       {/* 1. LOGIN MODAL DIALOG */}
       {isLoginOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className="bg-surface rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
 
             <button
               onClick={() => { setIsLoginOpen(false); setAuthError(""); }}
@@ -892,7 +892,7 @@ export default function App() {
                       value={twoFactorCode}
                       onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ""))}
                       placeholder="e.g. 123456"
-                      className="w-full px-3.5 py-2.5 bg-white border-2 border-gold focus:outline-none rounded-lg text-center text-lg font-bold tracking-widest text-ink"
+                      className="w-full px-3.5 py-2.5 bg-surface border-2 border-gold focus:outline-none rounded-lg text-center text-lg font-bold tracking-widest text-ink"
                       autoFocus
                     />
                   </div>
@@ -960,7 +960,7 @@ export default function App() {
       {/* 2. SIGNUP/REGISTRATION MODAL DIALOG */}
       {isSignupOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl border border-border w-full max-w-lg my-8 overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className="bg-surface rounded-xl border border-border w-full max-w-lg my-8 overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
 
             <button
               onClick={() => { setIsSignupOpen(false); setAuthError(""); }}
@@ -1019,7 +1019,7 @@ export default function App() {
                           className={`p-2.5 border rounded-lg text-xs font-bold transition-all ${
                             signupRole === UserRole.AGENT
                               ? "border-gold bg-gold/10 text-ink"
-                              : "border-border bg-white text-ink-muted hover:border-gold"
+                              : "border-border bg-surface text-ink-muted hover:border-gold"
                           }`}
                         >
                           {isRtl ? "وسيط عقاري مستقل" : "Independent Broker / Agent"}
@@ -1030,7 +1030,7 @@ export default function App() {
                           className={`p-2.5 border rounded-lg text-xs font-bold transition-all ${
                             signupRole === UserRole.AGENCY_ADMIN
                               ? "border-gold bg-gold/10 text-ink"
-                              : "border-border bg-white text-ink-muted hover:border-gold"
+                              : "border-border bg-surface text-ink-muted hover:border-gold"
                           }`}
                         >
                           {isRtl ? "مدير شركة تسويق عقاري" : "Agency Office Admin"}
@@ -1041,7 +1041,7 @@ export default function App() {
                           className={`p-2.5 border rounded-lg text-xs font-bold transition-all col-span-2 ${
                             signupRole === UserRole.DEVELOPER_ADMIN
                               ? "border-gold bg-gold/10 text-ink"
-                              : "border-border bg-white text-ink-muted hover:border-gold"
+                              : "border-border bg-surface text-ink-muted hover:border-gold"
                           }`}
                         >
                           {isRtl ? "مطور عقاري / مالك مشاريع" : "Property Developer (Project Hub)"}
@@ -1070,7 +1070,7 @@ export default function App() {
                             value={signupOrgName}
                             onChange={(e) => setSignupOrgName(e.target.value)}
                             placeholder={signupRole === UserRole.DEVELOPER_ADMIN ? "e.g. Doha Sands Developers" : "e.g. Pearl Gates Real Estate"}
-                            className="w-full px-3 py-1.5 bg-white border border-border rounded-lg text-base md:text-xs focus:outline-none focus:border-gold"
+                            className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg text-base md:text-xs focus:outline-none focus:border-gold"
                           />
                         </div>
                       </div>

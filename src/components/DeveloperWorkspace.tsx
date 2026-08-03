@@ -329,7 +329,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Developer Header Profile */}
-      <div className="bg-white p-6 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-surface p-6 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-xl border border-border overflow-hidden bg-gray-50">
             <img src={developer.logoUrl} alt={developer.name} className="w-full h-full object-cover" />
@@ -348,25 +348,25 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
         <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
           <button
             onClick={() => setActiveTab("projects")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "projects" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "projects" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "المشاريع الكبرى" : "Master Projects"}
           </button>
           <button
             onClick={() => setActiveTab("inventory")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "inventory" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "inventory" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "مخزون الوحدات" : "Units Inventory"}
           </button>
           <button
             onClick={() => setActiveTab("verification")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
           <button
             onClick={() => setActiveTab("profile")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الإعدادات" : "Profile"}
           </button>
@@ -379,7 +379,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
       {/* PROFILE / SETTINGS TAB */}
       {activeTab === "profile" && (
         <div className="space-y-6">
-          <form onSubmit={handleSaveOrgProfile} className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs">
+          <form onSubmit={handleSaveOrgProfile} className="bg-surface p-6 rounded-xl border border-border space-y-4 text-xs">
             <div className="flex items-center gap-4 border-b border-surface-2 pb-4">
               <div className="relative shrink-0">
                 {orgLogoUrl ? (
@@ -468,7 +468,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
             </div>
           </form>
 
-          <form onSubmit={handleChangePassword} className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs">
+          <form onSubmit={handleChangePassword} className="bg-surface p-6 rounded-xl border border-border space-y-4 text-xs">
             <div className="border-b border-surface-2 pb-3 flex items-center gap-2">
               <Lock size={16} className="text-gold" />
               <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "تغيير كلمة المرور" : "Change Password"}</h4>
@@ -529,7 +529,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
             <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "سجل المشاريع الإنشائية والتطويرية" : "Developer Master projects"}</h4>
             <button
               onClick={() => setIsAddingProject(!isAddingProject)}
-              className="px-3 py-1.5 bg-ink hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
               <span>{isRtl ? "إضافة مشروع جديد" : "Create Project"}</span>
@@ -537,7 +537,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           </div>
 
           {isAddingProject && (
-            <form onSubmit={handleCreateProject} className="bg-white p-5 rounded-xl border border-gold/30 space-y-4 max-w-xl text-xs animate-in slide-in-from-top duration-200">
+            <form onSubmit={handleCreateProject} className="bg-surface p-5 rounded-xl border border-gold/30 space-y-4 max-w-xl text-xs animate-in slide-in-from-top duration-200">
               <h5 className="font-serif text-sm font-bold text-ink border-b border-surface-2 pb-2">
                 {isRtl ? "إدخال تفاصيل المشروع الجديد" : "Provide New Project Guidelines"}
               </h5>
@@ -551,7 +551,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                     value={projName}
                     onChange={(e) => setProjName(e.target.value)}
                     placeholder="e.g. Marina Heights Tower C"
-                    className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                   />
                 </div>
 
@@ -561,7 +561,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                     type="date"
                     value={projDate}
                     onChange={(e) => setProjDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-border rounded-lg"
+                    className="w-full px-3 py-2 bg-surface border border-border rounded-lg"
                   />
                 </div>
               </div>
@@ -575,7 +575,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                       setSelectedMunicipality(e.target.value);
                       setSelectedArea("");
                     }}
-                    className="w-full px-3 py-1.5 bg-white border border-border rounded-lg"
+                    className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg"
                   >
                     <option value="">Select Municipality</option>
                     {locations.filter(l => l.type === "MUNICIPALITY" && l.isActive).map(muni => (
@@ -590,7 +590,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                     value={selectedArea}
                     disabled={!selectedMunicipality}
                     onChange={(e) => setSelectedArea(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-white border border-border rounded-lg disabled:opacity-50"
+                    className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg disabled:opacity-50"
                   >
                     <option value="">Select Area / District</option>
                     {locations.filter(l => l.parentId === selectedMunicipality && l.isActive).map(area => (
@@ -604,7 +604,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                   <select
                     value={projStatus}
                     onChange={(e) => setProjStatus(e.target.value as any)}
-                    className="w-full px-3 py-1.5 bg-white border border-border rounded-lg"
+                    className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg"
                   >
                     <option value="PLANNING">Planning</option>
                     <option value="UNDER_CONSTRUCTION">Under Construction</option>
@@ -620,13 +620,13 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                   value={projDesc}
                   onChange={(e) => setProjDesc(e.target.value)}
                   placeholder="Describe location conveniences, beach layout access..."
-                  className="w-full px-3 py-2 bg-white border border-border rounded-lg"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg"
                 ></textarea>
               </div>
 
               <div>
                 <label className="block font-medium text-ink-muted mb-1">{isRtl ? "صور المشروع" : "Project Photos"}</label>
-                <div className="border-2 border-dashed border-border hover:border-gold rounded-xl p-6 text-center cursor-pointer bg-white transition-colors relative">
+                <div className="border-2 border-dashed border-border hover:border-gold rounded-xl p-6 text-center cursor-pointer bg-surface transition-colors relative">
                   <input
                     type="file"
                     multiple
@@ -672,7 +672,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                 <button
                   type="button"
                   onClick={() => setIsAddingProject(false)}
-                  className="px-4 py-2 bg-white hover:bg-surface-2 border border-border rounded-lg font-semibold"
+                  className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold"
                 >
                   Cancel
                 </button>
@@ -689,11 +689,11 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           {/* Project Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {projects.map(proj => (
-              <div key={proj.id} className="bg-white rounded-xl border border-border overflow-hidden flex flex-col justify-between">
+              <div key={proj.id} className="bg-surface rounded-xl border border-border overflow-hidden flex flex-col justify-between">
                 <div>
                   <div className="h-44 bg-gray-100 overflow-hidden relative">
                     <img src={proj.images[0]} alt={proj.name} className="w-full h-full object-cover" />
-                    <span className="absolute top-3 left-3 bg-ink/80 text-white px-2 py-0.5 rounded text-[10px] font-bold">
+                    <span className="absolute top-3 left-3 bg-chrome/80 text-white px-2 py-0.5 rounded text-[10px] font-bold">
                       {proj.status}
                     </span>
                   </div>
@@ -723,15 +723,15 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
         <div className="space-y-6">
           {/* Inventory Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white p-4 rounded-xl border border-border text-center text-xs">
+            <div className="bg-surface p-4 rounded-xl border border-border text-center text-xs">
               <span className="text-ink-muted block mb-1">{isRtl ? "الوحدات الإجمالية" : "Total Catalogued Units"}</span>
               <strong className="text-xl text-ink">{totalUnits}</strong>
             </div>
-            <div className="bg-white p-4 rounded-xl border border-border text-center text-xs">
+            <div className="bg-surface p-4 rounded-xl border border-border text-center text-xs">
               <span className="text-ink-muted block mb-1">{isRtl ? "المباع" : "Sold out (Closed)"}</span>
               <strong className="text-xl text-green-600">{soldUnits}</strong>
             </div>
-            <div className="bg-white p-4 rounded-xl border border-border text-center text-xs">
+            <div className="bg-surface p-4 rounded-xl border border-border text-center text-xs">
               <span className="text-ink-muted block mb-1">{isRtl ? "المتبقي المتاح" : "Available inventory"}</span>
               <strong className="text-xl text-blue-600">{availableUnits}</strong>
             </div>
@@ -741,7 +741,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           <BoostRecommendations properties={properties} orgId={developer.id} isRtl={isRtl} />
 
           {/* Catalog Table */}
-          <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+          <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
             <div className="p-4 bg-ink-inverse border-b border-border">
               <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "قائمة الوحدات التفصيلية" : "Specific Units Specifications"}</h4>
             </div>

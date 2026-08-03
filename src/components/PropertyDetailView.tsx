@@ -600,7 +600,7 @@ export default function PropertyDetailView({
       <div className="bg-[#FAF9F5] w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden border border-border animate-in fade-in duration-300 relative flex flex-col max-h-[92vh] md:max-h-[96vh]">
         
         {/* TOP BAR / NAVIGATION */}
-        <div className="bg-white border-b border-border px-4 py-3 flex items-center justify-between shrink-0">
+        <div className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between shrink-0">
           <button
             onClick={onClose}
             className="flex items-center gap-1.5 text-xs font-bold text-ink-muted hover:text-ink cursor-pointer transition-colors"
@@ -615,7 +615,7 @@ export default function PropertyDetailView({
               className={`p-2 rounded-full border cursor-pointer transition-colors ${
                 isCompared
                   ? "bg-gold/10 border-gold text-gold"
-                  : "bg-white border-border text-ink-muted hover:text-ink"
+                  : "bg-surface border-border text-ink-muted hover:text-ink"
               }`}
               title={isRtl ? "مقارنة العقار" : "Compare Property"}
             >
@@ -626,7 +626,7 @@ export default function PropertyDetailView({
               className={`p-2 rounded-full border cursor-pointer transition-colors ${
                 isSaved
                   ? "bg-rose-50 border-rose-300 text-rose-500"
-                  : "bg-white border-border text-ink-muted hover:text-ink"
+                  : "bg-surface border-border text-ink-muted hover:text-ink"
               }`}
               title={isRtl ? "حفظ العقار" : "Bookmark Property"}
             >
@@ -634,14 +634,14 @@ export default function PropertyDetailView({
             </button>
             <button
               onClick={handleShare}
-              className="p-2 rounded-full border bg-white border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
+              className="p-2 rounded-full border bg-surface border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
               title={isRtl ? "مشاركة" : "Share"}
             >
               {copiedLink ? <Check size={15} className="text-emerald-600" /> : <Share2 size={15} />}
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-full border bg-white border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
+              className="p-2 rounded-full border bg-surface border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
             >
               <Maximize2 size={15} className="rotate-45" />
             </button>
@@ -652,9 +652,9 @@ export default function PropertyDetailView({
         <div className="overflow-y-auto flex-1 pb-16 md:pb-6">
           
           {/* HEADER HERO TITLE SECTION */}
-          <div className="bg-white p-4 sm:p-6 border-b border-border">
+          <div className="bg-surface p-4 sm:p-6 border-b border-border">
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="px-2 py-0.5 bg-ink text-white text-[10px] font-bold uppercase tracking-wider rounded-sm">
+              <span className="px-2 py-0.5 bg-chrome text-white text-[10px] font-bold uppercase tracking-wider rounded-sm">
                 {isRtl
                   ? property.transactionType === TransactionType.FOR_RENT ? "للإيجار" : "للبيع"
                   : property.transactionType === TransactionType.FOR_RENT ? "FOR RENT" : "FOR SALE"}
@@ -699,7 +699,7 @@ export default function PropertyDetailView({
             <div className="lg:col-span-8 space-y-6">
               
               {/* ADVANCED MEDIA GALLERY WITH TABS */}
-              <div className="bg-white rounded-xl border border-border overflow-hidden shadow-sm relative">
+              <div className="bg-surface rounded-xl border border-border overflow-hidden shadow-sm relative">
                 
                 {/* Category Tags Overlay */}
                 <div className="absolute top-4 left-4 right-4 z-10 flex flex-wrap gap-1.5 justify-center sm:justify-start">
@@ -714,7 +714,7 @@ export default function PropertyDetailView({
                       className={`px-3 py-1 text-[10px] font-bold rounded-full cursor-pointer transition-all ${
                         activeCategory === cat && !view360
                           ? "bg-gold text-white shadow-md"
-                          : "bg-white/90 backdrop-blur-xs text-ink border border-border hover:bg-white"
+                          : "bg-white/90 backdrop-blur-xs text-ink border border-border hover:bg-surface"
                       }`}
                     >
                       {isRtl
@@ -728,7 +728,7 @@ export default function PropertyDetailView({
                     className={`px-3 py-1 text-[10px] font-bold rounded-full cursor-pointer transition-all flex items-center gap-1 ${
                       view360
                         ? "bg-gold text-white shadow-md"
-                        : "bg-white/90 backdrop-blur-xs text-ink border border-border hover:bg-white"
+                        : "bg-white/90 backdrop-blur-xs text-ink border border-border hover:bg-surface"
                     }`}
                   >
                     <Compass size={11} className="animate-spin-slow" />
@@ -784,13 +784,13 @@ export default function PropertyDetailView({
                     <>
                       <button
                         onClick={() => setActiveImageIndex((prev) => (prev === 0 ? currentImagesList.length - 1 : prev - 1))}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/85 text-ink border border-border hover:bg-white cursor-pointer"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/85 text-ink border border-border hover:bg-surface cursor-pointer"
                       >
                         <ChevronLeft size={16} />
                       </button>
                       <button
                         onClick={() => setActiveImageIndex((prev) => (prev === currentImagesList.length - 1 ? 0 : prev + 1))}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/85 text-ink border border-border hover:bg-white cursor-pointer"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/85 text-ink border border-border hover:bg-surface cursor-pointer"
                       >
                         <ChevronRight size={16} />
                       </button>
@@ -827,7 +827,7 @@ export default function PropertyDetailView({
               </div>
 
               {/* DYNAMIC SMART MATCHING CARD */}
-              <div className="bg-white p-5 rounded-xl border border-gold/30 shadow-sm space-y-3 relative overflow-hidden">
+              <div className="bg-surface p-5 rounded-xl border border-gold/30 shadow-sm space-y-3 relative overflow-hidden">
                 <div className="absolute top-0 right-0 left-0 h-1 bg-gold"></div>
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-gold/10 rounded-lg text-gold shrink-0">
@@ -848,7 +848,7 @@ export default function PropertyDetailView({
 
               {/* MAIN DETAILS GRID (BEDS, BATHS, SIZE) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-xl border border-border text-center space-y-1">
+                <div className="bg-surface p-4 rounded-xl border border-border text-center space-y-1">
                   <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
                     {isRtl ? "المساحة الكلية" : "TOTAL SIZE"}
                   </span>
@@ -863,7 +863,7 @@ export default function PropertyDetailView({
                   </button>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-border text-center space-y-1">
+                <div className="bg-surface p-4 rounded-xl border border-border text-center space-y-1">
                   <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
                     {isRtl ? "غرف النوم" : "BEDROOMS"}
                   </span>
@@ -875,7 +875,7 @@ export default function PropertyDetailView({
                   </span>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-border text-center space-y-1">
+                <div className="bg-surface p-4 rounded-xl border border-border text-center space-y-1">
                   <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
                     {isRtl ? "الحمامات" : "BATHROOMS"}
                   </span>
@@ -887,7 +887,7 @@ export default function PropertyDetailView({
                   </span>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-border text-center space-y-1">
+                <div className="bg-surface p-4 rounded-xl border border-border text-center space-y-1">
                   <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
                     {isRtl ? "حالة التأثيث" : "FURNISHED"}
                   </span>
@@ -902,7 +902,7 @@ export default function PropertyDetailView({
               </div>
 
               {/* OVERVIEW / DESCRIPTION */}
-              <div className="bg-white p-6 rounded-xl border border-border space-y-3">
+              <div className="bg-surface p-6 rounded-xl border border-border space-y-3">
                 <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
                   {isRtl ? "الوصف التفصيلي للعقار" : "Executive Property Overview"}
                 </h3>
@@ -912,7 +912,7 @@ export default function PropertyDetailView({
               </div>
 
               {/* DEEP SPECIFICATIONS (BASED ON PROPERTY TYPE) */}
-              <div className="bg-white p-6 rounded-xl border border-border space-y-4">
+              <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
                 <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
                   {isRtl ? "المواصفات الفنية المعتمدة" : "Professional Architectural Specs"}
                 </h3>
@@ -1124,15 +1124,15 @@ export default function PropertyDetailView({
                       <span>{isRtl ? "شروط خطة الدفع الإنشائية" : "Master Project Installment Plan"}</span>
                     </h4>
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="p-2 bg-white rounded border border-border">
+                      <div className="p-2 bg-surface rounded border border-border">
                         <span className="block text-ink-muted text-[10px]">{isRtl ? "عند الحجز" : "Reservation Downpay"}</span>
                         <strong className="text-ink text-sm">10%</strong>
                       </div>
-                      <div className="p-2 bg-white rounded border border-border">
+                      <div className="p-2 bg-surface rounded border border-border">
                         <span className="block text-ink-muted text-[10px]">{isRtl ? "خلال الإنشاء" : "Construction Stage"}</span>
                         <strong className="text-ink text-sm">40%</strong>
                       </div>
-                      <div className="p-2 bg-white rounded border border-border">
+                      <div className="p-2 bg-surface rounded border border-border">
                         <span className="block text-ink-muted text-[10px]">{isRtl ? "عند التسليم" : "Handover Installment"}</span>
                         <strong className="text-ink text-sm">50%</strong>
                       </div>
@@ -1142,7 +1142,7 @@ export default function PropertyDetailView({
               </div>
 
               {/* LISTING AMENITIES */}
-              <div className="bg-white p-6 rounded-xl border border-border space-y-3">
+              <div className="bg-surface p-6 rounded-xl border border-border space-y-3">
                 <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
                   {isRtl ? "المرافق والخدمات المتاحة" : "Exclusive Amenities & Conveniences"}
                 </h3>
@@ -1159,7 +1159,7 @@ export default function PropertyDetailView({
               </div>
 
               {/* INTERACTIVE FLOOR PLAN GALLERY */}
-              <div className="bg-white p-6 rounded-xl border border-border space-y-4">
+              <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
                 <div className="flex justify-between items-center border-b border-surface-2 pb-2">
                   <h3 className="font-serif text-lg font-medium text-ink">
                     {isRtl ? "مخططات الطوابق الهندسية" : "Architectural Floor Plans"}
@@ -1180,8 +1180,8 @@ export default function PropertyDetailView({
                       onClick={() => setActiveFloorPlanIndex(idx)}
                       className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                         activeFloorPlanIndex === idx
-                          ? "bg-ink text-white border-ink"
-                          : "bg-canvas text-ink-muted border-border hover:bg-white"
+                          ? "bg-chrome text-white border-ink"
+                          : "bg-canvas text-ink-muted border-border hover:bg-surface"
                       }`}
                     >
                       {isRtl ? (idx === 0 ? "الطابق الأرضي" : "الطابق الأول") : planName}
@@ -1209,7 +1209,7 @@ export default function PropertyDetailView({
               </div>
 
               {/* LOCATION INTELLIGENCE & MAPS */}
-              <div className="bg-white p-6 rounded-xl border border-border space-y-4">
+              <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
                 <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
                   {isRtl ? "تحليل الموقع والمرافق المجاورة" : "Location Intelligence & Transit Landmarks"}
                 </h3>
@@ -1275,7 +1275,7 @@ export default function PropertyDetailView({
               </div>
 
               {/* SAVED & PROPERTY HISTORY TREND */}
-              <div className="bg-white p-6 rounded-xl border border-border space-y-4">
+              <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
                 <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
                   {isRtl ? "الشفافية وسجل المعاملات المحدث" : "Listing Freshness & Transaction Logs"}
                 </h3>
@@ -1321,7 +1321,7 @@ export default function PropertyDetailView({
               </div>
 
               {/* INVESTMENT YIELD AND MORTGAGE TOOLS */}
-              <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+              <div className="bg-surface p-6 rounded-xl border border-border space-y-6">
                 <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2 flex items-center gap-2">
                   <Calculator size={18} className="text-gold" />
                   <span>{isRtl ? "أدوات التخطيط المالي والاستثماري" : "Interactive Financial Planning Suite"}</span>
@@ -1398,7 +1398,7 @@ export default function PropertyDetailView({
                 <span>{isRtl ? "هل لاحظت بيانات خاطئة أو احتيالية؟" : "Spot incorrect parameters or misleading details?"}</span>
                 <button
                   onClick={() => setReportModalOpen(true)}
-                  className="px-3 py-1.5 border border-red-200 hover:border-red-500 bg-white hover:bg-red-50 text-red-600 rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
+                  className="px-3 py-1.5 border border-red-200 hover:border-red-500 bg-surface hover:bg-red-50 text-red-600 rounded-lg flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <AlertTriangle size={13} />
                   <span>{isRtl ? "الإبلاغ عن الإعلان" : "Report this Listing"}</span>
@@ -1431,7 +1431,7 @@ export default function PropertyDetailView({
                               }
                             }
                           }}
-                          className="bg-white rounded-xl border border-border hover:border-gold overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col h-full"
+                          className="bg-surface rounded-xl border border-border hover:border-gold overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col h-full"
                         >
                           <div className="relative h-28 overflow-hidden bg-stone-100">
                             <img
@@ -1440,7 +1440,7 @@ export default function PropertyDetailView({
                               referrerPolicy="no-referrer"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
-                            <div className="absolute top-2 right-2 bg-ink/80 backdrop-blur-xs px-2 py-0.5 rounded text-[8px] text-white font-bold tracking-wider uppercase">
+                            <div className="absolute top-2 right-2 bg-chrome/80 backdrop-blur-xs px-2 py-0.5 rounded text-[8px] text-white font-bold tracking-wider uppercase">
                               {isRtl
                                 ? sim.propertyType === PropertyType.APARTMENT ? "شقة" : sim.propertyType === PropertyType.VILLA ? "فيلا" : "مكتب تجاري"
                                 : sim.propertyType
@@ -1485,7 +1485,7 @@ export default function PropertyDetailView({
               <div className="lg:sticky lg:top-4 space-y-4">
 
                 {/* PRICE HERO CARD (desktop) - previously only visible in the mobile sticky bar */}
-                <div className="hidden lg:block bg-ink rounded-xl border border-chrome-hover shadow-sm p-5 space-y-1">
+                <div className="hidden lg:block bg-chrome rounded-xl border border-chrome-hover shadow-sm p-5 space-y-1">
                   <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">
                     {isRtl ? "السعر الكلي المقدر" : "Asking Price"}
                   </span>
@@ -1511,7 +1511,7 @@ export default function PropertyDetailView({
                 </div>
 
                 {/* REPRESENTATIVE AGENCY CARD */}
-                <div className="bg-white p-5 rounded-xl border border-border shadow-sm space-y-4">
+                <div className="bg-surface p-5 rounded-xl border border-border shadow-sm space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-50 border border-border">
                       <img
@@ -1548,7 +1548,7 @@ export default function PropertyDetailView({
                     </button>
                     <a
                       href={`tel:+${agentInfo?.phone || "97433334444"}`}
-                      className="px-3 py-2 bg-ink hover:bg-gold text-white rounded-lg font-bold flex items-center justify-center gap-1 transition-colors"
+                      className="px-3 py-2 bg-chrome hover:bg-gold text-white rounded-lg font-bold flex items-center justify-center gap-1 transition-colors"
                     >
                       <Phone size={14} />
                       <span>{isRtl ? "اتصال" : "Call"}</span>
@@ -1558,7 +1558,7 @@ export default function PropertyDetailView({
                   {onViewAgentProfile && (agentInfo?.hasAssignedAgent || agentInfo?.orgName) && (
                     <button
                       onClick={onViewAgentProfile}
-                      className="w-full px-3 py-2 bg-white hover:bg-gold/10 border border-border hover:border-gold text-ink rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      className="w-full px-3 py-2 bg-surface hover:bg-gold/10 border border-border hover:border-gold text-ink rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Award size={13} className="text-gold" />
                       <span>{isRtl ? "عرض الملف الشخصي والتقييمات" : "View Full Profile & Reviews"}</span>
@@ -1567,7 +1567,7 @@ export default function PropertyDetailView({
                 </div>
 
                 {/* SCHEDULE VIEWING INTERACTIVE FORM */}
-                <div className="bg-white p-5 rounded-xl border border-border shadow-sm space-y-4">
+                <div className="bg-surface p-5 rounded-xl border border-border shadow-sm space-y-4">
                   <h3 className="font-serif text-sm font-semibold text-ink border-b border-surface-2 pb-2">
                     {isRtl ? "جدولة موعد للمعاينة الفورية" : "Schedule a Private Viewing"}
                   </h3>
@@ -1636,7 +1636,7 @@ export default function PropertyDetailView({
                         <div className="flex items-end">
                           <button
                             type="submit"
-                            className="w-full py-2 bg-ink hover:bg-gold text-white rounded-lg font-bold transition-colors cursor-pointer"
+                            className="w-full py-2 bg-chrome hover:bg-gold text-white rounded-lg font-bold transition-colors cursor-pointer"
                           >
                             {isRtl ? "إرسال حجز" : "Book Now"}
                           </button>
@@ -1653,7 +1653,7 @@ export default function PropertyDetailView({
         </div>
 
         {/* MOBILE STICKY CONVERSION BAR (FOOTER) */}
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-border p-3 flex items-center justify-between lg:hidden shadow-lg shrink-0">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-surface border-t border-border p-3 flex items-center justify-between lg:hidden shadow-lg shrink-0">
           <div className="space-y-0.5">
             <span className="text-[10px] text-ink-muted font-medium block">{isRtl ? "السعر الكلي المقدر" : "ASKING PRICE"}</span>
             <strong className="text-gold text-lg font-bold">
@@ -1671,7 +1671,7 @@ export default function PropertyDetailView({
             </button>
             <a
               href={`tel:+${agentInfo?.phone || "97433334444"}`}
-              className="px-4 py-2.5 bg-ink text-white font-bold rounded-lg hover:bg-gold flex items-center gap-1"
+              className="px-4 py-2.5 bg-chrome text-white font-bold rounded-lg hover:bg-gold flex items-center gap-1"
             >
               <Phone size={14} />
               <span>{isRtl ? "اتصال" : "Call Agent"}</span>
@@ -1682,7 +1682,7 @@ export default function PropertyDetailView({
         {/* REPORT SUBMIT MODAL DIALOG */}
         {reportModalOpen && (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 flex justify-center items-center p-4">
-            <div className="bg-white rounded-xl border border-border shadow-2xl p-5 w-full max-w-md space-y-4 relative">
+            <div className="bg-surface rounded-xl border border-border shadow-2xl p-5 w-full max-w-md space-y-4 relative">
               <h4 className="font-serif text-lg font-bold text-ink flex items-center gap-1.5">
                 <AlertTriangle className="text-red-600" size={18} />
                 <span>{isRtl ? "تقديم تقرير مخالفة عقارية" : "Report Misrepresentation Audit"}</span>

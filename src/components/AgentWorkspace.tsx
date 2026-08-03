@@ -918,25 +918,25 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
           <button
             onClick={() => setActiveTab("dashboard")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "لوحة القيادة" : "Stats Center"}
           </button>
           <button
             onClick={() => setActiveTab("leads")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "العملاء المحتملون" : "Leads Panel"}
           </button>
           <button
             onClick={() => setActiveTab("properties")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "properties" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "properties" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "عقاراتي" : "My Listings"}
           </button>
           <button
             onClick={() => setActiveTab("verification")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
@@ -945,20 +945,20 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           {effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
             <button
               onClick={() => setActiveTab("subscription")}
-              className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "subscription" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+              className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "subscription" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
             >
               {isRtl ? "الاشتراك" : "Subscription"}
             </button>
           )}
           <button
             onClick={() => setActiveTab("reviews")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "reviews" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "reviews" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التقييمات" : "Reviews"}
           </button>
           <button
             onClick={() => setActiveTab("profile")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الحساب" : "My Profile"}
           </button>
@@ -983,7 +983,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
       {/* SUBSCRIPTION TAB (INDEPENDENT_AGENT only) */}
       {activeTab === "subscription" && effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
-        <div className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs max-w-xl">
+        <div className="bg-surface p-6 rounded-xl border border-border space-y-4 text-xs max-w-xl">
           <h4 className="font-serif text-sm font-semibold text-ink border-b border-surface-2 pb-3 flex items-center gap-2">
             <CreditCard size={16} className="text-gold" />
             {isRtl ? "بيانات اشتراكك كوكيل مستقل" : "Your Independent Agent Subscription"}
@@ -1032,7 +1032,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         <div className="space-y-6">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-xl border border-border">
+            <div className="bg-surface p-4 rounded-xl border border-border">
               <div className="flex items-center justify-between text-ink-muted mb-2">
                 <span className="text-xs font-medium">{isRtl ? "إجمالي العملاء" : "Total Leads Assigned"}</span>
                 <Users size={16} />
@@ -1041,7 +1041,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               <p className="text-[10px] text-emerald-600 font-medium mt-1">↑ 14% {isRtl ? "هذا الأسبوع" : "vs last week"}</p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-border">
+            <div className="bg-surface p-4 rounded-xl border border-border">
               <div className="flex items-center justify-between text-ink-muted mb-2">
                 <span className="text-xs font-medium">{isRtl ? "نسبة التحويل" : "Conversion Efficiency"}</span>
                 <TrendingUp size={16} />
@@ -1050,7 +1050,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               <p className="text-[10px] text-ink-muted mt-1">{isRtl ? "معدل الإغلاق الكلي" : "Of total processed inquiries"}</p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-border">
+            <div className="bg-surface p-4 rounded-xl border border-border">
               <div className="flex items-center justify-between text-ink-muted mb-2">
                 <span className="text-xs font-medium">{isRtl ? "عقارات معروضة" : "Active Listings"}</span>
                 <Building size={16} />
@@ -1059,7 +1059,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               <p className="text-[10px] text-ink-muted mt-1">{isRtl ? "منشورة ومتاحة للتداول" : "Published properties online"}</p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-border">
+            <div className="bg-surface p-4 rounded-xl border border-border">
               <div className="flex items-center justify-between text-ink-muted mb-2">
                 <span className="text-xs font-medium">{isRtl ? "زمن الاستجابة" : "Avg. Response Time"}</span>
                 <Clock size={16} />
@@ -1071,7 +1071,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
           {/* Quick Tasks & Recent Activity */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+            <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
               <h4 className="font-serif text-base font-semibold text-ink">
                 {isRtl ? "العملاء الجدد المعلقين" : "Unaddressed Hot Leads"}
               </h4>
@@ -1087,7 +1087,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       </div>
                       <button
                         onClick={() => handleUpdateLeadStatus(lead.id, LeadStatus.CONTACTED)}
-                        className="px-2.5 py-1 bg-ink hover:bg-gold text-white text-[10px] rounded"
+                        className="px-2.5 py-1 bg-chrome hover:bg-gold text-white text-[10px] rounded"
                       >
                         {isRtl ? "تأكيد التواصل" : "Acknowledge"}
                       </button>
@@ -1097,7 +1097,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+            <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
               <h4 className="font-serif text-base font-semibold text-ink">
                 {isRtl ? "قنوات الإغلاق والإنتاجية" : "Lead Channel Attribution"}
               </h4>
@@ -1137,7 +1137,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
       {/* LEADS TAB */}
       {activeTab === "leads" && (
-        <div className="bg-white rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-hidden">
           <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">
             <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إدارة وتتبع تواصل العملاء" : "Assigned Lead Lifecycle Funnel"}</h4>
             <button
@@ -1211,7 +1211,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <select
                       value={lead.status}
                       onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
-                      className="px-2 py-1.5 bg-white border border-border rounded text-[10px] font-semibold text-ink"
+                      className="px-2 py-1.5 bg-surface border border-border rounded text-[10px] font-semibold text-ink"
                     >
                       {Object.values(LeadStatus).map(s => (
                         <option key={s} value={s}>{s}</option>
@@ -1220,7 +1220,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <button
                       type="button"
                       onClick={() => handleArchiveLead(lead.id, !lead.isArchived)}
-                      className="px-2.5 py-1.5 bg-white hover:bg-surface-2 border border-border text-ink font-medium rounded cursor-pointer"
+                      className="px-2.5 py-1.5 bg-surface hover:bg-surface-2 border border-border text-ink font-medium rounded cursor-pointer"
                     >
                       {lead.isArchived ? (isRtl ? "إعادة فتح" : "Reopen") : (isRtl ? "أرشفة" : "Archive")}
                     </button>
@@ -1239,7 +1239,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         const waPhone = (lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "");
         return (
           <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedLeadId(null)}>
-            <div className="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 space-y-4 text-xs" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-surface rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 space-y-4 text-xs" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start justify-between">
                 <div>
                   <h4 className="font-serif text-base font-bold text-ink">{lead.visitorName}</h4>
@@ -1252,7 +1252,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                 <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold">
                   <MessageSquare size={14} /> {isRtl ? "واتساب" : "WhatsApp"}
                 </a>
-                <a href={`tel:${lead.visitorPhone}`} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-ink hover:bg-chrome-hover text-white rounded-lg font-semibold">
+                <a href={`tel:${lead.visitorPhone}`} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-chrome hover:bg-chrome-hover text-white rounded-lg font-semibold">
                   <Phone size={14} /> {isRtl ? "اتصال" : "Call"}
                 </a>
               </div>
@@ -1278,7 +1278,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     placeholder={isRtl ? "أضف ملاحظة..." : "Add a note..."}
                     className="flex-1 px-2 py-1.5 bg-ink-inverse border border-border rounded-lg"
                   />
-                  <button type="button" onClick={() => handleAddLeadNote(lead.id)} disabled={!leadNoteDraft.trim()} className="px-3 py-1.5 bg-ink hover:bg-gold disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer">
+                  <button type="button" onClick={() => handleAddLeadNote(lead.id)} disabled={!leadNoteDraft.trim()} className="px-3 py-1.5 bg-chrome hover:bg-gold disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer">
                     {isRtl ? "إضافة" : "Add"}
                   </button>
                 </div>
@@ -1304,7 +1304,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           VisitorExperience's property detail view, so this fetches and shows it directly). */}
       {leadPropertyPreview && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setLeadPropertyPreview(null)}>
-          <div className="bg-white rounded-xl max-w-md w-full overflow-hidden text-xs" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-surface rounded-xl max-w-md w-full overflow-hidden text-xs" onClick={(e) => e.stopPropagation()}>
             <img src={leadPropertyPreview.images?.[0]} alt={leadPropertyPreview.title} className="w-full h-40 object-cover" />
             <div className="p-4 space-y-1">
               <div className="flex items-start justify-between">
@@ -1326,7 +1326,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إدارة مخزون العقارات المعروضة" : "Active Exclusive Listings"}</h4>
             <button
               onClick={() => setIsAddingListing(!isAddingListing)}
-              className="px-3 py-1.5 bg-ink hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
               <span>{isRtl ? "إضافة عقار جديد" : "New Property"}</span>
@@ -1396,7 +1396,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   e.preventDefault();
                 }
               }}
-              className="bg-white p-5 rounded-xl border border-gold/30 space-y-5 animate-in fade-in duration-200 text-xs"
+              className="bg-surface p-5 rounded-xl border border-gold/30 space-y-5 animate-in fade-in duration-200 text-xs"
             >
               <div>
                 <h5 className="font-serif text-sm font-bold text-ink pb-2">
@@ -1417,7 +1417,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           onClick={() => goToWizardStep(s.step)}
                           disabled={!isClickable}
                           className={`flex items-center gap-1.5 px-2 py-1 rounded-lg shrink-0 text-[10px] sm:text-xs font-semibold transition-colors ${
-                            isActive ? "bg-ink text-white" :
+                            isActive ? "bg-chrome text-white" :
                             isDone ? "bg-surface-2 text-ink cursor-pointer hover:bg-border" :
                             "text-ink-faint cursor-not-allowed"
                           }`}
@@ -1751,7 +1751,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       </p>
                     </div>
                   ) : (
-                    <div className="border-2 border-dashed border-border hover:border-gold rounded-xl p-6 text-center cursor-pointer bg-white transition-colors relative">
+                    <div className="border-2 border-dashed border-border hover:border-gold rounded-xl p-6 text-center cursor-pointer bg-surface transition-colors relative">
                       <input
                         type="file"
                         multiple
@@ -1793,7 +1793,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           <div key={imgUrl + index} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-ink-inverse shadow-2xs">
                             <img src={imgUrl} alt="" className="w-full h-full object-cover" />
                             {index === 0 && (
-                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-ink/80 text-white text-[8px] font-bold rounded">
+                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-chrome/80 text-white text-[8px] font-bold rounded">
                                 {isRtl ? "الرئيسية" : "COVER"}
                               </span>
                             )}
@@ -1809,7 +1809,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                                 type="button"
                                 onClick={() => moveListingImage(index, -1)}
                                 disabled={index === 0}
-                                className="p-0.5 bg-white/90 hover:bg-white text-ink rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="p-0.5 bg-white/90 hover:bg-surface text-ink rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                 title={isRtl ? "تحريك للأعلى" : "Move earlier"}
                               >
                                 <ChevronUp size={12} />
@@ -1818,7 +1818,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                                 type="button"
                                 onClick={() => moveListingImage(index, 1)}
                                 disabled={index === listingImages.length - 1}
-                                className="p-0.5 bg-white/90 hover:bg-white text-ink rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="p-0.5 bg-white/90 hover:bg-surface text-ink rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                 title={isRtl ? "تحريك للأسفل" : "Move later"}
                               >
                                 <ChevronDown size={12} />
@@ -1916,7 +1916,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   <button
                     type="button"
                     onClick={handleWizardBack}
-                    className="px-4 py-2 bg-white hover:bg-surface-2 border border-border rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
                     <ArrowLeft size={14} />
                     {isRtl ? "السابق" : "Back"}
@@ -1925,7 +1925,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   <button
                     type="button"
                     onClick={() => setIsAddingListing(false)}
-                    className="px-4 py-2 bg-white hover:bg-surface-2 border border-border rounded-lg font-semibold cursor-pointer"
+                    className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold cursor-pointer"
                   >
                     {isRtl ? "إلغاء" : "Cancel"}
                   </button>
@@ -1935,7 +1935,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <button
                       type="button"
                       onClick={() => setIsAddingListing(false)}
-                      className="px-4 py-2 bg-white hover:bg-surface-2 border border-border rounded-lg font-semibold cursor-pointer"
+                      className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold cursor-pointer"
                     >
                       {isRtl ? "إلغاء" : "Cancel"}
                     </button>
@@ -1975,7 +1975,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               const isConfirming = confirmingAvailabilityId === prop.id;
 
               return (
-                <div key={prop.id} className="p-4 bg-white border border-border rounded-xl flex gap-4">
+                <div key={prop.id} className="p-4 bg-surface border border-border rounded-xl flex gap-4">
                   <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden shrink-0">
                     <img src={prop.images[0]} alt={prop.title} className="w-full h-full object-cover" />
                   </div>
@@ -2074,7 +2074,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {/* REVIEWS & RATINGS TAB (FIX 10) */}
       {activeTab === "reviews" && (
         <div className="space-y-4">
-          <div className="bg-white p-5 rounded-xl border border-border flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="bg-surface p-5 rounded-xl border border-border flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-center sm:text-left">
               <p className="text-3xl font-serif font-bold text-gold">{myReviewSummary?.average.toFixed(1) || "0.0"}</p>
               <p className="text-[10px] text-ink-muted">{myReviewSummary?.count || 0} {isRtl ? "تقييم" : "reviews"}</p>
@@ -2097,7 +2097,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+          <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
             <div className="p-4 bg-ink-inverse border-b border-border">
               <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "التقييمات المستلمة" : "Reviews Received"}</h4>
             </div>
@@ -2135,7 +2135,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           type="button"
                           onClick={() => handleReplyToReview(rev.id)}
                           disabled={!replyDrafts[rev.id]?.trim()}
-                          className="px-3 py-1.5 bg-ink hover:bg-gold disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer"
+                          className="px-3 py-1.5 bg-chrome hover:bg-gold disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer"
                         >
                           {isRtl ? "رد" : "Reply"}
                         </button>
@@ -2151,7 +2151,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
       {/* PROFILE TAB */}
       {activeTab === "profile" && (
-        <form onSubmit={handleUpdateProfile} className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs">
+        <form onSubmit={handleUpdateProfile} className="bg-surface p-6 rounded-xl border border-border space-y-4 text-xs">
           <div className="flex items-center gap-4 border-b border-surface-2 pb-4">
             <div className="relative shrink-0">
               {currentAvatarUrl ? (
@@ -2262,7 +2262,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       )}
 
       {activeTab === "profile" && (
-        <form onSubmit={handleChangePassword} className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs">
+        <form onSubmit={handleChangePassword} className="bg-surface p-6 rounded-xl border border-border space-y-4 text-xs">
           <div className="border-b border-surface-2 pb-3 flex items-center gap-2">
             <Lock size={16} className="text-gold" />
             <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "تغيير كلمة المرور" : "Change Password"}</h4>

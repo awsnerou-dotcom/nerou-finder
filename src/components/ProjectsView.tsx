@@ -101,7 +101,7 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
       </div>
 
       {projects.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-border">
+        <div className="text-center py-16 bg-surface rounded-xl border border-border">
           <Building2 size={32} className="mx-auto text-border mb-3" />
           <p className="text-sm font-semibold text-ink">
             {isRtl ? "لا توجد مشاريع منشورة حالياً" : "No published projects yet"}
@@ -115,7 +115,7 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
       ) : (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {projects.map((proj) => (
-          <div key={proj.id} className="bg-white border border-border rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
+          <div key={proj.id} className="bg-surface border border-border rounded-xl overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
             <div>
               <div className="relative h-48 bg-surface-2">
                 <img src={proj.image} alt={proj.name} className="w-full h-full object-cover" />
@@ -157,7 +157,7 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
       {/* DETAIL MODAL */}
       {selectedProject && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl border border-border shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-6">
+          <div className="bg-surface rounded-xl border border-border shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-6">
             <div className="flex justify-between items-start border-b border-surface-2 pb-3">
               <div>
                 <span className="text-[10px] text-gold font-bold block uppercase tracking-wider">
@@ -211,7 +211,7 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
                         required
                         value={inquiryName}
                         onChange={(e) => setInquiryName(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
@@ -222,7 +222,7 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
                         value={inquiryPhone}
                         onChange={(e) => setInquiryPhone(e.target.value)}
                         placeholder="+974"
-                        className="w-full px-3 py-1.5 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
@@ -231,7 +231,7 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
                         type="email"
                         value={inquiryEmail}
                         onChange={(e) => setInquiryEmail(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-white border border-border rounded-lg focus:outline-none"
+                        className="w-full px-3 py-1.5 bg-surface border border-border rounded-lg focus:outline-none"
                       />
                     </div>
 

@@ -186,7 +186,7 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
           const file = e.dataTransfer.files?.[0];
           if (file) handleUpload(type, file);
         }}
-        className={`p-4 bg-white border rounded-xl space-y-2 transition-colors ${
+        className={`p-4 bg-surface border rounded-xl space-y-2 transition-colors ${
           isDragOver ? "border-gold border-2 bg-gold/5" : "border-border"
         }`}
       >

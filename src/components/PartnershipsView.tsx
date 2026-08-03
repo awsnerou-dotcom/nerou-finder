@@ -109,7 +109,7 @@ export default function PartnershipsView({ isRtl }: PartnershipsViewProps) {
           </div>
         </div>
 
-        <div className="md:col-span-7 bg-white border border-border rounded-xl p-6">
+        <div className="md:col-span-7 bg-surface border border-border rounded-xl p-6">
           <h3 className="font-serif font-bold text-sm text-ink border-b border-surface-2 pb-2 mb-4">
             {isRtl ? "طلب شراكة أو تسجيل مؤسسة جديدة" : "Submit Partnership Application"}
           </h3>
@@ -197,7 +197,7 @@ export default function PartnershipsView({ isRtl }: PartnershipsViewProps) {
                 <select
                   value={type}
                   onChange={(e: any) => setType(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg focus:outline-none"
                 >
                   <option value="DEVELOPER">{isRtl ? "مطور عقاري (مشاريع ومخططات)" : "Property Developer (Pre-construction / Masterplans)"}</option>
                   <option value="AGENCY">{isRtl ? "وكالة عقارية مرخصة" : "Licensed Real Estate Brokerage"}</option>

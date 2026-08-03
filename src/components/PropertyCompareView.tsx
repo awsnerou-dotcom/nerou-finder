@@ -39,11 +39,11 @@ export default function PropertyCompareView({
   if (properties.length === 0) {
     return (
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-center items-center p-4">
-        <div className="bg-white rounded-xl border border-border p-8 max-w-sm text-center space-y-4">
+        <div className="bg-surface rounded-xl border border-border p-8 max-w-sm text-center space-y-4">
           <p className="text-sm text-ink-muted">
             {isRtl ? "لم تختر أي عقارات للمقارنة بعد." : "No properties selected for comparison yet."}
           </p>
-          <button onClick={onClose} className="px-4 py-2 bg-ink text-white rounded text-xs">
+          <button onClick={onClose} className="px-4 py-2 bg-chrome text-white rounded text-xs">
             {isRtl ? "إغلاق" : "Close"}
           </button>
         </div>
@@ -56,7 +56,7 @@ export default function PropertyCompareView({
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-center items-center p-4"
       dir={isRtl ? "rtl" : "ltr"}
     >
-      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden border border-border animate-in fade-in duration-300 max-h-[90vh] flex flex-col">
+      <div className="bg-surface w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden border border-border animate-in fade-in duration-300 max-h-[90vh] flex flex-col">
         
         {/* HEADER */}
         <div className="p-4 bg-canvas border-b border-border flex justify-between items-center shrink-0">
@@ -95,7 +95,7 @@ export default function PropertyCompareView({
         {/* COMPRESSION GRID TABLE SCROLLABLE BODY */}
         <div className="overflow-auto flex-1 p-4 md:p-6">
           <div
-            className="grid border border-border rounded-xl overflow-hidden bg-white text-xs divide-x divide-y divide-border [grid-auto-rows:minmax(0,1fr)]"
+            className="grid border border-border rounded-xl overflow-hidden bg-surface text-xs divide-x divide-y divide-border [grid-auto-rows:minmax(0,1fr)]"
             style={{ gridTemplateColumns, minWidth: `${140 + slotCount * 150}px` }}
           >
 
@@ -106,7 +106,7 @@ export default function PropertyCompareView({
             {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
-                <div key={idx} className="p-3 relative bg-white flex flex-col justify-between">
+                <div key={idx} className="p-3 relative bg-surface flex flex-col justify-between">
                   {prop ? (
                     <>
                       <button
@@ -152,7 +152,7 @@ export default function PropertyCompareView({
               return (
                 <div key={idx} className="p-4 flex items-center">
                   {prop && (
-                    <span className="px-2 py-0.5 bg-ink text-white text-[9px] font-bold rounded uppercase">
+                    <span className="px-2 py-0.5 bg-chrome text-white text-[9px] font-bold rounded uppercase">
                       {isRtl
                         ? prop.transactionType === TransactionType.FOR_RENT ? "للإيجار" : "للبيع"
                         : prop.transactionType === TransactionType.FOR_RENT ? "RENT" : "SALE"}
