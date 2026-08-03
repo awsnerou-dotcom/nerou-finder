@@ -109,15 +109,15 @@ export default function ProfileReviewsSection({
   };
 
   return (
-    <div className="space-y-6 pt-4 border-t border-[#e6e2de]">
+    <div className="space-y-6 pt-4 border-t border-border">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-bold uppercase tracking-wider text-[#1a1918] flex items-center gap-1.5">
-          <MessageSquare size={14} className="text-[#bf9b30]" />
+        <h4 className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-1.5">
+          <MessageSquare size={14} className="text-gold" />
           <span>{isRtl ? "التقييمات والمراجعات" : "Ratings & Reviews"}</span>
         </h4>
         {summary && summary.count > 0 && (
-          <div className="flex items-center gap-1 bg-[#bf9b30]/10 text-[#bf9b30] px-2 py-0.5 rounded-md text-xs font-bold">
-            <Star size={12} className="fill-[#bf9b30]" />
+          <div className="flex items-center gap-1 bg-gold/10 text-gold px-2 py-0.5 rounded-md text-xs font-bold">
+            <Star size={12} className="fill-gold" />
             <span>{summary.average.toFixed(1)} ({summary.count})</span>
           </div>
         )}
@@ -125,13 +125,13 @@ export default function ProfileReviewsSection({
 
       {loading ? (
         <div className="flex justify-center py-4">
-          <Loader2 className="animate-spin text-[#bf9b30]" size={20} />
+          <Loader2 className="animate-spin text-gold" size={20} />
         </div>
       ) : (
         <div className="space-y-4">
           {/* Reviews List */}
           {reviews.length === 0 ? (
-            <p className="text-xs text-[#6e6b66] italic bg-[#fcfbfa] p-3 rounded-lg border border-[#e6e2de] text-center">
+            <p className="text-xs text-ink-muted italic bg-canvas p-3 rounded-lg border border-border text-center">
               {isRtl 
                 ? "لا توجد مراجعات معتمدة بعد لهذا المستشار. كن أول من يكتب تقييماً!" 
                 : "No verified reviews yet. Be the first to share your experience!"}
@@ -140,11 +140,11 @@ export default function ProfileReviewsSection({
             <div className="relative">
               <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
               {reviews.map((rev) => (
-                <div key={rev.id} className="p-3 bg-white rounded-lg border border-[#e6e2de] space-y-1.5 shadow-2xs">
+                <div key={rev.id} className="p-3 bg-white rounded-lg border border-border space-y-1.5 shadow-2xs">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-[#1a1918]">{rev.reviewerName}</span>
+                    <span className="font-bold text-ink">{rev.reviewerName}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[#6e6b66]">
+                      <span className="text-ink-muted">
                         {new Date(rev.createdDate).toLocaleDateString(isRtl ? "ar-QA" : "en-US", {
                           year: "numeric",
                           month: "short",
@@ -157,7 +157,7 @@ export default function ProfileReviewsSection({
                           onClick={() => handleReport(rev.id)}
                           disabled={reportedIds.includes(rev.id)}
                           title={isRtl ? "الإبلاغ عن هذا التقييم" : "Report this review"}
-                          className="text-[#a9a49d] hover:text-rose-600 disabled:text-rose-600 disabled:cursor-default cursor-pointer"
+                          className="text-ink-faint hover:text-rose-600 disabled:text-rose-600 disabled:cursor-default cursor-pointer"
                         >
                           <Flag size={11} />
                         </button>
@@ -169,14 +169,14 @@ export default function ProfileReviewsSection({
                       <Star
                         key={s}
                         size={12}
-                        className={s <= rev.rating ? "fill-[#bf9b30] text-[#bf9b30]" : "text-gray-200"}
+                        className={s <= rev.rating ? "fill-gold text-gold" : "text-gray-200"}
                       />
                     ))}
                   </div>
                   <p className="text-xs text-[#4c4943] leading-relaxed">{rev.comment}</p>
                   {rev.reply && (
-                    <div className="mt-1.5 pl-3 border-l-2 border-[#bf9b30]/40 bg-[#fbfaf8] p-2 rounded">
-                      <p className="text-[10px] font-bold text-[#1a1918]">{isRtl ? "رد صاحب الملف" : "Response from the listing owner"}</p>
+                    <div className="mt-1.5 pl-3 border-l-2 border-gold/40 bg-canvas p-2 rounded">
+                      <p className="text-[10px] font-bold text-ink">{isRtl ? "رد صاحب الملف" : "Response from the listing owner"}</p>
                       <p className="text-[11px] text-[#4c4943] mt-0.5">{rev.reply.text}</p>
                     </div>
                   )}
@@ -192,8 +192,8 @@ export default function ProfileReviewsSection({
           )}
 
           {/* Review Submission Form */}
-          <div className="bg-[#fcfbfa] p-4 rounded-xl border border-[#e6e2de] space-y-3">
-            <span className="text-xs font-bold text-[#1a1918] block">
+          <div className="bg-canvas p-4 rounded-xl border border-border space-y-3">
+            <span className="text-xs font-bold text-ink block">
               {isRtl ? "كتابة تقييم موثق" : "Leave a Verified Review"}
             </span>
 
@@ -201,7 +201,7 @@ export default function ProfileReviewsSection({
               <form onSubmit={handleSubmit} className="space-y-3">
                 {/* Stars selector */}
                 <div className="space-y-1">
-                  <span className="text-[10px] text-[#6e6b66] uppercase tracking-wider block">
+                  <span className="text-[10px] text-ink-muted uppercase tracking-wider block">
                     {isRtl ? "التقييم بالنجوم" : "Your Rating"}
                   </span>
                   <div className="flex items-center gap-1.5">
@@ -210,11 +210,11 @@ export default function ProfileReviewsSection({
                         key={s}
                         type="button"
                         onClick={() => setRating(s)}
-                        className="text-[#bf9b30] hover:scale-110 transition-transform cursor-pointer"
+                        className="text-gold hover:scale-110 transition-transform cursor-pointer"
                       >
                         <Star
                           size={20}
-                          className={s <= rating ? "fill-[#bf9b30] text-[#bf9b30]" : "text-gray-300"}
+                          className={s <= rating ? "fill-gold text-gold" : "text-gray-300"}
                         />
                       </button>
                     ))}
@@ -228,7 +228,7 @@ export default function ProfileReviewsSection({
                     onChange={(e) => setComment(e.target.value)}
                     placeholder={isRtl ? "اكتب تعليقك هنا..." : "Share your experience with this profile..."}
                     rows={2}
-                    className="w-full p-2.5 bg-white border border-[#e6e2de] rounded-lg text-xs focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+                    className="w-full p-2.5 bg-white border border-border rounded-lg text-xs focus:outline-none focus:border-gold text-ink"
                     required
                   />
                 </div>
@@ -248,7 +248,7 @@ export default function ProfileReviewsSection({
                 )}
 
                 <div className="flex items-center justify-between">
-                  <p className="text-[9px] text-[#6e6b66] max-w-[70%] leading-normal">
+                  <p className="text-[9px] text-ink-muted max-w-[70%] leading-normal">
                     {isRtl 
                       ? "تنبيه: يمكنك فقط تقييم المستشار أو الشركة التي أرسلت إليها طلباً مسبقاً." 
                       : "Note: Eligibility check active. Only profiles with active lead inquiries can submit feedback."}
@@ -256,7 +256,7 @@ export default function ProfileReviewsSection({
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-3.5 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] hover:text-[#1a1918] text-white text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-55"
+                    className="px-3.5 py-1.5 bg-ink hover:bg-gold hover:text-ink text-white text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-55"
                   >
                     {submitting && <Loader2 className="animate-spin" size={12} />}
                     <span>{isRtl ? "إرسال التقييم" : "Submit"}</span>
@@ -265,7 +265,7 @@ export default function ProfileReviewsSection({
               </form>
             ) : (
               <div className="text-center py-2">
-                <p className="text-xs text-[#6e6b66]">
+                <p className="text-xs text-ink-muted">
                   {isRtl 
                     ? "الرجاء تسجيل الدخول أولاً لتتمكن من كتابة تقييم." 
                     : "Please log in to submit a rating or feedback on this profile."}

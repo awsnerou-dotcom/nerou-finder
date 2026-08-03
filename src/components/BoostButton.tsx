@@ -128,7 +128,7 @@ export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonP
           type="button"
           onClick={() => handleBoostClick("BUMP")}
           disabled={loading !== null}
-          className="px-2 py-1 bg-[#f2ede8] hover:bg-[#e6e2de] text-[#1a1918] rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+          className="px-2 py-1 bg-surface-2 hover:bg-border text-ink rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
         >
           {loading === "BUMP" ? <Loader2 className="animate-spin" size={11} /> : <Zap size={11} />}
           {isRtl ? "رفع (٤٩ ر.ق)" : "Bump (49 QAR)"}
@@ -137,7 +137,7 @@ export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonP
           type="button"
           onClick={() => handleBoostClick("FEATURED")}
           disabled={loading !== null}
-          className="px-2 py-1 bg-[#bf9b30] hover:bg-[#a8842a] text-black rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+          className="px-2 py-1 bg-gold hover:bg-[#a8842a] text-black rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
         >
           {loading === "FEATURED" ? <Loader2 className="animate-spin" size={11} /> : <Star size={11} />}
           {isRtl ? "مميز (٢٩٩ ر.ق/أسبوع)" : "Featured (299 QAR/wk)"}
@@ -164,7 +164,7 @@ export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonP
               type="button"
               onClick={handleCancelPendingBoost}
               disabled={loading !== null}
-              className="px-2 py-1 bg-[#1a1918] hover:bg-[#33302a] text-white rounded text-[9px] font-bold cursor-pointer disabled:opacity-50"
+              className="px-2 py-1 bg-ink hover:bg-chrome-hover text-white rounded text-[9px] font-bold cursor-pointer disabled:opacity-50"
             >
               {isRtl ? "الرجوع للتحسين أولاً" : "Go fix it first"}
             </button>
@@ -180,7 +180,7 @@ export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonP
         </div>
       )}
 
-      {message && <p className="text-[9px] text-[#6e6b66]">{message}</p>}
+      {message && <p className="text-[9px] text-ink-muted">{message}</p>}
     </div>
   );
 }

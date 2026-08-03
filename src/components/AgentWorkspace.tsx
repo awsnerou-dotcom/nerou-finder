@@ -900,43 +900,43 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Workspace Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e6e2de] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h2 className="text-2xl font-serif text-[#1a1918] font-medium">
+          <h2 className="text-2xl font-serif text-ink font-medium">
             {isRtl ? "مساحة عمل الوكيل العقاري" : "Agent Workspace"}
           </h2>
-          <p className="text-xs text-[#6e6b66] mt-0.5">
+          <p className="text-xs text-ink-muted mt-0.5">
             {isRtl ? `الوكيل النشط: ${agent.fullName}` : `Active Representative: ${agent.fullName}`}
             {agent.verificationStatus === VerificationStatus.APPROVED && (
-              <span className="ml-1.5 font-semibold text-[#bf9b30]">
+              <span className="ml-1.5 font-semibold text-gold">
                 • {getVerifiedBadgeLabel(agent, agencyOrg?.name, isRtl)}
               </span>
             )}
           </p>
         </div>
 
-        <div className="flex bg-[#f2ede8] p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
+        <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
           <button
             onClick={() => setActiveTab("dashboard")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "لوحة القيادة" : "Stats Center"}
           </button>
           <button
             onClick={() => setActiveTab("leads")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "العملاء المحتملون" : "Leads Panel"}
           </button>
           <button
             onClick={() => setActiveTab("properties")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "properties" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "properties" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "عقاراتي" : "My Listings"}
           </button>
           <button
             onClick={() => setActiveTab("verification")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
@@ -945,20 +945,20 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           {effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
             <button
               onClick={() => setActiveTab("subscription")}
-              className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "subscription" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+              className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "subscription" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
             >
               {isRtl ? "الاشتراك" : "Subscription"}
             </button>
           )}
           <button
             onClick={() => setActiveTab("reviews")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "reviews" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "reviews" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التقييمات" : "Reviews"}
           </button>
           <button
             onClick={() => setActiveTab("profile")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الحساب" : "My Profile"}
           </button>
@@ -983,9 +983,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
       {/* SUBSCRIPTION TAB (INDEPENDENT_AGENT only) */}
       {activeTab === "subscription" && effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
-        <div className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4 text-xs max-w-xl">
-          <h4 className="font-serif text-sm font-semibold text-[#1a1918] border-b border-[#f2ede8] pb-3 flex items-center gap-2">
-            <CreditCard size={16} className="text-[#bf9b30]" />
+        <div className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs max-w-xl">
+          <h4 className="font-serif text-sm font-semibold text-ink border-b border-surface-2 pb-3 flex items-center gap-2">
+            <CreditCard size={16} className="text-gold" />
             {isRtl ? "بيانات اشتراكك كوكيل مستقل" : "Your Independent Agent Subscription"}
           </h4>
           {(() => {
@@ -997,26 +997,26 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             return (
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-[#6e6b66]">{isRtl ? "الخطة الحالية" : "Current Plan"}</span>
-                  <span className="font-bold text-[#1a1918]">{plan?.name || (isRtl ? "لم يتم تحديد خطة بعد" : "No plan selected yet")}</span>
+                  <span className="text-ink-muted">{isRtl ? "الخطة الحالية" : "Current Plan"}</span>
+                  <span className="font-bold text-ink">{plan?.name || (isRtl ? "لم يتم تحديد خطة بعد" : "No plan selected yet")}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[#6e6b66]">{isRtl ? "حالة الاشتراك" : "Subscription Status"}</span>
+                  <span className="text-ink-muted">{isRtl ? "حالة الاشتراك" : "Subscription Status"}</span>
                   <span className={`font-bold ${statusColor}`}>{status}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[#6e6b66]">{isRtl ? "تاريخ الانتهاء" : "Expiry Date"}</span>
-                  <span className="font-bold text-[#1a1918]">
+                  <span className="text-ink-muted">{isRtl ? "تاريخ الانتهاء" : "Expiry Date"}</span>
+                  <span className="font-bold text-ink">
                     {agent.subscriptionExpiry ? new Date(agent.subscriptionExpiry).toLocaleDateString() : "-"}
                   </span>
                 </div>
                 {agent.subscriptionNotes && (
-                  <div className="pt-3 border-t border-[#f2ede8]">
-                    <span className="text-[#6e6b66] block mb-1">{isRtl ? "ملاحظات الإدارة" : "Admin Notes"}</span>
-                    <p className="text-[#1a1918]">{agent.subscriptionNotes}</p>
+                  <div className="pt-3 border-t border-surface-2">
+                    <span className="text-ink-muted block mb-1">{isRtl ? "ملاحظات الإدارة" : "Admin Notes"}</span>
+                    <p className="text-ink">{agent.subscriptionNotes}</p>
                   </div>
                 )}
-                <p className="text-[10px] text-[#6e6b66] pt-3 border-t border-[#f2ede8]">
+                <p className="text-[10px] text-ink-muted pt-3 border-t border-surface-2">
                   {isRtl
                     ? "يقوم فريق نيرو فايندر بتفعيل خطة اشتراكك بعد التواصل معك وتأكيد الدفع. لا حاجة لإجراء أي دفع ذاتي من هنا."
                     : "Your plan and payment are activated by the Nerou Finder team after they contact you and confirm payment. No self-service payment is required here."}
@@ -1032,62 +1032,62 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         <div className="space-y-6">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-xl border border-[#e6e2de]">
-              <div className="flex items-center justify-between text-[#6e6b66] mb-2">
+            <div className="bg-white p-4 rounded-xl border border-border">
+              <div className="flex items-center justify-between text-ink-muted mb-2">
                 <span className="text-xs font-medium">{isRtl ? "إجمالي العملاء" : "Total Leads Assigned"}</span>
                 <Users size={16} />
               </div>
-              <h3 className="text-2xl font-serif font-bold text-[#1a1918]">{totalLeads}</h3>
+              <h3 className="text-2xl font-serif font-bold text-ink">{totalLeads}</h3>
               <p className="text-[10px] text-emerald-600 font-medium mt-1">↑ 14% {isRtl ? "هذا الأسبوع" : "vs last week"}</p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-[#e6e2de]">
-              <div className="flex items-center justify-between text-[#6e6b66] mb-2">
+            <div className="bg-white p-4 rounded-xl border border-border">
+              <div className="flex items-center justify-between text-ink-muted mb-2">
                 <span className="text-xs font-medium">{isRtl ? "نسبة التحويل" : "Conversion Efficiency"}</span>
                 <TrendingUp size={16} />
               </div>
-              <h3 className="text-2xl font-serif font-bold text-[#1a1918]">{conversionRate}%</h3>
-              <p className="text-[10px] text-[#6e6b66] mt-1">{isRtl ? "معدل الإغلاق الكلي" : "Of total processed inquiries"}</p>
+              <h3 className="text-2xl font-serif font-bold text-ink">{conversionRate}%</h3>
+              <p className="text-[10px] text-ink-muted mt-1">{isRtl ? "معدل الإغلاق الكلي" : "Of total processed inquiries"}</p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-[#e6e2de]">
-              <div className="flex items-center justify-between text-[#6e6b66] mb-2">
+            <div className="bg-white p-4 rounded-xl border border-border">
+              <div className="flex items-center justify-between text-ink-muted mb-2">
                 <span className="text-xs font-medium">{isRtl ? "عقارات معروضة" : "Active Listings"}</span>
                 <Building size={16} />
               </div>
-              <h3 className="text-2xl font-serif font-bold text-[#1a1918]">{activeListings}</h3>
-              <p className="text-[10px] text-[#6e6b66] mt-1">{isRtl ? "منشورة ومتاحة للتداول" : "Published properties online"}</p>
+              <h3 className="text-2xl font-serif font-bold text-ink">{activeListings}</h3>
+              <p className="text-[10px] text-ink-muted mt-1">{isRtl ? "منشورة ومتاحة للتداول" : "Published properties online"}</p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl border border-[#e6e2de]">
-              <div className="flex items-center justify-between text-[#6e6b66] mb-2">
+            <div className="bg-white p-4 rounded-xl border border-border">
+              <div className="flex items-center justify-between text-ink-muted mb-2">
                 <span className="text-xs font-medium">{isRtl ? "زمن الاستجابة" : "Avg. Response Time"}</span>
                 <Clock size={16} />
               </div>
-              <h3 className="text-2xl font-serif font-bold text-[#1a1918]">12 min</h3>
+              <h3 className="text-2xl font-serif font-bold text-ink">12 min</h3>
               <p className="text-[10px] text-emerald-600 font-medium mt-1">↓ 3 min {isRtl ? "أسرع اليوم" : "industry gold class"}</p>
             </div>
           </div>
 
           {/* Quick Tasks & Recent Activity */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white p-5 rounded-xl border border-[#e6e2de] space-y-4">
-              <h4 className="font-serif text-base font-semibold text-[#1a1918]">
+            <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+              <h4 className="font-serif text-base font-semibold text-ink">
                 {isRtl ? "العملاء الجدد المعلقين" : "Unaddressed Hot Leads"}
               </h4>
               <div className="space-y-3">
                 {leads.filter(l => l.status === LeadStatus.NEW).length === 0 ? (
-                  <p className="text-xs text-center text-[#6e6b66] py-4">{isRtl ? "لا توجد عملاء جدد معلقين." : "All incoming requests processed!"}</p>
+                  <p className="text-xs text-center text-ink-muted py-4">{isRtl ? "لا توجد عملاء جدد معلقين." : "All incoming requests processed!"}</p>
                 ) : (
                   leads.filter(l => l.status === LeadStatus.NEW).map(lead => (
-                    <div key={lead.id} className="p-3 bg-[#fbfaf8] border border-[#e6e2de] rounded-lg flex items-center justify-between">
+                    <div key={lead.id} className="p-3 bg-canvas border border-border rounded-lg flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <h5 className="text-xs font-bold text-[#1a1918]">{lead.visitorName}</h5>
-                        <p className="text-[10px] text-[#6e6b66] line-clamp-1">{lead.message}</p>
+                        <h5 className="text-xs font-bold text-ink">{lead.visitorName}</h5>
+                        <p className="text-[10px] text-ink-muted line-clamp-1">{lead.message}</p>
                       </div>
                       <button
                         onClick={() => handleUpdateLeadStatus(lead.id, LeadStatus.CONTACTED)}
-                        className="px-2.5 py-1 bg-[#1a1918] hover:bg-[#bf9b30] text-white text-[10px] rounded"
+                        className="px-2.5 py-1 bg-ink hover:bg-gold text-white text-[10px] rounded"
                       >
                         {isRtl ? "تأكيد التواصل" : "Acknowledge"}
                       </button>
@@ -1097,8 +1097,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-xl border border-[#e6e2de] space-y-4">
-              <h4 className="font-serif text-base font-semibold text-[#1a1918]">
+            <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+              <h4 className="font-serif text-base font-semibold text-ink">
                 {isRtl ? "قنوات الإغلاق والإنتاجية" : "Lead Channel Attribution"}
               </h4>
               <div className="space-y-3 text-xs">
@@ -1107,7 +1107,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <span>{isRtl ? "واتساب مباشر" : "Direct WhatsApp Inquiries"}</span>
                     <span className="font-bold">60%</span>
                   </div>
-                  <div className="h-2 bg-[#f2ede8] rounded-full overflow-hidden">
+                  <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
                     <div className="h-full bg-emerald-500" style={{ width: "60%" }}></div>
                   </div>
                 </div>
@@ -1116,7 +1116,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <span>{isRtl ? "اتصال هاتفي" : "Direct Telephone Contacts"}</span>
                     <span className="font-bold">25%</span>
                   </div>
-                  <div className="h-2 bg-[#f2ede8] rounded-full overflow-hidden">
+                  <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
                     <div className="h-full bg-blue-500" style={{ width: "25%" }}></div>
                   </div>
                 </div>
@@ -1125,8 +1125,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <span>{isRtl ? "جدولة معاينات نموذج الموقع" : "Interactive Booking Forms"}</span>
                     <span className="font-bold">15%</span>
                   </div>
-                  <div className="h-2 bg-[#f2ede8] rounded-full overflow-hidden">
-                    <div className="h-full bg-[#bf9b30]" style={{ width: "15%" }}></div>
+                  <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
+                    <div className="h-full bg-gold" style={{ width: "15%" }}></div>
                   </div>
                 </div>
               </div>
@@ -1137,25 +1137,25 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
       {/* LEADS TAB */}
       {activeTab === "leads" && (
-        <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-          <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center justify-between gap-3 flex-wrap">
-            <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "إدارة وتتبع تواصل العملاء" : "Assigned Lead Lifecycle Funnel"}</h4>
+        <div className="bg-white rounded-xl border border-border overflow-hidden">
+          <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">
+            <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إدارة وتتبع تواصل العملاء" : "Assigned Lead Lifecycle Funnel"}</h4>
             <button
               type="button"
               onClick={() => setShowArchivedLeads(prev => !prev)}
-              className="text-[10px] font-semibold text-[#6e6b66] hover:text-[#1a1918] underline cursor-pointer"
+              className="text-[10px] font-semibold text-ink-muted hover:text-ink underline cursor-pointer"
             >
               {showArchivedLeads
                 ? (isRtl ? "إخفاء العملاء المؤرشفين" : "Hide archived leads")
                 : (isRtl ? "عرض العملاء المؤرشفين" : "Show archived leads")}
             </button>
           </div>
-          <div className="divide-y divide-[#f2ede8] text-xs">
+          <div className="divide-y divide-surface-2 text-xs">
             {(() => {
               const visibleLeads = leads.filter(l => (showArchivedLeads ? !!l.isArchived : !l.isArchived));
               if (visibleLeads.length === 0) {
                 return (
-                  <p className="text-center py-8 text-[#6e6b66]">
+                  <p className="text-center py-8 text-ink-muted">
                     {showArchivedLeads
                       ? (isRtl ? "لا يوجد عملاء مؤرشفون." : "No archived leads.")
                       : (isRtl ? "لا توجد أي طلبات تواصل مسجلة." : "No leads assigned to you yet.")}
@@ -1170,7 +1170,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       <button
                         type="button"
                         onClick={() => setSelectedLeadId(lead.id)}
-                        className="font-bold text-[#1a1918] text-sm hover:text-[#bf9b30] cursor-pointer underline decoration-dotted"
+                        className="font-bold text-ink text-sm hover:text-gold cursor-pointer underline decoration-dotted"
                       >
                         {lead.visitorName}
                       </button>
@@ -1182,7 +1182,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         {lead.status}
                       </span>
                     </div>
-                    <div className="text-[#6e6b66] space-y-0.5">
+                    <div className="text-ink-muted space-y-0.5">
                       <div className="flex items-center gap-3">
                         <a
                           href={`https://wa.me/${waPhone(lead)}?text=${encodeURIComponent(isRtl ? `مرحباً ${lead.visitorName}، بخصوص استفساركم العقاري.` : `Hello ${lead.visitorName}, regarding your property inquiry.`)}`}
@@ -1193,14 +1193,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           <MessageSquare size={12} /> {lead.visitorPhone}
                         </a>
                         {lead.visitorEmail && (
-                          <a href={`mailto:${lead.visitorEmail}`} className="flex items-center gap-1 text-[#1a1918] hover:text-[#bf9b30] font-semibold">
+                          <a href={`mailto:${lead.visitorEmail}`} className="flex items-center gap-1 text-ink hover:text-gold font-semibold">
                             <Mail size={12} /> {lead.visitorEmail}
                           </a>
                         )}
                       </div>
                       <p className="italic">"{lead.message}"</p>
                       {lead.propertyId && (
-                        <button type="button" onClick={() => handleViewLeadProperty(lead.propertyId!)} className="text-[10px] text-[#bf9b30] underline cursor-pointer">
+                        <button type="button" onClick={() => handleViewLeadProperty(lead.propertyId!)} className="text-[10px] text-gold underline cursor-pointer">
                           {isRtl ? "عرض العقار المرتبط" : "View related property"}
                         </button>
                       )}
@@ -1211,7 +1211,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <select
                       value={lead.status}
                       onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
-                      className="px-2 py-1.5 bg-white border border-[#e6e2de] rounded text-[10px] font-semibold text-[#1a1918]"
+                      className="px-2 py-1.5 bg-white border border-border rounded text-[10px] font-semibold text-ink"
                     >
                       {Object.values(LeadStatus).map(s => (
                         <option key={s} value={s}>{s}</option>
@@ -1220,7 +1220,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <button
                       type="button"
                       onClick={() => handleArchiveLead(lead.id, !lead.isArchived)}
-                      className="px-2.5 py-1.5 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] text-[#1a1918] font-medium rounded cursor-pointer"
+                      className="px-2.5 py-1.5 bg-white hover:bg-surface-2 border border-border text-ink font-medium rounded cursor-pointer"
                     >
                       {lead.isArchived ? (isRtl ? "إعادة فتح" : "Reopen") : (isRtl ? "أرشفة" : "Archive")}
                     </button>
@@ -1242,54 +1242,54 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             <div className="bg-white rounded-xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 space-y-4 text-xs" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-start justify-between">
                 <div>
-                  <h4 className="font-serif text-base font-bold text-[#1a1918]">{lead.visitorName}</h4>
-                  <p className="text-[10px] text-[#6e6b66]">{isRtl ? "استلم بتاريخ " : "Received "}{new Date(lead.createdDate).toLocaleString()}</p>
+                  <h4 className="font-serif text-base font-bold text-ink">{lead.visitorName}</h4>
+                  <p className="text-[10px] text-ink-muted">{isRtl ? "استلم بتاريخ " : "Received "}{new Date(lead.createdDate).toLocaleString()}</p>
                 </div>
-                <button type="button" onClick={() => setSelectedLeadId(null)} className="text-[#6e6b66] hover:text-[#1a1918] cursor-pointer"><X size={18} /></button>
+                <button type="button" onClick={() => setSelectedLeadId(null)} className="text-ink-muted hover:text-ink cursor-pointer"><X size={18} /></button>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold">
                   <MessageSquare size={14} /> {isRtl ? "واتساب" : "WhatsApp"}
                 </a>
-                <a href={`tel:${lead.visitorPhone}`} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#1a1918] hover:bg-[#33302a] text-white rounded-lg font-semibold">
+                <a href={`tel:${lead.visitorPhone}`} className="flex items-center justify-center gap-1.5 px-3 py-2 bg-ink hover:bg-chrome-hover text-white rounded-lg font-semibold">
                   <Phone size={14} /> {isRtl ? "اتصال" : "Call"}
                 </a>
               </div>
 
-              <div className="space-y-1 border-t border-[#f2ede8] pt-3">
+              <div className="space-y-1 border-t border-surface-2 pt-3">
                 <p><strong>{isRtl ? "البريد: " : "Email: "}</strong>{lead.visitorEmail || "—"}</p>
                 <p><strong>{isRtl ? "الرسالة: " : "Message: "}</strong>{lead.message}</p>
                 <p><strong>{isRtl ? "الحالة: " : "Status: "}</strong>{lead.status}</p>
                 {lead.propertyId && (
-                  <button type="button" onClick={() => handleViewLeadProperty(lead.propertyId!)} className="text-[#bf9b30] underline cursor-pointer">
+                  <button type="button" onClick={() => handleViewLeadProperty(lead.propertyId!)} className="text-gold underline cursor-pointer">
                     {isRtl ? "عرض العقار المرتبط" : "View related property"}
                   </button>
                 )}
               </div>
 
-              <div className="border-t border-[#f2ede8] pt-3 space-y-2">
-                <p className="font-bold text-[#1a1918]">{isRtl ? "الملاحظات" : "Notes"}</p>
+              <div className="border-t border-surface-2 pt-3 space-y-2">
+                <p className="font-bold text-ink">{isRtl ? "الملاحظات" : "Notes"}</p>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={leadNoteDraft}
                     onChange={(e) => setLeadNoteDraft(e.target.value)}
                     placeholder={isRtl ? "أضف ملاحظة..." : "Add a note..."}
-                    className="flex-1 px-2 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg"
+                    className="flex-1 px-2 py-1.5 bg-ink-inverse border border-border rounded-lg"
                   />
-                  <button type="button" onClick={() => handleAddLeadNote(lead.id)} disabled={!leadNoteDraft.trim()} className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer">
+                  <button type="button" onClick={() => handleAddLeadNote(lead.id)} disabled={!leadNoteDraft.trim()} className="px-3 py-1.5 bg-ink hover:bg-gold disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer">
                     {isRtl ? "إضافة" : "Add"}
                   </button>
                 </div>
                 <div className="space-y-1.5 max-h-40 overflow-y-auto">
                   {(lead.notes || []).length === 0 ? (
-                    <p className="text-[#a9a49d] italic">{isRtl ? "لا توجد ملاحظات بعد." : "No notes yet."}</p>
+                    <p className="text-ink-faint italic">{isRtl ? "لا توجد ملاحظات بعد." : "No notes yet."}</p>
                   ) : (
                     (lead.notes || []).map(n => (
-                      <div key={n.id} className="bg-[#fbfaf8] border border-[#f2ede8] rounded-lg p-2">
-                        <p className="text-[#1a1918]">{n.text}</p>
-                        <p className="text-[9px] text-[#a9a49d] mt-0.5">{n.authorName} • {new Date(n.createdDate).toLocaleString()}</p>
+                      <div key={n.id} className="bg-canvas border border-surface-2 rounded-lg p-2">
+                        <p className="text-ink">{n.text}</p>
+                        <p className="text-[9px] text-ink-faint mt-0.5">{n.authorName} • {new Date(n.createdDate).toLocaleString()}</p>
                       </div>
                     ))
                   )}
@@ -1308,12 +1308,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             <img src={leadPropertyPreview.images?.[0]} alt={leadPropertyPreview.title} className="w-full h-40 object-cover" />
             <div className="p-4 space-y-1">
               <div className="flex items-start justify-between">
-                <h5 className="font-serif text-sm font-bold text-[#1a1918]">{isRtl ? leadPropertyPreview.titleAr : leadPropertyPreview.title}</h5>
-                <button type="button" onClick={() => setLeadPropertyPreview(null)} className="text-[#6e6b66] hover:text-[#1a1918] cursor-pointer"><X size={16} /></button>
+                <h5 className="font-serif text-sm font-bold text-ink">{isRtl ? leadPropertyPreview.titleAr : leadPropertyPreview.title}</h5>
+                <button type="button" onClick={() => setLeadPropertyPreview(null)} className="text-ink-muted hover:text-ink cursor-pointer"><X size={16} /></button>
               </div>
-              <p className="text-[#6e6b66]">{leadPropertyPreview.district}, {leadPropertyPreview.city}</p>
-              <p className="font-bold text-[#bf9b30]">{leadPropertyPreview.price?.toLocaleString()} QAR</p>
-              <p className="text-[10px] text-[#6e6b66]">{isRtl ? "الحالة: " : "Status: "}{leadPropertyPreview.listingStatus} • ID: {leadPropertyPreview.listingId}</p>
+              <p className="text-ink-muted">{leadPropertyPreview.district}, {leadPropertyPreview.city}</p>
+              <p className="font-bold text-gold">{leadPropertyPreview.price?.toLocaleString()} QAR</p>
+              <p className="text-[10px] text-ink-muted">{isRtl ? "الحالة: " : "Status: "}{leadPropertyPreview.listingStatus} • ID: {leadPropertyPreview.listingId}</p>
             </div>
           </div>
         </div>
@@ -1323,10 +1323,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {activeTab === "properties" && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "إدارة مخزون العقارات المعروضة" : "Active Exclusive Listings"}</h4>
+            <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إدارة مخزون العقارات المعروضة" : "Active Exclusive Listings"}</h4>
             <button
               onClick={() => setIsAddingListing(!isAddingListing)}
-              className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-ink hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
               <span>{isRtl ? "إضافة عقار جديد" : "New Property"}</span>
@@ -1396,10 +1396,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   e.preventDefault();
                 }
               }}
-              className="bg-white p-5 rounded-xl border border-[#bf9b30]/30 space-y-5 animate-in fade-in duration-200 text-xs"
+              className="bg-white p-5 rounded-xl border border-gold/30 space-y-5 animate-in fade-in duration-200 text-xs"
             >
               <div>
-                <h5 className="font-serif text-sm font-bold text-[#1a1918] pb-2">
+                <h5 className="font-serif text-sm font-bold text-ink pb-2">
                   {isRtl ? "إدخال بيانات عقار جديد" : "Provide New Property Specifications"}
                 </h5>
 
@@ -1417,26 +1417,26 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           onClick={() => goToWizardStep(s.step)}
                           disabled={!isClickable}
                           className={`flex items-center gap-1.5 px-2 py-1 rounded-lg shrink-0 text-[10px] sm:text-xs font-semibold transition-colors ${
-                            isActive ? "bg-[#1a1918] text-white" :
-                            isDone ? "bg-[#f2ede8] text-[#1a1918] cursor-pointer hover:bg-[#e6e2de]" :
-                            "text-[#a9a49d] cursor-not-allowed"
+                            isActive ? "bg-ink text-white" :
+                            isDone ? "bg-surface-2 text-ink cursor-pointer hover:bg-border" :
+                            "text-ink-faint cursor-not-allowed"
                           }`}
                         >
                           <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 ${
-                            isActive ? "bg-[#bf9b30] text-white" : isDone ? "bg-[#bf9b30]/70 text-white" : "bg-[#e6e2de] text-[#6e6b66]"
+                            isActive ? "bg-gold text-white" : isDone ? "bg-gold/70 text-white" : "bg-border text-ink-muted"
                           }`}>
                             {isDone ? <Check size={10} /> : s.step}
                           </span>
                           <span className="whitespace-nowrap">{isRtl ? s.ar : s.en}</span>
                         </button>
                         {idx < LISTING_WIZARD_STEPS.length - 1 && (
-                          <div className={`h-px w-3 sm:w-6 shrink-0 ${s.step < wizardStep ? "bg-[#bf9b30]" : "bg-[#e6e2de]"}`} />
+                          <div className={`h-px w-3 sm:w-6 shrink-0 ${s.step < wizardStep ? "bg-gold" : "bg-border"}`} />
                         )}
                       </React.Fragment>
                     );
                   })}
                 </div>
-                <p className="text-[10px] text-[#6e6b66] border-b border-[#f2ede8] pb-3">
+                <p className="text-[10px] text-ink-muted border-b border-surface-2 pb-3">
                   {isRtl
                     ? `الخطوة ${wizardStep} من ${LISTING_WIZARD_STEPS.length}: ${LISTING_WIZARD_STEPS[wizardStep - 1].ar}`
                     : `Step ${wizardStep} of ${LISTING_WIZARD_STEPS.length}: ${LISTING_WIZARD_STEPS[wizardStep - 1].en}`}
@@ -1447,24 +1447,24 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               {wizardStep === 1 && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "عنوان الإعلان" : "Listing Title"}</label>
+                    <label className="block font-medium text-ink-muted mb-1">{isRtl ? "عنوان الإعلان" : "Listing Title"}</label>
                     <input
                       type="text"
                       required
                       value={listingTitle}
                       onChange={(e) => setListingTitle(e.target.value)}
                       placeholder="e.g. Elegant 2-BR West Bay Penthouse"
-                      className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                      className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none focus:border-gold"
                     />
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع العقار" : "Property Type"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "نوع العقار" : "Property Type"}</label>
                       <select
                         value={listingType}
                         onChange={(e) => setListingType(e.target.value as PropertyType)}
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none"
                       >
                         <option value={PropertyType.APARTMENT}>Apartment</option>
                         <option value={PropertyType.VILLA}>Villa</option>
@@ -1487,11 +1487,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع المعاملة" : "Transaction"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "نوع المعاملة" : "Transaction"}</label>
                       <select
                         value={listingTrans}
                         onChange={(e) => setListingTrans(e.target.value as TransactionType)}
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none"
                       >
                         <option value={TransactionType.FOR_RENT}>For Rent</option>
                         <option value={TransactionType.FOR_SALE}>For Sale</option>
@@ -1506,14 +1506,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               {wizardStep === 2 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "البلدية / المدينة" : "Municipality"}</label>
+                    <label className="block font-medium text-ink-muted mb-1">{isRtl ? "البلدية / المدينة" : "Municipality"}</label>
                     <select
                       value={selectedMunicipality}
                       onChange={(e) => {
                         setSelectedMunicipality(e.target.value);
                         setSelectedArea("");
                       }}
-                      className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                      className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                     >
                       <option value="">Select Municipality</option>
                       {locations.filter(l => l.type === "MUNICIPALITY" && l.isActive).map(muni => (
@@ -1523,12 +1523,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   </div>
 
                   <div>
-                    <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الحي / المنطقة" : "Area / District"}</label>
+                    <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الحي / المنطقة" : "Area / District"}</label>
                     <select
                       value={selectedArea}
                       disabled={!selectedMunicipality}
                       onChange={(e) => setSelectedArea(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg disabled:opacity-50"
+                      className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg disabled:opacity-50"
                     >
                       <option value="">Select Area / District</option>
                       {locations.filter(l => l.parentId === selectedMunicipality && l.isActive).map(area => (
@@ -1544,7 +1544,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "السعر (ريال قطري)" : "Price (QAR)"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "السعر (ريال قطري)" : "Price (QAR)"}</label>
                       <input
                         type="number"
                         inputMode="numeric"
@@ -1553,12 +1553,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         value={listingPrice}
                         onChange={(e) => setListingPrice(e.target.value)}
                         placeholder="e.g. 10000"
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none focus:border-gold"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المساحة (متر مربع)" : "Area Size (SQM)"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المساحة (متر مربع)" : "Area Size (SQM)"}</label>
                       <input
                         type="number"
                         inputMode="numeric"
@@ -1567,16 +1567,16 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         value={listingArea}
                         onChange={(e) => setListingArea(e.target.value)}
                         placeholder="e.g. 140"
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none focus:border-gold"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "غرف النوم" : "Bedrooms"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "غرف النوم" : "Bedrooms"}</label>
                       <select
                         value={listingBeds}
                         onChange={(e) => setListingBeds(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                       >
                         <option value="1">1</option>
                         <option value="2">2</option>
@@ -1586,11 +1586,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الحمامات" : "Bathrooms"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الحمامات" : "Bathrooms"}</label>
                       <select
                         value={listingBaths}
                         onChange={(e) => setListingBaths(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                       >
                         <option value="1">1</option>
                         <option value="2">2</option>
@@ -1600,13 +1600,13 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     </div>
                   </div>
 
-                  <h5 className="font-serif text-sm font-bold text-[#1a1918] border-b border-[#f2ede8] pb-2 pt-2">
+                  <h5 className="font-serif text-sm font-bold text-ink border-b border-surface-2 pb-2 pt-2">
                     {isRtl ? "مواصفات قطرية إضافية" : "Qatar Specifications"}
                   </h5>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "سنة الإنجاز" : "Completion Year"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "سنة الإنجاز" : "Completion Year"}</label>
                       <input
                         type="number"
                         inputMode="numeric"
@@ -1615,16 +1615,16 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         value={listingCompletionYear}
                         onChange={(e) => setListingCompletionYear(e.target.value)}
                         placeholder="e.g. 2026"
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none focus:border-gold"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "حالة الفرش" : "Furnishing Status"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "حالة الفرش" : "Furnishing Status"}</label>
                       <select
                         value={listingFurnishingStatus}
                         onChange={(e) => setListingFurnishingStatus(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none"
                       >
                         <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
                         <option value="FULLY_FURNISHED">{isRtl ? "مؤثث بالكامل" : "Fully Furnished"}</option>
@@ -1634,11 +1634,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع الملكية" : "Tenure Type"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "نوع الملكية" : "Tenure Type"}</label>
                       <select
                         value={listingTenureType}
                         onChange={(e) => setListingTenureType(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none"
                       >
                         <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
                         <option value="FREEHOLD">{isRtl ? "تملك حر" : "Freehold"}</option>
@@ -1648,11 +1648,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المرافق مشمولة" : "Utilities Included"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المرافق مشمولة" : "Utilities Included"}</label>
                       <select
                         value={listingUtilitiesIncluded}
                         onChange={(e) => setListingUtilitiesIncluded(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none"
                       >
                         <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
                         <option value="YES">{isRtl ? "نعم" : "Yes"}</option>
@@ -1664,11 +1664,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "أقرب محطة مترو" : "Nearest Metro Station"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "أقرب محطة مترو" : "Nearest Metro Station"}</label>
                       <select
                         value={listingMetroStation}
                         onChange={(e) => setListingMetroStation(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none"
                       >
                         <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
                         {DOHA_METRO_STATIONS.map(station => (
@@ -1678,7 +1678,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "دقائق المشي للمترو" : "Walking Minutes to Metro"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "دقائق المشي للمترو" : "Walking Minutes to Metro"}</label>
                       <input
                         type="number"
                         inputMode="numeric"
@@ -1686,16 +1686,16 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         value={listingMetroWalkingMinutes}
                         onChange={(e) => setListingMetroWalkingMinutes(e.target.value)}
                         placeholder="e.g. 5"
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none focus:border-gold"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نوع مواقف السيارات" : "Parking Type"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "نوع مواقف السيارات" : "Parking Type"}</label>
                       <select
                         value={listingParkingType}
                         onChange={(e) => setListingParkingType(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none"
                       >
                         <option value="">{isRtl ? "غير محدد" : "Not specified"}</option>
                         <option value="COVERED">{isRtl ? "مغطى" : "Covered"}</option>
@@ -1706,7 +1706,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "عدد مواقف السيارات" : "Parking Spaces"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "عدد مواقف السيارات" : "Parking Spaces"}</label>
                       <input
                         type="number"
                         inputMode="numeric"
@@ -1714,19 +1714,19 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         value={listingParkingSpaces}
                         onChange={(e) => setListingParkingSpaces(e.target.value)}
                         placeholder="e.g. 2"
-                        className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none focus:border-gold"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المرافق (مفصولة بفاصلة)" : "Amenities (Comma separated)"}</label>
+                    <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المرافق (مفصولة بفاصلة)" : "Amenities (Comma separated)"}</label>
                     <input
                       type="text"
                       value={listingAmenities}
                       onChange={(e) => setListingAmenities(e.target.value)}
                       placeholder="e.g. Pool, Gym, Parking, Balcony"
-                      className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                      className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                     />
                   </div>
                 </div>
@@ -1736,8 +1736,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               {wizardStep === 4 && (
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block font-medium text-[#6e6b66]">{isRtl ? "صور العقار (تحميل متعدد)" : "Property Photos (Multi-upload)"}</label>
-                    <span className={`text-xs font-semibold ${listingImages.length >= MAX_LISTING_IMAGES ? "text-red-600" : "text-[#6e6b66]"}`}>
+                    <label className="block font-medium text-ink-muted">{isRtl ? "صور العقار (تحميل متعدد)" : "Property Photos (Multi-upload)"}</label>
+                    <span className={`text-xs font-semibold ${listingImages.length >= MAX_LISTING_IMAGES ? "text-red-600" : "text-ink-muted"}`}>
                       {listingImages.length} / {MAX_LISTING_IMAGES} {isRtl ? "صورة" : "photos"}
                     </span>
                   </div>
@@ -1751,7 +1751,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       </p>
                     </div>
                   ) : (
-                    <div className="border-2 border-dashed border-[#e6e2de] hover:border-[#bf9b30] rounded-xl p-6 text-center cursor-pointer bg-white transition-colors relative">
+                    <div className="border-2 border-dashed border-border hover:border-gold rounded-xl p-6 text-center cursor-pointer bg-white transition-colors relative">
                       <input
                         type="file"
                         multiple
@@ -1763,16 +1763,16 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       <div className="space-y-2">
                         {uploading ? (
                           <div className="flex flex-col items-center gap-2">
-                            <Loader2 className="animate-spin text-[#bf9b30]" size={28} />
-                            <p className="text-sm font-medium text-[#6e6b66]">{isRtl ? "جاري رفع الصور..." : "Uploading images..."}</p>
+                            <Loader2 className="animate-spin text-gold" size={28} />
+                            <p className="text-sm font-medium text-ink-muted">{isRtl ? "جاري رفع الصور..." : "Uploading images..."}</p>
                           </div>
                         ) : (
                           <>
                             <ImageIcon className="mx-auto text-gray-400" size={32} />
-                            <p className="text-sm font-medium text-[#1a1918]">
+                            <p className="text-sm font-medium text-ink">
                               {isRtl ? "اضغط هنا لتحميل صور متعددة" : "Click here to upload multiple images"}
                             </p>
-                            <p className="text-xs text-[#6e6b66]">
+                            <p className="text-xs text-ink-muted">
                               {isRtl ? "يدعم ملفات JPG, PNG وغيرها" : "Supports JPG, PNG etc."}
                             </p>
                           </>
@@ -1783,17 +1783,17 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
                   {listingImages.length > 0 && (
                     <>
-                      <p className="text-[10px] text-[#6e6b66] mt-3">
+                      <p className="text-[10px] text-ink-muted mt-3">
                         {isRtl
                           ? "استخدم الأسهم لإعادة ترتيب الصور - الصورة الأولى هي الصورة الرئيسية للإعلان."
                           : "Use the arrows to reorder photos - the first photo is the listing's main cover image."}
                       </p>
                       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-2">
                         {listingImages.map((imgUrl, index) => (
-                          <div key={imgUrl + index} className="relative group aspect-square rounded-lg overflow-hidden border border-[#e6e2de] bg-[#fdfdfc] shadow-2xs">
+                          <div key={imgUrl + index} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-ink-inverse shadow-2xs">
                             <img src={imgUrl} alt="" className="w-full h-full object-cover" />
                             {index === 0 && (
-                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-[#1a1918]/80 text-white text-[8px] font-bold rounded">
+                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-ink/80 text-white text-[8px] font-bold rounded">
                                 {isRtl ? "الرئيسية" : "COVER"}
                               </span>
                             )}
@@ -1809,7 +1809,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                                 type="button"
                                 onClick={() => moveListingImage(index, -1)}
                                 disabled={index === 0}
-                                className="p-0.5 bg-white/90 hover:bg-white text-[#1a1918] rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="p-0.5 bg-white/90 hover:bg-white text-ink rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                 title={isRtl ? "تحريك للأعلى" : "Move earlier"}
                               >
                                 <ChevronUp size={12} />
@@ -1818,7 +1818,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                                 type="button"
                                 onClick={() => moveListingImage(index, 1)}
                                 disabled={index === listingImages.length - 1}
-                                className="p-0.5 bg-white/90 hover:bg-white text-[#1a1918] rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="p-0.5 bg-white/90 hover:bg-white text-ink rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                 title={isRtl ? "تحريك للأسفل" : "Move later"}
                               >
                                 <ChevronDown size={12} />
@@ -1836,14 +1836,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               {wizardStep === 5 && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "شرح وتفاصيل الإعلان" : "Property Details & Descriptions"}</label>
+                    <label className="block font-medium text-ink-muted mb-1">{isRtl ? "شرح وتفاصيل الإعلان" : "Property Details & Descriptions"}</label>
                     <textarea
                       rows={3}
                       required
                       value={listingDesc}
                       onChange={(e) => setListingDesc(e.target.value)}
                       placeholder="Provide comprehensive details about amenities, location near schools, views..."
-                      className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                      className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                     ></textarea>
                   </div>
 
@@ -1851,41 +1851,41 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     const muniItem = locations.find(l => l.id === selectedMunicipality);
                     const areaItem = locations.find(l => l.id === selectedArea);
                     return (
-                      <div className="border-t border-[#f2ede8] pt-4 space-y-3">
-                        <h5 className="font-serif text-sm font-bold text-[#1a1918]">
+                      <div className="border-t border-surface-2 pt-4 space-y-3">
+                        <h5 className="font-serif text-sm font-bold text-ink">
                           {isRtl ? "مراجعة الإعلان قبل النشر" : "Review Before Publishing"}
                         </h5>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-[#fbfaf8] border border-[#e6e2de] rounded-lg p-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 bg-canvas border border-border rounded-lg p-4">
                           <div className="flex justify-between sm:block">
-                            <span className="text-[#6e6b66]">{isRtl ? "العنوان" : "Title"}</span>
-                            <span className="font-bold text-[#1a1918] sm:block">{listingTitle || "-"}</span>
+                            <span className="text-ink-muted">{isRtl ? "العنوان" : "Title"}</span>
+                            <span className="font-bold text-ink sm:block">{listingTitle || "-"}</span>
                           </div>
                           <div className="flex justify-between sm:block">
-                            <span className="text-[#6e6b66]">{isRtl ? "النوع / المعاملة" : "Type / Transaction"}</span>
-                            <span className="font-bold text-[#1a1918] sm:block">{listingType} • {listingTrans}</span>
+                            <span className="text-ink-muted">{isRtl ? "النوع / المعاملة" : "Type / Transaction"}</span>
+                            <span className="font-bold text-ink sm:block">{listingType} • {listingTrans}</span>
                           </div>
                           <div className="flex justify-between sm:block">
-                            <span className="text-[#6e6b66]">{isRtl ? "الموقع" : "Location"}</span>
-                            <span className="font-bold text-[#1a1918] sm:block">
+                            <span className="text-ink-muted">{isRtl ? "الموقع" : "Location"}</span>
+                            <span className="font-bold text-ink sm:block">
                               {(muniItem?.name || "Doha")}{areaItem ? ` › ${areaItem.name}` : ""}
                             </span>
                           </div>
                           <div className="flex justify-between sm:block">
-                            <span className="text-[#6e6b66]">{isRtl ? "السعر" : "Price"}</span>
-                            <span className="font-bold text-[#bf9b30] sm:block">{listingPrice ? `${Number(listingPrice).toLocaleString()} QAR` : "-"}</span>
+                            <span className="text-ink-muted">{isRtl ? "السعر" : "Price"}</span>
+                            <span className="font-bold text-gold sm:block">{listingPrice ? `${Number(listingPrice).toLocaleString()} QAR` : "-"}</span>
                           </div>
                           <div className="flex justify-between sm:block">
-                            <span className="text-[#6e6b66]">{isRtl ? "المواصفات" : "Specs"}</span>
-                            <span className="font-bold text-[#1a1918] sm:block">
+                            <span className="text-ink-muted">{isRtl ? "المواصفات" : "Specs"}</span>
+                            <span className="font-bold text-ink sm:block">
                               {listingArea || "-"} SQM • {listingBeds} {isRtl ? "غرف" : "bed"} • {listingBaths} {isRtl ? "حمام" : "bath"}
                             </span>
                           </div>
                           <div className="flex justify-between sm:block">
-                            <span className="text-[#6e6b66]">{isRtl ? "الصور" : "Photos"}</span>
-                            <span className="font-bold text-[#1a1918] sm:block">{listingImages.length} / {MAX_LISTING_IMAGES}</span>
+                            <span className="text-ink-muted">{isRtl ? "الصور" : "Photos"}</span>
+                            <span className="font-bold text-ink sm:block">{listingImages.length} / {MAX_LISTING_IMAGES}</span>
                           </div>
                           {(listingCompletionYear || listingFurnishingStatus || listingTenureType || listingUtilitiesIncluded || listingMetroStation || listingParkingType) && (
-                            <div className="sm:col-span-2 pt-2 border-t border-[#e6e2de] text-[10px] text-[#6e6b66] space-y-0.5">
+                            <div className="sm:col-span-2 pt-2 border-t border-border text-[10px] text-ink-muted space-y-0.5">
                               {listingCompletionYear && <p>{isRtl ? "سنة الإنجاز" : "Completion Year"}: {listingCompletionYear}</p>}
                               {listingFurnishingStatus && <p>{isRtl ? "حالة الفرش" : "Furnishing"}: {listingFurnishingStatus}</p>}
                               {listingTenureType && <p>{isRtl ? "نوع الملكية" : "Tenure"}: {listingTenureType}</p>}
@@ -1898,7 +1898,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         {listingImages.length > 0 && (
                           <div className="grid grid-cols-6 sm:grid-cols-8 gap-2">
                             {listingImages.map((imgUrl, index) => (
-                              <div key={imgUrl + index} className="aspect-square rounded-md overflow-hidden border border-[#e6e2de]">
+                              <div key={imgUrl + index} className="aspect-square rounded-md overflow-hidden border border-border">
                                 <img src={imgUrl} alt="" className="w-full h-full object-cover" />
                               </div>
                             ))}
@@ -1911,12 +1911,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               )}
 
               {/* Wizard navigation */}
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#f2ede8]">
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-surface-2">
                 {wizardStep > 1 ? (
                   <button
                     type="button"
                     onClick={handleWizardBack}
-                    className="px-4 py-2 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2 bg-white hover:bg-surface-2 border border-border rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
                     <ArrowLeft size={14} />
                     {isRtl ? "السابق" : "Back"}
@@ -1925,7 +1925,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   <button
                     type="button"
                     onClick={() => setIsAddingListing(false)}
-                    className="px-4 py-2 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded-lg font-semibold cursor-pointer"
+                    className="px-4 py-2 bg-white hover:bg-surface-2 border border-border rounded-lg font-semibold cursor-pointer"
                   >
                     {isRtl ? "إلغاء" : "Cancel"}
                   </button>
@@ -1935,7 +1935,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <button
                       type="button"
                       onClick={() => setIsAddingListing(false)}
-                      className="px-4 py-2 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded-lg font-semibold cursor-pointer"
+                      className="px-4 py-2 bg-white hover:bg-surface-2 border border-border rounded-lg font-semibold cursor-pointer"
                     >
                       {isRtl ? "إلغاء" : "Cancel"}
                     </button>
@@ -1944,7 +1944,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <button
                       type="button"
                       onClick={handleWizardNext}
-                      className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                      className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
                     >
                       {isRtl ? "التالي" : "Next"}
                       <ArrowRight size={14} />
@@ -1952,7 +1952,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   ) : (
                     <button
                       type="submit"
-                      className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer"
+                      className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer"
                     >
                       {isRtl ? "نشر الإعلان" : "Publish Listing"}
                     </button>
@@ -1975,7 +1975,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               const isConfirming = confirmingAvailabilityId === prop.id;
 
               return (
-                <div key={prop.id} className="p-4 bg-white border border-[#e6e2de] rounded-xl flex gap-4">
+                <div key={prop.id} className="p-4 bg-white border border-border rounded-xl flex gap-4">
                   <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden shrink-0">
                     <img src={prop.images[0]} alt={prop.title} className="w-full h-full object-cover" />
                   </div>
@@ -1996,16 +1996,16 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           {isRtl ? "التوفر غير مؤكد" : "Availability Unconfirmed"}
                         </span>
                       ) : isDueSoon ? (
-                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-[#f2ede8] text-[#6e6b66] border border-[#e6e2de]">
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-surface-2 text-ink-muted border border-border">
                           {isRtl ? "يستحق التأكيد قريباً" : "Confirmation Due Soon"}
                         </span>
                       ) : null}
                     </div>
-                    <h5 className="text-xs font-bold text-[#1a1918] truncate">{isRtl ? prop.titleAr : prop.title}</h5>
-                    <p className="text-[10px] text-[#6e6b66]">{prop.district}, {prop.city}</p>
-                    <p className="text-xs font-bold text-[#bf9b30]">{prop.price.toLocaleString()} QAR</p>
+                    <h5 className="text-xs font-bold text-ink truncate">{isRtl ? prop.titleAr : prop.title}</h5>
+                    <p className="text-[10px] text-ink-muted">{prop.district}, {prop.city}</p>
+                    <p className="text-xs font-bold text-gold">{prop.price.toLocaleString()} QAR</p>
                     {/* FIX 8: real view counts (total / unique) for this listing */}
-                    <p className="text-[9px] text-[#a9a49d] flex items-center gap-1">
+                    <p className="text-[9px] text-ink-faint flex items-center gap-1">
                       <Eye size={10} /> {prop.views || 0} {isRtl ? "مشاهدة" : "views"} • {prop.uniqueViews || 0} {isRtl ? "فريدة" : "unique"}
                     </p>
 
@@ -2016,7 +2016,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         value={prop.listingStatus}
                         disabled={updatingStatusId === prop.id}
                         onChange={(e) => handleUpdateListingStatus(prop.id, e.target.value as ListingStatus)}
-                        className="px-2 py-1 bg-[#fdfcfb] border border-[#e6e2de] rounded text-[10px] font-semibold text-[#1a1918] disabled:opacity-50"
+                        className="px-2 py-1 bg-ink-inverse border border-border rounded text-[10px] font-semibold text-ink disabled:opacity-50"
                       >
                         <option value={ListingStatus.PUBLISHED}>{isRtl ? "متاح" : "Active/Available"}</option>
                         <option value={ListingStatus.PAUSED}>{isRtl ? "غير متاح" : "Unavailable"}</option>
@@ -2024,9 +2024,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         <option value={ListingStatus.RENTED}>{isRtl ? "مؤجر" : "Rented"}</option>
                         <option value={ListingStatus.DRAFT}>{isRtl ? "مسودة" : "Draft"}</option>
                       </select>
-                      {updatingStatusId === prop.id && <Loader2 size={10} className="animate-spin text-[#6e6b66]" />}
+                      {updatingStatusId === prop.id && <Loader2 size={10} className="animate-spin text-ink-muted" />}
                       {prop.statusChangedDate && (
-                        <span className="text-[9px] text-[#a9a49d]">
+                        <span className="text-[9px] text-ink-faint">
                           {isRtl ? "منذ " : "since "}{new Date(prop.statusChangedDate).toLocaleDateString()}
                         </span>
                       )}
@@ -2049,14 +2049,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         className={
                           confirmationDue
                             ? "mt-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                            : "mt-1 px-1.5 py-0.5 text-[9px] text-[#6e6b66] hover:text-[#1a1918] underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            : "mt-1 px-1.5 py-0.5 text-[9px] text-ink-muted hover:text-ink underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
                         }
                       >
                         {isConfirming ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
                         <span>{isRtl ? "تأكيد أن العقار لا يزال متاحاً" : "Confirm Still Available"}</span>
                       </button>
                       {prop.lastConfirmedAvailableDate && (
-                        <p className="text-[9px] text-[#a9a49d] mt-0.5">
+                        <p className="text-[9px] text-ink-faint mt-0.5">
                           {isRtl
                             ? staleDays <= 0 ? "آخر تأكيد: اليوم" : `آخر تأكيد: منذ ${staleDays} يوم`
                             : `Confirmed ${staleDays <= 0 ? "today" : `${staleDays}d ago`}`}
@@ -2074,10 +2074,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {/* REVIEWS & RATINGS TAB (FIX 10) */}
       {activeTab === "reviews" && (
         <div className="space-y-4">
-          <div className="bg-white p-5 rounded-xl border border-[#e6e2de] flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="bg-white p-5 rounded-xl border border-border flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-center sm:text-left">
-              <p className="text-3xl font-serif font-bold text-[#bf9b30]">{myReviewSummary?.average.toFixed(1) || "0.0"}</p>
-              <p className="text-[10px] text-[#6e6b66]">{myReviewSummary?.count || 0} {isRtl ? "تقييم" : "reviews"}</p>
+              <p className="text-3xl font-serif font-bold text-gold">{myReviewSummary?.average.toFixed(1) || "0.0"}</p>
+              <p className="text-[10px] text-ink-muted">{myReviewSummary?.count || 0} {isRtl ? "تقييم" : "reviews"}</p>
             </div>
             <div className="flex-1 space-y-1">
               {[5, 4, 3, 2, 1].map(star => {
@@ -2086,40 +2086,40 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                 const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                 return (
                   <div key={star} className="flex items-center gap-2 text-[10px]">
-                    <span className="w-8 text-[#6e6b66]">{star}★</span>
-                    <div className="flex-1 h-1.5 bg-[#f2ede8] rounded-full overflow-hidden">
-                      <div className="h-full bg-[#bf9b30]" style={{ width: `${pct}%` }} />
+                    <span className="w-8 text-ink-muted">{star}★</span>
+                    <div className="flex-1 h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                      <div className="h-full bg-gold" style={{ width: `${pct}%` }} />
                     </div>
-                    <span className="w-6 text-[#6e6b66] text-right">{count}</span>
+                    <span className="w-6 text-ink-muted text-right">{count}</span>
                   </div>
                 );
               })}
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden text-xs">
-            <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-              <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "التقييمات المستلمة" : "Reviews Received"}</h4>
+          <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+            <div className="p-4 bg-ink-inverse border-b border-border">
+              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "التقييمات المستلمة" : "Reviews Received"}</h4>
             </div>
-            <div className="divide-y divide-[#f2ede8]">
+            <div className="divide-y divide-surface-2">
               {myReviews.length === 0 ? (
-                <p className="text-center py-8 text-[#6e6b66]">{isRtl ? "لا توجد تقييمات بعد." : "No reviews yet."}</p>
+                <p className="text-center py-8 text-ink-muted">{isRtl ? "لا توجد تقييمات بعد." : "No reviews yet."}</p>
               ) : (
                 myReviews.map(rev => (
                   <div key={rev.id} className="p-4 space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-[#1a1918]">{rev.reviewerName}</span>
-                      <span className="text-[10px] text-[#6e6b66]">{new Date(rev.createdDate).toLocaleDateString()}</span>
+                      <span className="font-bold text-ink">{rev.reviewerName}</span>
+                      <span className="text-[10px] text-ink-muted">{new Date(rev.createdDate).toLocaleDateString()}</span>
                     </div>
                     <div className="flex items-center gap-0.5">
                       {[1, 2, 3, 4, 5].map(s => (
-                        <Star key={s} size={12} className={s <= rev.rating ? "fill-[#bf9b30] text-[#bf9b30]" : "text-gray-200"} />
+                        <Star key={s} size={12} className={s <= rev.rating ? "fill-gold text-gold" : "text-gray-200"} />
                       ))}
                     </div>
                     <p className="text-[#4c4943]">{rev.comment}</p>
                     {rev.reply ? (
-                      <div className="pl-3 border-l-2 border-[#bf9b30]/40 bg-[#fbfaf8] p-2 rounded">
-                        <p className="text-[10px] font-bold text-[#1a1918]">{isRtl ? "ردك" : "Your reply"}</p>
+                      <div className="pl-3 border-l-2 border-gold/40 bg-canvas p-2 rounded">
+                        <p className="text-[10px] font-bold text-ink">{isRtl ? "ردك" : "Your reply"}</p>
                         <p className="text-[11px] text-[#4c4943] mt-0.5">{rev.reply.text}</p>
                       </div>
                     ) : (
@@ -2129,13 +2129,13 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           value={replyDrafts[rev.id] || ""}
                           onChange={(e) => setReplyDrafts(prev => ({ ...prev, [rev.id]: e.target.value }))}
                           placeholder={isRtl ? "اكتب رداً علنياً..." : "Write a public reply..."}
-                          className="flex-1 px-2 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg"
+                          className="flex-1 px-2 py-1.5 bg-ink-inverse border border-border rounded-lg"
                         />
                         <button
                           type="button"
                           onClick={() => handleReplyToReview(rev.id)}
                           disabled={!replyDrafts[rev.id]?.trim()}
-                          className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer"
+                          className="px-3 py-1.5 bg-ink hover:bg-gold disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer"
                         >
                           {isRtl ? "رد" : "Reply"}
                         </button>
@@ -2151,19 +2151,19 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
       {/* PROFILE TAB */}
       {activeTab === "profile" && (
-        <form onSubmit={handleUpdateProfile} className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4 text-xs">
-          <div className="flex items-center gap-4 border-b border-[#f2ede8] pb-4">
+        <form onSubmit={handleUpdateProfile} className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs">
+          <div className="flex items-center gap-4 border-b border-surface-2 pb-4">
             <div className="relative shrink-0">
               {currentAvatarUrl ? (
-                <img src={currentAvatarUrl} alt={agent.fullName} className="w-16 h-16 rounded-full object-cover border border-[#e6e2de]" />
+                <img src={currentAvatarUrl} alt={agent.fullName} className="w-16 h-16 rounded-full object-cover border border-border" />
               ) : (
-                <div className="w-16 h-16 bg-[#bf9b30] text-black font-bold text-xl rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 bg-gold text-black font-bold text-xl rounded-full flex items-center justify-center">
                   {agent.fullName.charAt(0)}
                 </div>
               )}
               <label
                 htmlFor="agent-avatar-upload"
-                className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#1c1a17] hover:bg-[#bf9b30] text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
+                className="absolute -bottom-1 -right-1 w-6 h-6 bg-chrome hover:bg-gold text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
                 title={isRtl ? "تغيير الصورة الشخصية" : "Change profile picture"}
               >
                 {avatarUploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
@@ -2178,82 +2178,82 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               />
             </div>
             <div>
-              <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{agent.fullName}</h4>
+              <h4 className="font-serif text-sm font-semibold text-ink">{agent.fullName}</h4>
               <p className="text-[10px] text-emerald-600 font-medium">✨ {isRtl ? "مستشار مرخص وموثق من شركة نيرو" : "Certified Platform Representative"}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الاسم بالكامل" : "Representative Name"}</label>
+              <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الاسم بالكامل" : "Representative Name"}</label>
               <input
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
               />
             </div>
 
             <div>
-              <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم الاتصال المباشر" : "Direct Telephone"}</label>
+              <label className="block font-medium text-ink-muted mb-1">{isRtl ? "رقم الاتصال المباشر" : "Direct Telephone"}</label>
               <input
                 type="tel"
                 inputMode="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
               />
             </div>
 
             <div>
-              <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم واتساب للأعمال" : "WhatsApp Business Number"}</label>
+              <label className="block font-medium text-ink-muted mb-1">{isRtl ? "رقم واتساب للأعمال" : "WhatsApp Business Number"}</label>
               <input
                 type="tel"
                 inputMode="tel"
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
                 placeholder="+97433334444"
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
               />
             </div>
 
             <div>
-              <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "اللغات" : "Spoken Languages"}</label>
+              <label className="block font-medium text-ink-muted mb-1">{isRtl ? "اللغات" : "Spoken Languages"}</label>
               <input
                 type="text"
                 value={languages}
                 onChange={(e) => setLanguages(e.target.value)}
                 placeholder="Arabic, English"
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
               />
             </div>
           </div>
 
           <div>
-            <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المناطق المتخصصة" : "Specialty Areas (Comma separated)"}</label>
+            <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المناطق المتخصصة" : "Specialty Areas (Comma separated)"}</label>
             <input
               type="text"
               value={specialties}
               onChange={(e) => setSpecialties(e.target.value)}
               placeholder="Pearl Qatar, West Bay"
-              className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+              className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
             />
           </div>
 
           <div>
-            <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "النبذة التعريفية" : "Agent Professional Bio"}</label>
+            <label className="block font-medium text-ink-muted mb-1">{isRtl ? "النبذة التعريفية" : "Agent Professional Bio"}</label>
             <textarea
               rows={3}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+              className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
             ></textarea>
           </div>
 
-          <div className="flex justify-end pt-2 border-t border-[#f2ede8]">
+          <div className="flex justify-end pt-2 border-t border-surface-2">
             <button
               type="submit"
-              className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer"
+              className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer"
             >
               Save Profile Changes
             </button>
@@ -2262,52 +2262,52 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       )}
 
       {activeTab === "profile" && (
-        <form onSubmit={handleChangePassword} className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4 text-xs">
-          <div className="border-b border-[#f2ede8] pb-3 flex items-center gap-2">
-            <Lock size={16} className="text-[#bf9b30]" />
-            <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "تغيير كلمة المرور" : "Change Password"}</h4>
+        <form onSubmit={handleChangePassword} className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs">
+          <div className="border-b border-surface-2 pb-3 flex items-center gap-2">
+            <Lock size={16} className="text-gold" />
+            <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "تغيير كلمة المرور" : "Change Password"}</h4>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "كلمة المرور الحالية" : "Current Password"}</label>
+              <label className="block font-medium text-ink-muted mb-1">{isRtl ? "كلمة المرور الحالية" : "Current Password"}</label>
               <input
                 type="password"
                 required
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
               />
             </div>
             <div>
-              <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "كلمة المرور الجديدة" : "New Password"}</label>
+              <label className="block font-medium text-ink-muted mb-1">{isRtl ? "كلمة المرور الجديدة" : "New Password"}</label>
               <input
                 type="password"
                 required
                 minLength={8}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
               />
             </div>
             <div>
-              <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "تأكيد كلمة المرور الجديدة" : "Confirm New Password"}</label>
+              <label className="block font-medium text-ink-muted mb-1">{isRtl ? "تأكيد كلمة المرور الجديدة" : "Confirm New Password"}</label>
               <input
                 type="password"
                 required
                 minLength={8}
                 value={confirmNewPassword}
                 onChange={(e) => setConfirmNewPassword(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
               />
             </div>
           </div>
 
-          <div className="flex justify-end pt-2 border-t border-[#f2ede8]">
+          <div className="flex justify-end pt-2 border-t border-surface-2">
             <button
               type="submit"
               disabled={passwordChanging}
-              className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+              className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
             >
               {passwordChanging ? (isRtl ? "جارٍ التحديث..." : "Updating...") : (isRtl ? "تغيير كلمة المرور" : "Change Password")}
             </button>
@@ -2317,8 +2317,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-sm bg-[#1c1a17] text-white p-4 rounded-xl shadow-2xl border border-[#bf9b30] flex items-center gap-3 animate-slide-in">
-          <div className="w-2 h-2 rounded-full bg-[#bf9b30] animate-ping" />
+        <div className="fixed bottom-5 right-5 z-50 max-w-sm bg-chrome text-white p-4 rounded-xl shadow-2xl border border-gold flex items-center gap-3 animate-slide-in">
+          <div className="w-2 h-2 rounded-full bg-gold animate-ping" />
           <span className="text-xs font-medium">{toastMessage}</span>
         </div>
       )}

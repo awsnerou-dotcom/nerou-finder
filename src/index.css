@@ -37,6 +37,12 @@
   --color-gold-soft: var(--gold-soft);   /* tinted background, e.g. badges/highlights */
   --color-gold-ink: var(--gold-ink);     /* text color safe to place on --color-gold */
 
+  /* "Chrome" - the always-dark nav/footer/hero-panel brand surfaces (warm near-black), used
+     deliberately in both light AND dark mode as part of the fixed premium branding rather than
+     something that should flip with the theme - same value in every theme block below. */
+  --color-chrome: var(--chrome);
+  --color-chrome-hover: var(--chrome-hover);
+
   /* Semantic status */
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
@@ -81,6 +87,9 @@
   --danger-soft: #fbe9e9;
   --info: #3a5fc4;
   --info-soft: #e8ecfb;
+
+  --chrome: #1c1a17;
+  --chrome-hover: #33302a;
 }
 
 /* Dark theme - via OS preference (unless explicitly overridden by the toggle)... */
@@ -111,6 +120,9 @@
     --danger-soft: #331e21;
     --info: #8fa6f2;
     --info-soft: #1e2438;
+
+    --chrome: #1c1a17;
+    --chrome-hover: #33302a;
   }
 }
 
@@ -142,6 +154,9 @@
   --danger-soft: #331e21;
   --info: #8fa6f2;
   --info-soft: #1e2438;
+
+  --chrome: #1c1a17;
+  --chrome-hover: #33302a;
 }
 
 :root[data-theme="light"] {
@@ -170,6 +185,9 @@
   --danger-soft: #fbe9e9;
   --info: #3a5fc4;
   --info-soft: #e8ecfb;
+
+  --chrome: #1c1a17;
+  --chrome-hover: #33302a;
 }
 
 html {

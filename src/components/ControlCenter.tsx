@@ -1479,13 +1479,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Control Center Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e6e2de] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h2 className="text-2xl font-serif text-[#1a1918] font-medium flex items-center gap-2">
-            <ShieldAlert className="text-[#bf9b30]" size={26} />
+          <h2 className="text-2xl font-serif text-ink font-medium flex items-center gap-2">
+            <ShieldAlert className="text-gold" size={26} />
             <span>{isRtl ? "منصة التحكم وإدارة التشغيل المركزي" : "Platform Central Control Center"}</span>
           </h2>
-          <p className="text-xs text-[#6e6b66] mt-0.5">
+          <p className="text-xs text-ink-muted mt-0.5">
             {isRtl ? "مستوى الصلاحيات: مشرف عمليات رئيسي • تشغيل كامل لبلدان الخليج" : "Authorization tier: Operations Superuser • Regional cluster oversight (Qatar, GCC)"}
           </p>
         </div>
@@ -1494,8 +1494,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
       {/* Floating Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#1a1918] text-white px-5 py-3 rounded-xl border border-[#bf9b30] shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom duration-300">
-          <span className="w-2 h-2 bg-[#bf9b30] rounded-full animate-ping"></span>
+        <div className="fixed bottom-6 right-6 z-50 bg-ink text-white px-5 py-3 rounded-xl border border-gold shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom duration-300">
+          <span className="w-2 h-2 bg-gold rounded-full animate-ping"></span>
           <span className="text-xs font-semibold">{toastMessage}</span>
         </div>
       )}
@@ -1513,7 +1513,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Collapsible grouped sidebar navigation (FIX 2) */}
         <aside className="w-full lg:w-64 lg:shrink-0">
-          <nav className="bg-[#f2ede8] rounded-xl p-2 space-y-1 text-xs font-medium lg:sticky lg:top-4">
+          <nav className="bg-surface-2 rounded-xl p-2 space-y-1 text-xs font-medium lg:sticky lg:top-4">
             {navGroups.map(group => {
               const isExpanded = !!expandedGroups[group.id];
               const groupHasActive = group.tabs.some(t => t.id === activeSubTab);
@@ -1523,15 +1523,15 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 <div key={group.id}>
                   <button
                     onClick={() => toggleGroup(group.id)}
-                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${groupHasActive ? "text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${groupHasActive ? "text-ink" : "text-ink-muted hover:text-ink"}`}
                   >
                     <span className="flex items-center gap-2">
-                      <GroupIcon size={14} className={groupHasActive ? "text-[#bf9b30]" : ""} />
+                      <GroupIcon size={14} className={groupHasActive ? "text-gold" : ""} />
                       {isRtl ? group.label.ar : group.label.en}
                     </span>
                     <span className="flex items-center gap-1.5">
                       {groupBadgeTotal > 0 && (
-                        <span className="bg-[#bf9b30] text-black text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                        <span className="bg-gold text-black text-[9px] px-1.5 py-0.2 rounded-full font-bold">
                           {groupBadgeTotal}
                         </span>
                       )}
@@ -1544,11 +1544,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <button
                           key={tab.id}
                           onClick={() => setActiveSubTab(tab.id as any)}
-                          className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === tab.id ? "bg-white text-[#1a1918] shadow-sm" : "text-[#6e6b66] hover:text-[#1a1918] hover:bg-white/50"}`}
+                          className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeSubTab === tab.id ? "bg-white text-ink shadow-sm" : "text-ink-muted hover:text-ink hover:bg-white/50"}`}
                         >
                           <span>{isRtl ? tab.label.ar : tab.label.en}</span>
                           {!!tab.badge && (
-                            <span className="bg-[#bf9b30] text-black text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                            <span className="bg-gold text-black text-[9px] px-1.5 py-0.2 rounded-full font-bold">
                               {tab.badge}
                             </span>
                           )}
@@ -1565,8 +1565,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
         {/* Active tab content */}
         <div className="flex-1 min-w-0">
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-xs text-[#6e6b66] gap-2">
-          <RefreshCw size={24} className="animate-spin text-[#bf9b30]" />
+        <div className="flex flex-col items-center justify-center py-20 text-xs text-ink-muted gap-2">
+          <RefreshCw size={24} className="animate-spin text-gold" />
           <span>Syncing regional data servers...</span>
         </div>
       ) : (
@@ -1577,36 +1577,36 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
             <div className="space-y-6">
               {/* Financial Dashboard summary */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-[#1c1a17] text-white p-5 rounded-xl border border-[#33302a]">
+                <div className="bg-chrome text-white p-5 rounded-xl border border-chrome-hover">
                   <span className="text-[10px] text-gray-400 block uppercase tracking-wider mb-1">{isRtl ? "إيرادات SaaS الجارية" : "SaaS MRR (Qatar Market)"}</span>
-                  <h3 className="text-2xl font-serif font-bold text-[#bf9b30] flex items-center gap-1">
+                  <h3 className="text-2xl font-serif font-bold text-gold flex items-center gap-1">
                     <DollarSign size={20} />
                     <span>{totalSaaSMonthlyRevenue.toLocaleString()} QAR</span>
                   </h3>
                   <p className="text-[9px] text-gray-400 mt-2">Aggregated from active subscriptions</p>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-[#e6e2de]">
-                  <span className="text-[10px] text-[#6e6b66] block uppercase tracking-wider mb-1">{isRtl ? "عائدات الترويج والإعلانات" : "Boosted Ad Revenue"}</span>
-                  <h3 className="text-2xl font-serif font-bold text-[#1a1918] flex items-center gap-1">
-                    <DollarSign size={20} className="text-[#6e6b66]" />
+                <div className="bg-white p-5 rounded-xl border border-border">
+                  <span className="text-[10px] text-ink-muted block uppercase tracking-wider mb-1">{isRtl ? "عائدات الترويج والإعلانات" : "Boosted Ad Revenue"}</span>
+                  <h3 className="text-2xl font-serif font-bold text-ink flex items-center gap-1">
+                    <DollarSign size={20} className="text-ink-muted" />
                     <span>{totalAdvertisingRevenue.toLocaleString()} QAR</span>
                   </h3>
-                  <p className="text-[9px] text-[#6e6b66] mt-2">{campaigns.filter(c => c.status === "ACTIVE").length} {isRtl ? "حملة نشطة من" : "active campaigns of"} {campaigns.length}</p>
+                  <p className="text-[9px] text-ink-muted mt-2">{campaigns.filter(c => c.status === "ACTIVE").length} {isRtl ? "حملة نشطة من" : "active campaigns of"} {campaigns.length}</p>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-[#e6e2de]">
-                  <span className="text-[10px] text-[#6e6b66] block uppercase tracking-wider mb-1">{isRtl ? "إجمالي العقارات بالمنصة" : "Total Platform Listings"}</span>
-                  <h3 className="text-2xl font-serif font-bold text-[#1a1918]">{properties.length}</h3>
-                  <p className="text-[9px] text-[#6e6b66] mt-2">
+                <div className="bg-white p-5 rounded-xl border border-border">
+                  <span className="text-[10px] text-ink-muted block uppercase tracking-wider mb-1">{isRtl ? "إجمالي العقارات بالمنصة" : "Total Platform Listings"}</span>
+                  <h3 className="text-2xl font-serif font-bold text-ink">{properties.length}</h3>
+                  <p className="text-[9px] text-ink-muted mt-2">
                     {properties.filter(p => p.verificationStatus === VerificationStatus.APPROVED).length} verified & published
                     {" • "}{properties.reduce((sum, p) => sum + (p.views || 0), 0).toLocaleString()} {isRtl ? "مشاهدة إجمالية" : "total views"}
                   </p>
                 </div>
 
-                <div className="bg-white p-5 rounded-xl border border-[#e6e2de]">
-                  <span className="text-[10px] text-[#6e6b66] block uppercase tracking-wider mb-1">{isRtl ? "قنوات التواصل المسجلة" : "Capturing Client Leads"}</span>
-                  <h3 className="text-2xl font-serif font-bold text-[#1a1918]">{leads.length}</h3>
+                <div className="bg-white p-5 rounded-xl border border-border">
+                  <span className="text-[10px] text-ink-muted block uppercase tracking-wider mb-1">{isRtl ? "قنوات التواصل المسجلة" : "Capturing Client Leads"}</span>
+                  <h3 className="text-2xl font-serif font-bold text-ink">{leads.length}</h3>
                   <p className="text-[9px] text-emerald-600 font-bold mt-2">
                     {leads.length > 0 ? `${Math.round((leads.filter(l => l.agentId).length / leads.length) * 100)}% ${isRtl ? "موجهة لوكيل" : "routed to an agent"}` : (isRtl ? "لا يوجد عملاء محتملون بعد" : "No leads yet")}
                   </p>
@@ -1615,35 +1615,35 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               {/* Users by type + Listings by status */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
-                <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                  <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                    <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
-                      <Users size={14} className="text-[#bf9b30]" />
+                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                  <div className="p-4 bg-ink-inverse border-b border-border">
+                    <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                      <Users size={14} className="text-gold" />
                       <span>{isRtl ? "إجمالي المستخدمين حسب النوع" : "Total Users by Type"}</span>
                     </h4>
                   </div>
-                  <div className="divide-y divide-[#f2ede8]">
+                  <div className="divide-y divide-surface-2">
                     {usersByType.map(row => (
                       <div key={row.label.en} className="p-3 flex items-center justify-between">
-                        <span className="text-[#6e6b66]">{isRtl ? row.label.ar : row.label.en}</span>
-                        <span className="font-bold text-[#1a1918]">{row.count}</span>
+                        <span className="text-ink-muted">{isRtl ? row.label.ar : row.label.en}</span>
+                        <span className="font-bold text-ink">{row.count}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                  <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                    <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
-                      <Layers size={14} className="text-[#bf9b30]" />
+                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                  <div className="p-4 bg-ink-inverse border-b border-border">
+                    <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                      <Layers size={14} className="text-gold" />
                       <span>{isRtl ? "إجمالي العقارات حسب الحالة" : "Total Listings by Status"}</span>
                     </h4>
                   </div>
-                  <div className="divide-y divide-[#f2ede8]">
+                  <div className="divide-y divide-surface-2">
                     {listingStatusCounts.map(row => (
                       <div key={row.status} className="p-3 flex items-center justify-between">
-                        <span className="text-[#6e6b66]">{row.status.replace(/_/g, " ")}</span>
-                        <span className="font-bold text-[#1a1918]">{row.count}</span>
+                        <span className="text-ink-muted">{row.status.replace(/_/g, " ")}</span>
+                        <span className="font-bold text-ink">{row.count}</span>
                       </div>
                     ))}
                   </div>
@@ -1652,42 +1652,42 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               {/* Pending applications by stage + Active vs expired subscriptions */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
-                <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                  <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                    <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
-                      <ClipboardList size={14} className="text-[#bf9b30]" />
+                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                  <div className="p-4 bg-ink-inverse border-b border-border">
+                    <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                      <ClipboardList size={14} className="text-gold" />
                       <span>{isRtl ? "الطلبات المعلقة حسب المرحلة" : "Pending Applications by Stage"}</span>
                     </h4>
                   </div>
-                  <div className="divide-y divide-[#f2ede8]">
+                  <div className="divide-y divide-surface-2">
                     {applicationsByStage.map(row => (
                       <div key={row.stage} className="p-3 flex items-center justify-between">
-                        <span className="text-[#6e6b66]">{row.stage.replace(/_/g, " ")}</span>
-                        <span className="font-bold text-[#1a1918]">{row.count}</span>
+                        <span className="text-ink-muted">{row.stage.replace(/_/g, " ")}</span>
+                        <span className="font-bold text-ink">{row.count}</span>
                       </div>
                     ))}
                     {pendingApplications.length === 0 && (
-                      <p className="p-4 text-center text-[#6e6b66]">{isRtl ? "لا توجد طلبات معلقة." : "No pending applications."}</p>
+                      <p className="p-4 text-center text-ink-muted">{isRtl ? "لا توجد طلبات معلقة." : "No pending applications."}</p>
                     )}
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                  <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                    <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
-                      <CalendarRange size={14} className="text-[#bf9b30]" />
+                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                  <div className="p-4 bg-ink-inverse border-b border-border">
+                    <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                      <CalendarRange size={14} className="text-gold" />
                       <span>{isRtl ? "الاشتراكات النشطة مقابل المنتهية" : "Active vs Expired Subscriptions"}</span>
                     </h4>
                   </div>
                   <div className="p-4 grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg">
-                      <p className="text-[10px] text-[#6e6b66] uppercase tracking-wider">{isRtl ? "المؤسسات" : "Organizations"}</p>
-                      <p className="mt-1"><span className="font-bold text-emerald-700">{orgsActiveSubs}</span> {isRtl ? "نشط" : "active"} / <span className="font-bold text-[#1a1918]">{orgsInactiveSubs}</span> {isRtl ? "غير نشط" : "inactive"}</p>
+                    <div className="p-3 bg-ink-inverse border border-border rounded-lg">
+                      <p className="text-[10px] text-ink-muted uppercase tracking-wider">{isRtl ? "المؤسسات" : "Organizations"}</p>
+                      <p className="mt-1"><span className="font-bold text-emerald-700">{orgsActiveSubs}</span> {isRtl ? "نشط" : "active"} / <span className="font-bold text-ink">{orgsInactiveSubs}</span> {isRtl ? "غير نشط" : "inactive"}</p>
                       <p className="text-[10px] text-red-600 mt-1">{orgsExpiredSubs} {isRtl ? "منتهي فعليًا" : "past expiry date"}</p>
                     </div>
-                    <div className="p-3 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg">
-                      <p className="text-[10px] text-[#6e6b66] uppercase tracking-wider">{isRtl ? "الوكلاء المستقلون" : "Independent Agents"}</p>
-                      <p className="mt-1"><span className="font-bold text-emerald-700">{indAgentsActiveSubs}</span> {isRtl ? "نشط" : "active"} / <span className="font-bold text-[#1a1918]">{indAgentsInactiveSubs}</span> {isRtl ? "غير نشط" : "inactive"}</p>
+                    <div className="p-3 bg-ink-inverse border border-border rounded-lg">
+                      <p className="text-[10px] text-ink-muted uppercase tracking-wider">{isRtl ? "الوكلاء المستقلون" : "Independent Agents"}</p>
+                      <p className="mt-1"><span className="font-bold text-emerald-700">{indAgentsActiveSubs}</span> {isRtl ? "نشط" : "active"} / <span className="font-bold text-ink">{indAgentsInactiveSubs}</span> {isRtl ? "غير نشط" : "inactive"}</p>
                       <p className="text-[10px] text-red-600 mt-1">{indAgentsExpiredSubs} {isRtl ? "منتهي فعليًا" : "past expiry date"}</p>
                     </div>
                   </div>
@@ -1696,32 +1696,32 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               {/* Leads this month + conversion rate, Current-period ad billing total */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
-                <div className="bg-white rounded-xl border border-[#e6e2de] p-4 space-y-2">
-                  <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
-                    <TrendingUp size={14} className="text-[#bf9b30]" />
+                <div className="bg-white rounded-xl border border-border p-4 space-y-2">
+                  <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                    <TrendingUp size={14} className="text-gold" />
                     <span>{isRtl ? "العملاء المحتملون هذا الشهر ومعدل التحويل" : "Leads This Month & Conversion Rate"}</span>
                   </h4>
                   <div className="flex items-center gap-6 pt-1">
                     <div>
-                      <p className="text-2xl font-serif font-bold text-[#1a1918]">{leadsThisMonth.length}</p>
-                      <p className="text-[10px] text-[#6e6b66]">{isRtl ? "عميل محتمل هذا الشهر" : "leads this month"}</p>
+                      <p className="text-2xl font-serif font-bold text-ink">{leadsThisMonth.length}</p>
+                      <p className="text-[10px] text-ink-muted">{isRtl ? "عميل محتمل هذا الشهر" : "leads this month"}</p>
                     </div>
                     <div>
-                      <p className="text-2xl font-serif font-bold text-[#bf9b30]">{leadConversionRateThisMonth}%</p>
-                      <p className="text-[10px] text-[#6e6b66]">{isRtl ? "معدل التحويل (تم الفوز)" : "conversion rate (CONVERTED)"}</p>
+                      <p className="text-2xl font-serif font-bold text-gold">{leadConversionRateThisMonth}%</p>
+                      <p className="text-[10px] text-ink-muted">{isRtl ? "معدل التحويل (تم الفوز)" : "conversion rate (CONVERTED)"}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-[#e6e2de] p-4 space-y-2">
-                  <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
-                    <DollarSign size={14} className="text-[#bf9b30]" />
+                <div className="bg-white rounded-xl border border-border p-4 space-y-2">
+                  <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                    <DollarSign size={14} className="text-gold" />
                     <span>{isRtl ? "فوترة الإعلانات للفترة الحالية" : "Current-Period Ad Billing"}</span>
                   </h4>
                   <div className="flex items-center gap-6 pt-1">
                     <div>
-                      <p className="text-2xl font-serif font-bold text-[#1a1918]">{currentPeriodAdTotal.toLocaleString()} QAR</p>
-                      <p className="text-[10px] text-[#6e6b66]">{currentBillingPeriod} {isRtl ? "الإجمالي" : "total"}</p>
+                      <p className="text-2xl font-serif font-bold text-ink">{currentPeriodAdTotal.toLocaleString()} QAR</p>
+                      <p className="text-[10px] text-ink-muted">{currentBillingPeriod} {isRtl ? "الإجمالي" : "total"}</p>
                     </div>
                     <div>
                       <p className="text-[11px] text-emerald-700 font-bold">{currentPeriodAdSettled.toLocaleString()} QAR {isRtl ? "مسواة" : "settled"}</p>
@@ -1732,25 +1732,25 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* Recent activity feed */}
-              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center justify-between">
-                  <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
-                    <Clock size={14} className="text-[#bf9b30]" />
+              <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between">
+                  <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                    <Clock size={14} className="text-gold" />
                     <span>{isRtl ? "أحدث النشاطات على المنصة" : "Recent Platform Activity"}</span>
                   </h4>
-                  <span className="text-[10px] text-[#6e6b66]">{isRtl ? "آخر 15 حدثًا" : "Last 15 events"}</span>
+                  <span className="text-[10px] text-ink-muted">{isRtl ? "آخر 15 حدثًا" : "Last 15 events"}</span>
                 </div>
-                <div className="divide-y divide-[#f2ede8] max-h-72 overflow-y-auto">
+                <div className="divide-y divide-surface-2 max-h-72 overflow-y-auto">
                   {recentActivityFeed.length === 0 ? (
-                    <p className="p-6 text-center text-[#6e6b66]">{isRtl ? "لا توجد نشاطات بعد." : "No activity recorded yet."}</p>
+                    <p className="p-6 text-center text-ink-muted">{isRtl ? "لا توجد نشاطات بعد." : "No activity recorded yet."}</p>
                   ) : (
                     recentActivityFeed.map(log => (
-                      <div key={log.id} className="p-3 flex items-start justify-between gap-4 hover:bg-[#fcfbfa]">
+                      <div key={log.id} className="p-3 flex items-start justify-between gap-4 hover:bg-canvas">
                         <div className="space-y-0.5">
-                          <p className="font-bold text-[#1a1918]">{log.action.replace(/_/g, " ")}</p>
-                          <p className="text-[10px] text-[#6e6b66]">{isRtl ? "منفذ العملية:" : "Actor:"} {log.actorName} ({log.actorRole})</p>
+                          <p className="font-bold text-ink">{log.action.replace(/_/g, " ")}</p>
+                          <p className="text-[10px] text-ink-muted">{isRtl ? "منفذ العملية:" : "Actor:"} {log.actorName} ({log.actorRole})</p>
                         </div>
-                        <span className="text-[10px] text-[#a8a4a0] shrink-0">{new Date(log.timestamp).toLocaleString()}</span>
+                        <span className="text-[10px] text-ink-faint shrink-0">{new Date(log.timestamp).toLocaleString()}</span>
                       </div>
                     ))
                   )}
@@ -1758,14 +1758,14 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* ADMIN SECURITY PORTAL (Two-Factor Authentication Setup) */}
-              <div className="bg-white p-5 rounded-xl border border-[#e6e2de] space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-[#f2ede8] pb-3">
+              <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-surface-2 pb-3">
                   <div>
-                    <h4 className="font-serif text-sm font-bold text-[#1a1918] flex items-center gap-1.5">
-                      <CheckCircle size={16} className="text-[#bf9b30]" />
+                    <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
+                      <CheckCircle size={16} className="text-gold" />
                       <span>{isRtl ? "المصادقة الثنائية المعززة لحساب المشرف" : "Multi-Factor Authentication (MFA) Security Control"}</span>
                     </h4>
-                    <p className="text-[11px] text-[#6e6b66] mt-0.5">
+                    <p className="text-[11px] text-ink-muted mt-0.5">
                       {isRtl 
                         ? "قم بتأمين حساب المشرف الخاص بك عن طريق تفعيل المصادقة الثنائية (TOTP 2FA) لحماية البيانات الحساسة." 
                         : "Reinforce platform control nodes by provisioning a cryptographic TOTP authenticator device."}
@@ -1785,7 +1785,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <button
                           onClick={handleStart2faSetup}
                           disabled={tfaLoading}
-                          className="px-3.5 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] hover:text-[#1a1918] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                          className="px-3.5 py-1.5 bg-ink hover:bg-gold hover:text-ink text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
                         >
                           {isRtl ? "تفعيل المصادقة الثنائية" : "Configure TOTP 2FA"}
                         </button>
@@ -1831,13 +1831,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 )}
 
                 {show2faSetup && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-[#fdfcfb] rounded-xl border border-[#e6e2de] items-center">
-                    <div className="flex justify-center bg-white p-3 rounded-lg border border-[#e6e2de]">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 bg-ink-inverse rounded-xl border border-border items-center">
+                    <div className="flex justify-center bg-white p-3 rounded-lg border border-border">
                       <img src={tfaQrCode} alt="TOTP QR Code" className="w-40 h-40 object-contain" />
                     </div>
                     <div className="space-y-2 md:col-span-2">
-                      <h5 className="font-bold text-xs text-[#1a1918]">{isRtl ? "تعليمات الإعداد السريع" : "Quick Enrollment Instructions"}</h5>
-                      <ol className="list-decimal list-inside text-[11px] text-[#6e6b66] space-y-1 leading-relaxed">
+                      <h5 className="font-bold text-xs text-ink">{isRtl ? "تعليمات الإعداد السريع" : "Quick Enrollment Instructions"}</h5>
+                      <ol className="list-decimal list-inside text-[11px] text-ink-muted space-y-1 leading-relaxed">
                         <li>{isRtl ? "افتح تطبيق Google Authenticator أو 1Password." : "Open your preferred mobile verification app (Google Authenticator, Duo, etc.)."}</li>
                         <li>{isRtl ? "قم بمسح رمز الاستجابة السريعة (QR Code) الظاهر على اليسار." : "Scan the visual QR matrix on the left side of this secure card."}</li>
                         <li>{isRtl ? "أدخل الرمز المكون من 6 أرقام لتأكيد المزامنة." : "Type the temporary 6-digit synchronization code in the field below to verify."}</li>
@@ -1852,20 +1852,20 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           value={tfaCode}
                           onChange={(e) => setTfaCode(e.target.value.replace(/\D/g, ""))}
                           placeholder="e.g. 123456"
-                          className="px-3 py-2 bg-white border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-xs font-bold tracking-widest text-center"
+                          className="px-3 py-2 bg-white border border-border focus:border-gold focus:outline-none rounded-lg text-xs font-bold tracking-widest text-center"
                         />
                         <div className="flex gap-2">
                           <button
                             type="submit"
                             disabled={tfaLoading}
-                            className="px-3.5 py-2 bg-[#1a1918] hover:bg-[#bf9b30] hover:text-[#1a1918] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex-grow sm:flex-grow-0"
+                            className="px-3.5 py-2 bg-ink hover:bg-gold hover:text-ink text-white text-xs font-bold rounded-lg transition-colors cursor-pointer flex-grow sm:flex-grow-0"
                           >
                             {isRtl ? "تأكيد وتفعيل" : "Verify & Enable"}
                           </button>
                           <button
                             type="button"
                             onClick={() => { setShow2faSetup(false); setTfaSecret(""); setTfaQrCode(""); setTfaCode(""); }}
-                            className="px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-[#e6e2de] text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                            className="px-3.5 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-border text-xs font-bold rounded-lg transition-colors cursor-pointer"
                           >
                             {isRtl ? "إلغاء" : "Cancel"}
                           </button>
@@ -1873,7 +1873,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       </form>
                       <div className="text-[10px] text-gray-400">
                         <span>Secret Key: </span>
-                        <code className="bg-[#f2ede8] px-1 py-0.5 rounded text-gray-600 font-mono select-all">{tfaSecret}</code>
+                        <code className="bg-surface-2 px-1 py-0.5 rounded text-gray-600 font-mono select-all">{tfaSecret}</code>
                       </div>
                     </div>
                   </div>
@@ -1881,7 +1881,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
                 {!show2faSetup && (
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-[#6e6b66]">{isRtl ? "الحالة الحالية للأمان:" : "Node Security Status:"}</span>
+                    <span className="text-ink-muted">{isRtl ? "الحالة الحالية للأمان:" : "Node Security Status:"}</span>
                     {adminUser?.twoFactorEnabled ? (
                       <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full font-bold text-[10px]">
                         <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
@@ -1898,13 +1898,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* DATABASE MANAGEMENT & BACKUPS */}
-              <div className="bg-white p-5 rounded-xl border border-[#e6e2de] space-y-4">
+              <div className="bg-white p-5 rounded-xl border border-border space-y-4">
                 <div>
-                  <h4 className="font-serif text-sm font-bold text-[#1a1918] flex items-center gap-1.5">
-                    <FolderTree size={16} className="text-[#bf9b30]" />
+                  <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
+                    <FolderTree size={16} className="text-gold" />
                     <span>{isRtl ? "إدارة قاعدة البيانات والنسخ الاحتياطي" : "Database Management & Backup Operations"}</span>
                   </h4>
-                  <p className="text-[11px] text-[#6e6b66] mt-0.5">
+                  <p className="text-[11px] text-ink-muted mt-0.5">
                     {isRtl 
                       ? "قم بتنزيل نسخة احتياطية كاملة بصيغة JSON لجميع الجداول والبيانات الأساسية على جهازك كإجراء وقائي إضافي." 
                       : "Generate and download an application-level manual snapshot backup of all core relational tables to keep a secure local copy."}
@@ -1938,7 +1938,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         showToast(err.message || "An error occurred during database export");
                       }
                     }}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-[#bf9b30] hover:bg-[#967923] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gold hover:bg-gold-hover text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
                   >
                     <FileText size={14} />
                     <span>{isRtl ? "تحميل نسخة JSON الاحتياطية" : "Download JSON Database Export"}</span>
@@ -1949,32 +1949,32 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               {/* Audit logs & Recent reports queue */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
                 {/* Audit Logs */}
-                <div className="lg:col-span-2 bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                  <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex justify-between items-center">
-                    <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "سجل تدقيق العمليات والعمليات الأمنية" : "Cryptographic Immutable Audit Logs"}</h4>
-                    <span className="px-2 py-0.5 bg-[#f2ede8] rounded text-[10px] text-[#6e6b66]">Live Stream</span>
+                <div className="lg:col-span-2 bg-white rounded-xl border border-border overflow-hidden">
+                  <div className="p-4 bg-ink-inverse border-b border-border flex justify-between items-center">
+                    <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "سجل تدقيق العمليات والعمليات الأمنية" : "Cryptographic Immutable Audit Logs"}</h4>
+                    <span className="px-2 py-0.5 bg-surface-2 rounded text-[10px] text-ink-muted">Live Stream</span>
                   </div>
-                  <div className="divide-y divide-[#f2ede8] max-h-72 overflow-y-auto">
+                  <div className="divide-y divide-surface-2 max-h-72 overflow-y-auto">
                     {auditLogs.map(log => (
-                      <div key={log.id} className="p-3 flex items-start justify-between gap-4 hover:bg-[#fcfbfa]">
+                      <div key={log.id} className="p-3 flex items-start justify-between gap-4 hover:bg-canvas">
                         <div className="space-y-0.5">
-                          <p className="font-bold text-[#1a1918]">{log.action}</p>
-                          <p className="text-[10px] text-[#6e6b66]">{isRtl ? "منفذ العملية:" : "Actor:"} {log.actorName} ({log.actorRole}) • Target: {log.targetType} ({log.targetId})</p>
+                          <p className="font-bold text-ink">{log.action}</p>
+                          <p className="text-[10px] text-ink-muted">{isRtl ? "منفذ العملية:" : "Actor:"} {log.actorName} ({log.actorRole}) • Target: {log.targetType} ({log.targetId})</p>
                         </div>
-                        <span className="text-[10px] text-[#a8a4a0] shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        <span className="text-[10px] text-ink-faint shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Abuse Reports */}
-                <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                  <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                    <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "بلاغات إساءة الاستخدام والأسعار الوهمية" : "Moderation & Spam Queue"}</h4>
+                <div className="bg-white rounded-xl border border-border overflow-hidden">
+                  <div className="p-4 bg-ink-inverse border-b border-border">
+                    <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "بلاغات إساءة الاستخدام والأسعار الوهمية" : "Moderation & Spam Queue"}</h4>
                   </div>
-                  <div className="divide-y divide-[#f2ede8]">
+                  <div className="divide-y divide-surface-2">
                     {reports.length === 0 ? (
-                      <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "لا توجد أي بلاغات حاليًا." : "No listings reports submitted."}</p>
+                      <p className="p-8 text-center text-ink-muted">{isRtl ? "لا توجد أي بلاغات حاليًا." : "No listings reports submitted."}</p>
                     ) : (
                       reports.map(report => (
                         <div key={report.id} className="p-4 space-y-2">
@@ -1982,9 +1982,9 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             <span className="font-bold text-red-700 uppercase tracking-wider text-[10px] bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
                               {report.reason}
                             </span>
-                            <span className="text-[10px] text-[#6e6b66]">{report.reporterName}</span>
+                            <span className="text-[10px] text-ink-muted">{report.reporterName}</span>
                           </div>
-                          <p className="text-[#6e6b66] leading-relaxed italic">"{report.details}"</p>
+                          <p className="text-ink-muted leading-relaxed italic">"{report.details}"</p>
                         </div>
                       ))
                     )}
@@ -1998,19 +1998,19 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {activeSubTab === "verifications" && (
             <div className="space-y-6 text-xs">
               {/* Organization queue */}
-              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                  <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "توثيق شركات التطوير والمكاتب العقارية" : "Pending Tenant Organization Approvals"}</h4>
+              <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="p-4 bg-ink-inverse border-b border-border">
+                  <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "توثيق شركات التطوير والمكاتب العقارية" : "Pending Tenant Organization Approvals"}</h4>
                 </div>
-                <div className="divide-y divide-[#f2ede8]">
+                <div className="divide-y divide-surface-2">
                   {pendingOrgs.length === 0 ? (
-                    <p className="p-6 text-center text-[#6e6b66]">{isRtl ? "كل الشركات والمطورين موثقين." : "All agencies and developers verify status verified."}</p>
+                    <p className="p-6 text-center text-ink-muted">{isRtl ? "كل الشركات والمطورين موثقين." : "All agencies and developers verify status verified."}</p>
                   ) : (
                     pendingOrgs.map(org => (
                       <div key={org.id} className="p-4 flex justify-between items-center">
                         <div>
-                          <p className="font-bold text-[#1a1918]">{org.name}</p>
-                          <p className="text-[#6e6b66]">{org.email} | Type: {org.type}</p>
+                          <p className="font-bold text-ink">{org.name}</p>
+                          <p className="text-ink-muted">{org.email} | Type: {org.type}</p>
                         </div>
                         <div className="flex gap-2">
                           <button
@@ -2033,41 +2033,41 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* Per-document verification review (FIX 1: Document Verification System) */}
-              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                  <h4 className="font-serif text-sm font-semibold text-[#1a1918]">
+              <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="p-4 bg-ink-inverse border-b border-border">
+                  <h4 className="font-serif text-sm font-semibold text-ink">
                     {isRtl ? "مراجعة مستندات التوثيق" : "Document Verification Review"}
                   </h4>
-                  <p className="text-[10px] text-[#6e6b66] mt-0.5">
+                  <p className="text-[10px] text-ink-muted mt-0.5">
                     {isRtl
                       ? "يصبح الحساب موثقًا بالكامل فقط عند اعتماد جميع المستندات المطلوبة."
                       : "An account becomes fully VERIFIED only once every required document for its role is APPROVED."}
                   </p>
                 </div>
-                <div className="divide-y divide-[#f2ede8]">
+                <div className="divide-y divide-surface-2">
                   {documentApplicantGroups.length === 0 ? (
-                    <p className="p-8 text-center text-[#6e6b66]">
+                    <p className="p-8 text-center text-ink-muted">
                       {isRtl ? "لا توجد مستندات مقدمة بعد." : "No documents have been submitted yet."}
                     </p>
                   ) : (
                     documentApplicantGroups.map(group => (
                       <div key={group.key} className="p-4 space-y-3">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm text-[#1a1918]">{group.applicantName}</span>
-                          <span className="text-[10px] bg-[#f2ede8] text-[#6e6b66] px-1.5 py-0.5 rounded">{group.context}</span>
-                          <span className="text-[10px] text-[#6e6b66]">{group.applicantEmail}</span>
+                          <span className="font-bold text-sm text-ink">{group.applicantName}</span>
+                          <span className="text-[10px] bg-surface-2 text-ink-muted px-1.5 py-0.5 rounded">{group.context}</span>
+                          <span className="text-[10px] text-ink-muted">{group.applicantEmail}</span>
                         </div>
                         <div className="space-y-2">
                           {group.docs.map((doc: any) => (
-                            <div key={doc.id} className="p-3 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg space-y-2">
+                            <div key={doc.id} className="p-3 bg-ink-inverse border border-border rounded-lg space-y-2">
                               <div className="flex items-center justify-between gap-3 flex-wrap">
                                 <div>
-                                  <p className="font-semibold text-[#1a1918]">{doc.documentType.replace(/_/g, " ")}</p>
-                                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#bf9b30] underline">
+                                  <p className="font-semibold text-ink">{doc.documentType.replace(/_/g, " ")}</p>
+                                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-gold underline">
                                     {isRtl ? "عرض المستند" : "View document"}
                                   </a>
                                   {doc.expiryDate && (
-                                    <span className="text-[10px] text-[#6e6b66] ml-2">
+                                    <span className="text-[10px] text-ink-muted ml-2">
                                       {isRtl ? "ينتهي في: " : "Expires: "}{new Date(doc.expiryDate).toLocaleDateString()}
                                     </span>
                                   )}
@@ -2108,7 +2108,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                         value={rejectionReasonDraft}
                                         onChange={(e) => setRejectionReasonDraft(e.target.value)}
                                         placeholder={isRtl ? "سبب الرفض (مطلوب)" : "Rejection reason (required)"}
-                                        className="px-2 py-1 bg-white border border-[#e6e2de] rounded text-[10px] w-56"
+                                        className="px-2 py-1 bg-white border border-border rounded text-[10px] w-56"
                                         autoFocus
                                       />
                                       <button
@@ -2119,7 +2119,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                       </button>
                                       <button
                                         onClick={() => { setRejectingDocId(""); setRejectionReasonDraft(""); }}
-                                        className="px-2 py-1 text-[#6e6b66] hover:text-[#1a1918] cursor-pointer"
+                                        className="px-2 py-1 text-ink-muted hover:text-ink cursor-pointer"
                                       >
                                         {isRtl ? "إلغاء" : "Cancel"}
                                       </button>
@@ -2147,21 +2147,21 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* NEW APPLICATIONS SUB-TAB (FIX3: onboarding approval-gate pipeline) */}
           {activeSubTab === "applications" && (
-            <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-              <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center justify-between">
-                <h4 className="font-serif text-sm font-semibold text-[#1a1918]">
+            <div className="bg-white rounded-xl border border-border overflow-hidden">
+              <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between">
+                <h4 className="font-serif text-sm font-semibold text-ink">
                   {isRtl ? "طلبات الانضمام الجديدة" : "New Applications Pipeline"}
                 </h4>
-                <span className="text-[10px] text-[#6e6b66]">
+                <span className="text-[10px] text-ink-muted">
                   {pendingApplications.length} {isRtl ? "قيد المعالجة" : "in progress"}
                 </span>
               </div>
               {pendingApplications.length === 0 ? (
-                <p className="p-8 text-center text-[#6e6b66] text-xs">
+                <p className="p-8 text-center text-ink-muted text-xs">
                   {isRtl ? "لا توجد طلبات انضمام قيد الانتظار حالياً." : "No pending applications right now."}
                 </p>
               ) : (
-                <div className="divide-y divide-[#f2ede8] text-xs">
+                <div className="divide-y divide-surface-2 text-xs">
                   {pendingApplications.map(app => {
                     const appOrg = organizations.find(o => o.id === app.orgId);
                     const effType = app.role === UserRole.AGENT ? getEffectiveAgentType(app) : undefined;
@@ -2171,21 +2171,21 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                           <div className="space-y-0.5">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-bold text-[#1a1918]">{app.fullName}</span>
-                              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-[#f2ede8] text-[#6e6b66]">
+                              <span className="font-bold text-ink">{app.fullName}</span>
+                              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-surface-2 text-ink-muted">
                                 {app.role}{effType ? ` / ${effType}` : ""}
                               </span>
                               <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700">
                                 {app.applicationStatus}
                               </span>
                             </div>
-                            <p className="text-[#6e6b66]">{app.email}{appOrg ? ` • ${appOrg.name}` : ""}</p>
+                            <p className="text-ink-muted">{app.email}{appOrg ? ` • ${appOrg.name}` : ""}</p>
                           </div>
                           <div className="flex items-center gap-2">
                             {app.applicationStatus === ApplicationStatus.PENDING_APPROVAL && (
                               <button
                                 onClick={() => handleMoveToAwaitingPayment(app.id)}
-                                className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer"
+                                className="px-3 py-1.5 bg-ink hover:bg-gold text-white font-semibold rounded-lg cursor-pointer"
                               >
                                 {isRtl ? "نقل إلى انتظار الدفع" : "Move to Awaiting Payment"}
                               </button>
@@ -2203,13 +2203,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                   setAppActivationMethod("MANUAL");
                                   setAppNotes("");
                                 }}
-                                className="px-3 py-1.5 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] text-[#1a1918] font-semibold rounded-lg cursor-pointer"
+                                className="px-3 py-1.5 bg-white hover:bg-surface-2 border border-border text-ink font-semibold rounded-lg cursor-pointer"
                               >
                                 {isConfirming ? (isRtl ? "إغلاق النموذج" : "Close Form") : (isRtl ? "تأكيد الدفع" : "Confirm Payment")}
                               </button>
                             )}
                             {(app.applicationStatus === ApplicationStatus.AWAITING_DOCUMENTS || app.applicationStatus === ApplicationStatus.UNDER_VERIFICATION) && (
-                              <span className="text-[10px] text-[#6e6b66] italic">
+                              <span className="text-[10px] text-ink-muted italic">
                                 {isRtl ? "راجع المستندات من طابور التوثيق" : "Review documents in Verifications Queue"}
                               </span>
                             )}
@@ -2217,13 +2217,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         </div>
 
                         {isConfirming && app.applicationStatus === ApplicationStatus.AWAITING_PAYMENT && (
-                          <div className="bg-[#fbfaf8] border border-[#e6e2de] rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="bg-canvas border border-border rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                              <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "الخطة" : "Plan"}</label>
+                              <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "الخطة" : "Plan"}</label>
                               <select
                                 value={appPlanId}
                                 onChange={(e) => setAppPlanId(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg text-xs"
+                                className="w-full px-3 py-2 bg-white border border-border rounded-lg text-xs"
                               >
                                 <option value="">-- {isRtl ? "اختر خطة" : "Select Plan"} --</option>
                                 {plans.map(p => (
@@ -2232,20 +2232,20 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               </select>
                             </div>
                             <div>
-                              <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "تاريخ الانتهاء" : "Expiry Date"}</label>
+                              <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "تاريخ الانتهاء" : "Expiry Date"}</label>
                               <input
                                 type="date"
                                 value={appExpiryDate}
                                 onChange={(e) => setAppExpiryDate(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg text-xs font-mono"
+                                className="w-full px-3 py-2 bg-white border border-border rounded-lg text-xs font-mono"
                               />
                             </div>
                             <div>
-                              <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "طريقة الدفع" : "Activation Method"}</label>
+                              <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "طريقة الدفع" : "Activation Method"}</label>
                               <select
                                 value={appActivationMethod}
                                 onChange={(e) => setAppActivationMethod(e.target.value as any)}
-                                className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg text-xs"
+                                className="w-full px-3 py-2 bg-white border border-border rounded-lg text-xs"
                               >
                                 <option value="MANUAL">MANUAL</option>
                                 <option value="BANK_TRANSFER">BANK_TRANSFER</option>
@@ -2254,18 +2254,18 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               </select>
                             </div>
                             <div>
-                              <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "ملاحظات" : "Notes"}</label>
+                              <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "ملاحظات" : "Notes"}</label>
                               <input
                                 type="text"
                                 value={appNotes}
                                 onChange={(e) => setAppNotes(e.target.value)}
-                                className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg text-xs"
+                                className="w-full px-3 py-2 bg-white border border-border rounded-lg text-xs"
                               />
                             </div>
                             <div className="md:col-span-2 flex justify-end">
                               <button
                                 onClick={() => handleConfirmApplicationPayment(app)}
-                                className="px-4 py-2 bg-[#1a1918] hover:bg-[#bf9b30] text-white font-bold rounded-lg cursor-pointer"
+                                className="px-4 py-2 bg-ink hover:bg-gold text-white font-bold rounded-lg cursor-pointer"
                               >
                                 {isRtl ? "تأكيد وتفعيل الاشتراك" : "Confirm & Activate Subscription"}
                               </button>
@@ -2286,17 +2286,17 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               {flaggedProperties.length > 0 && (
                 <div className="bg-white rounded-xl border border-amber-300 overflow-hidden">
                   <div className="p-4 bg-amber-50 border-b border-amber-200">
-                    <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "الإعلانات المميّزة للمراجعة" : "Flagged for Review"}</h4>
+                    <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "الإعلانات المميّزة للمراجعة" : "Flagged for Review"}</h4>
                   </div>
-                  <div className="divide-y divide-[#f2ede8]">
+                  <div className="divide-y divide-surface-2">
                     {flaggedProperties.map(prop => (
                       <div key={prop.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                         <div>
-                          <p className="font-bold text-[#1a1918]">{prop.title} <span className="text-[10px] text-[#6e6b66]">ID: {prop.listingId}</span></p>
-                          <p className="text-[#6e6b66]">{isRtl ? "السبب: " : "Reason: "}{prop.flagReason} — {prop.flaggedDate && new Date(prop.flaggedDate).toLocaleDateString()}</p>
+                          <p className="font-bold text-ink">{prop.title} <span className="text-[10px] text-ink-muted">ID: {prop.listingId}</span></p>
+                          <p className="text-ink-muted">{isRtl ? "السبب: " : "Reason: "}{prop.flagReason} — {prop.flaggedDate && new Date(prop.flaggedDate).toLocaleDateString()}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => handleFlagProperty(prop.id, undefined)} className="px-3 py-1.5 bg-[#1c1a17] hover:bg-[#bf9b30] text-white rounded font-semibold cursor-pointer">
+                          <button onClick={() => handleFlagProperty(prop.id, undefined)} className="px-3 py-1.5 bg-chrome hover:bg-gold text-white rounded font-semibold cursor-pointer">
                             {isRtl ? "إلغاء العلامة" : "Clear Flag"}
                           </button>
                           <button onClick={() => handleVerifyProperty(prop.id, VerificationStatus.REJECTED)} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-semibold cursor-pointer">
@@ -2309,30 +2309,30 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 </div>
               )}
 
-              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center justify-between gap-3 flex-wrap">
-                  <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "جميع الإعلانات" : "All Listings"}</h4>
+              <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">
+                  <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "جميع الإعلانات" : "All Listings"}</h4>
                   <input
                     type="text"
                     value={listingSearch}
                     onChange={(e) => setListingSearch(e.target.value)}
                     placeholder={isRtl ? "بحث بالعنوان أو رقم الإعلان أو المدينة" : "Search title, listing ID, or city"}
-                    className="px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-[11px] min-w-[220px]"
+                    className="px-3 py-1.5 bg-white border border-border rounded-lg text-[11px] min-w-[220px]"
                   />
                 </div>
-                <div className="divide-y divide-[#f2ede8] max-h-[600px] overflow-y-auto">
+                <div className="divide-y divide-surface-2 max-h-[600px] overflow-y-auto">
                   {filteredListings.length === 0 ? (
-                    <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "لا توجد نتائج." : "No listings match your search."}</p>
+                    <p className="p-8 text-center text-ink-muted">{isRtl ? "لا توجد نتائج." : "No listings match your search."}</p>
                   ) : (
                     filteredListings.map(prop => (
                       <div key={prop.id} className="p-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-[#1a1918]">{prop.title}</span>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#f2ede8] text-[#6e6b66]">{prop.listingStatus}</span>
+                            <span className="font-bold text-ink">{prop.title}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-surface-2 text-ink-muted">{prop.listingStatus}</span>
                             {prop.flaggedForReview && <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700">{isRtl ? "مُعلّم" : "Flagged"}</span>}
                           </div>
-                          <p className="text-[#6e6b66]">{prop.district}, {prop.city} • {prop.price?.toLocaleString()} QAR • {isRtl ? "المشاهدات" : "Views"}: {prop.views || 0}</p>
+                          <p className="text-ink-muted">{prop.district}, {prop.city} • {prop.price?.toLocaleString()} QAR • {isRtl ? "المشاهدات" : "Views"}: {prop.views || 0}</p>
                         </div>
                         <div className="flex gap-2 flex-wrap items-center">
                           {!prop.flaggedForReview ? (
@@ -2342,7 +2342,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 value={flagReasonDraft[prop.id] || ""}
                                 onChange={(e) => setFlagReasonDraft(prev => ({ ...prev, [prop.id]: e.target.value }))}
                                 placeholder={isRtl ? "سبب العلامة" : "Flag reason"}
-                                className="px-2 py-1 bg-white border border-[#e6e2de] rounded text-[10px] w-32"
+                                className="px-2 py-1 bg-white border border-border rounded text-[10px] w-32"
                               />
                               <button
                                 disabled={!flagReasonDraft[prop.id]}
@@ -2353,7 +2353,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               </button>
                             </>
                           ) : (
-                            <button onClick={() => handleFlagProperty(prop.id, undefined)} className="px-2.5 py-1.5 bg-[#1c1a17] hover:bg-[#bf9b30] text-white rounded font-semibold cursor-pointer">
+                            <button onClick={() => handleFlagProperty(prop.id, undefined)} className="px-2.5 py-1.5 bg-chrome hover:bg-gold text-white rounded font-semibold cursor-pointer">
                               {isRtl ? "إلغاء العلامة" : "Clear Flag"}
                             </button>
                           )}
@@ -2366,7 +2366,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               {isRtl ? "تعليق" : "Suspend"}
                             </button>
                           )}
-                          <button onClick={() => handleDeleteProperty(prop.id)} className="px-2.5 py-1.5 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] text-[#1a1918] rounded font-semibold cursor-pointer" title={isRtl ? "حذف" : "Delete"}>
+                          <button onClick={() => handleDeleteProperty(prop.id)} className="px-2.5 py-1.5 bg-white hover:bg-surface-2 border border-border text-ink rounded font-semibold cursor-pointer" title={isRtl ? "حذف" : "Delete"}>
                             <Trash2 size={12} />
                           </button>
                         </div>
@@ -2380,21 +2380,21 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* USERS SUB-TAB (FIX 5) */}
           {activeSubTab === "users" && (
-            <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden text-xs">
-              <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center justify-between gap-3 flex-wrap">
-                <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "كل المستخدمين" : "All Users"}</h4>
+            <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+              <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">
+                <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "كل المستخدمين" : "All Users"}</h4>
                 <input
                   type="text"
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
                   placeholder={isRtl ? "بحث بالاسم أو البريد الإلكتروني" : "Search name or email"}
-                  className="px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-[11px] min-w-[220px]"
+                  className="px-3 py-1.5 bg-white border border-border rounded-lg text-[11px] min-w-[220px]"
                 />
               </div>
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                 <table className="w-full text-left">
-                  <thead className="bg-[#fbfaf8] sticky top-0">
-                    <tr className="text-[10px] text-[#6e6b66] uppercase">
+                  <thead className="bg-canvas sticky top-0">
+                    <tr className="text-[10px] text-ink-muted uppercase">
                       <th className="p-3">{isRtl ? "الاسم" : "Full Name"}</th>
                       <th className="p-3">{isRtl ? "البريد" : "Email"}</th>
                       <th className="p-3">{isRtl ? "الجوال" : "Mobile"}</th>
@@ -2405,7 +2405,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <th className="p-3">{isRtl ? "تاريخ التسجيل" : "Registered"}</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#f2ede8]">
+                  <tbody className="divide-y divide-surface-2">
                     {users
                       .filter(u => {
                         if (!userSearch.trim()) return true;
@@ -2418,22 +2418,22 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         const company = org?.name || u.affiliatedAgencyName || "—";
                         return (
                           <tr key={u.id}>
-                            <td className="p-3 font-bold text-[#1a1918]">{u.fullName}</td>
-                            <td className="p-3 text-[#6e6b66]">{u.email}</td>
-                            <td className="p-3 text-[#6e6b66]">{u.phone || "—"}</td>
-                            <td className="p-3 text-[#6e6b66]">{company}</td>
+                            <td className="p-3 font-bold text-ink">{u.fullName}</td>
+                            <td className="p-3 text-ink-muted">{u.email}</td>
+                            <td className="p-3 text-ink-muted">{u.phone || "—"}</td>
+                            <td className="p-3 text-ink-muted">{company}</td>
                             <td className="p-3">
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#f2ede8] text-[#6e6b66]">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-surface-2 text-ink-muted">
                                 {u.role}{effType ? ` / ${effType}` : ""}
                               </span>
                             </td>
-                            <td className="p-3 text-[#6e6b66]">{u.applicationStatus || "ACTIVE"}</td>
+                            <td className="p-3 text-ink-muted">{u.applicationStatus || "ACTIVE"}</td>
                             <td className="p-3">
                               <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${u.verificationStatus === VerificationStatus.APPROVED ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
                                 {u.verificationStatus}
                               </span>
                             </td>
-                            <td className="p-3 text-[#6e6b66]">{u.createdDate ? new Date(u.createdDate).toLocaleDateString() : "—"}</td>
+                            <td className="p-3 text-ink-muted">{u.createdDate ? new Date(u.createdDate).toLocaleDateString() : "—"}</td>
                           </tr>
                         );
                       })}
@@ -2445,13 +2445,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* VIEWING REQUESTS SUB-TAB (FIX 7) */}
           {activeSubTab === "viewing_requests" && (
-            <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden text-xs">
-              <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "طلبات معاينة العقارات" : "Property Viewing Requests"}</h4>
+            <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+              <div className="p-4 bg-ink-inverse border-b border-border">
+                <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "طلبات معاينة العقارات" : "Property Viewing Requests"}</h4>
               </div>
-              <div className="divide-y divide-[#f2ede8]">
+              <div className="divide-y divide-surface-2">
                 {viewings.length === 0 ? (
-                  <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "لا توجد طلبات معاينة حالياً." : "No viewing requests yet."}</p>
+                  <p className="p-8 text-center text-ink-muted">{isRtl ? "لا توجد طلبات معاينة حالياً." : "No viewing requests yet."}</p>
                 ) : (
                   viewings.map(v => {
                     const relatedLead = leads.find(l => l.id === v.leadId);
@@ -2461,19 +2461,19 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <div key={v.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-[#1a1918]">{relatedLead?.visitorName || (isRtl ? "زائر غير معروف" : "Unknown visitor")}</span>
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#f2ede8] text-[#6e6b66]">{v.status}</span>
+                            <span className="font-bold text-ink">{relatedLead?.visitorName || (isRtl ? "زائر غير معروف" : "Unknown visitor")}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-surface-2 text-ink-muted">{v.status}</span>
                           </div>
-                          <p className="text-[#6e6b66]">
+                          <p className="text-ink-muted">
                             {relatedLead?.visitorPhone || "—"} {relatedLead?.visitorEmail ? `• ${relatedLead.visitorEmail}` : ""}
                           </p>
-                          <p className="text-[#6e6b66]">
+                          <p className="text-ink-muted">
                             {isRtl ? "العقار: " : "Property: "}{prop?.title || v.propertyId} • {isRtl ? "الوكيل: " : "Agent: "}{agentUser?.fullName || v.agentId}
                           </p>
-                          <p className="text-[#6e6b66]">
+                          <p className="text-ink-muted">
                             {isRtl ? "الموعد المفضل: " : "Preferred: "}{v.preferredDate} {v.preferredTimeSlot} {v.notes ? `• "${v.notes}"` : ""}
                           </p>
-                          <p className="text-[10px] text-[#a8a4a0]">{isRtl ? "أُرسل في " : "Submitted "}{new Date(v.createdDate).toLocaleString()}</p>
+                          <p className="text-[10px] text-ink-faint">{isRtl ? "أُرسل في " : "Submitted "}{new Date(v.createdDate).toLocaleString()}</p>
                         </div>
                         <select
                           value={v.status}
@@ -2486,7 +2486,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             });
                             if (res.ok) fetchControlContext();
                           }}
-                          className="px-2 py-1.5 bg-white border border-[#e6e2de] rounded text-[10px] font-semibold"
+                          className="px-2 py-1.5 bg-white border border-border rounded text-[10px] font-semibold"
                         >
                           {["REQUESTED", "CONFIRMED", "RESCHEDULED", "COMPLETED", "CANCELLED"].map(s => (
                             <option key={s} value={s}>{s}</option>
@@ -2502,32 +2502,32 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* LEADS SUB-TAB */}
           {activeSubTab === "leads" && (
-            <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden text-xs">
-              <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "مراقبة قنوات الاتصالات وتوجيه الصفقات" : "Platform Unified Inquiries & Lead Router Monitor"}</h4>
+            <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+              <div className="p-4 bg-ink-inverse border-b border-border">
+                <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "مراقبة قنوات الاتصالات وتوجيه الصفقات" : "Platform Unified Inquiries & Lead Router Monitor"}</h4>
               </div>
-              <div className="divide-y divide-[#f2ede8]">
+              <div className="divide-y divide-surface-2">
                 {leads.map(lead => (
                   <div key={lead.id} className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-[#1a1918]">{lead.visitorName}</span>
+                        <span className="font-bold text-sm text-ink">{lead.visitorName}</span>
                         <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold uppercase rounded">
                           {lead.contactMethod}
                         </span>
                       </div>
-                      <p className="text-[#6e6b66]">{lead.visitorPhone} | {lead.visitorEmail || "No Email"}</p>
+                      <p className="text-ink-muted">{lead.visitorPhone} | {lead.visitorEmail || "No Email"}</p>
                       <p className="italic text-gray-500">"{lead.message}"</p>
                     </div>
 
-                    <div className="text-right text-[11px] text-[#6e6b66] space-y-0.5 shrink-0">
-                      <p>UTM Source: <strong className="text-[#1a1918]">{lead.attribution?.utmSource || "Direct Website"}</strong></p>
-                      <p>Routed Broker ID: <strong className="text-[#1a1918]">{lead.agentId || "Fallback platform pool"}</strong></p>
+                    <div className="text-right text-[11px] text-ink-muted space-y-0.5 shrink-0">
+                      <p>UTM Source: <strong className="text-ink">{lead.attribution?.utmSource || "Direct Website"}</strong></p>
+                      <p>Routed Broker ID: <strong className="text-ink">{lead.agentId || "Fallback platform pool"}</strong></p>
                     </div>
 
                     <button
                       onClick={() => handleDeleteLead(lead.id)}
-                      className="px-3 py-1.5 bg-[#1c1a17] hover:bg-[#33302a] text-white rounded font-semibold flex items-center gap-1 cursor-pointer shrink-0"
+                      className="px-3 py-1.5 bg-chrome hover:bg-chrome-hover text-white rounded font-semibold flex items-center gap-1 cursor-pointer shrink-0"
                       title={isRtl ? "حذف السجل" : "Delete Lead"}
                     >
                       <Trash2 size={14} />
@@ -2541,19 +2541,19 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* CAMPAIGNS TAB */}
           {activeSubTab === "campaigns" && (
-            <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden text-xs">
-              <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "طلبات ترويج وتمييز الإعلانات" : "Boosted Ad Campaigns Approval Center"}</h4>
+            <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+              <div className="p-4 bg-ink-inverse border-b border-border">
+                <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "طلبات ترويج وتمييز الإعلانات" : "Boosted Ad Campaigns Approval Center"}</h4>
               </div>
-              <div className="divide-y divide-[#f2ede8]">
+              <div className="divide-y divide-surface-2">
                 {pendingCampaigns.length === 0 ? (
-                  <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "لا توجد حملات إعلانية معلقة." : "No ad campaigns pending administrative reviews."}</p>
+                  <p className="p-8 text-center text-ink-muted">{isRtl ? "لا توجد حملات إعلانية معلقة." : "No ad campaigns pending administrative reviews."}</p>
                 ) : (
                   pendingCampaigns.map(camp => (
                     <div key={camp.id} className="p-4 flex justify-between items-center">
                       <div>
-                        <p className="font-bold text-[#1a1918] uppercase">{camp.type}</p>
-                        <p className="text-[#6e6b66]">Agency ID: {camp.orgId} | Budget: {camp.budget} QAR | Target End Date: {camp.endDate}</p>
+                        <p className="font-bold text-ink uppercase">{camp.type}</p>
+                        <p className="text-ink-muted">Agency ID: {camp.orgId} | Budget: {camp.budget} QAR | Target End Date: {camp.endDate}</p>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -2580,17 +2580,17 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {activeSubTab === "ad_billing" && (
             <div className="space-y-6 text-xs">
               {/* Monthly self-service boost caps per plan */}
-              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                  <h4 className="font-serif text-sm font-semibold text-[#1a1918]">
+              <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="p-4 bg-ink-inverse border-b border-border">
+                  <h4 className="font-serif text-sm font-semibold text-ink">
                     {isRtl ? "الحد الأقصى الشهري للرفع الذاتي حسب الباقة" : "Monthly Self-Service Boost Cap per Plan"}
                   </h4>
                 </div>
                 <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                   {plans.map(plan => (
-                    <div key={plan.id} className="p-3 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg space-y-2">
-                      <p className="font-bold text-[#1a1918]">{plan.name}</p>
-                      <p className="text-[#6e6b66]">
+                    <div key={plan.id} className="p-3 bg-ink-inverse border border-border rounded-lg space-y-2">
+                      <p className="font-bold text-ink">{plan.name}</p>
+                      <p className="text-ink-muted">
                         {isRtl ? "الحالي: " : "Current: "}
                         <strong>{adBoostCaps[plan.id] ?? "—"}</strong> {isRtl ? "رفعة/شهر" : "boosts/mo"}
                       </p>
@@ -2601,11 +2601,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           placeholder={String(adBoostCaps[plan.id] ?? "")}
                           value={capDrafts[plan.id] ?? ""}
                           onChange={(e) => setCapDrafts(prev => ({ ...prev, [plan.id]: e.target.value }))}
-                          className="w-20 px-2 py-1 bg-white border border-[#e6e2de] rounded"
+                          className="w-20 px-2 py-1 bg-white border border-border rounded"
                         />
                         <button
                           onClick={() => handleSaveBoostCap(plan.id)}
-                          className="px-3 py-1 bg-[#1a1918] hover:bg-[#bf9b30] text-white rounded font-semibold cursor-pointer"
+                          className="px-3 py-1 bg-ink hover:bg-gold text-white rounded font-semibold cursor-pointer"
                         >
                           {isRtl ? "حفظ" : "Save"}
                         </button>
@@ -2616,16 +2616,16 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* Running per-org billing ledger */}
-              <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                  <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "دفتر إعلانات الترويج الذاتي" : "Ad Billing Ledger"}</h4>
-                  <p className="text-[10px] text-[#6e6b66] mt-0.5">
+              <div className="bg-white rounded-xl border border-border overflow-hidden">
+                <div className="p-4 bg-ink-inverse border-b border-border">
+                  <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "دفتر إعلانات الترويج الذاتي" : "Ad Billing Ledger"}</h4>
+                  <p className="text-[10px] text-ink-muted mt-0.5">
                     {isRtl
                       ? "لا يمكن للمؤسسة تفعيل رفعات جديدة إذا كانت فترة سابقة غير مسواة."
                       : "Organizations with an unsettled prior period are blocked from further self-service activations until resolved."}
                   </p>
                 </div>
-                <div className="divide-y divide-[#f2ede8]">
+                <div className="divide-y divide-surface-2">
                   {(() => {
                     const groups = new Map<string, { orgId: string; billingPeriod: string; total: number; count: number; settled: boolean; charges: any[] }>();
                     adCharges.forEach((c: any) => {
@@ -2646,7 +2646,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     });
 
                     if (sorted.length === 0) {
-                      return <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "لا توجد رسوم إعلانية مسجلة بعد." : "No ad boost charges recorded yet."}</p>;
+                      return <p className="p-8 text-center text-ink-muted">{isRtl ? "لا توجد رسوم إعلانية مسجلة بعد." : "No ad boost charges recorded yet."}</p>;
                     }
 
                     return sorted.map(group => {
@@ -2657,8 +2657,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <div key={groupKey} className="p-4 space-y-3">
                           <div className="flex justify-between items-center gap-3 flex-wrap">
                             <div>
-                              <p className="font-bold text-[#1a1918]">{org?.name || group.orgId}</p>
-                              <p className="text-[#6e6b66]">
+                              <p className="font-bold text-ink">{org?.name || group.orgId}</p>
+                              <p className="text-ink-muted">
                                 {isRtl ? "الفترة: " : "Period: "}{group.billingPeriod} • {group.count} {isRtl ? "رفعة" : "boost(s)"} • <strong>{group.total.toLocaleString()} QAR</strong>
                               </p>
                             </div>
@@ -2672,7 +2672,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                     return next;
                                   });
                                 }}
-                                className="px-2 py-1 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] text-[#1a1918] rounded font-semibold cursor-pointer"
+                                className="px-2 py-1 bg-white hover:bg-surface-2 border border-border text-ink rounded font-semibold cursor-pointer"
                               >
                                 {isExpanded
                                   ? (isRtl ? "إخفاء التفاصيل" : "Hide breakdown")
@@ -2685,7 +2685,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               ) : (
                                 <button
                                   onClick={() => handleSettleBillingPeriod(group.orgId, group.billingPeriod)}
-                                  className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] text-white rounded font-semibold cursor-pointer"
+                                  className="px-3 py-1.5 bg-ink hover:bg-gold text-white rounded font-semibold cursor-pointer"
                                 >
                                   {isRtl ? "وضع علامة كمسواة" : "Mark as Settled"}
                                 </button>
@@ -2698,18 +2698,18 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               live server-side from Property.viewsByDay and Lead.createdDate, see
                               computeAdChargeRoi() in server.ts / GET /api/ad-charges. */}
                           {isExpanded && (
-                            <div className="rounded-lg border border-[#e6e2de] divide-y divide-[#f2ede8] overflow-hidden">
+                            <div className="rounded-lg border border-border divide-y divide-surface-2 overflow-hidden">
                               {group.charges.map((c: any) => {
                                 const prop = properties.find(p => p.id === c.propertyId);
                                 const roi = c.roiSummary || { viewsBefore: 0, viewsDuring: 0, leadsGenerated: 0, costPerLead: null };
                                 return (
-                                  <div key={c.id} className="p-3 bg-[#fdfcfb] flex flex-wrap justify-between items-center gap-2">
+                                  <div key={c.id} className="p-3 bg-ink-inverse flex flex-wrap justify-between items-center gap-2">
                                     <div className="min-w-0">
-                                      <p className="font-semibold text-[#1a1918] truncate">
+                                      <p className="font-semibold text-ink truncate">
                                         {prop ? (isRtl ? prop.titleAr || prop.title : prop.title) : c.propertyId}
-                                        <span className="text-[#a9a49d] font-normal"> • {c.type} • {c.amount.toLocaleString()} QAR</span>
+                                        <span className="text-ink-faint font-normal"> • {c.type} • {c.amount.toLocaleString()} QAR</span>
                                       </p>
-                                      <p className="text-[#6e6b66]">
+                                      <p className="text-ink-muted">
                                         {isRtl
                                           ? `المشاهدات قبل الرفع (٧ أيام): ${roi.viewsBefore} • أثناء الرفع: ${roi.viewsDuring} • العملاء المحتملون: ${roi.leadsGenerated}`
                                           : `Views 7d before boost: ${roi.viewsBefore} • during boost: ${roi.viewsDuring} • leads: ${roi.leadsGenerated}`}
@@ -2738,13 +2738,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {activeSubTab === "ai" && (
             <div className="space-y-6 text-xs" dir={isRtl ? "rtl" : "ltr"}>
               {/* Header */}
-              <div className="bg-white p-5 rounded-xl border border-[#e6e2de] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="bg-white p-5 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <h3 className="text-base font-serif font-bold text-[#1a1918] flex items-center gap-2">
-                    <Cpu className="text-[#bf9b30]" size={18} />
+                  <h3 className="text-base font-serif font-bold text-ink flex items-center gap-2">
+                    <Cpu className="text-gold" size={18} />
                     <span>{isRtl ? "مركز إدارة وتحليلات الذكاء الاصطناعي نيرو فايند" : "Nerou Find AI Management & Analytics Center"}</span>
                   </h3>
-                  <p className="text-xs text-[#6e6b66] mt-1">
+                  <p className="text-xs text-ink-muted mt-1">
                     {isRtl ? "تخصيص سلوك محرك البحث، القوانين المتبعة، التحقق من التوافق ومراقبة تكلفة واستهلاك التوكن لنموذج Gemini." : "Customize search personality, enforce business constraints, optimize prompt variables and monitor real-time Gemini LLM tokens."}
                   </p>
                 </div>
@@ -2752,30 +2752,30 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left side: AI Configuration Form (CMS) */}
-                <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4">
-                  <h4 className="font-serif text-sm font-semibold text-[#1a1918] border-b border-[#f2ede8] pb-2 flex items-center gap-2">
-                    <Sliders size={16} className="text-[#bf9b30]" />
+                <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-border space-y-4">
+                  <h4 className="font-serif text-sm font-semibold text-ink border-b border-surface-2 pb-2 flex items-center gap-2">
+                    <Sliders size={16} className="text-gold" />
                     <span>{isRtl ? "إعدادات تهيئة محرك البحث الذكي (CMS)" : "AI Discovery Configuration Center (CMS)"}</span>
                   </h4>
 
                   <form onSubmit={handleSaveAiConfig} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "اسم مساعد الذكاء الاصطناعي" : "AI Assistant Name"}</label>
+                        <label className="block font-medium text-ink-muted mb-1">{isRtl ? "اسم مساعد الذكاء الاصطناعي" : "AI Assistant Name"}</label>
                         <input
                           type="text"
                           value={aiName}
                           onChange={(e) => setAiName(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30] font-medium text-[#1a1918]"
+                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
                           required
                         />
                       </div>
                       <div>
-                        <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "النموذج النشط من Google" : "Active Gemini Model"}</label>
+                        <label className="block font-medium text-ink-muted mb-1">{isRtl ? "النموذج النشط من Google" : "Active Gemini Model"}</label>
                         <select
                           value={aiModel}
                           onChange={(e) => setAiModel(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30] font-medium text-[#1a1918]"
+                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
                         >
                           <option value="gemini-3.5-flash">Gemini 3.5 Flash (Default)</option>
                           <option value="gemini-3.6-flash">Gemini 3.6 Flash (Recommended)</option>
@@ -2786,112 +2786,112 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم الواتساب الافتراضي للمنصة" : "Platform Default WhatsApp Number"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "رقم الواتساب الافتراضي للمنصة" : "Platform Default WhatsApp Number"}</label>
                       <input
                         type="text"
                         value={whatsappDefaultNumber}
                         onChange={(e) => setWhatsappDefaultNumber(e.target.value)}
                         placeholder="e.g. 97433334444"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30] font-medium text-[#1a1918]"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
                       />
-                      <p className="text-[10px] text-[#6e6b66] mt-0.5">
+                      <p className="text-[10px] text-ink-muted mt-0.5">
                         {isRtl
                           ? "رقم الواتساب الاحتياطي للاستفسارات عن العقارات في حال لم يحدد الوكيل رقماً خاصاً به."
                           : "The fallback WhatsApp contact number for property inquiries if the specific agent has not set one."}
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#fdfcfb] rounded-xl border border-[#e6e2de]">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-ink-inverse rounded-xl border border-border">
                       <div>
-                        <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "نص العلامة المائية للصور" : "Property Watermark Text"}</label>
+                        <label className="block font-medium text-ink-muted mb-1">{isRtl ? "نص العلامة المائية للصور" : "Property Watermark Text"}</label>
                         <input
                           type="text"
                           value={watermarkText}
                           onChange={(e) => setWatermarkText(e.target.value)}
                           placeholder="e.g. Nerou Finder"
-                          className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30] font-medium text-[#1a1918]"
+                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
                         />
-                        <p className="text-[10px] text-[#6e6b66] mt-0.5">
+                        <p className="text-[10px] text-ink-muted mt-0.5">
                           {isRtl ? "النص المعروض في الزاوية السفلية من صور العقارات المرفوعة." : "The main text brand shown in the bottom corner of uploaded property photos."}
                         </p>
                       </div>
                       <div>
-                        <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "شعار العلامة المائية" : "Property Watermark Emblem"}</label>
+                        <label className="block font-medium text-ink-muted mb-1">{isRtl ? "شعار العلامة المائية" : "Property Watermark Emblem"}</label>
                         <select
                           value={watermarkLogoType}
                           onChange={(e) => setWatermarkLogoType(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30] font-medium text-[#1a1918]"
+                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-medium text-ink"
                         >
                           <option value="gold_diamond">{isRtl ? "مربع ذهبي فاخر (افتراضي)" : "Luxury Golden Diamond (Default)"}</option>
                           <option value="simple_circle">{isRtl ? "حلقة ذهبية كلاسيكية" : "Classic Gold Circle"}</option>
                           <option value="minimal_line">{isRtl ? "خطوط نيرو البسيطة" : "Minimalist Nerou Stripes"}</option>
                           <option value="none">{isRtl ? "بدون شعار (نص فقط)" : "No Emblem (Text Only)"}</option>
                         </select>
-                        <p className="text-[10px] text-[#6e6b66] mt-0.5">
+                        <p className="text-[10px] text-ink-muted mt-0.5">
                           {isRtl ? "نمط الأيقونة المصاحبة لنص العلامة المائية." : "The architectural icon style accompanying the watermark text."}
                         </p>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الوصف القصير والمهام" : "AI Role & Short Description"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الوصف القصير والمهام" : "AI Role & Short Description"}</label>
                       <input
                         type="text"
                         value={aiDescription}
                         onChange={(e) => setAiDescription(e.target.value)}
                         placeholder="e.g. AI-Powered Property Discovery for Qatar Real Estate"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "شخصية وأسلوب المساعد" : "AI Persona & Character Prompt"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "شخصية وأسلوب المساعد" : "AI Persona & Character Prompt"}</label>
                       <textarea
                         rows={3}
                         value={aiPersonality}
                         onChange={(e) => setAiPersonality(e.target.value)}
                         placeholder="Define how the AI answers, its tone, and style..."
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30] font-sans"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold font-sans"
                       />
                     </div>
 
                     <div>
-                      <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "قواعد المطابقة والقيود المباشرة" : "Enforced Search Match Rules"}</label>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "قواعد المطابقة والقيود المباشرة" : "Enforced Search Match Rules"}</label>
                       <textarea
                         rows={2}
                         value={aiRules}
                         onChange={(e) => setAiRules(e.target.value)}
                         placeholder="Enter direct constraints, e.g. strict QAR values, only existing list..."
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المواضيع المحظورة عقاريًا" : "Restricted Topics / Compliance Blocklist"}</label>
+                        <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المواضيع المحظورة عقاريًا" : "Restricted Topics / Compliance Blocklist"}</label>
                         <textarea
                           rows={2}
                           value={restrictedTopics}
                           onChange={(e) => setRestrictedTopics(e.target.value)}
                           placeholder="e.g. Financial advice, direct legal contracts representation..."
-                          className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
                         />
                       </div>
                       <div>
-                        <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "إخلاء المسؤولية المالي والمهني" : "Legal Disclaimers & Disclosures"}</label>
+                        <label className="block font-medium text-ink-muted mb-1">{isRtl ? "إخلاء المسؤولية المالي والمهني" : "Legal Disclaimers & Disclosures"}</label>
                         <textarea
                           rows={2}
                           value={aiDisclaimers}
                           onChange={(e) => setAiDisclaimers(e.target.value)}
                           placeholder="Note: Nerou Finder is a technology-first discovery marketplace and does not act as a broker..."
-                          className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                       <div>
-                        <label className="block font-medium text-[#6e6b66] mb-1">
+                        <label className="block font-medium text-ink-muted mb-1">
                           {isRtl ? "درجة الحرارة (العشوائية مقابل الدقة)" : "Temperature (Creativity vs. Precision)"} ({aiTemperature})
                         </label>
                         <input
@@ -2901,18 +2901,18 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           step="0.1"
                           value={aiTemperature}
                           onChange={(e) => setAiTemperature(parseFloat(e.target.value))}
-                          className="w-full h-1 bg-[#e6e2de] rounded-lg appearance-none cursor-pointer accent-[#bf9b30]"
+                          className="w-full h-1 bg-border rounded-lg appearance-none cursor-pointer accent-gold"
                         />
                       </div>
                       <div>
-                        <label className="block font-medium text-[#6e6b66] mb-1">
+                        <label className="block font-medium text-ink-muted mb-1">
                           {isRtl ? "الحد الأقصى للتوكن الصادر" : "Max Output Tokens"} ({aiMaxTokens})
                         </label>
                         <input
                           type="number"
                           value={aiMaxTokens}
                           onChange={(e) => setAiMaxTokens(parseInt(e.target.value) || 1000)}
-                          className="w-full px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg focus:outline-none focus:border-[#bf9b30]"
+                          className="w-full px-3 py-1.5 bg-white border border-border rounded-lg focus:outline-none focus:border-gold"
                         />
                       </div>
                     </div>
@@ -2921,7 +2921,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <button
                         type="submit"
                         disabled={isSavingAiConfig}
-                        className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg disabled:bg-gray-400 flex items-center gap-1.5 cursor-pointer"
+                        className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg disabled:bg-gray-400 flex items-center gap-1.5 cursor-pointer"
                       >
                         {isSavingAiConfig ? (
                           <>
@@ -2942,60 +2942,60 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 {/* Right side: Token Tracker & Analytics */}
                 <div className="space-y-6">
                   {/* Token Cost Tracker */}
-                  <div className="bg-white p-5 rounded-xl border border-[#e6e2de] space-y-4">
-                    <h4 className="font-serif text-sm font-bold text-[#1a1918] flex items-center gap-1.5">
-                      <Zap size={14} className="text-[#bf9b30]" />
+                  <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+                    <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
+                      <Zap size={14} className="text-gold" />
                       <span>{isRtl ? "متتبع استهلاك توكن Gemini" : "Gemini LLM Token Tracker"}</span>
                     </h4>
-                    <div className="h-36 bg-[#fdfcfb] rounded-lg border border-[#e6e2de] p-4 flex flex-col justify-between">
+                    <div className="h-36 bg-ink-inverse rounded-lg border border-border p-4 flex flex-col justify-between">
                       <div className="space-y-1">
-                        <span className="text-[10px] text-[#6e6b66] uppercase block">{isRtl ? "التكلفة التراكمية اليوم" : "Cumulative cost today"}</span>
-                        <span className="text-xl font-mono font-bold text-[#1a1918]">0.082 USD</span>
+                        <span className="text-[10px] text-ink-muted uppercase block">{isRtl ? "التكلفة التراكمية اليوم" : "Cumulative cost today"}</span>
+                        <span className="text-xl font-mono font-bold text-ink">0.082 USD</span>
                       </div>
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[10px] text-[#6e6b66]">
+                        <div className="flex justify-between text-[10px] text-ink-muted">
                           <span>{isRtl ? "الحد الأقصى الشهري للذكاء الاصطناعي" : "Monthly budget limit (50.00 USD)"}</span>
                           <span>0.16%</span>
                         </div>
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-[#bf9b30]" style={{ width: "2%" }}></div>
+                          <div className="h-full bg-gold" style={{ width: "2%" }}></div>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* AI Search Analytics */}
-                  <div className="bg-white p-5 rounded-xl border border-[#e6e2de] space-y-4">
-                    <h4 className="font-serif text-sm font-bold text-[#1a1918] flex items-center gap-1.5">
-                      <Activity size={14} className="text-[#bf9b30]" />
+                  <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+                    <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
+                      <Activity size={14} className="text-gold" />
                       <span>{isRtl ? "مؤشرات أداء محرك البحث نيرو" : "AI Search Engine KPIs"}</span>
                     </h4>
 
                     <div className="grid grid-cols-2 gap-3 text-center">
-                      <div className="bg-[#fdfcfb] border border-[#e6e2de] p-2.5 rounded-lg">
-                        <span className="text-[10px] text-[#6e6b66] block">{isRtl ? "البحوث اليوم" : "Searches Today"}</span>
-                        <span className="text-base font-bold text-[#1a1918]">284</span>
+                      <div className="bg-ink-inverse border border-border p-2.5 rounded-lg">
+                        <span className="text-[10px] text-ink-muted block">{isRtl ? "البحوث اليوم" : "Searches Today"}</span>
+                        <span className="text-base font-bold text-ink">284</span>
                       </div>
-                      <div className="bg-[#fdfcfb] border border-[#e6e2de] p-2.5 rounded-lg">
-                        <span className="text-[10px] text-[#6e6b66] block">{isRtl ? "معدل النجاح" : "Success Rate"}</span>
+                      <div className="bg-ink-inverse border border-border p-2.5 rounded-lg">
+                        <span className="text-[10px] text-ink-muted block">{isRtl ? "معدل النجاح" : "Success Rate"}</span>
                         <span className="text-base font-bold text-emerald-600">94.8%</span>
                       </div>
-                      <div className="bg-[#fdfcfb] border border-[#e6e2de] p-2.5 rounded-lg">
-                        <span className="text-[10px] text-[#6e6b66] block">{isRtl ? "بدون نتائج" : "Zero Results"}</span>
+                      <div className="bg-ink-inverse border border-border p-2.5 rounded-lg">
+                        <span className="text-[10px] text-ink-muted block">{isRtl ? "بدون نتائج" : "Zero Results"}</span>
                         <span className="text-base font-bold text-yellow-600">12</span>
                       </div>
-                      <div className="bg-[#fdfcfb] border border-[#e6e2de] p-2.5 rounded-lg">
-                        <span className="text-[10px] text-[#6e6b66] block">{isRtl ? "التحويل للواتساب" : "WhatsApp Convert"}</span>
-                        <span className="text-base font-bold text-[#bf9b30]">14.2%</span>
+                      <div className="bg-ink-inverse border border-border p-2.5 rounded-lg">
+                        <span className="text-[10px] text-ink-muted block">{isRtl ? "التحويل للواتساب" : "WhatsApp Convert"}</span>
+                        <span className="text-base font-bold text-gold">14.2%</span>
                       </div>
                     </div>
 
                     {/* Popular searches taxonomy demand gaps */}
-                    <div className="space-y-2 pt-2 border-t border-[#f2ede8]">
-                      <span className="font-semibold text-[#1a1918] block">{isRtl ? "المناطق الأكثر طلبًا بالذكاء الاصطناعي" : "Most Searched Locations (AI)"}</span>
+                    <div className="space-y-2 pt-2 border-t border-surface-2">
+                      <span className="font-semibold text-ink block">{isRtl ? "المناطق الأكثر طلبًا بالذكاء الاصطناعي" : "Most Searched Locations (AI)"}</span>
                       <div className="space-y-1.5">
                         <div>
-                          <div className="flex justify-between text-[10px] text-[#6e6b66] mb-0.5">
+                          <div className="flex justify-between text-[10px] text-ink-muted mb-0.5">
                             <span>{isRtl ? "اللؤلؤة قطر" : "Pearl Qatar"}</span>
                             <span>40%</span>
                           </div>
@@ -3004,7 +3004,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           </div>
                         </div>
                         <div>
-                          <div className="flex justify-between text-[10px] text-[#6e6b66] mb-0.5">
+                          <div className="flex justify-between text-[10px] text-ink-muted mb-0.5">
                             <span>{isRtl ? "لوسيل" : "Lusail"}</span>
                             <span>35%</span>
                           </div>
@@ -3013,7 +3013,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           </div>
                         </div>
                         <div>
-                          <div className="flex justify-between text-[10px] text-[#6e6b66] mb-0.5">
+                          <div className="flex justify-between text-[10px] text-ink-muted mb-0.5">
                             <span>{isRtl ? "الخليج الغربي" : "West Bay"}</span>
                             <span>15%</span>
                           </div>
@@ -3036,16 +3036,16 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 {health && Object.entries(health).map(([provider, status]) => {
                   if (provider === "lastCheck") return null;
                   return (
-                    <div key={provider} className="bg-white p-4 rounded-xl border border-[#e6e2de] flex flex-col justify-between h-28">
+                    <div key={provider} className="bg-white p-4 rounded-xl border border-border flex flex-col justify-between h-28">
                       <div>
-                        <span className="text-[10px] text-[#6e6b66] uppercase block font-bold">{provider} Provider</span>
+                        <span className="text-[10px] text-ink-muted uppercase block font-bold">{provider} Provider</span>
                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold mt-1 ${
                           status === "OPERATIONAL" ? "text-emerald-600" : "text-amber-500"
                         }`}>
                           ● {status}
                         </span>
                       </div>
-                      <div className="flex gap-1 border-t border-[#f2ede8] pt-2">
+                      <div className="flex gap-1 border-t border-surface-2 pt-2">
                         <button
                           onClick={() => handleUpdateHealth(provider, "OPERATIONAL")}
                           className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 text-[8px] font-bold rounded"
@@ -3071,24 +3071,24 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
             <div className="space-y-8 text-xs">
               {/* TOP SUMMARY */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-[#fbfaf8] p-5 rounded-xl border border-[#e6e2de] space-y-1">
-                  <span className="text-[10px] text-[#6e6b66] uppercase font-bold tracking-wider">{isRtl ? "إجمالي المنشآت النشطة" : "Active SaaS Tenants"}</span>
-                  <h3 className="text-3xl font-serif font-bold text-[#1a1918]">
-                    {organizations.length} <span className="text-xs font-sans text-[#6e6b66] font-normal">Registered Orgs</span>
+                <div className="bg-canvas p-5 rounded-xl border border-border space-y-1">
+                  <span className="text-[10px] text-ink-muted uppercase font-bold tracking-wider">{isRtl ? "إجمالي المنشآت النشطة" : "Active SaaS Tenants"}</span>
+                  <h3 className="text-3xl font-serif font-bold text-ink">
+                    {organizations.length} <span className="text-xs font-sans text-ink-muted font-normal">Registered Orgs</span>
                   </h3>
                 </div>
-                <div className="bg-[#fbfaf8] p-5 rounded-xl border border-[#e6e2de] space-y-1">
-                  <span className="text-[10px] text-[#6e6b66] uppercase font-bold tracking-wider">{isRtl ? "خطط الأسعار النشطة" : "Configured SaaS Plans"}</span>
-                  <h3 className="text-3xl font-serif font-bold text-[#1a1918]">
-                    {plans.length} <span className="text-xs font-sans text-[#6e6b66] font-normal">Active Plan Types</span>
+                <div className="bg-canvas p-5 rounded-xl border border-border space-y-1">
+                  <span className="text-[10px] text-ink-muted uppercase font-bold tracking-wider">{isRtl ? "خطط الأسعار النشطة" : "Configured SaaS Plans"}</span>
+                  <h3 className="text-3xl font-serif font-bold text-ink">
+                    {plans.length} <span className="text-xs font-sans text-ink-muted font-normal">Active Plan Types</span>
                   </h3>
                 </div>
-                <div className="bg-[#fbfaf8] p-5 rounded-xl border border-[#e6e2de] space-y-1">
-                  <span className="text-[10px] text-[#6e6b66] uppercase font-bold tracking-wider">{isRtl ? "التشغيل والفوترة" : "Core Billing Class"}</span>
+                <div className="bg-canvas p-5 rounded-xl border border-border space-y-1">
+                  <span className="text-[10px] text-ink-muted uppercase font-bold tracking-wider">{isRtl ? "التشغيل والفوترة" : "Core Billing Class"}</span>
                   <h3 className="text-xl font-serif font-bold text-emerald-600">
                     {isRtl ? "مستقل / فوترة يدوية آمنة" : "Independent Manual Billing"}
                   </h3>
-                  <p className="text-[9px] text-[#6e6b66]">{isRtl ? "لا يتطلب بوابات دفع وسيطة غير مستقرة" : "Zero credit-card gateway dependencies"}</p>
+                  <p className="text-[9px] text-ink-muted">{isRtl ? "لا يتطلب بوابات دفع وسيطة غير مستقرة" : "Zero credit-card gateway dependencies"}</p>
                 </div>
               </div>
 
@@ -3098,16 +3098,16 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 <div className="lg:col-span-7 space-y-8">
                   
                   {/* MANUAL SUBSCRIPTION ALLOCATOR FORM */}
-                  <div className="bg-white p-5 rounded-xl border border-[#e6e2de] space-y-4">
-                    <h4 className="font-serif text-sm font-bold text-[#1a1918] border-b border-[#f2ede8] pb-2 flex items-center gap-1.5">
-                      <span className="w-1.5 h-3 bg-[#bf9b30] rounded-full inline-block"></span>
+                  <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+                    <h4 className="font-serif text-sm font-bold text-ink border-b border-surface-2 pb-2 flex items-center gap-1.5">
+                      <span className="w-1.5 h-3 bg-gold rounded-full inline-block"></span>
                       <span>{isRtl ? "تخصيص وتحديث الاشتراكات يدويًا للمؤسسات" : "Manual SaaS Subscription Allocator & Override"}</span>
                     </h4>
 
                     <form onSubmit={handleOverrideSubscription} className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "المؤسسة / العميل" : "Select Organization Tenant"}</label>
+                          <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "المؤسسة / العميل" : "Select Organization Tenant"}</label>
                           <select
                             required
                             value={selectedOrgId}
@@ -3123,7 +3123,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 setSubActivationMethod(org.subscriptionActivationMethod || "MANUAL");
                               }
                             }}
-                            className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-xs"
+                            className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-xs"
                           >
                             <option value="">-- Choose Tenant Org --</option>
                             {organizations.map(o => (
@@ -3133,12 +3133,12 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "باقة الاشتراك" : "Assign Plan Template"}</label>
+                          <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "باقة الاشتراك" : "Assign Plan Template"}</label>
                           <select
                             required
                             value={selectedPlanId}
                             onChange={(e) => setSelectedPlanId(e.target.value)}
-                            className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-xs"
+                            className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-xs"
                           >
                             <option value="">-- Select Plan --</option>
                             {plans.map(p => (
@@ -3150,35 +3150,35 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "تاريخ بدء التفعيل" : "Activation Start Date"}</label>
+                          <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "تاريخ بدء التفعيل" : "Activation Start Date"}</label>
                           <input
                             type="date"
                             required
                             value={subStartDate}
                             onChange={(e) => setSubStartDate(e.target.value)}
-                            className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-xs font-mono"
+                            className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-xs font-mono"
                           />
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "تاريخ نهاية الصلاحية" : "Subscription Expiry Date"}</label>
+                          <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "تاريخ نهاية الصلاحية" : "Subscription Expiry Date"}</label>
                           <input
                             type="date"
                             required
                             value={subExpiryDate}
                             onChange={(e) => setSubExpiryDate(e.target.value)}
-                            className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-xs font-mono"
+                            className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-xs font-mono"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "حالة الاشتراك" : "Subscription Status"}</label>
+                          <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "حالة الاشتراك" : "Subscription Status"}</label>
                           <select
                             value={subStatus}
                             onChange={(e) => setSubStatus(e.target.value as any)}
-                            className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-xs"
+                            className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-xs"
                           >
                             <option value="ACTIVE">ACTIVE (نشط ومفعل)</option>
                             <option value="SUSPENDED">SUSPENDED (موقوف مؤقتًا)</option>
@@ -3187,11 +3187,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "طريقة الدفع والتفعيل" : "Activation / Payment Method"}</label>
+                          <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "طريقة الدفع والتفعيل" : "Activation / Payment Method"}</label>
                           <select
                             value={subActivationMethod}
                             onChange={(e) => setSubActivationMethod(e.target.value as any)}
-                            className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-xs"
+                            className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-xs"
                           >
                             <option value="MANUAL">MANUAL Override (تفعيل يدوي إداري)</option>
                             <option value="BANK_TRANSFER">BANK TRANSFER (تحويل بنكي مباشر)</option>
@@ -3202,13 +3202,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-[#6e6b66] mb-1">{isRtl ? "ملاحظات إدارية داخلية للفوترة" : "Administrative In-house Billing Notes"}</label>
+                        <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "ملاحظات إدارية داخلية للفوترة" : "Administrative In-house Billing Notes"}</label>
                         <textarea
                           rows={2}
                           value={subNotes}
                           onChange={(e) => setSubNotes(e.target.value)}
                           placeholder="Record approval details, check or transaction numbers, or custom service limits promised..."
-                          className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-xs"
+                          className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-xs"
                         ></textarea>
                       </div>
 
@@ -3216,7 +3216,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <button
                           type="submit"
                           disabled={!selectedOrgId}
-                          className="px-6 py-2 bg-[#1a1918] hover:bg-[#bf9b30] text-white font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-40"
+                          className="px-6 py-2 bg-ink hover:bg-gold text-white font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-40"
                         >
                           {isRtl ? "تحديث وحفظ اشتراك المنشأة" : "Apply Manual Subscription Plan"}
                         </button>
@@ -3225,10 +3225,10 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   </div>
 
                   {/* CONFIGURED PLANS LIST */}
-                  <div className="bg-white p-5 rounded-xl border border-[#e6e2de] space-y-4">
-                    <div className="flex justify-between items-center border-b border-[#f2ede8] pb-2">
-                      <h4 className="font-serif text-sm font-bold text-[#1a1918] flex items-center gap-1.5">
-                        <span className="w-1.5 h-3 bg-[#bf9b30] rounded-full inline-block"></span>
+                  <div className="bg-white p-5 rounded-xl border border-border space-y-4">
+                    <div className="flex justify-between items-center border-b border-surface-2 pb-2">
+                      <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
+                        <span className="w-1.5 h-3 bg-gold rounded-full inline-block"></span>
                         <span>{isRtl ? "خطط الاشتراك المعرفة بالمنصة" : "Active SaaS Packages"}</span>
                       </h4>
                       <button
@@ -3243,7 +3243,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           setPlanFeaturedListingsLimit("");
                           setIsAddingPlan(true);
                         }}
-                        className="px-2.5 py-1 bg-[#1a1918] hover:bg-[#bf9b30] text-white text-[10px] font-bold rounded cursor-pointer"
+                        className="px-2.5 py-1 bg-ink hover:bg-gold text-white text-[10px] font-bold rounded cursor-pointer"
                       >
                         + Create Package
                       </button>
@@ -3251,22 +3251,22 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {plans.map(plan => (
-                        <div key={plan.id} className="p-4 bg-[#fbfaf8] border border-[#e6e2de] rounded-xl flex flex-col justify-between space-y-3">
+                        <div key={plan.id} className="p-4 bg-canvas border border-border rounded-xl flex flex-col justify-between space-y-3">
                           <div>
                             <div className="flex justify-between items-start">
-                              <h5 className="font-serif font-bold text-[#1a1918] text-xs">{plan.name}</h5>
-                              <span className="px-2 py-0.5 bg-yellow-50 text-[#bf9b30] text-[9px] font-mono font-bold rounded">
+                              <h5 className="font-serif font-bold text-ink text-xs">{plan.name}</h5>
+                              <span className="px-2 py-0.5 bg-yellow-50 text-gold text-[9px] font-mono font-bold rounded">
                                 ID: {plan.id}
                               </span>
                             </div>
-                            <div className="text-[11px] text-[#6e6b66] mt-1 space-y-1">
+                            <div className="text-[11px] text-ink-muted mt-1 space-y-1">
                               <p>💰 {plan.priceMonthly} QAR/mo | {plan.priceYearly} QAR/yr</p>
-                              <p>🏨 Max properties limit: <strong className="text-[#1a1918]">{plan.propertyLimit}</strong></p>
-                              <p>👥 Max agents allowed: <strong className="text-[#1a1918]">{plan.agentLimit}</strong></p>
-                              <p>🤖 Monthly AI requests: <strong className="text-[#1a1918]">{plan.aiLimit}</strong></p>
+                              <p>🏨 Max properties limit: <strong className="text-ink">{plan.propertyLimit}</strong></p>
+                              <p>👥 Max agents allowed: <strong className="text-ink">{plan.agentLimit}</strong></p>
+                              <p>🤖 Monthly AI requests: <strong className="text-ink">{plan.aiLimit}</strong></p>
                             </div>
                           </div>
-                          <div className="flex justify-end pt-2 border-t border-[#f2ede8]">
+                          <div className="flex justify-end pt-2 border-t border-surface-2">
                             <button
                               onClick={() => {
                                 setEditingPlan(plan);
@@ -3280,7 +3280,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 setPlanFeaturedListingsLimit(String(plan.featuredListingsLimit));
                                 setIsAddingPlan(true);
                               }}
-                              className="text-[10px] text-[#bf9b30] hover:underline font-bold"
+                              className="text-[10px] text-gold hover:underline font-bold"
                             >
                               Edit limits
                             </button>
@@ -3297,13 +3297,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   
                   {/* PLAN CREATOR / EDITOR FORM */}
                   {isAddingPlan && (
-                    <form onSubmit={handleSavePlan} className="bg-white p-5 rounded-xl border border-[#bf9b30]/30 space-y-4 text-xs animate-in slide-in-from-right duration-200">
-                      <h4 className="font-serif text-sm font-bold text-[#1a1918] border-b border-[#f2ede8] pb-1 flex justify-between items-center">
+                    <form onSubmit={handleSavePlan} className="bg-white p-5 rounded-xl border border-gold/30 space-y-4 text-xs animate-in slide-in-from-right duration-200">
+                      <h4 className="font-serif text-sm font-bold text-ink border-b border-surface-2 pb-1 flex justify-between items-center">
                         <span>{editingPlan ? "Modify Plan Specifications" : "Create New SaaS Plan"}</span>
                         <button
                           type="button"
                           onClick={() => setIsAddingPlan(false)}
-                          className="text-[#6e6b66] hover:text-[#1a1918] font-bold cursor-pointer"
+                          className="text-ink-muted hover:text-ink font-bold cursor-pointer"
                           aria-label={isRtl ? "إغلاق" : "Close"}
                         >
                           <X size={15} />
@@ -3312,82 +3312,82 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
                       <div className="space-y-3">
                         <div>
-                          <label className="block text-[10px] font-medium text-[#6e6b66] mb-1">Package Name</label>
+                          <label className="block text-[10px] font-medium text-ink-muted mb-1">Package Name</label>
                           <input
                             type="text"
                             required
                             value={planName}
                             onChange={(e) => setPlanName(e.target.value)}
                             placeholder="e.g. Enterprise Developer Pack"
-                            className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg focus:outline-none"
+                            className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none"
                           />
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-[10px] font-medium text-[#6e6b66] mb-1">Price Monthly (QAR)</label>
+                            <label className="block text-[10px] font-medium text-ink-muted mb-1">Price Monthly (QAR)</label>
                             <input
                               type="number"
                               required
                               value={planPriceMonthly}
                               onChange={(e) => setPlanPriceMonthly(e.target.value)}
-                              className="w-full px-3 py-1.5 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                              className="w-full px-3 py-1.5 bg-ink-inverse border border-border rounded-lg"
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-medium text-[#6e6b66] mb-1">Price Yearly (QAR)</label>
+                            <label className="block text-[10px] font-medium text-ink-muted mb-1">Price Yearly (QAR)</label>
                             <input
                               type="number"
                               required
                               value={planPriceYearly}
                               onChange={(e) => setPlanPriceYearly(e.target.value)}
-                              className="w-full px-3 py-1.5 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                              className="w-full px-3 py-1.5 bg-ink-inverse border border-border rounded-lg"
                             />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-[10px] font-medium text-[#6e6b66] mb-1">Max Properties</label>
+                            <label className="block text-[10px] font-medium text-ink-muted mb-1">Max Properties</label>
                             <input
                               type="number"
                               required
                               value={planPropertyLimit}
                               onChange={(e) => setPlanPropertyLimit(e.target.value)}
-                              className="w-full px-3 py-1.5 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                              className="w-full px-3 py-1.5 bg-ink-inverse border border-border rounded-lg"
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-medium text-[#6e6b66] mb-1">Max Agents</label>
+                            <label className="block text-[10px] font-medium text-ink-muted mb-1">Max Agents</label>
                             <input
                               type="number"
                               required
                               value={planAgentLimit}
                               onChange={(e) => setPlanAgentLimit(e.target.value)}
-                              className="w-full px-3 py-1.5 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                              className="w-full px-3 py-1.5 bg-ink-inverse border border-border rounded-lg"
                             />
                           </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-[10px] font-medium text-[#6e6b66] mb-1">AI limit / month</label>
+                            <label className="block text-[10px] font-medium text-ink-muted mb-1">AI limit / month</label>
                             <input
                               type="number"
                               required
                               value={planAiLimit}
                               onChange={(e) => setPlanAiLimit(e.target.value)}
-                              className="w-full px-3 py-1.5 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                              className="w-full px-3 py-1.5 bg-ink-inverse border border-border rounded-lg"
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] font-medium text-[#6e6b66] mb-1">Featured Ads Limit</label>
+                            <label className="block text-[10px] font-medium text-ink-muted mb-1">Featured Ads Limit</label>
                             <input
                               type="number"
                               required
                               value={planFeaturedListingsLimit}
                               onChange={(e) => setPlanFeaturedListingsLimit(e.target.value)}
-                              className="w-full px-3 py-1.5 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                              className="w-full px-3 py-1.5 bg-ink-inverse border border-border rounded-lg"
                             />
                           </div>
                         </div>
@@ -3399,7 +3399,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             checked={planAnalyticsAccess}
                             onChange={(e) => setPlanAnalyticsAccess(e.target.checked)}
                           />
-                          <label htmlFor="analytics" className="text-[10px] font-medium text-[#6e6b66]">
+                          <label htmlFor="analytics" className="text-[10px] font-medium text-ink-muted">
                             Enable Rich Analytics Dashboard
                           </label>
                         </div>
@@ -3409,13 +3409,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <button
                           type="button"
                           onClick={() => setIsAddingPlan(false)}
-                          className="px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg"
+                          className="px-3 py-1.5 bg-white border border-border rounded-lg"
                         >
                           Cancel
                         </button>
                         <button
                           type="submit"
-                          className="px-4 py-1.5 bg-[#bf9b30] text-black font-bold rounded-lg"
+                          className="px-4 py-1.5 bg-gold text-black font-bold rounded-lg"
                         >
                           Save SaaS Package
                         </button>
@@ -3424,11 +3424,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   )}
 
                   {/* ACTIVE TENANTS MONITOR LIST */}
-                  <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden">
-                    <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-                      <h4 className="font-serif text-sm font-semibold text-[#1a1918]">Active Tenants Verification & Expire Tracking</h4>
+                  <div className="bg-white rounded-xl border border-border overflow-hidden">
+                    <div className="p-4 bg-ink-inverse border-b border-border">
+                      <h4 className="font-serif text-sm font-semibold text-ink">Active Tenants Verification & Expire Tracking</h4>
                     </div>
-                    <div className="divide-y divide-[#f2ede8] text-[11px]">
+                    <div className="divide-y divide-surface-2 text-[11px]">
                       {organizations.map(org => {
                         const plan = plans.find(p => p.id === org.subscriptionPlanId);
                         const status = org.subscriptionStatus || "ACTIVE";
@@ -3436,8 +3436,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           <div key={org.id} className="p-4 space-y-2">
                             <div className="flex justify-between items-start">
                               <div>
-                                <span className="font-bold text-[#1a1918]">{org.name}</span>
-                                <span className="block text-[10px] text-[#6e6b66]">{org.type} | {org.email}</span>
+                                <span className="font-bold text-ink">{org.name}</span>
+                                <span className="block text-[10px] text-ink-muted">{org.type} | {org.email}</span>
                               </div>
                               <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
                                 status === "ACTIVE" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
@@ -3447,11 +3447,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               </span>
                             </div>
 
-                            <div className="bg-[#fcfbfa] p-2 rounded-lg border border-[#f2ede8] text-[10px] space-y-1 text-[#6e6b66]">
-                              <p>📦 Current tier: <strong className="text-[#1a1918]">{plan?.name || org.subscriptionPlanId}</strong></p>
-                              <p className="flex items-center gap-1"><Calendar size={11} className="shrink-0" /> Expiry: <strong className="text-[#1a1918]">{org.subscriptionExpiry ? org.subscriptionExpiry.split("T")[0] : "No Expiry Set"}</strong></p>
-                              {org.subscriptionStartDate && <p>🚀 Activated: <strong className="text-[#1a1918]">{org.subscriptionStartDate}</strong></p>}
-                              {org.subscriptionActivationMethod && <p>💳 Method: <strong className="text-[#1a1918]">{org.subscriptionActivationMethod}</strong></p>}
+                            <div className="bg-canvas p-2 rounded-lg border border-surface-2 text-[10px] space-y-1 text-ink-muted">
+                              <p>📦 Current tier: <strong className="text-ink">{plan?.name || org.subscriptionPlanId}</strong></p>
+                              <p className="flex items-center gap-1"><Calendar size={11} className="shrink-0" /> Expiry: <strong className="text-ink">{org.subscriptionExpiry ? org.subscriptionExpiry.split("T")[0] : "No Expiry Set"}</strong></p>
+                              {org.subscriptionStartDate && <p>🚀 Activated: <strong className="text-ink">{org.subscriptionStartDate}</strong></p>}
+                              {org.subscriptionActivationMethod && <p>💳 Method: <strong className="text-ink">{org.subscriptionActivationMethod}</strong></p>}
                               {org.subscriptionNotes && <p className="italic text-gray-500 mt-1">Notes: "{org.subscriptionNotes}"</p>}
                             </div>
                           </div>
@@ -3467,14 +3467,14 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* LEGAL CMS TAB */}
           {activeSubTab === "legal_cms" && (
-            <div className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-6">
-              <div className="flex justify-between items-center border-b border-[#f2ede8] pb-4">
+            <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+              <div className="flex justify-between items-center border-b border-surface-2 pb-4">
                 <div>
-                  <h3 className="text-lg font-serif text-[#1a1918] font-semibold flex items-center gap-2">
-                    <Scale className="text-[#bf9b30]" size={20} />
+                  <h3 className="text-lg font-serif text-ink font-semibold flex items-center gap-2">
+                    <Scale className="text-gold" size={20} />
                     <span>Legal Documents CMS Console</span>
                   </h3>
-                  <p className="text-xs text-[#6e6b66]">Draft, publish, and audit regulatory documents and terms of use under Qatari legislation.</p>
+                  <p className="text-xs text-ink-muted">Draft, publish, and audit regulatory documents and terms of use under Qatari legislation.</p>
                 </div>
                 <button
                   onClick={() => {
@@ -3489,7 +3489,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     setLegalReview("PENDING");
                     setIsEditingLegalDoc(true);
                   }}
-                  className="px-3 py-1.5 bg-[#bf9b30] text-black text-xs font-bold rounded-lg flex items-center gap-1 hover:bg-[#a68628]"
+                  className="px-3 py-1.5 bg-gold text-black text-xs font-bold rounded-lg flex items-center gap-1 hover:bg-gold-hover"
                 >
                   <Plus size={14} />
                   <span>Create Policy</span>
@@ -3532,87 +3532,87 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       console.error(err);
                     }
                   }}
-                  className="space-y-4 p-4 bg-[#fcfbfa] border border-[#e6e2de] rounded-xl text-xs"
+                  className="space-y-4 p-4 bg-canvas border border-border rounded-xl text-xs"
                 >
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Slug Identifier</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Slug Identifier</label>
                       <input
                         type="text"
                         required
                         value={legalSlug}
                         onChange={(e) => setLegalSlug(e.target.value)}
                         placeholder="e.g. privacy-policy"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Version</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Version</label>
                       <input
                         type="text"
                         required
                         value={legalVersion}
                         onChange={(e) => setLegalVersion(e.target.value)}
                         placeholder="e.g. 1.5.0"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Title (English)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Title (English)</label>
                       <input
                         type="text"
                         required
                         value={legalTitle}
                         onChange={(e) => setLegalTitle(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Title (Arabic)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Title (Arabic)</label>
                       <input
                         type="text"
                         required
                         value={legalTitleAr}
                         onChange={(e) => setLegalTitleAr(e.target.value)}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#6e6b66] mb-1">Content (English)</label>
+                    <label className="block font-semibold text-ink-muted mb-1">Content (English)</label>
                     <textarea
                       required
                       value={legalContent}
                       onChange={(e) => setLegalContent(e.target.value)}
                       rows={6}
-                      className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#6e6b66] mb-1">Content (Arabic)</label>
+                    <label className="block font-semibold text-ink-muted mb-1">Content (Arabic)</label>
                     <textarea
                       required
                       value={legalContentAr}
                       onChange={(e) => setLegalContentAr(e.target.value)}
                       rows={6}
                       dir="rtl"
-                      className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Deployment Status</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Deployment Status</label>
                       <select
                         value={legalStatus}
                         onChange={(e: any) => setLegalStatus(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       >
                         <option value="DRAFT">Draft</option>
                         <option value="PUBLISHED">Published (Visible on Web)</option>
@@ -3621,11 +3621,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       </select>
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Legal Review Board Certification</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Legal Review Board Certification</label>
                       <select
                         value={legalReview}
                         onChange={(e: any) => setLegalReview(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       >
                         <option value="PENDING">Under Platform Audit</option>
                         <option value="APPROVED">Certified & Valid (Approved)</option>
@@ -3638,13 +3638,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsEditingLegalDoc(false)}
-                      className="px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg"
+                      className="px-3 py-1.5 bg-white border border-border rounded-lg"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 bg-[#bf9b30] text-black font-bold rounded-lg"
+                      className="px-4 py-1.5 bg-gold text-black font-bold rounded-lg"
                     >
                       Commit to Repository
                     </button>
@@ -3653,11 +3653,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {legalDocs.map(doc => (
-                    <div key={doc.id} className="p-4 border border-[#e6e2de] rounded-xl space-y-3 relative bg-[#fdfcfb]">
+                    <div key={doc.id} className="p-4 border border-border rounded-xl space-y-3 relative bg-ink-inverse">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="font-bold text-sm text-[#1a1918]">{doc.title} / {doc.titleAr}</h4>
-                          <span className="text-[10px] text-[#6e6b66]">Slug: /{doc.slug} • Version {doc.version}</span>
+                          <h4 className="font-bold text-sm text-ink">{doc.title} / {doc.titleAr}</h4>
+                          <span className="text-[10px] text-ink-muted">Slug: /{doc.slug} • Version {doc.version}</span>
                         </div>
                         <span className={`px-2 py-0.5 rounded text-[8px] font-bold ${
                           doc.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
@@ -3665,8 +3665,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           {doc.status}
                         </span>
                       </div>
-                      <p className="text-[10px] text-[#6e6b66] line-clamp-3 bg-white p-2 rounded border border-[#f2ede8]">{doc.content}</p>
-                      <div className="flex justify-between items-center text-[10px] text-[#6e6b66]">
+                      <p className="text-[10px] text-ink-muted line-clamp-3 bg-white p-2 rounded border border-surface-2">{doc.content}</p>
+                      <div className="flex justify-between items-center text-[10px] text-ink-muted">
                         <span>Review: <strong className={doc.legalReviewStatus === "APPROVED" ? "text-emerald-600" : "text-amber-600"}>{doc.legalReviewStatus}</strong></span>
                         <button
                           onClick={() => {
@@ -3681,7 +3681,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             setLegalReview(doc.legalReviewStatus);
                             setIsEditingLegalDoc(true);
                           }}
-                          className="text-[#bf9b30] hover:underline font-semibold"
+                          className="text-gold hover:underline font-semibold"
                         >
                           Edit Document
                         </button>
@@ -3695,14 +3695,14 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* HELP ARTICLES DESK */}
           {activeSubTab === "help_articles" && (
-            <div className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-6">
-              <div className="flex justify-between items-center border-b border-[#f2ede8] pb-4">
+            <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+              <div className="flex justify-between items-center border-b border-surface-2 pb-4">
                 <div>
-                  <h3 className="text-lg font-serif text-[#1a1918] font-semibold flex items-center gap-2">
-                    <HelpCircle className="text-[#bf9b30]" size={20} />
+                  <h3 className="text-lg font-serif text-ink font-semibold flex items-center gap-2">
+                    <HelpCircle className="text-gold" size={20} />
                     <span>Help Center Articles Manager</span>
                   </h3>
-                  <p className="text-xs text-[#6e6b66]">Provide guidelines, manuals, and FAQs for visitors, real estate brokers, and developer tenants.</p>
+                  <p className="text-xs text-ink-muted">Provide guidelines, manuals, and FAQs for visitors, real estate brokers, and developer tenants.</p>
                 </div>
                 <button
                   onClick={() => {
@@ -3715,7 +3715,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     setArtPublished(true);
                     setIsEditingArticle(true);
                   }}
-                  className="px-3 py-1.5 bg-[#bf9b30] text-black text-xs font-bold rounded-lg flex items-center gap-1 hover:bg-[#a68628]"
+                  className="px-3 py-1.5 bg-gold text-black text-xs font-bold rounded-lg flex items-center gap-1 hover:bg-gold-hover"
                 >
                   <Plus size={14} />
                   <span>Create Article</span>
@@ -3757,15 +3757,15 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       console.error(err);
                     }
                   }}
-                  className="space-y-4 p-4 bg-[#fcfbfa] border border-[#e6e2de] rounded-xl text-xs"
+                  className="space-y-4 p-4 bg-canvas border border-border rounded-xl text-xs"
                 >
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Audience Category</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Audience Category</label>
                       <select
                         value={artCategory}
                         onChange={(e: any) => setArtCategory(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       >
                         <option value="VISITORS">Visitors & Seekers</option>
                         <option value="AGENTS">Registered Brokers & Agents</option>
@@ -3776,11 +3776,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       </select>
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">State</label>
+                      <label className="block font-semibold text-ink-muted mb-1">State</label>
                       <select
                         value={artPublished ? "true" : "false"}
                         onChange={(e) => setArtPublished(e.target.value === "true")}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       >
                         <option value="true">Published (Live)</option>
                         <option value="false">Draft (Hidden)</option>
@@ -3790,48 +3790,48 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Article Title (English)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Article Title (English)</label>
                       <input
                         type="text"
                         required
                         value={artTitle}
                         onChange={(e) => setArtTitle(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Article Title (Arabic)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Article Title (Arabic)</label>
                       <input
                         type="text"
                         required
                         value={artTitleAr}
                         onChange={(e) => setArtTitleAr(e.target.value)}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#6e6b66] mb-1">Article Content (English)</label>
+                    <label className="block font-semibold text-ink-muted mb-1">Article Content (English)</label>
                     <textarea
                       required
                       value={artContent}
                       onChange={(e) => setArtContent(e.target.value)}
                       rows={6}
-                      className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#6e6b66] mb-1">Article Content (Arabic)</label>
+                    <label className="block font-semibold text-ink-muted mb-1">Article Content (Arabic)</label>
                     <textarea
                       required
                       value={artContentAr}
                       onChange={(e) => setArtContentAr(e.target.value)}
                       rows={6}
                       dir="rtl"
-                      className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -3839,30 +3839,30 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsEditingArticle(false)}
-                      className="px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg"
+                      className="px-3 py-1.5 bg-white border border-border rounded-lg"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 bg-[#bf9b30] text-black font-bold rounded-lg"
+                      className="px-4 py-1.5 bg-gold text-black font-bold rounded-lg"
                     >
                       Publish Article
                     </button>
                   </div>
                 </form>
               ) : (
-                <div className="divide-y divide-[#f2ede8] text-xs">
+                <div className="divide-y divide-surface-2 text-xs">
                   {helpArticles.map(art => (
                     <div key={art.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 bg-[#f2ede8] text-[#6e6b66] rounded text-[9px] font-bold uppercase">{art.category}</span>
-                          <h4 className="font-bold text-[#1a1918]">{art.title} ({art.titleAr})</h4>
+                          <span className="px-2 py-0.5 bg-surface-2 text-ink-muted rounded text-[9px] font-bold uppercase">{art.category}</span>
+                          <h4 className="font-bold text-ink">{art.title} ({art.titleAr})</h4>
                         </div>
-                        <p className="text-[10px] text-[#6e6b66] mt-1 line-clamp-1">{art.content}</p>
+                        <p className="text-[10px] text-ink-muted mt-1 line-clamp-1">{art.content}</p>
                       </div>
-                      <div className="flex items-center gap-4 text-[10px] text-[#6e6b66]">
+                      <div className="flex items-center gap-4 text-[10px] text-ink-muted">
                         <span>👀 {art.viewCount || 0} views</span>
                         <button
                           onClick={() => {
@@ -3875,7 +3875,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             setArtPublished(art.isPublished);
                             setIsEditingArticle(true);
                           }}
-                          className="text-[#bf9b30] hover:underline font-bold"
+                          className="text-gold hover:underline font-bold"
                         >
                           Edit Article
                         </button>
@@ -3889,19 +3889,19 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* SUPPORT TICKETS QUEUE */}
           {activeSubTab === "support_tickets" && (
-            <div className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-6">
-              <div className="border-b border-[#f2ede8] pb-4">
-                <h3 className="text-lg font-serif text-[#1a1918] font-semibold flex items-center gap-2">
+            <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+              <div className="border-b border-surface-2 pb-4">
+                <h3 className="text-lg font-serif text-ink font-semibold flex items-center gap-2">
                   <AlertOctagon className="text-red-500" size={20} />
                   <span>Central Operations Support Tickets</span>
                 </h3>
-                <p className="text-xs text-[#6e6b66]">Interact with logged-in agents and enterprise organizations to resolve queries and complaints.</p>
+                <p className="text-xs text-ink-muted">Interact with logged-in agents and enterprise organizations to resolve queries and complaints.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
                 {/* Tickets list */}
-                <div className="md:col-span-1 border border-[#e6e2de] rounded-xl overflow-hidden divide-y divide-[#f2ede8]">
-                  <div className="bg-[#fdfcfb] p-3 border-b border-[#e6e2de] font-bold text-[#1a1918]">Active Inquiries Queue</div>
+                <div className="md:col-span-1 border border-border rounded-xl overflow-hidden divide-y divide-surface-2">
+                  <div className="bg-ink-inverse p-3 border-b border-border font-bold text-ink">Active Inquiries Queue</div>
                   {tickets.length === 0 ? (
                     <div className="p-8 text-center text-gray-400">Queue is empty</div>
                   ) : (
@@ -3912,16 +3912,16 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           setSelectedTicket(ticket);
                           setTicketReplyText("");
                         }}
-                        className={`p-3 cursor-pointer hover:bg-[#fcfbfa] transition-colors ${selectedTicket?.id === ticket.id ? "bg-[#fcfbfa] border-l-4 border-[#bf9b30]" : ""}`}
+                        className={`p-3 cursor-pointer hover:bg-canvas transition-colors ${selectedTicket?.id === ticket.id ? "bg-canvas border-l-4 border-gold" : ""}`}
                       >
                         <div className="flex justify-between items-start mb-1">
-                          <span className="font-bold text-[#1a1918] truncate max-w-[120px]">{ticket.subject}</span>
+                          <span className="font-bold text-ink truncate max-w-[120px]">{ticket.subject}</span>
                           <span className={`px-1.5 py-0.2 rounded text-[8px] font-bold ${
                             ticket.priority === "URGENT" ? "bg-red-100 text-red-700" :
                             ticket.priority === "HIGH" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"
                           }`}>{ticket.priority}</span>
                         </div>
-                        <div className="flex justify-between items-center text-[10px] text-[#6e6b66]">
+                        <div className="flex justify-between items-center text-[10px] text-ink-muted">
                           <span>{ticket.userName}</span>
                           <span className={`font-semibold ${ticket.status === "OPEN" ? "text-red-600 animate-pulse" : "text-gray-500"}`}>{ticket.status}</span>
                         </div>
@@ -3933,11 +3933,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 {/* Selected Ticket details */}
                 <div className="md:col-span-2 space-y-4">
                   {selectedTicket ? (
-                    <div className="border border-[#e6e2de] rounded-xl p-4 bg-[#fdfcfb] space-y-4">
-                      <div className="flex justify-between items-start border-b border-[#f2ede8] pb-3">
+                    <div className="border border-border rounded-xl p-4 bg-ink-inverse space-y-4">
+                      <div className="flex justify-between items-start border-b border-surface-2 pb-3">
                         <div>
-                          <h4 className="font-bold text-sm text-[#1a1918]">{selectedTicket.subject}</h4>
-                          <p className="text-[10px] text-[#6e6b66]">Submitted by <strong>{selectedTicket.userName}</strong> ({selectedTicket.userEmail}) • Category: {selectedTicket.category}</p>
+                          <h4 className="font-bold text-sm text-ink">{selectedTicket.subject}</h4>
+                          <p className="text-[10px] text-ink-muted">Submitted by <strong>{selectedTicket.userName}</strong> ({selectedTicket.userEmail}) • Category: {selectedTicket.category}</p>
                         </div>
                         <div className="flex gap-2">
                           <select
@@ -3968,7 +3968,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 console.error(e);
                               }
                             }}
-                            className="bg-white border border-[#e6e2de] rounded-lg p-1 text-[10px]"
+                            className="bg-white border border-border rounded-lg p-1 text-[10px]"
                           >
                             <option value="OPEN">Open</option>
                             <option value="IN_PROGRESS">In Progress</option>
@@ -3980,22 +3980,22 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       </div>
 
                       {/* Conversation log */}
-                      <div className="space-y-3 max-h-[300px] overflow-y-auto p-2 bg-white rounded-lg border border-[#f2ede8]">
-                        <div className="bg-[#fcfbfa] p-3 rounded-lg border border-[#f2ede8] space-y-1">
-                          <div className="flex justify-between font-bold text-[10px] text-[#1a1918]">
+                      <div className="space-y-3 max-h-[300px] overflow-y-auto p-2 bg-white rounded-lg border border-surface-2">
+                        <div className="bg-canvas p-3 rounded-lg border border-surface-2 space-y-1">
+                          <div className="flex justify-between font-bold text-[10px] text-ink">
                             <span>{selectedTicket.userName} (Creator)</span>
                             <span>{selectedTicket.createdDate ? selectedTicket.createdDate.split("T")[0] : ""}</span>
                           </div>
-                          <p className="text-xs text-[#6e6b66] whitespace-pre-wrap">{selectedTicket.description}</p>
+                          <p className="text-xs text-ink-muted whitespace-pre-wrap">{selectedTicket.description}</p>
                         </div>
 
                         {selectedTicket.replies?.map(reply => (
                           <div key={reply.id} className={`p-3 rounded-lg border ${reply.senderRole === "PLATFORM_ADMIN" ? "bg-amber-50/50 border-amber-100 ml-4" : "bg-gray-50 border-gray-100 mr-4"} space-y-1`}>
-                            <div className="flex justify-between font-bold text-[10px] text-[#1a1918]">
+                            <div className="flex justify-between font-bold text-[10px] text-ink">
                               <span>{reply.senderName} ({reply.senderRole.replace("_", " ")})</span>
                               <span>{reply.createdDate ? reply.createdDate.split("T")[0] : ""}</span>
                             </div>
-                            <p className="text-xs text-[#6e6b66] whitespace-pre-wrap">{reply.message}</p>
+                            <p className="text-xs text-ink-muted whitespace-pre-wrap">{reply.message}</p>
                           </div>
                         ))}
                       </div>
@@ -4039,12 +4039,12 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           onChange={(e) => setTicketReplyText(e.target.value)}
                           rows={3}
                           required
-                          className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                          className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                         ></textarea>
                         <div className="flex justify-end">
                           <button
                             type="submit"
-                            className="px-4 py-1.5 bg-[#bf9b30] text-black font-bold rounded-lg flex items-center gap-1 hover:bg-[#a68628]"
+                            className="px-4 py-1.5 bg-gold text-black font-bold rounded-lg flex items-center gap-1 hover:bg-gold-hover"
                           >
                             <Send size={12} />
                             <span>Send Reply</span>
@@ -4053,7 +4053,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       </form>
                     </div>
                   ) : (
-                    <div className="h-full border border-dashed border-[#e6e2de] rounded-xl flex items-center justify-center text-[#6e6b66] p-8 text-center">
+                    <div className="h-full border border-dashed border-border rounded-xl flex items-center justify-center text-ink-muted p-8 text-center">
                       Select a support ticket from the list to manage, reply, and monitor audits.
                     </div>
                   )}
@@ -4064,19 +4064,19 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* PARTNERSHIP REQUESTS BOARD */}
           {activeSubTab === "partnerships" && (
-            <div className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-6">
-              <div className="border-b border-[#f2ede8] pb-4">
-                <h3 className="text-lg font-serif text-[#1a1918] font-semibold flex items-center gap-2">
-                  <Award className="text-[#bf9b30]" size={20} />
+            <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+              <div className="border-b border-surface-2 pb-4">
+                <h3 className="text-lg font-serif text-ink font-semibold flex items-center gap-2">
+                  <Award className="text-gold" size={20} />
                   <span>Incoming Commercial Partnerships Inquiries</span>
                 </h3>
-                <p className="text-xs text-[#6e6b66]">Review applications from major builders, property brokers, and technology service vendors in the Middle East.</p>
+                <p className="text-xs text-ink-muted">Review applications from major builders, property brokers, and technology service vendors in the Middle East.</p>
               </div>
 
-              <div className="overflow-x-auto border border-[#e6e2de] rounded-xl text-xs">
+              <div className="overflow-x-auto border border-border rounded-xl text-xs">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-[#fdfcfb] border-b border-[#e6e2de] text-[#6e6b66]">
+                    <tr className="bg-ink-inverse border-b border-border text-ink-muted">
                       <th className="p-3">Company Name</th>
                       <th className="p-3">Contact</th>
                       <th className="p-3">Type</th>
@@ -4085,7 +4085,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <th className="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#f2ede8] text-[#1a1918]">
+                  <tbody className="divide-y divide-surface-2 text-ink">
                     {partnerships.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="p-8 text-center text-gray-400">No partnership inquiries registered</td>
@@ -4096,10 +4096,10 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           <td className="p-3 font-bold">{req.companyName}</td>
                           <td className="p-3">
                             <span className="block">{req.contactName}</span>
-                            <span className="block text-[10px] text-[#6e6b66]">{req.email} • {req.phone}</span>
+                            <span className="block text-[10px] text-ink-muted">{req.email} • {req.phone}</span>
                           </td>
                           <td className="p-3">
-                            <span className="px-2 py-0.5 bg-[#f2ede8] text-[#6e6b66] rounded-full text-[9px] font-bold">{req.type}</span>
+                            <span className="px-2 py-0.5 bg-surface-2 text-ink-muted rounded-full text-[9px] font-bold">{req.type}</span>
                           </td>
                           <td className="p-3 max-w-xs truncate">{req.message}</td>
                           <td className="p-3">
@@ -4175,14 +4175,14 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* CAREERS OPERATIONS BOARD */}
           {activeSubTab === "careers" && (
-            <div className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-6">
-              <div className="flex justify-between items-center border-b border-[#f2ede8] pb-4">
+            <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+              <div className="flex justify-between items-center border-b border-surface-2 pb-4">
                 <div>
-                  <h3 className="text-lg font-serif text-[#1a1918] font-semibold flex items-center gap-2">
-                    <Briefcase className="text-[#bf9b30]" size={20} />
+                  <h3 className="text-lg font-serif text-ink font-semibold flex items-center gap-2">
+                    <Briefcase className="text-gold" size={20} />
                     <span>Careers Opportunities CMS Console</span>
                   </h3>
-                  <p className="text-xs text-[#6e6b66]">Post active corporate engineering, sales, and operations jobs at Nerou Technology Services offices in Qatar.</p>
+                  <p className="text-xs text-ink-muted">Post active corporate engineering, sales, and operations jobs at Nerou Technology Services offices in Qatar.</p>
                 </div>
                 <button
                   onClick={() => {
@@ -4201,7 +4201,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     setJobReqsAr("");
                     setIsEditingJob(true);
                   }}
-                  className="px-3 py-1.5 bg-[#bf9b30] text-black text-xs font-bold rounded-lg flex items-center gap-1 hover:bg-[#a68628]"
+                  className="px-3 py-1.5 bg-gold text-black text-xs font-bold rounded-lg flex items-center gap-1 hover:bg-gold-hover"
                 >
                   <Plus size={14} />
                   <span>Post Job Opening</span>
@@ -4249,123 +4249,123 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       console.error(err);
                     }
                   }}
-                  className="space-y-4 p-4 bg-[#fcfbfa] border border-[#e6e2de] rounded-xl text-xs"
+                  className="space-y-4 p-4 bg-canvas border border-border rounded-xl text-xs"
                 >
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Job Title (English)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Job Title (English)</label>
                       <input
                         type="text"
                         required
                         value={jobTitle}
                         onChange={(e) => setJobTitle(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Job Title (Arabic)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Job Title (Arabic)</label>
                       <input
                         type="text"
                         required
                         value={jobTitleAr}
                         onChange={(e) => setJobTitleAr(e.target.value)}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Department (English)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Department (English)</label>
                       <input
                         type="text"
                         required
                         value={jobDept}
                         onChange={(e) => setJobDept(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Department (Arabic)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Department (Arabic)</label>
                       <input
                         type="text"
                         required
                         value={jobDeptAr}
                         onChange={(e) => setJobDeptAr(e.target.value)}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Location (English)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Location (English)</label>
                       <input
                         type="text"
                         required
                         value={jobLoc}
                         onChange={(e) => setJobLoc(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Location (Arabic)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Location (Arabic)</label>
                       <input
                         type="text"
                         required
                         value={jobLocAr}
                         onChange={(e) => setJobLocAr(e.target.value)}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#6e6b66] mb-1">Job Description (English)</label>
+                    <label className="block font-semibold text-ink-muted mb-1">Job Description (English)</label>
                     <textarea
                       required
                       value={jobDesc}
                       onChange={(e) => setJobDesc(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#6e6b66] mb-1">Job Description (Arabic)</label>
+                    <label className="block font-semibold text-ink-muted mb-1">Job Description (Arabic)</label>
                     <textarea
                       required
                       value={jobDescAr}
                       onChange={(e) => setJobDescAr(e.target.value)}
                       rows={4}
                       dir="rtl"
-                      className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#6e6b66] mb-1">Requirements (English, one per line)</label>
+                    <label className="block font-semibold text-ink-muted mb-1">Requirements (English, one per line)</label>
                     <textarea
                       required
                       value={jobReqs}
                       onChange={(e) => setJobReqs(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#6e6b66] mb-1">Requirements (Arabic, one per line)</label>
+                    <label className="block font-semibold text-ink-muted mb-1">Requirements (Arabic, one per line)</label>
                     <textarea
                       required
                       value={jobReqsAr}
                       onChange={(e) => setJobReqsAr(e.target.value)}
                       rows={4}
                       dir="rtl"
-                      className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -4373,30 +4373,30 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsEditingJob(false)}
-                      className="px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg"
+                      className="px-3 py-1.5 bg-white border border-border rounded-lg"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 bg-[#bf9b30] text-black font-bold rounded-lg"
+                      className="px-4 py-1.5 bg-gold text-black font-bold rounded-lg"
                     >
                       Publish Job Opening
                     </button>
                   </div>
                 </form>
               ) : (
-                <div className="divide-y divide-[#f2ede8] text-xs">
+                <div className="divide-y divide-surface-2 text-xs">
                   {careers.map(job => (
-                    <div key={job.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#fdfcfb] p-4 border border-[#e6e2de] rounded-xl mb-3">
+                    <div key={job.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-ink-inverse p-4 border border-border rounded-xl mb-3">
                       <div>
-                        <h4 className="font-bold text-sm text-[#1a1918]">{job.title} / {job.titleAr}</h4>
-                        <div className="flex flex-wrap gap-2 text-[10px] text-[#6e6b66] mt-1">
+                        <h4 className="font-bold text-sm text-ink">{job.title} / {job.titleAr}</h4>
+                        <div className="flex flex-wrap gap-2 text-[10px] text-ink-muted mt-1">
                           <span>🏢 {job.department} ({job.departmentAr})</span>
                           <span className="inline-flex items-center gap-1"><MapPin size={11} /> {job.location}</span>
                           <span>⏳ {job.type}</span>
                         </div>
-                        <p className="text-[10px] text-[#6e6b66] mt-2 italic">"{job.description}"</p>
+                        <p className="text-[10px] text-ink-muted mt-2 italic">"{job.description}"</p>
                       </div>
                       <button
                         onClick={() => {
@@ -4415,7 +4415,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           setJobReqsAr(job.requirementsAr?.join("\n") || "");
                           setIsEditingJob(true);
                         }}
-                        className="text-[#bf9b30] hover:underline font-bold"
+                        className="text-gold hover:underline font-bold"
                       >
                         Edit Listing
                       </button>
@@ -4428,13 +4428,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* PRESS CMS TAB */}
           {activeSubTab === "press" && (
-            <div className="bg-white p-5 md:p-6 rounded-xl border border-[#e6e2de] space-y-6">
-              <div className="flex justify-between items-center border-b border-[#f2ede8] pb-3">
+            <div className="bg-white p-5 md:p-6 rounded-xl border border-border space-y-6">
+              <div className="flex justify-between items-center border-b border-surface-2 pb-3">
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-[#1a1918]">
+                  <h3 className="font-serif text-lg font-bold text-ink">
                     {isRtl ? "إدارة البيانات الصحفية والاتصال المؤسسي" : "Corporate Press Releases & Media CMS"}
                   </h3>
-                  <p className="text-xs text-[#6e6b66] mt-0.5">
+                  <p className="text-xs text-ink-muted mt-0.5">
                     {isRtl
                       ? "تعديل، صياغة، ونشر الأخبار الرسمية للمنصة والمستجدات الصحفية بقطر."
                       : "Draft, edit, and authorize official press statements and news updates."}
@@ -4453,7 +4453,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       setPressContentAr("");
                       setIsEditingPress(true);
                     }}
-                    className="px-3 py-1.5 bg-[#1c1a17] text-[#bf9b30] hover:bg-[#33302a] text-xs font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                    className="px-3 py-1.5 bg-chrome text-gold hover:bg-chrome-hover text-xs font-bold rounded-lg flex items-center gap-1.5 cursor-pointer"
                   >
                     <Plus size={14} />
                     <span>{isRtl ? "صياغة بيان صحفي جديد" : "Draft Press Release"}</span>
@@ -4465,18 +4465,18 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 <form onSubmit={handleSavePress} className="space-y-4 text-xs">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Title (English)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Title (English)</label>
                       <input
                         type="text"
                         required
                         value={pressTitle}
                         onChange={(e) => setPressTitle(e.target.value)}
                         placeholder="e.g. Nerou Finder Launches AI Search Engine"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Title (Arabic)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Title (Arabic)</label>
                       <input
                         type="text"
                         required
@@ -4484,24 +4484,24 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         onChange={(e) => setPressTitleAr(e.target.value)}
                         placeholder="مثال: نيرو فايندر تطلق محرك الاكتشاف الذكي التفاعلي بالذكاء الاصطناعي"
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Date</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Date</label>
                       <input
                         type="date"
                         required
                         value={pressDate}
                         onChange={(e) => setPressDate(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Status</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Status</label>
                       <span className="w-full px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg block font-bold text-center">
                         AUTHORIZED & READY TO DEPLOY
                       </span>
@@ -4510,18 +4510,18 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Summary (English)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Summary (English)</label>
                       <textarea
                         required
                         value={pressSummary}
                         onChange={(e) => setPressSummary(e.target.value)}
                         placeholder="A short snippet for social media cards and listings..."
                         rows={2}
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                       ></textarea>
                     </div>
                     <div>
-                      <label className="block font-semibold text-[#6e6b66] mb-1">Summary (Arabic)</label>
+                      <label className="block font-semibold text-ink-muted mb-1">Summary (Arabic)</label>
                       <textarea
                         required
                         value={pressSummaryAr}
@@ -4529,25 +4529,25 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         placeholder="ملخص الخبر للمنصات الرقمية..."
                         rows={2}
                         dir="rtl"
-                        className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                        className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                       ></textarea>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#6e6b66] mb-1">Full Content (English)</label>
+                    <label className="block font-semibold text-ink-muted mb-1">Full Content (English)</label>
                     <textarea
                       required
                       value={pressContent}
                       onChange={(e) => setPressContent(e.target.value)}
                       placeholder="Type the full detailed article content in English..."
                       rows={6}
-                      className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-[#6e6b66] mb-1">Full Content (Arabic)</label>
+                    <label className="block font-semibold text-ink-muted mb-1">Full Content (Arabic)</label>
                     <textarea
                       required
                       value={pressContentAr}
@@ -4555,7 +4555,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       placeholder="اكتب المحتوى الكامل للمقال باللغة العربية..."
                       rows={6}
                       dir="rtl"
-                      className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none font-sans"
+                      className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none font-sans"
                     ></textarea>
                   </div>
 
@@ -4563,31 +4563,31 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsEditingPress(false)}
-                      className="px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg"
+                      className="px-3 py-1.5 bg-white border border-border rounded-lg"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-1.5 bg-[#bf9b30] text-black font-bold rounded-lg"
+                      className="px-4 py-1.5 bg-gold text-black font-bold rounded-lg"
                     >
                       Publish Statement
                     </button>
                   </div>
                 </form>
               ) : (
-                <div className="divide-y divide-[#f2ede8] text-xs space-y-4">
+                <div className="divide-y divide-surface-2 text-xs space-y-4">
                   {press.length === 0 ? (
-                    <div className="py-12 text-center text-xs text-[#6e6b66] border border-dashed border-[#e6e2de] rounded-xl bg-[#fdfcfb]">
+                    <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl bg-ink-inverse">
                       No press releases archived in Central CMS yet. Click Draft above to initiate.
                     </div>
                   ) : (
                     press.map(release => (
-                      <div key={release.id} className="pt-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#fdfcfb] p-4 border border-[#e6e2de] rounded-xl">
+                      <div key={release.id} className="pt-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-ink-inverse p-4 border border-border rounded-xl">
                         <div>
-                          <span className="text-[10px] font-bold text-[#bf9b30] block uppercase tracking-wider mb-1">{release.date}</span>
-                          <h4 className="font-bold text-sm text-[#1a1918]">{release.title} / {release.titleAr}</h4>
-                          <p className="text-[10px] text-[#6e6b66] mt-2 italic">"{release.summary}"</p>
+                          <span className="text-[10px] font-bold text-gold block uppercase tracking-wider mb-1">{release.date}</span>
+                          <h4 className="font-bold text-sm text-ink">{release.title} / {release.titleAr}</h4>
+                          <p className="text-[10px] text-ink-muted mt-2 italic">"{release.summary}"</p>
                         </div>
                         <button
                           onClick={() => {
@@ -4601,7 +4601,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             setPressContentAr(release.contentAr || "");
                             setIsEditingPress(true);
                           }}
-                          className="text-[#bf9b30] hover:underline font-bold self-end md:self-center shrink-0 cursor-pointer"
+                          className="text-gold hover:underline font-bold self-end md:self-center shrink-0 cursor-pointer"
                         >
                           Edit Release
                         </button>
@@ -4615,13 +4615,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* EMAIL LOGS TAB */}
           {activeSubTab === "email_logs" && (
-            <div className="bg-white p-5 md:p-6 rounded-xl border border-[#e6e2de] space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-[#f2ede8] pb-4">
+            <div className="bg-white p-5 md:p-6 rounded-xl border border-border space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-surface-2 pb-4">
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-[#1a1918]">
+                  <h3 className="font-serif text-lg font-bold text-ink">
                     {isRtl ? "محاكي سجلات البريد الإلكتروني الصادر (SMTP)" : "Outbound Mock SMTP Email Logs Queue"}
                   </h3>
-                  <p className="text-xs text-[#6e6b66] mt-0.5">
+                  <p className="text-xs text-ink-muted mt-0.5">
                     {isRtl
                       ? "قائمة تتبع ومراقبة رسائل البريد الإلكتروني المحاكاة للمعاملات العقارية واشتراكات SaaS."
                       : "Developer telemetry panel tracking transactional, lead distribution, and SaaS notification emails."}
@@ -4631,7 +4631,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   <button
                     onClick={fetchEmailLogs}
                     disabled={emailLogsLoading}
-                    className="px-3 py-1.5 border border-[#e6e2de] hover:border-[#bf9b30] text-xs font-bold rounded-lg flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-3 py-1.5 border border-border hover:border-gold text-xs font-bold rounded-lg flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     <RefreshCw size={14} className={emailLogsLoading ? "animate-spin" : ""} />
                     <span>{isRtl ? "تحديث" : "Refresh"}</span>
@@ -4647,40 +4647,40 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {emailLogsLoading ? (
-                <div className="flex flex-col items-center justify-center py-12 text-xs text-[#6e6b66] gap-2">
-                  <RefreshCw size={18} className="animate-spin text-[#bf9b30]" />
+                <div className="flex flex-col items-center justify-center py-12 text-xs text-ink-muted gap-2">
+                  <RefreshCw size={18} className="animate-spin text-gold" />
                   <span>Loading mail server logs...</span>
                 </div>
               ) : emails.length === 0 ? (
-                <div className="py-12 text-center text-xs text-[#6e6b66] border border-dashed border-[#e6e2de] rounded-xl bg-[#fdfcfb]">
+                <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl bg-ink-inverse">
                   No outbound SMTP logs registered yet. Trigger a lead inquiry or request a SaaS subscription to view output.
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Email List Left */}
-                  <div className="lg:col-span-1 border border-[#e6e2de] rounded-xl overflow-hidden divide-y divide-[#f2ede8] max-h-[600px] overflow-y-auto">
+                  <div className="lg:col-span-1 border border-border rounded-xl overflow-hidden divide-y divide-surface-2 max-h-[600px] overflow-y-auto">
                     {emails.map((email) => (
                       <div
                         key={email.id}
                         onClick={() => setSelectedEmail(email)}
                         className={`p-4 cursor-pointer transition-colors text-left ${
                           selectedEmail?.id === email.id
-                            ? "bg-[#bf9b30]/10 border-l-4 border-l-[#bf9b30]"
-                            : "hover:bg-[#fcfbfa]"
+                            ? "bg-gold/10 border-l-4 border-l-gold"
+                            : "hover:bg-canvas"
                         }`}
                       >
                         <div className="flex justify-between items-start gap-2 mb-1">
-                          <span className="text-[9px] font-bold text-[#bf9b30] uppercase tracking-wider">
+                          <span className="text-[9px] font-bold text-gold uppercase tracking-wider">
                             {email.type || "transactional"}
                           </span>
-                          <span className="text-[9px] text-[#6e6b66] font-mono">
+                          <span className="text-[9px] text-ink-muted font-mono">
                             {new Date(email.sentDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <h4 className="font-bold text-xs text-[#1a1918] truncate">
+                        <h4 className="font-bold text-xs text-ink truncate">
                           {email.subject}
                         </h4>
-                        <p className="text-[10px] text-[#6e6b66] truncate mt-1">
+                        <p className="text-[10px] text-ink-muted truncate mt-1">
                           To: {email.to}
                         </p>
                       </div>
@@ -4688,41 +4688,41 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   </div>
 
                   {/* Email Preview Right */}
-                  <div className="lg:col-span-2 border border-[#e6e2de] rounded-xl overflow-hidden bg-[#fdfcfb] flex flex-col min-h-[500px]">
+                  <div className="lg:col-span-2 border border-border rounded-xl overflow-hidden bg-ink-inverse flex flex-col min-h-[500px]">
                     {selectedEmail ? (
                       <div className="flex flex-col h-full">
                         {/* Header Details */}
-                        <div className="p-4 bg-white border-b border-[#e6e2de] space-y-1.5 text-xs">
+                        <div className="p-4 bg-white border-b border-border space-y-1.5 text-xs">
                           <div className="flex justify-between items-center">
-                            <span className="font-mono text-[10px] text-[#bf9b30] bg-[#bf9b30]/10 px-2 py-0.5 rounded">
+                            <span className="font-mono text-[10px] text-gold bg-gold/10 px-2 py-0.5 rounded">
                               {selectedEmail.id}
                             </span>
-                            <span className="text-[10px] text-[#6e6b66]">
+                            <span className="text-[10px] text-ink-muted">
                               {new Date(selectedEmail.sentDate).toLocaleString()}
                             </span>
                           </div>
-                          <p className="text-[#1a1918]">
-                            <strong>From:</strong> <span className="text-[#6e6b66]">noreply@nerou.io (Mock Outbound SMTP Engine)</span>
+                          <p className="text-ink">
+                            <strong>From:</strong> <span className="text-ink-muted">noreply@nerou.io (Mock Outbound SMTP Engine)</span>
                           </p>
-                          <p className="text-[#1a1918]">
-                            <strong>To:</strong> <span className="text-[#6e6b66]">{selectedEmail.to}</span>
+                          <p className="text-ink">
+                            <strong>To:</strong> <span className="text-ink-muted">{selectedEmail.to}</span>
                           </p>
-                          <p className="text-[#1a1918]">
-                            <strong>Subject:</strong> <span className="font-semibold text-[#bf9b30]">{selectedEmail.subject}</span>
+                          <p className="text-ink">
+                            <strong>Subject:</strong> <span className="font-semibold text-gold">{selectedEmail.subject}</span>
                           </p>
                         </div>
 
                         {/* Sandbox HTML Render Frame */}
-                        <div className="p-6 bg-[#f2ede8] overflow-y-auto flex-grow flex justify-center">
+                        <div className="p-6 bg-surface-2 overflow-y-auto flex-grow flex justify-center">
                           <div
-                            className="bg-white rounded-lg shadow-sm border border-[#e6e2de] p-1 overflow-auto max-w-full w-full max-h-[500px]"
+                            className="bg-white rounded-lg shadow-sm border border-border p-1 overflow-auto max-w-full w-full max-h-[500px]"
                             dangerouslySetInnerHTML={{ __html: selectedEmail.html }}
                           />
                         </div>
                       </div>
                     ) : (
-                      <div className="flex-grow flex flex-col items-center justify-center p-12 text-[#6e6b66] text-xs gap-2">
-                        <Mail size={32} className="text-[#bf9b30]/40" />
+                      <div className="flex-grow flex flex-col items-center justify-center p-12 text-ink-muted text-xs gap-2">
+                        <Mail size={32} className="text-gold/40" />
                         <span>Select an outbound SMTP log entry from the list to view live HTML rendering.</span>
                       </div>
                     )}
@@ -4734,12 +4734,12 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* REVIEWS MODERATION TAB */}
           {activeSubTab === "reviews" && (
-            <div className="bg-white p-5 md:p-6 rounded-xl border border-[#e6e2de] space-y-6">
+            <div className="bg-white p-5 md:p-6 rounded-xl border border-border space-y-6">
               <div>
-                <h3 className="font-serif text-lg font-bold text-[#1a1918]">
+                <h3 className="font-serif text-lg font-bold text-ink">
                   {isRtl ? "إدارة وتقييم مراجعات المستشارين" : "Ratings & Reviews Moderation Queue"}
                 </h3>
-                <p className="text-xs text-[#6e6b66] mt-0.5">
+                <p className="text-xs text-ink-muted mt-0.5">
                   {isRtl
                     ? "مراجعة واعتماد تقييمات العملاء للمستشارين العقاريين والشركات لضمان النزاهة والموثوقية."
                     : "Moderate client feedback and rating scores submitted for agency brokers and developer companies to ensure network integrity."}
@@ -4747,21 +4747,21 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               </div>
 
               {/* FIX 10: platform-wide average + filters */}
-              <div className="flex flex-wrap items-center gap-3 p-3 bg-[#fbfaf8] border border-[#e6e2de] rounded-xl">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg">
-                  <Star size={13} className="fill-[#bf9b30] text-[#bf9b30]" />
-                  <span className="font-bold text-[#1a1918] text-xs">
+              <div className="flex flex-wrap items-center gap-3 p-3 bg-canvas border border-border rounded-xl">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-border rounded-lg">
+                  <Star size={13} className="fill-gold text-gold" />
+                  <span className="font-bold text-ink text-xs">
                     {(() => {
                       const approved = reviews.filter((r: any) => r.status === "APPROVED");
                       return approved.length > 0 ? (approved.reduce((s: number, r: any) => s + r.rating, 0) / approved.length).toFixed(1) : "0.0";
                     })()}
                   </span>
-                  <span className="text-[10px] text-[#6e6b66]">{isRtl ? "متوسط المنصة" : "Platform avg"} ({reviews.filter((r: any) => r.status === "APPROVED").length})</span>
+                  <span className="text-[10px] text-ink-muted">{isRtl ? "متوسط المنصة" : "Platform avg"} ({reviews.filter((r: any) => r.status === "APPROVED").length})</span>
                 </div>
                 <select
                   value={reviewRatingFilter}
                   onChange={(e) => setReviewRatingFilter(e.target.value)}
-                  className="px-2.5 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-[11px]"
+                  className="px-2.5 py-1.5 bg-white border border-border rounded-lg text-[11px]"
                 >
                   <option value="">{isRtl ? "كل التقييمات" : "All ratings"}</option>
                   {[5, 4, 3, 2, 1].map(s => (
@@ -4773,9 +4773,9 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   value={reviewSearch}
                   onChange={(e) => setReviewSearch(e.target.value)}
                   placeholder={isRtl ? "بحث بالمقيم أو النص أو المعرف" : "Search reviewer, comment, or target ID"}
-                  className="px-2.5 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-[11px] min-w-[200px]"
+                  className="px-2.5 py-1.5 bg-white border border-border rounded-lg text-[11px] min-w-[200px]"
                 />
-                <label className="flex items-center gap-1.5 text-[11px] text-[#6e6b66] cursor-pointer">
+                <label className="flex items-center gap-1.5 text-[11px] text-ink-muted cursor-pointer">
                   <input type="checkbox" checked={reviewReportedOnly} onChange={(e) => setReviewReportedOnly(e.target.checked)} />
                   {isRtl ? "المبلّغ عنها فقط" : "Reported only"}
                 </label>
@@ -4794,7 +4794,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   });
                   if (filteredReviews.length === 0) {
                   return (
-                  <div className="text-center py-12 border border-dashed border-[#e6e2de] rounded-xl text-[#6e6b66] text-xs">
+                  <div className="text-center py-12 border border-dashed border-border rounded-xl text-ink-muted text-xs">
                     {isRtl ? "لا توجد نتائج مطابقة." : "No reviews match the current filters."}
                   </div>
                   );
@@ -4803,7 +4803,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="border-b border-[#e6e2de] bg-gray-50 text-[10px] font-bold text-[#6e6b66] uppercase tracking-wider">
+                        <tr className="border-b border-border bg-gray-50 text-[10px] font-bold text-ink-muted uppercase tracking-wider">
                           <th className="p-3">{isRtl ? "المقيم" : "Reviewer"}</th>
                           <th className="p-3">{isRtl ? "النوع" : "Target Type"}</th>
                           <th className="p-3">{isRtl ? "الهدف" : "Target Profile"}</th>
@@ -4814,12 +4814,12 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           <th className="p-3 text-right">{isRtl ? "إجراءات" : "Actions"}</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#f2ede8]">
+                      <tbody className="divide-y divide-surface-2">
                         {filteredReviews.map((rev: any) => {
                           const isPending = rev.status === "PENDING";
                           return (
                             <tr key={rev.id} className="hover:bg-gray-50">
-                              <td className="p-3 font-semibold text-[#1a1918]">{rev.reviewerName}</td>
+                              <td className="p-3 font-semibold text-ink">{rev.reviewerName}</td>
                               <td className="p-3">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                   rev.targetType === "AGENT" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800"
@@ -4836,7 +4836,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                 </div>
                               </td>
                               <td className="p-3 max-w-xs truncate" title={rev.comment}>{rev.comment}</td>
-                              <td className="p-3 text-[#6e6b66]">
+                              <td className="p-3 text-ink-muted">
                                 {new Date(rev.createdDate).toLocaleDateString()}
                               </td>
                               <td className="p-3">
@@ -4870,11 +4870,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                       </button>
                                     </>
                                   ) : (
-                                    <span className="text-[#6e6b66] text-[10px] italic">Processed</span>
+                                    <span className="text-ink-muted text-[10px] italic">Processed</span>
                                   )}
                                   <button
                                     onClick={() => handleDeleteReview(rev.id)}
-                                    className="px-2 py-1 bg-[#1c1a17] hover:bg-[#33302a] text-white rounded text-[10px] font-bold cursor-pointer flex items-center gap-1"
+                                    className="px-2 py-1 bg-chrome hover:bg-chrome-hover text-white rounded text-[10px] font-bold cursor-pointer flex items-center gap-1"
                                     title={isRtl ? "حذف التقييم" : "Delete Review"}
                                   >
                                     <Trash2 size={11} />
@@ -4894,13 +4894,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           )}
 
           {activeSubTab === "locations" && (
-            <div className="bg-white p-5 md:p-6 rounded-xl border border-[#e6e2de] space-y-6">
+            <div className="bg-white p-5 md:p-6 rounded-xl border border-border space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-[#1a1918]">
+                  <h3 className="font-serif text-lg font-bold text-ink">
                     {isRtl ? "إدارة هيكل وتقسيم المناطق الجغرافية" : "Qatar Geographic Location Hierarchy"}
                   </h3>
-                  <p className="text-xs text-[#6e6b66] mt-0.5">
+                  <p className="text-xs text-ink-muted mt-0.5">
                     {isRtl
                       ? "إدارة بلديات ومناطق ومحلات دولة قطر بشكل هرمي مترابط لربط العقارات والفلاتر والخرائط."
                       : "Manage Qatar's official administrative levels (Municipality → Area → District/Sub-zone) with active parent-child relationships."}
@@ -4911,7 +4911,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     setIsAddingLocation(!isAddingLocation);
                     setNewLocParentId("");
                   }}
-                  className="px-4 py-2 bg-[#bf9b30] hover:bg-[#a88524] text-black rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-2 self-start md:self-auto"
+                  className="px-4 py-2 bg-gold hover:bg-[#a88524] text-black rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-2 self-start md:self-auto"
                 >
                   <Plus size={14} />
                   {isRtl ? "إضافة منطقة جديدة" : "Add New Location"}
@@ -4920,13 +4920,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               {/* ADD/EDIT FORM */}
               {isAddingLocation && (
-                <form onSubmit={handleSaveLocation} className="bg-[#fcfbfa] p-5 rounded-xl border border-[#e6e2de] space-y-4 animate-in fade-in slide-in-from-top duration-200">
-                  <h4 className="font-serif text-sm font-bold text-[#1a1918]">
+                <form onSubmit={handleSaveLocation} className="bg-canvas p-5 rounded-xl border border-border space-y-4 animate-in fade-in slide-in-from-top duration-200">
+                  <h4 className="font-serif text-sm font-bold text-ink">
                     {isRtl ? "إضافة موقع عقاري جديد للهيكل الهرمي" : "Add New Location Node to Hierarchy"}
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-[#6e6b66] mb-1">{isRtl ? "الاسم العقاري (إنجليزي) *" : "Location Name (English) *"}</label>
+                      <label className="block text-xs font-semibold text-ink-muted mb-1">{isRtl ? "الاسم العقاري (إنجليزي) *" : "Location Name (English) *"}</label>
                       <input
                         type="text"
                         required
@@ -4937,7 +4937,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#6e6b66] mb-1">{isRtl ? "الاسم العقاري (عربي) *" : "Location Name (Arabic) *"}</label>
+                      <label className="block text-xs font-semibold text-ink-muted mb-1">{isRtl ? "الاسم العقاري (عربي) *" : "Location Name (Arabic) *"}</label>
                       <input
                         type="text"
                         required
@@ -4948,7 +4948,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#6e6b66] mb-1">{isRtl ? "المستوى الإداري *" : "Administrative Level *"}</label>
+                      <label className="block text-xs font-semibold text-ink-muted mb-1">{isRtl ? "المستوى الإداري *" : "Administrative Level *"}</label>
                       <select
                         value={newLocType}
                         onChange={(e: any) => {
@@ -4965,7 +4965,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
                     {newLocType !== "MUNICIPALITY" && (
                       <div>
-                        <label className="block text-xs font-semibold text-[#6e6b66] mb-1">
+                        <label className="block text-xs font-semibold text-ink-muted mb-1">
                           {newLocType === "AREA" 
                             ? (isRtl ? "البلدية التابعة لها *" : "Parent Municipality *")
                             : (isRtl ? "المنطقة التابعة لها *" : "Parent Area *")}
@@ -4990,7 +4990,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     )}
 
                     <div>
-                      <label className="block text-xs font-semibold text-[#6e6b66] mb-1">{isRtl ? "خط العرض (Latitude) - اختياري" : "Latitude - Optional"}</label>
+                      <label className="block text-xs font-semibold text-ink-muted mb-1">{isRtl ? "خط العرض (Latitude) - اختياري" : "Latitude - Optional"}</label>
                       <input
                         type="number"
                         step="any"
@@ -5001,7 +5001,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#6e6b66] mb-1">{isRtl ? "خط الطول (Longitude) - اختياري" : "Longitude - Optional"}</label>
+                      <label className="block text-xs font-semibold text-ink-muted mb-1">{isRtl ? "خط الطول (Longitude) - اختياري" : "Longitude - Optional"}</label>
                       <input
                         type="number"
                         step="any"
@@ -5017,7 +5017,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsAddingLocation(false)}
-                      className="px-3 py-1.5 border border-[#cbd5e1] text-[#1a1918] hover:bg-gray-100 rounded-lg text-xs font-medium cursor-pointer"
+                      className="px-3 py-1.5 border border-[#cbd5e1] text-ink hover:bg-gray-100 rounded-lg text-xs font-medium cursor-pointer"
                     >
                       {isRtl ? "إلغاء" : "Cancel"}
                     </button>
@@ -5032,20 +5032,20 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               )}
 
               {/* HIERARCHICAL TREE VIEW */}
-              <div className="border border-[#e6e2de] rounded-xl overflow-hidden">
-                <div className="bg-[#fbf9f6] p-4 border-b border-[#e6e2de] flex justify-between text-xs font-semibold text-[#1a1918]">
+              <div className="border border-border rounded-xl overflow-hidden">
+                <div className="bg-canvas p-4 border-b border-border flex justify-between text-xs font-semibold text-ink">
                   <span>{isRtl ? "قائمة بلديات ومناطق دولة قطر الرسمية" : "Qatar Official Location Directory Nodes"}</span>
-                  <span className="text-[#bf9b30]">{locations.length} {isRtl ? "منطقة نشطة" : "Active Nodes"}</span>
+                  <span className="text-gold">{locations.length} {isRtl ? "منطقة نشطة" : "Active Nodes"}</span>
                 </div>
 
-                <div className="divide-y divide-[#e6e2de] max-h-[500px] overflow-y-auto p-2 space-y-4">
+                <div className="divide-y divide-border max-h-[500px] overflow-y-auto p-2 space-y-4">
                   {locations.filter(l => l.type === "MUNICIPALITY").map(muni => {
                     const areasUnderMuni = locations.filter(l => l.parentId === muni.id);
                     return (
-                      <div key={muni.id} className="p-3 bg-[#fcfbfa] rounded-lg border border-[#e6e2de] space-y-2">
+                      <div key={muni.id} className="p-3 bg-canvas rounded-lg border border-border space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="font-serif text-sm font-bold text-black flex items-center gap-2">
-                            🏛️ {muni.name} <span className="text-xs text-[#6e6b66] font-sans">({muni.nameAr})</span>
+                            🏛️ {muni.name} <span className="text-xs text-ink-muted font-sans">({muni.nameAr})</span>
                           </span>
                           <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-[10px] font-bold rounded">
                             {isRtl ? "بلدية" : "Municipality"}
@@ -5057,14 +5057,14 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             {isRtl ? "لا توجد مناطق فرعية مضافة بعد." : "No sub-areas registered yet."}
                           </div>
                         ) : (
-                          <div className="pl-6 border-l border-dashed border-[#e6e2de] space-y-3 pt-1">
+                          <div className="pl-6 border-l border-dashed border-border space-y-3 pt-1">
                             {areasUnderMuni.map(area => {
                               const districtsUnderArea = locations.filter(l => l.parentId === area.id);
                               return (
                                 <div key={area.id} className="space-y-1.5">
-                                  <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded border border-[#e6e2de]">
-                                    <span className="text-xs font-semibold text-[#1a1918] flex items-center gap-1.5">
-                                      <MapPin size={12} className="shrink-0" /> {area.name} <span className="text-[10px] text-[#6e6b66]">({area.nameAr})</span>
+                                  <div className="flex items-center justify-between bg-white px-2 py-1.5 rounded border border-border">
+                                    <span className="text-xs font-semibold text-ink flex items-center gap-1.5">
+                                      <MapPin size={12} className="shrink-0" /> {area.name} <span className="text-[10px] text-ink-muted">({area.nameAr})</span>
                                     </span>
                                     <span className="text-[10px] text-gray-400">
                                       {districtsUnderArea.length} {isRtl ? "محلات فرعية" : "sub-zones"}

@@ -50,9 +50,9 @@ export default function HelpCenterView({ isRtl }: HelpCenterViewProps) {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200" dir={isRtl ? "rtl" : "ltr"}>
-      <div className="bg-[#1c1a17] text-white p-6 rounded-xl border border-[#33302a] relative overflow-hidden">
+      <div className="bg-chrome text-white p-6 rounded-xl border border-chrome-hover relative overflow-hidden">
         <div className="relative z-10 max-w-xl space-y-3">
-          <span className="text-[10px] text-[#bf9b30] font-semibold uppercase tracking-wider block">SUPPORT DESK</span>
+          <span className="text-[10px] text-gold font-semibold uppercase tracking-wider block">SUPPORT DESK</span>
           <h2 className="text-xl md:text-2xl font-serif font-medium">{isRtl ? "مركز المساعدة والدعم القانوني" : "Help Center & Regulatory Portal"}</h2>
           <p className="text-xs text-gray-400">
             {isRtl ? "ابحث عن إجابات لأسئلتك المتعلقة بقانون الخصوصية القطري رقم ١٣ والتعاملات العقارية الرقمية." : "Find quick support documentation, tutorials, and compliance guides under Qatar Personal Data Privacy Law No. 13 of 2016."}
@@ -63,7 +63,7 @@ export default function HelpCenterView({ isRtl }: HelpCenterViewProps) {
               placeholder={isRtl ? "ابحث في المقالات والمواضيع الموثقة..." : "Search documentation and FAQs..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-[#2c2925] border border-[#44403a] rounded-lg text-xs focus:outline-none focus:border-[#bf9b30]"
+              className="w-full pl-10 pr-4 py-2 bg-[#2c2925] border border-[#44403a] rounded-lg text-xs focus:outline-none focus:border-gold"
             />
             <Search size={14} className="absolute left-3 top-3 text-gray-400" />
           </div>
@@ -79,8 +79,8 @@ export default function HelpCenterView({ isRtl }: HelpCenterViewProps) {
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all ${
                 selectedCategory === cat.id
-                  ? "bg-[#bf9b30] text-black border border-[#bf9b30]"
-                  : "bg-white text-[#6e6b66] border border-[#e6e2de] hover:border-[#bf9b30]"
+                  ? "bg-gold text-black border border-gold"
+                  : "bg-white text-ink-muted border border-border hover:border-gold"
               }`}
             >
               <Icon size={14} />
@@ -91,31 +91,31 @@ export default function HelpCenterView({ isRtl }: HelpCenterViewProps) {
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-xs text-[#6e6b66]">{isRtl ? "جاري تحميل المقالات..." : "Loading resources..."}</div>
+        <div className="py-12 text-center text-xs text-ink-muted">{isRtl ? "جاري تحميل المقالات..." : "Loading resources..."}</div>
       ) : filteredArticles.length === 0 ? (
-        <div className="py-12 text-center text-xs text-[#6e6b66] border border-dashed border-[#e6e2de] rounded-xl">
+        <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl">
           {isRtl ? "لا توجد مقالات تطابق معايير البحث." : "No articles found matching your query."}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredArticles.map((art) => (
-            <div key={art.id} className="p-5 bg-white border border-[#e6e2de] rounded-xl hover:shadow-xs transition-shadow flex flex-col justify-between">
+            <div key={art.id} className="p-5 bg-white border border-border rounded-xl hover:shadow-xs transition-shadow flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex justify-between items-start">
-                  <span className="px-2 py-0.5 bg-[#fdfcfb] border border-[#f2ede8] text-[#bf9b30] text-[9px] font-bold rounded uppercase">
+                  <span className="px-2 py-0.5 bg-ink-inverse border border-surface-2 text-gold text-[9px] font-bold rounded uppercase">
                     {art.category}
                   </span>
-                  <span className="text-[9px] text-[#6e6b66] flex items-center gap-1">
-                    <Sparkles size={11} className="text-[#bf9b30]" />
+                  <span className="text-[9px] text-ink-muted flex items-center gap-1">
+                    <Sparkles size={11} className="text-gold" />
                     <span>{isRtl ? "مستند رسمي" : "Official Guide"}</span>
                   </span>
                 </div>
-                <h3 className="font-serif font-bold text-sm text-[#1a1918]">{isRtl && art.titleAr ? art.titleAr : art.title}</h3>
-                <p className="text-xs text-[#6e6b66] leading-relaxed whitespace-pre-wrap">
+                <h3 className="font-serif font-bold text-sm text-ink">{isRtl && art.titleAr ? art.titleAr : art.title}</h3>
+                <p className="text-xs text-ink-muted leading-relaxed whitespace-pre-wrap">
                   {isRtl && art.contentAr ? art.contentAr : art.content}
                 </p>
               </div>
-              <div className="pt-4 border-t border-[#f2ede8] mt-4 flex justify-between items-center text-[10px] text-[#6e6b66]">
+              <div className="pt-4 border-t border-surface-2 mt-4 flex justify-between items-center text-[10px] text-ink-muted">
                 <span>⚖️ Law 13 Compliant Article</span>
                 <span>👀 {art.viewCount || 0} views</span>
               </div>

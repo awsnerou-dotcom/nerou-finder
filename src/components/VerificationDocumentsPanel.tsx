@@ -149,7 +149,7 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <Loader2 className="animate-spin text-[#bf9b30]" size={28} />
+        <Loader2 className="animate-spin text-gold" size={28} />
       </div>
     );
   }
@@ -187,14 +187,14 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
           if (file) handleUpload(type, file);
         }}
         className={`p-4 bg-white border rounded-xl space-y-2 transition-colors ${
-          isDragOver ? "border-[#bf9b30] border-2 bg-[#bf9b30]/5" : "border-[#e6e2de]"
+          isDragOver ? "border-gold border-2 bg-gold/5" : "border-border"
         }`}
       >
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <p className="text-xs font-bold text-[#1a1918]">{label}</p>
+            <p className="text-xs font-bold text-ink">{label}</p>
             {doc?.fileUrl && (
-              <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#bf9b30] underline">
+              <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-gold underline">
                 {isRtl ? "عرض الملف الحالي" : "View current file"}
               </a>
             )}
@@ -203,7 +203,7 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
         </div>
 
         {isDragOver && (
-          <div className="flex items-center justify-center gap-2 py-3 border-2 border-dashed border-[#bf9b30] rounded-lg text-[#bf9b30] text-[11px] font-semibold bg-white/60 pointer-events-none">
+          <div className="flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gold rounded-lg text-gold text-[11px] font-semibold bg-white/60 pointer-events-none">
             <UploadCloud size={14} />
             <span>{isRtl ? "أفلت الملف هنا للرفع" : "Drop file here to upload"}</span>
           </div>
@@ -221,10 +221,10 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
             type="date"
             value={expiryDrafts[type] || ""}
             onChange={(e) => setExpiryDrafts((prev) => ({ ...prev, [type]: e.target.value }))}
-            className="px-2 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg text-[10px] text-[#6e6b66]"
+            className="px-2 py-1.5 bg-ink-inverse border border-border rounded-lg text-[10px] text-ink-muted"
             title={isRtl ? "تاريخ انتهاء الصلاحية (اختياري)" : "Expiry date (optional)"}
           />
-          <label className={`relative px-3 py-1.5 rounded-lg text-[10px] font-semibold cursor-pointer border transition-colors ${isUploading ? "bg-gray-100 text-gray-400 border-gray-200" : "bg-[#1c1a17] hover:bg-[#bf9b30] text-white border-transparent"}`}>
+          <label className={`relative px-3 py-1.5 rounded-lg text-[10px] font-semibold cursor-pointer border transition-colors ${isUploading ? "bg-gray-100 text-gray-400 border-gray-200" : "bg-chrome hover:bg-gold text-white border-transparent"}`}>
             {isUploading ? (
               <span className="flex items-center gap-1">
                 <Loader2 className="animate-spin" size={12} />
@@ -252,19 +252,19 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
 
         {type === "AGENCY_AUTHORIZATION_LETTER" && agent && (
           <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-[#f0eee9] mt-1">
-            <Building2 size={14} className="text-[#6e6b66] shrink-0" />
+            <Building2 size={14} className="text-ink-muted shrink-0" />
             <input
               type="text"
               value={agencyNameDraft}
               onChange={(e) => setAgencyNameDraft(e.target.value)}
               placeholder={isRtl ? "اسم الوكالة العقارية المرخصة التي تعمل تحتها" : "Name of the licensed agency you operate under"}
-              className="flex-1 min-w-[200px] px-2 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg text-[10px] text-[#1a1918]"
+              className="flex-1 min-w-[200px] px-2 py-1.5 bg-ink-inverse border border-border rounded-lg text-[10px] text-ink"
             />
             <button
               type="button"
               onClick={handleSaveAgencyName}
               disabled={savingAgencyName || agencyNameDraft === (agent.affiliatedAgencyName || "")}
-              className="px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-[#1c1a17] hover:bg-[#bf9b30] text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-chrome hover:bg-gold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {savingAgencyName ? (isRtl ? "جارٍ الحفظ..." : "Saving...") : (isRtl ? "حفظ" : "Save")}
             </button>
@@ -278,10 +278,10 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
     <div className="space-y-4" dir={isRtl ? "rtl" : "ltr"}>
       <div className={`p-4 rounded-xl border flex items-center justify-between gap-3 flex-wrap ${verificationStatus === "APPROVED" ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
         <div>
-          <p className="text-xs font-bold text-[#1a1918]">
+          <p className="text-xs font-bold text-ink">
             {isRtl ? "حالة التوثيق الإجمالية" : "Overall Verification Status"}
           </p>
-          <p className="text-[10px] text-[#6e6b66] mt-0.5">
+          <p className="text-[10px] text-ink-muted mt-0.5">
             {verificationStatus === "APPROVED"
               ? (isRtl ? "تم توثيق حسابك بنجاح. جميع المستندات المطلوبة معتمدة." : "Your account is fully verified. All required documents are approved.")
               : (isRtl ? "يجب رفع واعتماد جميع المستندات المطلوبة لتوثيق الحساب." : "All required documents must be uploaded and approved to verify this account.")}
@@ -296,15 +296,15 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
         <button
           type="button"
           onClick={() => setShowOptionalPassport(true)}
-          className="text-[10px] font-semibold text-[#bf9b30] underline cursor-pointer"
+          className="text-[10px] font-semibold text-gold underline cursor-pointer"
         >
           {isRtl ? "+ أنا وافد، أضف جواز السفر" : "+ I'm an expat agent, add my passport"}
         </button>
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-sm bg-[#1c1a17] text-white p-4 rounded-xl shadow-2xl border border-[#bf9b30] flex items-center gap-3 animate-slide-in">
-          <div className="w-2 h-2 rounded-full bg-[#bf9b30] animate-ping" />
+        <div className="fixed bottom-5 right-5 z-50 max-w-sm bg-chrome text-white p-4 rounded-xl shadow-2xl border border-gold flex items-center gap-3 animate-slide-in">
+          <div className="w-2 h-2 rounded-full bg-gold animate-ping" />
           <span className="text-xs font-medium">{toastMessage}</span>
         </div>
       )}

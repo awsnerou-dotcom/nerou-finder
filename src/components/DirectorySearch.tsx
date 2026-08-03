@@ -106,14 +106,14 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholderText}
-            className="w-full pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2.5 bg-white border border-[#e6e2de] rounded-lg text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+            className="w-full pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2.5 bg-white border border-border rounded-lg text-sm focus:outline-none focus:border-gold text-ink"
           />
-          <Search size={16} className={`absolute ${isRtl ? "right-3" : "left-3"} top-3 text-[#a8a4a0]`} />
+          <Search size={16} className={`absolute ${isRtl ? "right-3" : "left-3"} top-3 text-ink-faint`} />
         </div>
         <select
           value={minRating}
           onChange={(e) => setMinRating(Number(e.target.value))}
-          className="px-3 py-2.5 bg-white border border-[#e6e2de] rounded-lg text-sm text-[#1a1918] cursor-pointer"
+          className="px-3 py-2.5 bg-white border border-border rounded-lg text-sm text-ink cursor-pointer"
         >
           <option value={0}>{isRtl ? "كل التقييمات" : "Any rating"}</option>
           <option value={3}>{isRtl ? "٣ نجوم فأعلى" : "3+ stars"}</option>
@@ -125,12 +125,12 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl border border-[#e6e2de] p-4 animate-pulse h-32" />
+            <div key={i} className="bg-white rounded-xl border border-border p-4 animate-pulse h-32" />
           ))}
         </div>
       ) : items.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border border-[#e6e2de]">
-          <p className="text-sm text-[#6e6b66]">
+        <div className="text-center py-16 bg-white rounded-xl border border-border">
+          <p className="text-sm text-ink-muted">
             {isRtl ? "لا توجد نتائج مطابقة." : "No matching results found."}
           </p>
         </div>
@@ -140,25 +140,25 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
             <button
               key={item.id}
               onClick={() => onSelect(item.type, item.id)}
-              className="text-left rtl:text-right bg-white rounded-xl border border-[#e6e2de] hover:border-[#bf9b30] hover:shadow-md transition-all p-4 flex gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#bf9b30]"
+              className="text-left rtl:text-right bg-white rounded-xl border border-border hover:border-gold hover:shadow-md transition-all p-4 flex gap-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
             >
               <img
                 src={item.photoUrl || (type === "AGENT" ? PLACEHOLDER_PHOTO : PLACEHOLDER_LOGO)}
                 alt={item.name}
                 loading="lazy"
-                className={`w-14 h-14 object-cover shrink-0 border border-[#e6e2de] ${type === "AGENT" ? "rounded-full" : "rounded-lg"}`}
+                className={`w-14 h-14 object-cover shrink-0 border border-border ${type === "AGENT" ? "rounded-full" : "rounded-lg"}`}
               />
               <div className="min-w-0 flex-1 space-y-1">
-                <p className="font-serif font-bold text-sm text-[#1a1918] truncate">{item.name}</p>
-                <p className="text-[10px] text-[#bf9b30] font-semibold flex items-center gap-1">
+                <p className="font-serif font-bold text-sm text-ink truncate">{item.name}</p>
+                <p className="text-[10px] text-gold font-semibold flex items-center gap-1">
                   <ShieldCheck size={11} />
                   <span className="truncate">{isRtl ? item.verifiedBadgeLabelAr : item.verifiedBadgeLabel}</span>
                 </p>
-                <div className="flex items-center gap-3 text-[11px] text-[#6e6b66] pt-0.5">
+                <div className="flex items-center gap-3 text-[11px] text-ink-muted pt-0.5">
                   <span className="flex items-center gap-1">
-                    <Star size={11} className="text-[#bf9b30] fill-[#bf9b30]" />
+                    <Star size={11} className="text-gold fill-gold" />
                     {item.averageRating > 0 ? item.averageRating.toFixed(1) : (isRtl ? "جديد" : "New")}
-                    {item.reviewCount > 0 && <span className="text-[#a8a4a0]">({item.reviewCount})</span>}
+                    {item.reviewCount > 0 && <span className="text-ink-faint">({item.reviewCount})</span>}
                   </span>
                   <span className="flex items-center gap-1">
                     <StatIcon size={11} />
@@ -168,7 +168,7 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
                   </span>
                 </div>
                 {item.cities.length > 0 && (
-                  <p className="text-[10px] text-[#a8a4a0] flex items-center gap-1 truncate">
+                  <p className="text-[10px] text-ink-faint flex items-center gap-1 truncate">
                     <MapPin size={10} className="shrink-0" />
                     <span className="truncate capitalize">{item.cities.slice(0, 3).join(", ")}</span>
                   </p>
@@ -180,7 +180,7 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
       )}
 
       {total > pageSize && (
-        <div className="flex items-center justify-between text-xs text-[#6e6b66] pt-1">
+        <div className="flex items-center justify-between text-xs text-ink-muted pt-1">
           <span>
             {isRtl
               ? `عرض ${offset + 1}-${Math.min(offset + pageSize, total)} من ${total}`
@@ -190,14 +190,14 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
             <button
               onClick={() => setOffset(Math.max(0, offset - pageSize))}
               disabled={offset === 0}
-              className="px-3 py-1.5 border border-[#e6e2de] rounded-lg disabled:opacity-40 hover:border-[#bf9b30] cursor-pointer disabled:cursor-not-allowed"
+              className="px-3 py-1.5 border border-border rounded-lg disabled:opacity-40 hover:border-gold cursor-pointer disabled:cursor-not-allowed"
             >
               {isRtl ? "السابق" : "Previous"}
             </button>
             <button
               onClick={() => setOffset(offset + pageSize)}
               disabled={offset + pageSize >= total}
-              className="px-3 py-1.5 border border-[#e6e2de] rounded-lg disabled:opacity-40 hover:border-[#bf9b30] cursor-pointer disabled:cursor-not-allowed"
+              className="px-3 py-1.5 border border-border rounded-lg disabled:opacity-40 hover:border-gold cursor-pointer disabled:cursor-not-allowed"
             >
               {isRtl ? "التالي" : "Next"}
             </button>

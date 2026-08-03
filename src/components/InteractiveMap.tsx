@@ -132,14 +132,14 @@ export default function InteractiveMap({ properties, onPropertyClick, isRtl }: I
       const formattedPrice = prop.price.toLocaleString();
       const popupContent = `
         <div class="p-1 min-w-[200px] text-left leading-normal font-sans">
-          <img src="${escapeHtml(prop.images[0])}" alt="${escapeHtml(prop.title)}" class="w-full h-24 object-cover rounded-md mb-2 border border-[#e6e2de]" />
-          <h4 class="font-bold text-xs text-[#1a1918] truncate mb-0.5">${escapeHtml(prop.title)}</h4>
-          <p class="text-[10px] text-[#6e6b66] mb-1">${escapeHtml(prop.city)}, ${escapeHtml(prop.district)}</p>
+          <img src="${escapeHtml(prop.images[0])}" alt="${escapeHtml(prop.title)}" class="w-full h-24 object-cover rounded-md mb-2 border border-border" />
+          <h4 class="font-bold text-xs text-ink truncate mb-0.5">${escapeHtml(prop.title)}</h4>
+          <p class="text-[10px] text-ink-muted mb-1">${escapeHtml(prop.city)}, ${escapeHtml(prop.district)}</p>
           <div class="flex justify-between items-center mt-1">
-            <span class="text-xs font-semibold text-[#bf9b30]">${formattedPrice} QAR</span>
+            <span class="text-xs font-semibold text-gold">${formattedPrice} QAR</span>
             <span class="text-[9px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-bold uppercase">${escapeHtml(prop.propertyType)}</span>
           </div>
-          <button onclick="window.viewMapPropertyDetails('${escapeHtml(prop.id)}')" class="mt-2.5 w-full text-center bg-[#bf9b30] hover:bg-[#967923] text-white font-bold py-1 px-2 rounded text-[10px] cursor-pointer transition-colors border-none">
+          <button onclick="window.viewMapPropertyDetails('${escapeHtml(prop.id)}')" class="mt-2.5 w-full text-center bg-gold hover:bg-gold-hover text-white font-bold py-1 px-2 rounded text-[10px] cursor-pointer transition-colors border-none">
             ${isRtl ? "عرض التفاصيل" : "View Details"}
           </button>
         </div>
@@ -171,10 +171,10 @@ export default function InteractiveMap({ properties, onPropertyClick, isRtl }: I
   }, []);
 
   return (
-    <div className="relative w-full h-[550px] bg-[#fbfaf8] border border-[#e6e2de] rounded-xl overflow-hidden">
+    <div className="relative w-full h-[550px] bg-canvas border border-border rounded-xl overflow-hidden">
       {!leafletLoaded ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-[#6e6b66] bg-white">
-          <svg className="animate-spin h-6 w-6 text-[#bf9b30]" fill="none" viewBox="0 0 24 24">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-ink-muted bg-white">
+          <svg className="animate-spin h-6 w-6 text-gold" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>

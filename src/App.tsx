@@ -38,9 +38,9 @@ const ControlCenter = lazy(() => import("./components/ControlCenter.js"));
 const OnboardingStatusView = lazy(() => import("./components/OnboardingStatusView.js"));
 
 const DashboardLoader = ({ isRtl }: { isRtl: boolean }) => (
-  <div className="text-center py-12 bg-white rounded-xl border border-[#e6e2de]">
-    <div className="w-8 h-8 border-2 border-[#bf9b30] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-    <p className="text-sm text-[#6e6b66]">
+  <div className="text-center py-12 bg-white rounded-xl border border-border">
+    <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+    <p className="text-sm text-ink-muted">
       {isRtl ? "جاري تحميل لوحة التحكم..." : "Loading workspace environment..."}
     </p>
   </div>
@@ -368,9 +368,9 @@ export default function App() {
             isRtl={isRtl}
           />
         ) : (
-          <div className="text-center py-12 bg-white rounded-xl border border-[#e6e2de]">
-            <div className="w-8 h-8 border-2 border-[#bf9b30] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-sm text-[#6e6b66]">
+          <div className="text-center py-12 bg-white rounded-xl border border-border">
+            <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-sm text-ink-muted">
               {isRtl ? "جاري تحميل بيانات المكتب..." : "Loading organization environment..."}
             </p>
           </div>
@@ -383,9 +383,9 @@ export default function App() {
             isRtl={isRtl}
           />
         ) : (
-          <div className="text-center py-12 bg-white rounded-xl border border-[#e6e2de]">
-            <div className="w-8 h-8 border-2 border-[#bf9b30] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-sm text-[#6e6b66]">
+          <div className="text-center py-12 bg-white rounded-xl border border-border">
+            <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-sm text-ink-muted">
               {isRtl ? "جاري تحميل بيانات المطور..." : "Loading developer enterprise portal..."}
             </p>
           </div>
@@ -401,19 +401,19 @@ export default function App() {
         );
       default:
         return (
-          <div className="text-center py-12 bg-white rounded-xl border border-[#e6e2de] max-w-md mx-auto space-y-4">
+          <div className="text-center py-12 bg-white rounded-xl border border-border max-w-md mx-auto space-y-4">
             <ShieldCheck size={48} className="mx-auto text-amber-500" />
             <h4 className="text-lg font-bold font-serif">
               {isRtl ? "حساب قيد الانتظار" : "Awaiting Verification"}
             </h4>
-            <p className="text-xs text-[#6e6b66] leading-relaxed px-4">
+            <p className="text-xs text-ink-muted leading-relaxed px-4">
               {isRtl
                 ? "شكراً لتسجيلك! حسابك كمستخدم عادي أو شريك قيد المراجعة حالياً من قبل مدراء المنصة. ستتمكن من تصفح لوحة التحكم فور اعتماد ملفك."
                 : "Thank you for registering. Your profile is currently being audited by the platform administrator. Once approved, your custom partner suite will be unlocked."}
             </p>
             <button
               onClick={() => setViewMode("MARKETPLACE")}
-              className="px-4 py-2 bg-[#1c1a17] text-white text-xs font-bold rounded-lg uppercase tracking-wide hover:bg-[#33302a]"
+              className="px-4 py-2 bg-chrome text-white text-xs font-bold rounded-lg uppercase tracking-wide hover:bg-chrome-hover"
             >
               {isRtl ? "العودة إلى المعرض" : "Back to Public Marketplace"}
             </button>
@@ -423,7 +423,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfbfa] text-[#1a1918] font-sans flex flex-col justify-between">
+    <div className="min-h-screen bg-canvas text-ink font-sans flex flex-col justify-between">
       
       {/* Main Header: floats transparently over the marketplace hero photo at the top of the
           page, then transitions to its normal solid appearance once the user scrolls past it. */}
@@ -431,7 +431,7 @@ export default function App() {
         className={`sticky top-0 z-40 transition-colors duration-300 backdrop-blur-sm ${
           heroTransparent
             ? "border-b border-transparent shadow-none"
-            : "border-b border-[#e6e2de] shadow-[0_1px_0_0_rgba(191,155,48,0.18)]"
+            : "border-b border-border shadow-[0_1px_0_0_rgba(191,155,48,0.18)]"
         }`}
         style={{ backgroundColor: heroTransparent ? "transparent" : "rgba(255,255,255,0.95)" }}
       >
@@ -444,17 +444,17 @@ export default function App() {
               className="flex items-center gap-2 select-none cursor-pointer"
               onClick={() => setViewMode("MARKETPLACE")}
             >
-              <span className={`font-serif text-lg tracking-[0.2em] font-semibold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-[#1a1918]"}`}>NEROU</span>
-              <span className="font-serif text-lg tracking-wider text-[#bf9b30] font-bold">FINDER</span>
+              <span className={`font-serif text-lg tracking-[0.2em] font-semibold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-ink"}`}>NEROU</span>
+              <span className="font-serif text-lg tracking-wider text-gold font-bold">FINDER</span>
             </div>
             <div
               className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide transition-colors duration-300 ${
                 heroTransparent
                   ? "bg-white/10 backdrop-blur-sm border border-white/30 text-white"
-                  : "bg-gradient-to-r from-[#fdfcfb] to-[#f8f2e0] border border-[#bf9b30]/40 text-[#8c6d1d]"
+                  : "bg-gradient-to-r from-ink-inverse to-[#f8f2e0] border border-gold/40 text-gold-active"
               }`}
             >
-              <Sparkles size={11} className="text-[#bf9b30] animate-pulse" />
+              <Sparkles size={11} className="text-gold animate-pulse" />
               <span>{isRtl ? "الذكاء الاصطناعي نشط" : "AI-Powered Search"}</span>
             </div>
           </div>
@@ -464,13 +464,13 @@ export default function App() {
 
             {/* View switcher for logged in users */}
             {currentUser && (
-              <div className="flex items-center bg-[#fdfcfb] border border-[#e6e2de] rounded-lg p-0.5 shadow-xs">
+              <div className="flex items-center bg-ink-inverse border border-border rounded-lg p-0.5 shadow-xs">
                 <button
                   onClick={() => setViewMode("MARKETPLACE")}
                   className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     viewMode === "MARKETPLACE"
-                      ? "bg-white text-[#1a1918] shadow-xs border border-[#e6e2de]"
-                      : "text-[#6e6b66] hover:text-[#1a1918]"
+                      ? "bg-white text-ink shadow-xs border border-border"
+                      : "text-ink-muted hover:text-ink"
                   }`}
                 >
                   <Eye size={13} />
@@ -480,8 +480,8 @@ export default function App() {
                   onClick={() => setViewMode("DASHBOARD")}
                   className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                     viewMode === "DASHBOARD"
-                      ? "bg-[#1c1a17] text-[#bf9b30] shadow-xs"
-                      : "text-[#6e6b66] hover:text-[#1a1918]"
+                      ? "bg-chrome text-gold shadow-xs"
+                      : "text-ink-muted hover:text-ink"
                   }`}
                 >
                   <LayoutDashboard size={13} />
@@ -493,7 +493,7 @@ export default function App() {
             {/* Language Toggle */}
             <button
               onClick={() => setIsRtl(!isRtl)}
-              className="p-2 bg-[#fdfcfb] border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg transition-colors cursor-pointer text-[#1c1a17] flex items-center gap-1.5 text-xs font-bold"
+              className="p-2 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-chrome flex items-center gap-1.5 text-xs font-bold"
               title={isRtl ? "Switch to English" : "تحويل إلى العربية"}
             >
               <Globe size={14} />
@@ -503,7 +503,7 @@ export default function App() {
             {/* Dark mode toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 bg-[#fdfcfb] border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg transition-colors cursor-pointer text-[#1c1a17]"
+              className="p-2 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-chrome"
               title={
                 resolvedTheme === "dark"
                   ? (isRtl ? "التحويل إلى الوضع الفاتح" : "Switch to light mode")
@@ -515,7 +515,7 @@ export default function App() {
             </button>
 
             {/* Currency Selector */}
-            <div className="flex items-center bg-[#fdfcfb] border border-[#e6e2de] rounded-lg p-0.5 shadow-xs">
+            <div className="flex items-center bg-ink-inverse border border-border rounded-lg p-0.5 shadow-xs">
               {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => {
                 const config = CURRENCIES[code];
                 const active = activeCurrency === code;
@@ -525,8 +525,8 @@ export default function App() {
                     onClick={() => setActiveCurrency(code)}
                     className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                       active
-                        ? "bg-[#1c1a17] text-[#bf9b30] shadow-xs"
-                        : "text-[#6e6b66] hover:text-[#1a1918]"
+                        ? "bg-chrome text-gold shadow-xs"
+                        : "text-ink-muted hover:text-ink"
                     }`}
                   >
                     {isRtl ? config.symbolAr : config.code}
@@ -543,7 +543,7 @@ export default function App() {
                   className={`px-2.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1 transition-all cursor-pointer ${
                     heroTransparent
                       ? "border border-white/40 hover:bg-white/10 text-white"
-                      : "border border-[#e6e2de] hover:bg-[#f2ede8] text-[#1a1918]"
+                      : "border border-border hover:bg-surface-2 text-ink"
                   }`}
                 >
                   <LogIn size={14} />
@@ -551,17 +551,17 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => setIsSignupOpen(true)}
-                  className="px-2.5 py-1.5 text-xs font-bold bg-[#1c1a17] hover:bg-[#33302a] text-white rounded-lg flex items-center gap-1 transition-all cursor-pointer"
+                  className="px-2.5 py-1.5 text-xs font-bold bg-chrome hover:bg-chrome-hover text-white rounded-lg flex items-center gap-1 transition-all cursor-pointer"
                 >
                   <UserPlus size={14} />
                   <span className="hidden sm:inline">{isRtl ? "شريك جديد" : "Sign Up"}</span>
                 </button>
               </div>
             ) : (
-              <div className={`flex items-center gap-3 border-l pl-3 transition-colors duration-300 ${heroTransparent ? "border-white/30" : "border-[#e6e2de]"}`}>
+              <div className={`flex items-center gap-3 border-l pl-3 transition-colors duration-300 ${heroTransparent ? "border-white/30" : "border-border"}`}>
                 <div className="hidden md:flex flex-col text-right leading-tight">
-                  <span className={`text-xs font-bold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-[#1c1a17]"}`}>{currentUser.fullName}</span>
-                  <span className="text-[10px] font-semibold text-[#bf9b30] uppercase tracking-wider">
+                  <span className={`text-xs font-bold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-chrome"}`}>{currentUser.fullName}</span>
+                  <span className="text-[10px] font-semibold text-gold uppercase tracking-wider">
                     {currentUser.role.replace("_", " ")}
                   </span>
                 </div>
@@ -569,10 +569,10 @@ export default function App() {
                   <img
                     src={currentUser.avatarUrl}
                     alt={currentUser.fullName}
-                    className="w-8 h-8 rounded-full object-cover border border-[#bf9b30]"
+                    className="w-8 h-8 rounded-full object-cover border border-gold"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full border border-[#bf9b30] bg-[#bf9b30] text-black font-bold text-xs flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full border border-gold bg-gold text-black font-bold text-xs flex items-center justify-center">
                     {currentUser.fullName.charAt(0)}
                   </div>
                 )}
@@ -591,7 +591,7 @@ export default function App() {
           {/* Mobile hamburger toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(prev => !prev)}
-            className="md:hidden p-2.5 -mr-1 rtl:mr-0 rtl:-ml-1 bg-[#fdfcfb] border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg text-[#1c1a17] cursor-pointer transition-colors"
+            className="md:hidden p-2.5 -mr-1 rtl:mr-0 rtl:-ml-1 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg text-chrome cursor-pointer transition-colors"
             aria-label={isRtl ? "فتح القائمة" : "Open menu"}
             aria-expanded={isMobileMenuOpen}
           >
@@ -602,17 +602,17 @@ export default function App() {
 
         {/* Mobile Nav Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-[#e6e2de] bg-white px-4 py-4 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="md:hidden border-t border-border bg-white px-4 py-4 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
 
             {/* View switcher for logged in users */}
             {currentUser && (
-              <div className="flex items-center bg-[#fdfcfb] border border-[#e6e2de] rounded-lg p-1 shadow-xs">
+              <div className="flex items-center bg-ink-inverse border border-border rounded-lg p-1 shadow-xs">
                 <button
                   onClick={() => { setViewMode("MARKETPLACE"); setIsMobileMenuOpen(false); }}
                   className={`flex-1 px-3 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     viewMode === "MARKETPLACE"
-                      ? "bg-white text-[#1a1918] shadow-xs border border-[#e6e2de]"
-                      : "text-[#6e6b66] hover:text-[#1a1918]"
+                      ? "bg-white text-ink shadow-xs border border-border"
+                      : "text-ink-muted hover:text-ink"
                   }`}
                 >
                   <Eye size={15} />
@@ -622,8 +622,8 @@ export default function App() {
                   onClick={() => { setViewMode("DASHBOARD"); setIsMobileMenuOpen(false); }}
                   className={`flex-1 px-3 py-2.5 rounded-md text-sm font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     viewMode === "DASHBOARD"
-                      ? "bg-[#1c1a17] text-[#bf9b30] shadow-xs"
-                      : "text-[#6e6b66] hover:text-[#1a1918]"
+                      ? "bg-chrome text-gold shadow-xs"
+                      : "text-ink-muted hover:text-ink"
                   }`}
                 >
                   <LayoutDashboard size={15} />
@@ -635,7 +635,7 @@ export default function App() {
             {/* Language Toggle */}
             <button
               onClick={() => setIsRtl(!isRtl)}
-              className="w-full p-3 bg-[#fdfcfb] border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg transition-colors cursor-pointer text-[#1c1a17] flex items-center justify-center gap-2 text-sm font-bold"
+              className="w-full p-3 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-chrome flex items-center justify-center gap-2 text-sm font-bold"
             >
               <Globe size={16} />
               <span>{isRtl ? "English" : "العربية"}</span>
@@ -644,7 +644,7 @@ export default function App() {
             {/* Dark mode toggle */}
             <button
               onClick={toggleTheme}
-              className="w-full p-3 bg-[#fdfcfb] border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg transition-colors cursor-pointer text-[#1c1a17] flex items-center justify-center gap-2 text-sm font-bold"
+              className="w-full p-3 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-chrome flex items-center justify-center gap-2 text-sm font-bold"
             >
               {resolvedTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
               <span>
@@ -655,7 +655,7 @@ export default function App() {
             </button>
 
             {/* Currency Selector */}
-            <div className="flex items-center bg-[#fdfcfb] border border-[#e6e2de] rounded-lg p-1 shadow-xs">
+            <div className="flex items-center bg-ink-inverse border border-border rounded-lg p-1 shadow-xs">
               {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => {
                 const config = CURRENCIES[code];
                 const active = activeCurrency === code;
@@ -665,8 +665,8 @@ export default function App() {
                     onClick={() => setActiveCurrency(code)}
                     className={`flex-1 px-2 py-2.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
                       active
-                        ? "bg-[#1c1a17] text-[#bf9b30] shadow-xs"
-                        : "text-[#6e6b66] hover:text-[#1a1918]"
+                        ? "bg-chrome text-gold shadow-xs"
+                        : "text-ink-muted hover:text-ink"
                     }`}
                   >
                     {isRtl ? config.symbolAr : config.code}
@@ -680,36 +680,36 @@ export default function App() {
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => { setIsLoginOpen(true); setIsMobileMenuOpen(false); }}
-                  className="w-full px-3 py-3 text-sm font-bold border border-[#e6e2de] hover:bg-[#f2ede8] rounded-lg text-[#1a1918] flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full px-3 py-3 text-sm font-bold border border-border hover:bg-surface-2 rounded-lg text-ink flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <LogIn size={16} />
                   <span>{isRtl ? "تسجيل دخول" : "Log In"}</span>
                 </button>
                 <button
                   onClick={() => { setIsSignupOpen(true); setIsMobileMenuOpen(false); }}
-                  className="w-full px-3 py-3 text-sm font-bold bg-[#1c1a17] hover:bg-[#33302a] text-white rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full px-3 py-3 text-sm font-bold bg-chrome hover:bg-chrome-hover text-white rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <UserPlus size={16} />
                   <span>{isRtl ? "شريك جديد" : "Sign Up"}</span>
                 </button>
               </div>
             ) : (
-              <div className="flex items-center justify-between gap-3 border-t border-[#e6e2de] pt-4">
+              <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
                 <div className="flex items-center gap-3 min-w-0">
                   {currentUser.avatarUrl ? (
                     <img
                       src={currentUser.avatarUrl}
                       alt={currentUser.fullName}
-                      className="w-9 h-9 rounded-full object-cover border border-[#bf9b30] shrink-0"
+                      className="w-9 h-9 rounded-full object-cover border border-gold shrink-0"
                     />
                   ) : (
-                    <div className="w-9 h-9 rounded-full border border-[#bf9b30] bg-[#bf9b30] text-black font-bold text-sm flex items-center justify-center shrink-0">
+                    <div className="w-9 h-9 rounded-full border border-gold bg-gold text-black font-bold text-sm flex items-center justify-center shrink-0">
                       {currentUser.fullName.charAt(0)}
                     </div>
                   )}
                   <div className="flex flex-col text-left rtl:text-right leading-tight min-w-0">
-                    <span className="text-sm font-bold text-[#1c1a17] truncate">{currentUser.fullName}</span>
-                    <span className="text-[10px] font-semibold text-[#bf9b30] uppercase tracking-wider truncate">
+                    <span className="text-sm font-bold text-chrome truncate">{currentUser.fullName}</span>
+                    <span className="text-[10px] font-semibold text-gold uppercase tracking-wider truncate">
                       {currentUser.role.replace("_", " ")}
                     </span>
                   </div>
@@ -748,12 +748,12 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-[#1c1a17] text-gray-300 mt-8">
+      <footer className="bg-chrome text-gray-300 mt-8">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1 space-y-3">
             <div dir="ltr" className="flex items-center gap-2">
               <span className="font-serif text-lg tracking-[0.2em] text-white font-semibold">NEROU</span>
-              <span className="font-serif text-lg tracking-wider text-[#bf9b30] font-bold">FINDER</span>
+              <span className="font-serif text-lg tracking-wider text-gold font-bold">FINDER</span>
             </div>
             <p className="text-xs text-gray-400 leading-relaxed">
               {isRtl
@@ -763,7 +763,7 @@ export default function App() {
           </div>
 
           <div className="space-y-3">
-            <h5 className="text-[10px] font-bold uppercase tracking-widest text-[#bf9b30]">
+            <h5 className="text-[10px] font-bold uppercase tracking-widest text-gold">
               {isRtl ? "استكشف" : "Explore"}
             </h5>
             <div className="flex flex-col gap-2 text-xs">
@@ -792,7 +792,7 @@ export default function App() {
           </div>
 
           <div className="space-y-3">
-            <h5 className="text-[10px] font-bold uppercase tracking-widest text-[#bf9b30]">
+            <h5 className="text-[10px] font-bold uppercase tracking-widest text-gold">
               {isRtl ? "الشركة" : "Company"}
             </h5>
             <div className="flex flex-col gap-2 text-xs">
@@ -812,7 +812,7 @@ export default function App() {
           </div>
 
           <div className="space-y-3">
-            <h5 className="text-[10px] font-bold uppercase tracking-widest text-[#bf9b30]">
+            <h5 className="text-[10px] font-bold uppercase tracking-widest text-gold">
               {isRtl ? "الدعم" : "Support"}
             </h5>
             <div className="flex flex-col gap-2 text-xs">
@@ -840,7 +840,7 @@ export default function App() {
       {/* 1. LOGIN MODAL DIALOG */}
       {isLoginOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-xl border border-[#e6e2de] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
 
             <button
               onClick={() => { setIsLoginOpen(false); setAuthError(""); }}
@@ -849,12 +849,12 @@ export default function App() {
               <X size={15} />
             </button>
 
-            <div className="bg-[#1c1a17] relative overflow-hidden text-center py-8 px-6 space-y-1.5">
+            <div className="bg-chrome relative overflow-hidden text-center py-8 px-6 space-y-1.5">
               <CinematicSkyline />
               <div className="relative z-10">
                 <span className="font-serif text-xl tracking-[0.2em] font-semibold text-white">NEROU</span>
-                <span className="font-serif text-xl tracking-wider font-bold text-[#bf9b30] ml-1.5">FINDER</span>
-                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#bf9b30] mt-1">
+                <span className="font-serif text-xl tracking-wider font-bold text-gold ml-1.5">FINDER</span>
+                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold mt-1">
                   {isRtl ? "بوابة الشركاء" : "Partner Portal"}
                 </p>
                 <p className="text-xs text-gray-400 mt-2">
@@ -876,10 +876,10 @@ export default function App() {
               <form onSubmit={handleLoginSubmit} className="space-y-4">
                 {require2fa ? (
                   <div>
-                    <label className="block text-[10px] font-bold text-[#bf9b30] uppercase mb-1 tracking-wider">
+                    <label className="block text-[10px] font-bold text-gold uppercase mb-1 tracking-wider">
                       {isRtl ? "رمز التحقق الثنائي (2FA)" : "Two-Factor Verification Code"}
                     </label>
-                    <p className="text-[11px] text-[#6e6b66] mb-2">
+                    <p className="text-[11px] text-ink-muted mb-2">
                       {isRtl 
                         ? "الرجاء إدخال الرمز المكون من 6 أرقام من تطبيق المصادقة الخاص بك."
                         : "Enter the 6-digit verification code from your authenticator application."}
@@ -892,14 +892,14 @@ export default function App() {
                       value={twoFactorCode}
                       onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ""))}
                       placeholder="e.g. 123456"
-                      className="w-full px-3.5 py-2.5 bg-white border-2 border-[#bf9b30] focus:outline-none rounded-lg text-center text-lg font-bold tracking-widest text-[#1a1918]"
+                      className="w-full px-3.5 py-2.5 bg-white border-2 border-gold focus:outline-none rounded-lg text-center text-lg font-bold tracking-widest text-ink"
                       autoFocus
                     />
                   </div>
                 ) : (
                   <>
                     <div>
-                      <label className="block text-[10px] font-bold text-[#6e6b66] uppercase mb-1">
+                      <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">
                         {isRtl ? "البريد الإلكتروني" : "Email Address"}
                       </label>
                       <input
@@ -908,12 +908,12 @@ export default function App() {
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
                         placeholder="you@company.com"
-                        className="w-full px-3.5 py-2.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-sm"
+                        className="w-full px-3.5 py-2.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-sm"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-[#6e6b66] uppercase mb-1">
+                      <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">
                         {isRtl ? "كلمة المرور" : "Password"}
                       </label>
                       <input
@@ -921,7 +921,7 @@ export default function App() {
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full px-3.5 py-2.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-sm"
+                        className="w-full px-3.5 py-2.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-sm"
                       />
                     </div>
                   </>
@@ -930,7 +930,7 @@ export default function App() {
                 <button
                   type="submit"
                   disabled={authLoading}
-                  className="w-full py-3 bg-[#1c1a17] hover:bg-[#33302a] disabled:bg-[#a8a4a0] text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3 bg-chrome hover:bg-chrome-hover disabled:bg-ink-faint text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {authLoading ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -946,7 +946,7 @@ export default function App() {
               <div className="text-center">
                 <button
                   onClick={() => { setIsLoginOpen(false); setIsSignupOpen(true); }}
-                  className="text-xs text-[#bf9b30] hover:underline cursor-pointer"
+                  className="text-xs text-gold hover:underline cursor-pointer"
                 >
                   {isRtl ? "ليس لديك حساب شريك؟ أنشئ حسابك الآن" : "Don't have a partner account? Create one"}
                 </button>
@@ -960,7 +960,7 @@ export default function App() {
       {/* 2. SIGNUP/REGISTRATION MODAL DIALOG */}
       {isSignupOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-xl border border-[#e6e2de] w-full max-w-lg my-8 overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className="bg-white rounded-xl border border-border w-full max-w-lg my-8 overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
 
             <button
               onClick={() => { setIsSignupOpen(false); setAuthError(""); }}
@@ -969,12 +969,12 @@ export default function App() {
               <X size={15} />
             </button>
 
-            <div className="bg-[#1c1a17] relative overflow-hidden text-center py-8 px-6 space-y-1.5">
+            <div className="bg-chrome relative overflow-hidden text-center py-8 px-6 space-y-1.5">
               <CinematicSkyline />
               <div className="relative z-10">
                 <span className="font-serif text-xl tracking-[0.2em] font-semibold text-white">NEROU</span>
-                <span className="font-serif text-xl tracking-wider font-bold text-[#bf9b30] ml-1.5">FINDER</span>
-                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#bf9b30] mt-1">
+                <span className="font-serif text-xl tracking-wider font-bold text-gold ml-1.5">FINDER</span>
+                <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold mt-1">
                   {isRtl ? "تسجيل الشركاء" : "Partner Registration"}
                 </p>
                 <p className="text-xs text-gray-400 mt-2">
@@ -993,7 +993,7 @@ export default function App() {
                   <h4 className="text-base font-bold text-emerald-800">
                     {isRtl ? "تم تسجيل الحساب بنجاح!" : "Account Registered Successfully!"}
                   </h4>
-                  <p className="text-xs text-[#6e6b66]">
+                  <p className="text-xs text-ink-muted">
                     {isRtl ? "جاري تهيئة لوحة التحكم السحابية المخصصة لك..." : "Provisioning your custom SaaS environment..."}
                   </p>
                 </div>
@@ -1009,7 +1009,7 @@ export default function App() {
                     
                     {/* Role selector */}
                     <div>
-                      <label className="block text-[10px] font-bold text-[#6e6b66] uppercase mb-1.5">
+                      <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1.5">
                         {isRtl ? "نوع الشراكة / حساب المستفيد" : "Select Partner Account Type"}
                       </label>
                       <div className="grid grid-cols-2 gap-2">
@@ -1018,8 +1018,8 @@ export default function App() {
                           onClick={() => setSignupRole(UserRole.AGENT)}
                           className={`p-2.5 border rounded-lg text-xs font-bold transition-all ${
                             signupRole === UserRole.AGENT
-                              ? "border-[#bf9b30] bg-[#bf9b30]/10 text-[#1a1918]"
-                              : "border-[#e6e2de] bg-white text-[#6e6b66] hover:border-[#bf9b30]"
+                              ? "border-gold bg-gold/10 text-ink"
+                              : "border-border bg-white text-ink-muted hover:border-gold"
                           }`}
                         >
                           {isRtl ? "وسيط عقاري مستقل" : "Independent Broker / Agent"}
@@ -1029,8 +1029,8 @@ export default function App() {
                           onClick={() => setSignupRole(UserRole.AGENCY_ADMIN)}
                           className={`p-2.5 border rounded-lg text-xs font-bold transition-all ${
                             signupRole === UserRole.AGENCY_ADMIN
-                              ? "border-[#bf9b30] bg-[#bf9b30]/10 text-[#1a1918]"
-                              : "border-[#e6e2de] bg-white text-[#6e6b66] hover:border-[#bf9b30]"
+                              ? "border-gold bg-gold/10 text-ink"
+                              : "border-border bg-white text-ink-muted hover:border-gold"
                           }`}
                         >
                           {isRtl ? "مدير شركة تسويق عقاري" : "Agency Office Admin"}
@@ -1040,8 +1040,8 @@ export default function App() {
                           onClick={() => setSignupRole(UserRole.DEVELOPER_ADMIN)}
                           className={`p-2.5 border rounded-lg text-xs font-bold transition-all col-span-2 ${
                             signupRole === UserRole.DEVELOPER_ADMIN
-                              ? "border-[#bf9b30] bg-[#bf9b30]/10 text-[#1a1918]"
-                              : "border-[#e6e2de] bg-white text-[#6e6b66] hover:border-[#bf9b30]"
+                              ? "border-gold bg-gold/10 text-ink"
+                              : "border-border bg-white text-ink-muted hover:border-gold"
                           }`}
                         >
                           {isRtl ? "مطور عقاري / مالك مشاريع" : "Property Developer (Project Hub)"}
@@ -1051,8 +1051,8 @@ export default function App() {
 
                     {/* Conditional Organization Name input */}
                     {(signupRole === UserRole.AGENCY_ADMIN || signupRole === UserRole.DEVELOPER_ADMIN) && (
-                      <div className="p-3 bg-[#fdfcfb] border border-[#e6e2de] rounded-lg space-y-3">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#bf9b30] uppercase">
+                      <div className="p-3 bg-ink-inverse border border-border rounded-lg space-y-3">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-gold uppercase">
                           <Building2 size={12} />
                           <span>
                             {signupRole === UserRole.DEVELOPER_ADMIN
@@ -1061,7 +1061,7 @@ export default function App() {
                           </span>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-semibold text-[#6e6b66] mb-1">
+                          <label className="block text-[10px] font-semibold text-ink-muted mb-1">
                             {isRtl ? "اسم الشركة العقارية / المطور" : "Registered Enterprise Name"} *
                           </label>
                           <input
@@ -1070,7 +1070,7 @@ export default function App() {
                             value={signupOrgName}
                             onChange={(e) => setSignupOrgName(e.target.value)}
                             placeholder={signupRole === UserRole.DEVELOPER_ADMIN ? "e.g. Doha Sands Developers" : "e.g. Pearl Gates Real Estate"}
-                            className="w-full px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-base md:text-xs focus:outline-none focus:border-[#bf9b30]"
+                            className="w-full px-3 py-1.5 bg-white border border-border rounded-lg text-base md:text-xs focus:outline-none focus:border-gold"
                           />
                         </div>
                       </div>
@@ -1079,7 +1079,7 @@ export default function App() {
                     {/* Standard details */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[10px] font-bold text-[#6e6b66] uppercase mb-1">
+                        <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">
                           {isRtl ? "الاسم الكامل" : "Full Name"} *
                         </label>
                         <input
@@ -1088,11 +1088,11 @@ export default function App() {
                           value={signupName}
                           onChange={(e) => setSignupName(e.target.value)}
                           placeholder="Nasser Jassim"
-                          className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-xs"
+                          className="w-full px-3 py-1.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-xs"
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-[#6e6b66] uppercase mb-1">
+                        <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">
                           {isRtl ? "رقم الهاتف" : "Phone Number"} *
                         </label>
                         <input
@@ -1101,13 +1101,13 @@ export default function App() {
                           value={signupPhone}
                           onChange={(e) => setSignupPhone(e.target.value)}
                           placeholder="+974 5555 6666"
-                          className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-xs"
+                          className="w-full px-3 py-1.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-xs"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-[#6e6b66] uppercase mb-1">
+                      <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">
                         {isRtl ? "البريد الإلكتروني" : "Email Address"} *
                       </label>
                       <input
@@ -1116,12 +1116,12 @@ export default function App() {
                         value={signupEmail}
                         onChange={(e) => setSignupEmail(e.target.value)}
                         placeholder="nasser@example.qa"
-                        className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-xs"
+                        className="w-full px-3 py-1.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-xs"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-[#6e6b66] uppercase mb-1">
+                      <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">
                         {isRtl ? "كلمة المرور (٨ أحرف على الأقل)" : "Create Password (min. 8 characters)"} *
                       </label>
                       <input
@@ -1131,17 +1131,17 @@ export default function App() {
                         value={signupPassword}
                         onChange={(e) => setSignupPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full px-3 py-1.5 bg-[#fdfcfb] border border-[#e6e2de] focus:border-[#bf9b30] focus:outline-none rounded-lg text-base md:text-xs"
+                        className="w-full px-3 py-1.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-xs"
                       />
                     </div>
 
                     {/* Sticky footer so the submit button stays reachable on short viewports
                         instead of requiring a scroll to the very bottom of a long form. */}
-                    <div className="sticky bottom-0 -mx-6 md:-mx-8 -mb-6 md:-mb-8 px-6 md:px-8 pt-3 pb-6 md:pb-8 bg-white/95 backdrop-blur-sm border-t border-[#e6e2de]">
+                    <div className="sticky bottom-0 -mx-6 md:-mx-8 -mb-6 md:-mb-8 px-6 md:px-8 pt-3 pb-6 md:pb-8 bg-white/95 backdrop-blur-sm border-t border-border">
                       <button
                         type="submit"
                         disabled={authLoading}
-                        className="w-full py-2.5 bg-[#1c1a17] hover:bg-[#33302a] disabled:bg-[#a8a4a0] text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full py-2.5 bg-chrome hover:bg-chrome-hover disabled:bg-ink-faint text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
                       >
                         {authLoading ? (
                           <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -1160,7 +1160,7 @@ export default function App() {
               <div className="text-center pt-2">
                 <button
                   onClick={() => { setIsSignupOpen(false); setIsLoginOpen(true); }}
-                  className="text-xs text-[#bf9b30] hover:underline cursor-pointer"
+                  className="text-xs text-gold hover:underline cursor-pointer"
                 >
                   {isRtl ? "لديك حساب شريك بالفعل؟ سجل الدخول" : "Already have a partner account? Log in"}
                 </button>

@@ -329,44 +329,44 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Developer Header Profile */}
-      <div className="bg-white p-6 rounded-xl border border-[#e6e2de] flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-white p-6 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-xl border border-[#e6e2de] overflow-hidden bg-gray-50">
+          <div className="w-16 h-16 rounded-xl border border-border overflow-hidden bg-gray-50">
             <img src={developer.logoUrl} alt={developer.name} className="w-full h-full object-cover" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-xl font-serif font-medium text-[#1a1918]">
+            <h3 className="text-xl font-serif font-medium text-ink">
               {isRtl ? developer.nameAr : developer.name}
             </h3>
-            <p className="text-xs text-[#6e6b66]">
+            <p className="text-xs text-ink-muted">
               {isRtl ? `المطور العقاري المعتمد • مساحة تتبع المشروعات الإنشائية` : `Licensed Master Developer • Asset & Project Management Workspace`}
             </p>
           </div>
         </div>
 
         {/* Tab switcher */}
-        <div className="flex bg-[#f2ede8] p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
+        <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
           <button
             onClick={() => setActiveTab("projects")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "projects" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "projects" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "المشاريع الكبرى" : "Master Projects"}
           </button>
           <button
             onClick={() => setActiveTab("inventory")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "inventory" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "inventory" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "مخزون الوحدات" : "Units Inventory"}
           </button>
           <button
             onClick={() => setActiveTab("verification")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
           <button
             onClick={() => setActiveTab("profile")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-white text-[#1a1918]" : "text-[#6e6b66] hover:text-[#1a1918]"}`}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-white text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الإعدادات" : "Profile"}
           </button>
@@ -379,19 +379,19 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
       {/* PROFILE / SETTINGS TAB */}
       {activeTab === "profile" && (
         <div className="space-y-6">
-          <form onSubmit={handleSaveOrgProfile} className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4 text-xs">
-            <div className="flex items-center gap-4 border-b border-[#f2ede8] pb-4">
+          <form onSubmit={handleSaveOrgProfile} className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs">
+            <div className="flex items-center gap-4 border-b border-surface-2 pb-4">
               <div className="relative shrink-0">
                 {orgLogoUrl ? (
-                  <img src={orgLogoUrl} alt={orgName} className="w-16 h-16 rounded-xl object-cover border border-[#e6e2de]" />
+                  <img src={orgLogoUrl} alt={orgName} className="w-16 h-16 rounded-xl object-cover border border-border" />
                 ) : (
-                  <div className="w-16 h-16 bg-[#bf9b30] text-black font-bold text-xl rounded-xl flex items-center justify-center">
+                  <div className="w-16 h-16 bg-gold text-black font-bold text-xl rounded-xl flex items-center justify-center">
                     {orgName.charAt(0)}
                   </div>
                 )}
                 <label
                   htmlFor="developer-logo-upload"
-                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-[#1c1a17] hover:bg-[#bf9b30] text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
+                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-chrome hover:bg-gold text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
                   title={isRtl ? "تغيير الشعار" : "Change logo"}
                 >
                   {logoUploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
@@ -406,114 +406,114 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                 />
               </div>
               <div>
-                <h4 className="font-serif text-sm font-semibold text-[#1a1918] flex items-center gap-1.5">
-                  <Settings size={14} className="text-[#bf9b30]" />
+                <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                  <Settings size={14} className="text-gold" />
                   <span>{isRtl ? "ملف الشركة المطورة" : "Developer Company Profile"}</span>
                 </h4>
-                <p className="text-[10px] text-[#6e6b66] mt-0.5">{isRtl ? "قم بتحديث شعار الشركة وبيانات التواصل الرسمية." : "Update your company logo and official contact details."}</p>
+                <p className="text-[10px] text-ink-muted mt-0.5">{isRtl ? "قم بتحديث شعار الشركة وبيانات التواصل الرسمية." : "Update your company logo and official contact details."}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "اسم الشركة" : "Company Name"}</label>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "اسم الشركة" : "Company Name"}</label>
                 <input
                   type="text"
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                  className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم الهاتف" : "Phone Number"}</label>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "رقم الهاتف" : "Phone Number"}</label>
                 <input
                   type="tel"
                   inputMode="tel"
                   value={orgPhone}
                   onChange={(e) => setOrgPhone(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                  className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "رقم واتساب" : "WhatsApp Number"}</label>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "رقم واتساب" : "WhatsApp Number"}</label>
                 <input
                   type="tel"
                   inputMode="tel"
                   value={orgWhatsapp}
                   onChange={(e) => setOrgWhatsapp(e.target.value)}
                   placeholder="+97433334444"
-                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                  className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "الموقع الإلكتروني" : "Website"}</label>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الموقع الإلكتروني" : "Website"}</label>
                 <input
                   type="text"
                   value={orgWebsite}
                   onChange={(e) => setOrgWebsite(e.target.value)}
                   placeholder="https://"
-                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                  className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-[#f2ede8]">
+            <div className="flex justify-end pt-2 border-t border-surface-2">
               <button
                 type="submit"
                 disabled={savingOrgProfile}
-                className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+                className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
               >
                 {savingOrgProfile ? (isRtl ? "جارٍ الحفظ..." : "Saving...") : (isRtl ? "حفظ ملف الشركة" : "Save Company Profile")}
               </button>
             </div>
           </form>
 
-          <form onSubmit={handleChangePassword} className="bg-white p-6 rounded-xl border border-[#e6e2de] space-y-4 text-xs">
-            <div className="border-b border-[#f2ede8] pb-3 flex items-center gap-2">
-              <Lock size={16} className="text-[#bf9b30]" />
-              <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "تغيير كلمة المرور" : "Change Password"}</h4>
+          <form onSubmit={handleChangePassword} className="bg-white p-6 rounded-xl border border-border space-y-4 text-xs">
+            <div className="border-b border-surface-2 pb-3 flex items-center gap-2">
+              <Lock size={16} className="text-gold" />
+              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "تغيير كلمة المرور" : "Change Password"}</h4>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "كلمة المرور الحالية" : "Current Password"}</label>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "كلمة المرور الحالية" : "Current Password"}</label>
                 <input
                   type="password"
                   required
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                  className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "كلمة المرور الجديدة" : "New Password"}</label>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "كلمة المرور الجديدة" : "New Password"}</label>
                 <input
                   type="password"
                   required
                   minLength={8}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                  className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "تأكيد كلمة المرور الجديدة" : "Confirm New Password"}</label>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "تأكيد كلمة المرور الجديدة" : "Confirm New Password"}</label>
                 <input
                   type="password"
                   required
                   minLength={8}
                   value={confirmNewPassword}
                   onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg"
+                  className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-[#f2ede8]">
+            <div className="flex justify-end pt-2 border-t border-surface-2">
               <button
                 type="submit"
                 disabled={passwordChanging}
-                className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+                className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
               >
                 {passwordChanging ? (isRtl ? "جارٍ التحديث..." : "Updating...") : (isRtl ? "تغيير كلمة المرور" : "Change Password")}
               </button>
@@ -526,10 +526,10 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
       {activeTab === "projects" && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "سجل المشاريع الإنشائية والتطويرية" : "Developer Master projects"}</h4>
+            <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "سجل المشاريع الإنشائية والتطويرية" : "Developer Master projects"}</h4>
             <button
               onClick={() => setIsAddingProject(!isAddingProject)}
-              className="px-3 py-1.5 bg-[#1a1918] hover:bg-[#bf9b30] text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-ink hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
               <span>{isRtl ? "إضافة مشروع جديد" : "Create Project"}</span>
@@ -537,45 +537,45 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           </div>
 
           {isAddingProject && (
-            <form onSubmit={handleCreateProject} className="bg-white p-5 rounded-xl border border-[#bf9b30]/30 space-y-4 max-w-xl text-xs animate-in slide-in-from-top duration-200">
-              <h5 className="font-serif text-sm font-bold text-[#1a1918] border-b border-[#f2ede8] pb-2">
+            <form onSubmit={handleCreateProject} className="bg-white p-5 rounded-xl border border-gold/30 space-y-4 max-w-xl text-xs animate-in slide-in-from-top duration-200">
+              <h5 className="font-serif text-sm font-bold text-ink border-b border-surface-2 pb-2">
                 {isRtl ? "إدخال تفاصيل المشروع الجديد" : "Provide New Project Guidelines"}
               </h5>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "اسم المشروع" : "Project Name"}</label>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "اسم المشروع" : "Project Name"}</label>
                   <input
                     type="text"
                     required
                     value={projName}
                     onChange={(e) => setProjName(e.target.value)}
                     placeholder="e.g. Marina Heights Tower C"
-                    className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg focus:outline-none"
+                    className="w-full px-3 py-2 bg-white border border-border rounded-lg focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "تاريخ التسليم المتوقع" : "Expected Handover"}</label>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "تاريخ التسليم المتوقع" : "Expected Handover"}</label>
                   <input
                     type="date"
                     value={projDate}
                     onChange={(e) => setProjDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg"
+                    className="w-full px-3 py-2 bg-white border border-border rounded-lg"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "البلدية" : "Municipality"}</label>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "البلدية" : "Municipality"}</label>
                   <select
                     value={selectedMunicipality}
                     onChange={(e) => {
                       setSelectedMunicipality(e.target.value);
                       setSelectedArea("");
                     }}
-                    className="w-full px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg"
+                    className="w-full px-3 py-1.5 bg-white border border-border rounded-lg"
                   >
                     <option value="">Select Municipality</option>
                     {locations.filter(l => l.type === "MUNICIPALITY" && l.isActive).map(muni => (
@@ -585,12 +585,12 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                 </div>
 
                 <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "المنطقة / الحي" : "Area / District"}</label>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المنطقة / الحي" : "Area / District"}</label>
                   <select
                     value={selectedArea}
                     disabled={!selectedMunicipality}
                     onChange={(e) => setSelectedArea(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg disabled:opacity-50"
+                    className="w-full px-3 py-1.5 bg-white border border-border rounded-lg disabled:opacity-50"
                   >
                     <option value="">Select Area / District</option>
                     {locations.filter(l => l.parentId === selectedMunicipality && l.isActive).map(area => (
@@ -600,11 +600,11 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                 </div>
 
                 <div>
-                  <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "حالة الإنشاءات" : "Construction Status"}</label>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "حالة الإنشاءات" : "Construction Status"}</label>
                   <select
                     value={projStatus}
                     onChange={(e) => setProjStatus(e.target.value as any)}
-                    className="w-full px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg"
+                    className="w-full px-3 py-1.5 bg-white border border-border rounded-lg"
                   >
                     <option value="PLANNING">Planning</option>
                     <option value="UNDER_CONSTRUCTION">Under Construction</option>
@@ -614,19 +614,19 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
               </div>
 
               <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "شرح ومواصفات المشروع" : "Project Summary & Pitch"}</label>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "شرح ومواصفات المشروع" : "Project Summary & Pitch"}</label>
                 <textarea
                   rows={3}
                   value={projDesc}
                   onChange={(e) => setProjDesc(e.target.value)}
                   placeholder="Describe location conveniences, beach layout access..."
-                  className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg"
+                  className="w-full px-3 py-2 bg-white border border-border rounded-lg"
                 ></textarea>
               </div>
 
               <div>
-                <label className="block font-medium text-[#6e6b66] mb-1">{isRtl ? "صور المشروع" : "Project Photos"}</label>
-                <div className="border-2 border-dashed border-[#e6e2de] hover:border-[#bf9b30] rounded-xl p-6 text-center cursor-pointer bg-white transition-colors relative">
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "صور المشروع" : "Project Photos"}</label>
+                <div className="border-2 border-dashed border-border hover:border-gold rounded-xl p-6 text-center cursor-pointer bg-white transition-colors relative">
                   <input
                     type="file"
                     multiple
@@ -638,14 +638,14 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                   <div className="space-y-2">
                     {uploadingImages ? (
                       <div className="flex flex-col items-center gap-2">
-                        <Loader2 className="animate-spin text-[#bf9b30]" size={28} />
-                        <p className="text-sm font-medium text-[#6e6b66]">{isRtl ? "جارٍ رفع الصور..." : "Uploading images..."}</p>
+                        <Loader2 className="animate-spin text-gold" size={28} />
+                        <p className="text-sm font-medium text-ink-muted">{isRtl ? "جارٍ رفع الصور..." : "Uploading images..."}</p>
                       </div>
                     ) : (
                       <>
                         <ImageIcon className="mx-auto text-gray-400" size={32} />
-                        <p className="text-sm font-medium text-[#1a1918]">{isRtl ? "اضغط هنا لرفع عدة صور" : "Click here to upload multiple images"}</p>
-                        <p className="text-xs text-[#6e6b66]">{isRtl ? "يدعم JPG، PNG وغيرها" : "Supports JPG, PNG etc."}</p>
+                        <p className="text-sm font-medium text-ink">{isRtl ? "اضغط هنا لرفع عدة صور" : "Click here to upload multiple images"}</p>
+                        <p className="text-xs text-ink-muted">{isRtl ? "يدعم JPG، PNG وغيرها" : "Supports JPG, PNG etc."}</p>
                       </>
                     )}
                   </div>
@@ -653,7 +653,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                 {projectImages.length > 0 && (
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-3">
                     {projectImages.map((imgUrl, index) => (
-                      <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-[#e6e2de] bg-[#fdfdfc] shadow-2xs">
+                      <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-ink-inverse shadow-2xs">
                         <img src={imgUrl} alt="" className="w-full h-full object-cover" />
                         <button
                           type="button"
@@ -672,13 +672,13 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                 <button
                   type="button"
                   onClick={() => setIsAddingProject(false)}
-                  className="px-4 py-2 bg-white hover:bg-[#f2ede8] border border-[#e6e2de] rounded-lg font-semibold"
+                  className="px-4 py-2 bg-white hover:bg-surface-2 border border-border rounded-lg font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#1c1a17] hover:bg-[#bf9b30] text-white font-semibold rounded-lg"
+                  className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg"
                 >
                   Create Master Catalog
                 </button>
@@ -689,28 +689,28 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           {/* Project Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {projects.map(proj => (
-              <div key={proj.id} className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden flex flex-col justify-between">
+              <div key={proj.id} className="bg-white rounded-xl border border-border overflow-hidden flex flex-col justify-between">
                 <div>
                   <div className="h-44 bg-gray-100 overflow-hidden relative">
                     <img src={proj.images[0]} alt={proj.name} className="w-full h-full object-cover" />
-                    <span className="absolute top-3 left-3 bg-[#1a1918]/80 text-white px-2 py-0.5 rounded text-[10px] font-bold">
+                    <span className="absolute top-3 left-3 bg-ink/80 text-white px-2 py-0.5 rounded text-[10px] font-bold">
                       {proj.status}
                     </span>
                   </div>
 
                   <div className="p-4 space-y-2 text-xs">
-                    <div className="flex items-center gap-1 text-[#6e6b66]">
+                    <div className="flex items-center gap-1 text-ink-muted">
                       <MapPin size={13} />
                       <span>{proj.district}, {proj.city}</span>
                     </div>
-                    <h5 className="font-serif text-base font-bold text-[#1a1918]">{isRtl ? proj.nameAr : proj.name}</h5>
-                    <p className="text-[#6e6b66] leading-relaxed line-clamp-2">{proj.description}</p>
+                    <h5 className="font-serif text-base font-bold text-ink">{isRtl ? proj.nameAr : proj.name}</h5>
+                    <p className="text-ink-muted leading-relaxed line-clamp-2">{proj.description}</p>
                   </div>
                 </div>
 
-                <div className="p-4 border-t border-[#f2ede8] flex justify-between items-center text-[11px] text-[#6e6b66]">
-                  <span>Handover Target: <strong className="text-[#1a1918]">{proj.deliveryDate || "TBD"}</strong></span>
-                  <span className="font-bold text-[#bf9b30]">{isRtl ? "عرض ملف البروشور" : "View PDF Brochure"}</span>
+                <div className="p-4 border-t border-surface-2 flex justify-between items-center text-[11px] text-ink-muted">
+                  <span>Handover Target: <strong className="text-ink">{proj.deliveryDate || "TBD"}</strong></span>
+                  <span className="font-bold text-gold">{isRtl ? "عرض ملف البروشور" : "View PDF Brochure"}</span>
                 </div>
               </div>
             ))}
@@ -723,16 +723,16 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
         <div className="space-y-6">
           {/* Inventory Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white p-4 rounded-xl border border-[#e6e2de] text-center text-xs">
-              <span className="text-[#6e6b66] block mb-1">{isRtl ? "الوحدات الإجمالية" : "Total Catalogued Units"}</span>
-              <strong className="text-xl text-[#1a1918]">{totalUnits}</strong>
+            <div className="bg-white p-4 rounded-xl border border-border text-center text-xs">
+              <span className="text-ink-muted block mb-1">{isRtl ? "الوحدات الإجمالية" : "Total Catalogued Units"}</span>
+              <strong className="text-xl text-ink">{totalUnits}</strong>
             </div>
-            <div className="bg-white p-4 rounded-xl border border-[#e6e2de] text-center text-xs">
-              <span className="text-[#6e6b66] block mb-1">{isRtl ? "المباع" : "Sold out (Closed)"}</span>
+            <div className="bg-white p-4 rounded-xl border border-border text-center text-xs">
+              <span className="text-ink-muted block mb-1">{isRtl ? "المباع" : "Sold out (Closed)"}</span>
               <strong className="text-xl text-green-600">{soldUnits}</strong>
             </div>
-            <div className="bg-white p-4 rounded-xl border border-[#e6e2de] text-center text-xs">
-              <span className="text-[#6e6b66] block mb-1">{isRtl ? "المتبقي المتاح" : "Available inventory"}</span>
+            <div className="bg-white p-4 rounded-xl border border-border text-center text-xs">
+              <span className="text-ink-muted block mb-1">{isRtl ? "المتبقي المتاح" : "Available inventory"}</span>
               <strong className="text-xl text-blue-600">{availableUnits}</strong>
             </div>
           </div>
@@ -741,19 +741,19 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           <BoostRecommendations properties={properties} orgId={developer.id} isRtl={isRtl} />
 
           {/* Catalog Table */}
-          <div className="bg-white rounded-xl border border-[#e6e2de] overflow-hidden text-xs">
-            <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de]">
-              <h4 className="font-serif text-sm font-semibold text-[#1a1918]">{isRtl ? "قائمة الوحدات التفصيلية" : "Specific Units Specifications"}</h4>
+          <div className="bg-white rounded-xl border border-border overflow-hidden text-xs">
+            <div className="p-4 bg-ink-inverse border-b border-border">
+              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "قائمة الوحدات التفصيلية" : "Specific Units Specifications"}</h4>
             </div>
-            <div className="divide-y divide-[#f2ede8]">
+            <div className="divide-y divide-surface-2">
               {properties.length === 0 ? (
-                <p className="p-8 text-center text-[#6e6b66]">{isRtl ? "لا توجد وحدات مسجلة تحت هذا المشروع." : "No units listed under this developer workspace yet."}</p>
+                <p className="p-8 text-center text-ink-muted">{isRtl ? "لا توجد وحدات مسجلة تحت هذا المشروع." : "No units listed under this developer workspace yet."}</p>
               ) : (
                 properties.map(unit => (
                   <div key={unit.id} className="p-4 flex justify-between items-center gap-3 flex-wrap">
                     <div>
-                      <p className="font-bold text-[#1a1918]">{isRtl ? unit.titleAr : unit.title}</p>
-                      <p className="text-[10px] text-[#6e6b66]">District: {unit.district} | {unit.bedrooms} Bed | {unit.area} SQM</p>
+                      <p className="font-bold text-ink">{isRtl ? unit.titleAr : unit.title}</p>
+                      <p className="text-[10px] text-ink-muted">District: {unit.district} | {unit.bedrooms} Bed | {unit.area} SQM</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <BoostButton property={unit} isRtl={isRtl} />
@@ -771,8 +771,8 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 max-w-sm bg-[#1c1a17] text-white p-4 rounded-xl shadow-2xl border border-[#bf9b30] flex items-center gap-3 animate-slide-in">
-          <div className="w-2 h-2 rounded-full bg-[#bf9b30] animate-ping" />
+        <div className="fixed bottom-5 right-5 z-50 max-w-sm bg-chrome text-white p-4 rounded-xl shadow-2xl border border-gold flex items-center gap-3 animate-slide-in">
+          <div className="w-2 h-2 rounded-full bg-gold animate-ping" />
           <span className="text-xs font-medium">{toastMessage}</span>
         </div>
       )}

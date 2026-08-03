@@ -597,13 +597,13 @@ export default function PropertyDetailView({
       className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-xs flex justify-center items-start p-2 sm:p-4 md:p-6"
       dir={isRtl ? "rtl" : "ltr"}
     >
-      <div className="bg-[#FAF9F5] w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden border border-[#E6E2DE] animate-in fade-in duration-300 relative flex flex-col max-h-[92vh] md:max-h-[96vh]">
+      <div className="bg-[#FAF9F5] w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden border border-border animate-in fade-in duration-300 relative flex flex-col max-h-[92vh] md:max-h-[96vh]">
         
         {/* TOP BAR / NAVIGATION */}
-        <div className="bg-white border-b border-[#E6E2DE] px-4 py-3 flex items-center justify-between shrink-0">
+        <div className="bg-white border-b border-border px-4 py-3 flex items-center justify-between shrink-0">
           <button
             onClick={onClose}
-            className="flex items-center gap-1.5 text-xs font-bold text-[#6E6B66] hover:text-[#1A1918] cursor-pointer transition-colors"
+            className="flex items-center gap-1.5 text-xs font-bold text-ink-muted hover:text-ink cursor-pointer transition-colors"
           >
             <ChevronLeft size={16} className={isRtl ? "rotate-180" : ""} />
             <span>{isRtl ? "العودة للعقارات" : "Back to Listings"}</span>
@@ -614,8 +614,8 @@ export default function PropertyDetailView({
               onClick={() => onToggleCompare(property.id)}
               className={`p-2 rounded-full border cursor-pointer transition-colors ${
                 isCompared
-                  ? "bg-[#BF9B30]/10 border-[#BF9B30] text-[#BF9B30]"
-                  : "bg-white border-[#E6E2DE] text-[#6E6B66] hover:text-[#1A1918]"
+                  ? "bg-gold/10 border-gold text-gold"
+                  : "bg-white border-border text-ink-muted hover:text-ink"
               }`}
               title={isRtl ? "مقارنة العقار" : "Compare Property"}
             >
@@ -626,7 +626,7 @@ export default function PropertyDetailView({
               className={`p-2 rounded-full border cursor-pointer transition-colors ${
                 isSaved
                   ? "bg-rose-50 border-rose-300 text-rose-500"
-                  : "bg-white border-[#E6E2DE] text-[#6E6B66] hover:text-[#1A1918]"
+                  : "bg-white border-border text-ink-muted hover:text-ink"
               }`}
               title={isRtl ? "حفظ العقار" : "Bookmark Property"}
             >
@@ -634,14 +634,14 @@ export default function PropertyDetailView({
             </button>
             <button
               onClick={handleShare}
-              className="p-2 rounded-full border bg-white border-[#E6E2DE] text-[#6E6B66] hover:text-[#1A1918] cursor-pointer transition-colors"
+              className="p-2 rounded-full border bg-white border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
               title={isRtl ? "مشاركة" : "Share"}
             >
               {copiedLink ? <Check size={15} className="text-emerald-600" /> : <Share2 size={15} />}
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-full border bg-white border-[#E6E2DE] text-[#6E6B66] hover:text-[#1A1918] cursor-pointer transition-colors"
+              className="p-2 rounded-full border bg-white border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
             >
               <Maximize2 size={15} className="rotate-45" />
             </button>
@@ -652,14 +652,14 @@ export default function PropertyDetailView({
         <div className="overflow-y-auto flex-1 pb-16 md:pb-6">
           
           {/* HEADER HERO TITLE SECTION */}
-          <div className="bg-white p-4 sm:p-6 border-b border-[#E6E2DE]">
+          <div className="bg-white p-4 sm:p-6 border-b border-border">
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="px-2 py-0.5 bg-[#1A1918] text-white text-[10px] font-bold uppercase tracking-wider rounded-sm">
+              <span className="px-2 py-0.5 bg-ink text-white text-[10px] font-bold uppercase tracking-wider rounded-sm">
                 {isRtl
                   ? property.transactionType === TransactionType.FOR_RENT ? "للإيجار" : "للبيع"
                   : property.transactionType === TransactionType.FOR_RENT ? "FOR RENT" : "FOR SALE"}
               </span>
-              <span className="px-2 py-0.5 bg-[#BF9B30]/10 text-[#BF9B30] text-[10px] font-bold uppercase rounded-sm">
+              <span className="px-2 py-0.5 bg-gold/10 text-gold text-[10px] font-bold uppercase rounded-sm">
                 {property.propertyType}
               </span>
               {property.verificationStatus === VerificationStatus.APPROVED && (
@@ -674,17 +674,17 @@ export default function PropertyDetailView({
                   {isRtl ? "التوفر غير مؤكد مؤخراً" : "Availability Unconfirmed"}
                 </span>
               )}
-              <span className="text-[10px] font-mono text-[#6E6B66] ml-auto">
+              <span className="text-[10px] font-mono text-ink-muted ml-auto">
                 Ref: {property.listingId || `N-${property.id.substr(-5)}`}
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-serif font-medium text-[#1A1918]">
+            <h1 className="text-2xl sm:text-3xl font-serif font-medium text-ink">
               {isRtl ? property.titleAr || property.title : property.title}
             </h1>
 
-            <div className="flex items-center gap-1 text-xs text-[#6E6B66] mt-2">
-              <MapPin size={14} className="text-[#BF9B30]" />
+            <div className="flex items-center gap-1 text-xs text-ink-muted mt-2">
+              <MapPin size={14} className="text-gold" />
               <span>
                 {property.district}, {property.city}
               </span>
@@ -699,7 +699,7 @@ export default function PropertyDetailView({
             <div className="lg:col-span-8 space-y-6">
               
               {/* ADVANCED MEDIA GALLERY WITH TABS */}
-              <div className="bg-white rounded-xl border border-[#E6E2DE] overflow-hidden shadow-sm relative">
+              <div className="bg-white rounded-xl border border-border overflow-hidden shadow-sm relative">
                 
                 {/* Category Tags Overlay */}
                 <div className="absolute top-4 left-4 right-4 z-10 flex flex-wrap gap-1.5 justify-center sm:justify-start">
@@ -713,8 +713,8 @@ export default function PropertyDetailView({
                       }}
                       className={`px-3 py-1 text-[10px] font-bold rounded-full cursor-pointer transition-all ${
                         activeCategory === cat && !view360
-                          ? "bg-[#BF9B30] text-white shadow-md"
-                          : "bg-white/90 backdrop-blur-xs text-[#1A1918] border border-[#E6E2DE] hover:bg-white"
+                          ? "bg-gold text-white shadow-md"
+                          : "bg-white/90 backdrop-blur-xs text-ink border border-border hover:bg-white"
                       }`}
                     >
                       {isRtl
@@ -727,8 +727,8 @@ export default function PropertyDetailView({
                     onClick={() => setView360(true)}
                     className={`px-3 py-1 text-[10px] font-bold rounded-full cursor-pointer transition-all flex items-center gap-1 ${
                       view360
-                        ? "bg-[#BF9B30] text-white shadow-md"
-                        : "bg-white/90 backdrop-blur-xs text-[#1A1918] border border-[#E6E2DE] hover:bg-white"
+                        ? "bg-gold text-white shadow-md"
+                        : "bg-white/90 backdrop-blur-xs text-ink border border-border hover:bg-white"
                     }`}
                   >
                     <Compass size={11} className="animate-spin-slow" />
@@ -749,7 +749,7 @@ export default function PropertyDetailView({
                       />
                       <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-3">
                         <div className="p-3 bg-white/10 rounded-full border border-white/20 backdrop-blur-md">
-                          <Compass size={32} className="text-[#BF9B30] animate-pulse" />
+                          <Compass size={32} className="text-gold animate-pulse" />
                         </div>
                         <h4 className="text-sm font-bold tracking-wider">{isRtl ? "معاينة بانورامية تفاعلية للمشروع" : "Interactive VR Panorama Experience"}</h4>
                         <p className="text-xs text-slate-300 max-w-md">{isRtl ? "استخدم شريط التمرير أدناه لتدوير المنظور واستعراض تفاصيل الغرف بالكامل" : "Move the controller below to simulate rotation inside the high-end premises"}</p>
@@ -762,7 +762,7 @@ export default function PropertyDetailView({
                             max="200"
                             value={virtualPitch}
                             onChange={(e) => setVirtualPitch(Number(e.target.value))}
-                            className="w-full accent-[#BF9B30] cursor-ew-resize"
+                            className="w-full accent-gold cursor-ew-resize"
                           />
                           <div className="flex justify-between text-[10px] text-slate-400">
                             <span>{isRtl ? "يسار" : "Rotate Left"}</span>
@@ -784,13 +784,13 @@ export default function PropertyDetailView({
                     <>
                       <button
                         onClick={() => setActiveImageIndex((prev) => (prev === 0 ? currentImagesList.length - 1 : prev - 1))}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/85 text-[#1A1918] border border-[#E6E2DE] hover:bg-white cursor-pointer"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/85 text-ink border border-border hover:bg-white cursor-pointer"
                       >
                         <ChevronLeft size={16} />
                       </button>
                       <button
                         onClick={() => setActiveImageIndex((prev) => (prev === currentImagesList.length - 1 ? 0 : prev + 1))}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/85 text-[#1A1918] border border-[#E6E2DE] hover:bg-white cursor-pointer"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/85 text-ink border border-border hover:bg-white cursor-pointer"
                       >
                         <ChevronRight size={16} />
                       </button>
@@ -805,7 +805,7 @@ export default function PropertyDetailView({
 
                 {/* Media Thumbnail strip */}
                 {currentImagesList.length > 1 && (
-                  <div className="p-3 bg-[#FCFAF7] border-t border-[#E6E2DE] overflow-x-auto flex gap-2 scrollbar-none">
+                  <div className="p-3 bg-canvas border-t border-border overflow-x-auto flex gap-2 scrollbar-none">
                     {currentImagesList.map((img, idx) => (
                       <button
                         key={idx}
@@ -815,8 +815,8 @@ export default function PropertyDetailView({
                         }}
                         className={`w-16 h-12 rounded overflow-hidden border-2 shrink-0 cursor-pointer transition-all ${
                           activeImageIndex === idx && !view360
-                            ? "border-[#BF9B30] scale-102 shadow-sm"
-                            : "border-[#E6E2DE] opacity-75 hover:opacity-100"
+                            ? "border-gold scale-102 shadow-sm"
+                            : "border-border opacity-75 hover:opacity-100"
                         }`}
                       >
                         <img src={img} alt={`${isRtl ? "صورة" : "Photo"} ${idx + 1}`} loading="lazy" className="w-full h-full object-cover" />
@@ -827,17 +827,17 @@ export default function PropertyDetailView({
               </div>
 
               {/* DYNAMIC SMART MATCHING CARD */}
-              <div className="bg-white p-5 rounded-xl border border-[#BF9B30]/30 shadow-sm space-y-3 relative overflow-hidden">
-                <div className="absolute top-0 right-0 left-0 h-1 bg-[#BF9B30]"></div>
+              <div className="bg-white p-5 rounded-xl border border-gold/30 shadow-sm space-y-3 relative overflow-hidden">
+                <div className="absolute top-0 right-0 left-0 h-1 bg-gold"></div>
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-[#BF9B30]/10 rounded-lg text-[#BF9B30] shrink-0">
+                  <div className="p-2 bg-gold/10 rounded-lg text-gold shrink-0">
                     <Activity size={20} className="animate-pulse" />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="font-serif text-sm font-semibold text-[#1A1918]">
+                    <h3 className="font-serif text-sm font-semibold text-ink">
                       {isRtl ? "مؤشر الذكاء الاصطناعي لمطابقة الميزانية" : "AI Market Budget Analysis"}
                     </h3>
-                    <p className="text-xs text-[#6E6B66] leading-relaxed">
+                    <p className="text-xs text-ink-muted leading-relaxed">
                       {isRtl 
                         ? `هذا العقار يطابق الميزانية العامة للحي في ${property.district} بنسبة ٩٧٪. متوسط سعر القدم المربع في المنطقة هو ${(property.price / (property.area || 1) * 0.09).toFixed(1)} ريال قطري، مما يجعله استثماراً ممتازاً بقيمة عادلة.`
                         : `This property aligns with average pricing guidelines in ${property.district} at 97% affinity. The square meter rate is calculated at QAR ${(property.price / (property.area || 1)).toFixed(0)} / SQM, which sits strictly within the optimal standard.`}
@@ -848,86 +848,86 @@ export default function PropertyDetailView({
 
               {/* MAIN DETAILS GRID (BEDS, BATHS, SIZE) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-xl border border-[#E6E2DE] text-center space-y-1">
-                  <span className="text-[10px] font-bold text-[#6E6B66] tracking-wider uppercase block">
+                <div className="bg-white p-4 rounded-xl border border-border text-center space-y-1">
+                  <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
                     {isRtl ? "المساحة الكلية" : "TOTAL SIZE"}
                   </span>
-                  <strong className="text-lg text-[#1A1918] block">
+                  <strong className="text-lg text-ink block">
                     {getAreaDisplay(property.area)}
                   </strong>
                   <button
                     onClick={() => setDisplayUnit((prev) => (prev === "SQM" ? "SQFT" : "SQM"))}
-                    className="text-[10px] text-[#BF9B30] hover:underline font-bold"
+                    className="text-[10px] text-gold hover:underline font-bold"
                   >
                     {isRtl ? `التحويل لـ ${displayUnit === "SQM" ? "قدم مربع" : "متر مربع"}` : `Convert to ${displayUnit === "SQM" ? "SQFT" : "SQM"}`}
                   </button>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-[#E6E2DE] text-center space-y-1">
-                  <span className="text-[10px] font-bold text-[#6E6B66] tracking-wider uppercase block">
+                <div className="bg-white p-4 rounded-xl border border-border text-center space-y-1">
+                  <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
                     {isRtl ? "غرف النوم" : "BEDROOMS"}
                   </span>
-                  <strong className="text-lg text-[#1A1918] block">
+                  <strong className="text-lg text-ink block">
                     {property.bedrooms} {isRtl ? "غرف" : "Rooms"}
                   </strong>
-                  <span className="text-[10px] text-[#6E6B66]">
+                  <span className="text-[10px] text-ink-muted">
                     {property.maidRoom ? `+ ${isRtl ? "غرفة خادمة" : "Maid Room"}` : isRtl ? "لا توجد غرفة خادمة" : "Standard"}
                   </span>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-[#E6E2DE] text-center space-y-1">
-                  <span className="text-[10px] font-bold text-[#6E6B66] tracking-wider uppercase block">
+                <div className="bg-white p-4 rounded-xl border border-border text-center space-y-1">
+                  <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
                     {isRtl ? "الحمامات" : "BATHROOMS"}
                   </span>
-                  <strong className="text-lg text-[#1A1918] block">
+                  <strong className="text-lg text-ink block">
                     {property.bathrooms} {isRtl ? "حمامات" : "Baths"}
                   </strong>
-                  <span className="text-[10px] text-[#6E6B66]">
+                  <span className="text-[10px] text-ink-muted">
                     {isRtl ? `+ حمام ضيوف` : "Guest Toilets"}
                   </span>
                 </div>
 
-                <div className="bg-white p-4 rounded-xl border border-[#E6E2DE] text-center space-y-1">
-                  <span className="text-[10px] font-bold text-[#6E6B66] tracking-wider uppercase block">
+                <div className="bg-white p-4 rounded-xl border border-border text-center space-y-1">
+                  <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
                     {isRtl ? "حالة التأثيث" : "FURNISHED"}
                   </span>
-                  <strong className="text-lg text-[#1A1918] block">
+                  <strong className="text-lg text-ink block">
                     {property.furnished === "YES" ? (isRtl ? "مؤثث بالكامل" : "Fully Furnished") :
                      property.furnished === "NO" ? (isRtl ? "غير مؤثث" : "Unfurnished") : (isRtl ? "شبه مؤثث" : "Partly Furnished")}
                   </strong>
-                  <span className="text-[10px] text-[#6E6B66]">
+                  <span className="text-[10px] text-ink-muted">
                     {isRtl ? "متاح فورا" : "Move-in Ready"}
                   </span>
                 </div>
               </div>
 
               {/* OVERVIEW / DESCRIPTION */}
-              <div className="bg-white p-6 rounded-xl border border-[#E6E2DE] space-y-3">
-                <h3 className="font-serif text-lg font-medium text-[#1A1918] border-b border-[#F2EDE8] pb-2">
+              <div className="bg-white p-6 rounded-xl border border-border space-y-3">
+                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
                   {isRtl ? "الوصف التفصيلي للعقار" : "Executive Property Overview"}
                 </h3>
-                <p className="text-xs text-[#6E6B66] leading-relaxed whitespace-pre-line">
+                <p className="text-xs text-ink-muted leading-relaxed whitespace-pre-line">
                   {isRtl ? property.descriptionAr || property.description : property.description}
                 </p>
               </div>
 
               {/* DEEP SPECIFICATIONS (BASED ON PROPERTY TYPE) */}
-              <div className="bg-white p-6 rounded-xl border border-[#E6E2DE] space-y-4">
-                <h3 className="font-serif text-lg font-medium text-[#1A1918] border-b border-[#F2EDE8] pb-2">
+              <div className="bg-white p-6 rounded-xl border border-border space-y-4">
+                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
                   {isRtl ? "المواصفات الفنية المعتمدة" : "Professional Architectural Specs"}
                 </h3>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs text-[#6E6B66]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs text-ink-muted">
                   
                   {/* Common Rent/Sale specs */}
-                  <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                  <div className="flex justify-between py-1.5 border-b border-surface-2">
                     <span className="font-medium">{isRtl ? "معرف الإعلان في البوابة" : "Portal Reference ID"}</span>
-                    <span className="text-[#1A1918] font-mono font-bold">{property.listingId || `N-${property.id.substr(-5)}`}</span>
+                    <span className="text-ink font-mono font-bold">{property.listingId || `N-${property.id.substr(-5)}`}</span>
                   </div>
 
-                  <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                  <div className="flex justify-between py-1.5 border-b border-surface-2">
                     <span className="font-medium">{isRtl ? "الملكية" : "Ownership Type"}</span>
-                    <span className="text-[#1A1918] font-bold">
+                    <span className="text-ink font-bold">
                       {property.tenureType
                         ? property.tenureType === "FREEHOLD"
                           ? (isRtl ? "تملك حر" : "Freehold")
@@ -942,16 +942,16 @@ export default function PropertyDetailView({
 
                   {/* Qatar-specific specification fields */}
                   {property.completionYear !== undefined && (
-                    <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                    <div className="flex justify-between py-1.5 border-b border-surface-2">
                       <span className="font-medium">{isRtl ? "سنة الإنجاز" : "Completion Year"}</span>
-                      <span className="text-[#1A1918] font-bold">{property.completionYear}</span>
+                      <span className="text-ink font-bold">{property.completionYear}</span>
                     </div>
                   )}
 
                   {property.furnishingStatus && (
-                    <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                    <div className="flex justify-between py-1.5 border-b border-surface-2">
                       <span className="font-medium">{isRtl ? "حالة التأثيث التفصيلية" : "Furnishing Status"}</span>
-                      <span className="text-[#1A1918] font-bold">
+                      <span className="text-ink font-bold">
                         {property.furnishingStatus === "FULLY_FURNISHED"
                           ? (isRtl ? "مؤثث بالكامل" : "Fully Furnished")
                           : property.furnishingStatus === "SEMI_FURNISHED"
@@ -962,9 +962,9 @@ export default function PropertyDetailView({
                   )}
 
                   {property.metroStation && (
-                    <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                    <div className="flex justify-between py-1.5 border-b border-surface-2">
                       <span className="font-medium">{isRtl ? "أقرب محطة مترو" : "Nearest Metro Station"}</span>
-                      <span className="text-[#1A1918] font-bold">
+                      <span className="text-ink font-bold">
                         {property.metroStation}
                         {property.metroWalkingMinutes !== undefined
                           ? ` (${property.metroWalkingMinutes} ${isRtl ? "دقيقة مشي" : "min walk"})`
@@ -974,9 +974,9 @@ export default function PropertyDetailView({
                   )}
 
                   {property.utilitiesIncluded && (
-                    <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                    <div className="flex justify-between py-1.5 border-b border-surface-2">
                       <span className="font-medium">{isRtl ? "المرافق مشمولة" : "Utilities Included"}</span>
-                      <span className={`font-bold ${property.utilitiesIncluded === "YES" ? "text-emerald-600" : property.utilitiesIncluded === "PARTIAL" ? "text-[#BF9B30]" : "text-amber-600"}`}>
+                      <span className={`font-bold ${property.utilitiesIncluded === "YES" ? "text-emerald-600" : property.utilitiesIncluded === "PARTIAL" ? "text-gold" : "text-amber-600"}`}>
                         {property.utilitiesIncluded === "YES"
                           ? (isRtl ? "نعم" : "Yes")
                           : property.utilitiesIncluded === "PARTIAL"
@@ -987,9 +987,9 @@ export default function PropertyDetailView({
                   )}
 
                   {property.parkingType && (
-                    <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                    <div className="flex justify-between py-1.5 border-b border-surface-2">
                       <span className="font-medium">{isRtl ? "نوع مواقف السيارات" : "Parking Type"}</span>
-                      <span className="text-[#1A1918] font-bold">
+                      <span className="text-ink font-bold">
                         {property.parkingType === "COVERED"
                           ? (isRtl ? "مغطى" : "Covered")
                           : property.parkingType === "UNCOVERED"
@@ -1004,33 +1004,33 @@ export default function PropertyDetailView({
 
                   {isRent && (
                     <>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "مبلغ الوديعة / التأمين" : "Security Deposit Amount"}</span>
-                        <span className="text-[#1A1918] font-bold">
+                        <span className="text-ink font-bold">
                           {property.deposit ? `${property.deposit.toLocaleString()} ${currencySymbol}` : (isRtl ? "شهر واحد تأمين" : "1 Month Equivalent")}
                         </span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "رسوم الوكالة المعلنة" : "Listing Agency Fee"}</span>
-                        <span className="text-[#1A1918] font-bold">
+                        <span className="text-ink font-bold">
                           {property.commissions ? `${property.commissions.toLocaleString()} ${currencySymbol}` : (isRtl ? "نصف شهر" : "Half Month Rent")}
                         </span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "عدد الشيكات السنوية" : "Post-Dated Cheques Requirement"}</span>
-                        <span className="text-[#1A1918] font-bold">
+                        <span className="text-ink font-bold">
                           {property.cheques || "12 Cheques"}
                         </span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "فواتير كهرماء مشمولة؟" : "Electricity/Water Included (Kahramaa)"}</span>
                         <span className={`font-bold ${property.kahramaa ? "text-emerald-600" : "text-amber-600"}`}>
                           {property.kahramaa ? (isRtl ? "نعم، شاملة كلياً" : "Yes, Fully Covered") : (isRtl ? "لا، تدفع منفصلة" : "No, Paid Separately")}
                         </span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "التبريد (مشمول)؟" : "District Cooling (Chiller Included)"}</span>
-                        <span className={`font-bold ${property.cooling ? "text-emerald-600" : "text-[#BF9B30]"}`}>
+                        <span className={`font-bold ${property.cooling ? "text-emerald-600" : "text-gold"}`}>
                           {property.cooling ? (isRtl ? "مشمول بالكامل" : "Included") : (isRtl ? "يدفع بواسطة المستأجر" : "Excluding Qatar Cool")}
                         </span>
                       </div>
@@ -1038,25 +1038,25 @@ export default function PropertyDetailView({
                   )}
 
                   {/* Size specifics */}
-                  <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                  <div className="flex justify-between py-1.5 border-b border-surface-2">
                     <span className="font-medium">{isRtl ? "مساحة البناء" : "Built-up Area (BUA)"}</span>
-                    <span className="text-[#1A1918] font-bold">{getAreaDisplay(property.builtUpArea || property.area)}</span>
+                    <span className="text-ink font-bold">{getAreaDisplay(property.builtUpArea || property.area)}</span>
                   </div>
 
                   {/* APARTMENT / TOWNHOUSE SPECIFICS */}
                   {property.propertyType === PropertyType.APARTMENT && (
                     <>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "رقم الطابق" : "Floor Level"}</span>
-                        <span className="text-[#1A1918] font-bold">{property.floorNumber ? `${property.floorNumber} Floor` : (isRtl ? "طابق مرتفع" : "High Floor")}</span>
+                        <span className="text-ink font-bold">{property.floorNumber ? `${property.floorNumber} Floor` : (isRtl ? "طابق مرتفع" : "High Floor")}</span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "الإطلالة" : "Visual View Scenery"}</span>
-                        <span className="text-[#1A1918] font-bold">{property.viewType || (isRtl ? "إطلالة بانورامية على البحر" : "Sea & Skyline View")}</span>
+                        <span className="text-ink font-bold">{property.viewType || (isRtl ? "إطلالة بانورامية على البحر" : "Sea & Skyline View")}</span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "رسوم الخدمات السنوية" : "Service Maintenance Charges"}</span>
-                        <span className="text-[#1A1918] font-bold">{property.serviceCharges ? `${property.serviceCharges} QAR/Year` : (isRtl ? "مشمولة كلياً" : "Fully Covered")}</span>
+                        <span className="text-ink font-bold">{property.serviceCharges ? `${property.serviceCharges} QAR/Year` : (isRtl ? "مشمولة كلياً" : "Fully Covered")}</span>
                       </div>
                     </>
                   )}
@@ -1064,21 +1064,21 @@ export default function PropertyDetailView({
                   {/* VILLA SPECIFICS */}
                   {property.propertyType === PropertyType.VILLA && (
                     <>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "تصنيف الفيلا" : "Villa Structural Type"}</span>
-                        <span className="text-[#1A1918] font-bold">{property.villaType || (isRtl ? "فيلا مستقلة فاخرة" : "Standalone Residential Mansion")}</span>
+                        <span className="text-ink font-bold">{property.villaType || (isRtl ? "فيلا مستقلة فاخرة" : "Standalone Residential Mansion")}</span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "المجلس الخارجي" : "Majlis Outdoor Pavilion"}</span>
                         <span className="text-emerald-600 font-bold">{property.majlis ? (isRtl ? "متوفر" : "Available") : (isRtl ? "غير متوفر" : "N/A")}</span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "المطبخ الخارجي" : "Separate Catering Kitchen"}</span>
                         <span className="text-emerald-600 font-bold">{property.outdoorKitchen ? (isRtl ? "موجود" : "Equipped Outside") : (isRtl ? "داخلي فقط" : "N/A")}</span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "بركة سباحة خاصة" : "Private Heated Swimming Pool"}</span>
-                        <span className="text-[#BF9B30] font-bold">{property.privatePool ? (isRtl ? "موجودة" : "Private Pool") : (isRtl ? "لا توجد" : "N/A")}</span>
+                        <span className="text-gold font-bold">{property.privatePool ? (isRtl ? "موجودة" : "Private Pool") : (isRtl ? "لا توجد" : "N/A")}</span>
                       </div>
                     </>
                   )}
@@ -1086,17 +1086,17 @@ export default function PropertyDetailView({
                   {/* COMMERCIAL SPECIFICS */}
                   {(property.propertyType === PropertyType.OFFICE || property.propertyType === PropertyType.RETAIL || property.propertyType === PropertyType.SHOP || property.propertyType === PropertyType.WAREHOUSE) && (
                     <>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "درجة وتصنيف المكتب" : "Commercial Grade Class"}</span>
-                        <span className="text-[#1A1918] font-bold">{property.officeGrade || "Grade A (Prime Office Space)"}</span>
+                        <span className="text-ink font-bold">{property.officeGrade || "Grade A (Prime Office Space)"}</span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "حالة التشطيب" : "Commercial Fitting Status"}</span>
-                        <span className="text-[#1A1918] font-bold">{property.fittedStatus || "Fully Fitted & Handover Ready"}</span>
+                        <span className="text-ink font-bold">{property.fittedStatus || "Fully Fitted & Handover Ready"}</span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "الأنشطة المسموحة" : "Permitted License Activities"}</span>
-                        <span className="text-[#1A1918] font-bold">{property.commercialLicense || "Multi-Corporate Usage License"}</span>
+                        <span className="text-ink font-bold">{property.commercialLicense || "Multi-Corporate Usage License"}</span>
                       </div>
                     </>
                   )}
@@ -1104,13 +1104,13 @@ export default function PropertyDetailView({
                   {/* OFF-PLAN PAYMENT INFORMATION */}
                   {property.transactionType === TransactionType.OFF_PLAN && (
                     <>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "المطور الإنشائي" : "Structural Master Developer"}</span>
-                        <span className="text-[#BF9B30] font-bold">{property.developer || "Qatar Real Estate Development Group"}</span>
+                        <span className="text-gold font-bold">{property.developer || "Qatar Real Estate Development Group"}</span>
                       </div>
-                      <div className="flex justify-between py-1.5 border-b border-[#F2EDE8]">
+                      <div className="flex justify-between py-1.5 border-b border-surface-2">
                         <span className="font-medium">{isRtl ? "تاريخ تسليم المشروع" : "Expected Delivery Date"}</span>
-                        <span className="text-[#1A1918] font-bold">{property.completionDate || "Q4 2027 Handover"}</span>
+                        <span className="text-ink font-bold">{property.completionDate || "Q4 2027 Handover"}</span>
                       </div>
                     </>
                   )}
@@ -1118,23 +1118,23 @@ export default function PropertyDetailView({
 
                 {/* Off-plan payment schedule visual */}
                 {property.transactionType === TransactionType.OFF_PLAN && (
-                  <div className="p-4 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg space-y-3">
-                    <h4 className="font-serif text-xs font-bold text-[#1A1918] uppercase tracking-wider flex items-center gap-1.5">
-                      <DollarSign size={13} className="text-[#BF9B30]" />
+                  <div className="p-4 bg-canvas border border-border rounded-lg space-y-3">
+                    <h4 className="font-serif text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
+                      <DollarSign size={13} className="text-gold" />
                       <span>{isRtl ? "شروط خطة الدفع الإنشائية" : "Master Project Installment Plan"}</span>
                     </h4>
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="p-2 bg-white rounded border border-[#E6E2DE]">
-                        <span className="block text-[#6E6B66] text-[10px]">{isRtl ? "عند الحجز" : "Reservation Downpay"}</span>
-                        <strong className="text-[#1A1918] text-sm">10%</strong>
+                      <div className="p-2 bg-white rounded border border-border">
+                        <span className="block text-ink-muted text-[10px]">{isRtl ? "عند الحجز" : "Reservation Downpay"}</span>
+                        <strong className="text-ink text-sm">10%</strong>
                       </div>
-                      <div className="p-2 bg-white rounded border border-[#E6E2DE]">
-                        <span className="block text-[#6E6B66] text-[10px]">{isRtl ? "خلال الإنشاء" : "Construction Stage"}</span>
-                        <strong className="text-[#1A1918] text-sm">40%</strong>
+                      <div className="p-2 bg-white rounded border border-border">
+                        <span className="block text-ink-muted text-[10px]">{isRtl ? "خلال الإنشاء" : "Construction Stage"}</span>
+                        <strong className="text-ink text-sm">40%</strong>
                       </div>
-                      <div className="p-2 bg-white rounded border border-[#E6E2DE]">
-                        <span className="block text-[#6E6B66] text-[10px]">{isRtl ? "عند التسليم" : "Handover Installment"}</span>
-                        <strong className="text-[#1A1918] text-sm">50%</strong>
+                      <div className="p-2 bg-white rounded border border-border">
+                        <span className="block text-ink-muted text-[10px]">{isRtl ? "عند التسليم" : "Handover Installment"}</span>
+                        <strong className="text-ink text-sm">50%</strong>
                       </div>
                     </div>
                   </div>
@@ -1142,31 +1142,31 @@ export default function PropertyDetailView({
               </div>
 
               {/* LISTING AMENITIES */}
-              <div className="bg-white p-6 rounded-xl border border-[#E6E2DE] space-y-3">
-                <h3 className="font-serif text-lg font-medium text-[#1A1918] border-b border-[#F2EDE8] pb-2">
+              <div className="bg-white p-6 rounded-xl border border-border space-y-3">
+                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
                   {isRtl ? "المرافق والخدمات المتاحة" : "Exclusive Amenities & Conveniences"}
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {property.amenities.map((amenity, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs text-[#6E6B66]">
+                    <div key={idx} className="flex items-center gap-2 text-xs text-ink-muted">
                       <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
                         <CheckCircle size={12} fill="currentColor" className="text-white" />
                       </div>
-                      <span className="font-medium text-[#1A1918]">{amenity}</span>
+                      <span className="font-medium text-ink">{amenity}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* INTERACTIVE FLOOR PLAN GALLERY */}
-              <div className="bg-white p-6 rounded-xl border border-[#E6E2DE] space-y-4">
-                <div className="flex justify-between items-center border-b border-[#F2EDE8] pb-2">
-                  <h3 className="font-serif text-lg font-medium text-[#1A1918]">
+              <div className="bg-white p-6 rounded-xl border border-border space-y-4">
+                <div className="flex justify-between items-center border-b border-surface-2 pb-2">
+                  <h3 className="font-serif text-lg font-medium text-ink">
                     {isRtl ? "مخططات الطوابق الهندسية" : "Architectural Floor Plans"}
                   </h3>
                   <button
                     onClick={() => setIsFloorPlanFullscreen(true)}
-                    className="text-xs font-bold text-[#BF9B30] hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-gold hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Maximize2 size={13} />
                     <span>{isRtl ? "ملء الشاشة" : "Interactive View"}</span>
@@ -1180,8 +1180,8 @@ export default function PropertyDetailView({
                       onClick={() => setActiveFloorPlanIndex(idx)}
                       className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
                         activeFloorPlanIndex === idx
-                          ? "bg-[#1A1918] text-white border-[#1A1918]"
-                          : "bg-[#FCFAF7] text-[#6E6B66] border-[#E6E2DE] hover:bg-white"
+                          ? "bg-ink text-white border-ink"
+                          : "bg-canvas text-ink-muted border-border hover:bg-white"
                       }`}
                     >
                       {isRtl ? (idx === 0 ? "الطابق الأرضي" : "الطابق الأول") : planName}
@@ -1189,7 +1189,7 @@ export default function PropertyDetailView({
                   ))}
                 </div>
 
-                <div className="bg-stone-50 border border-[#E6E2DE] p-4 rounded-xl flex justify-center items-center relative overflow-hidden group">
+                <div className="bg-stone-50 border border-border p-4 rounded-xl flex justify-center items-center relative overflow-hidden group">
                   <img
                     src={categorizedImages.FLOOR_PLAN[activeFloorPlanIndex] || categorizedImages.FLOOR_PLAN[0]}
                     alt="Floor Plan"
@@ -1200,7 +1200,7 @@ export default function PropertyDetailView({
                   <a
                     href={categorizedImages.FLOOR_PLAN[activeFloorPlanIndex] || categorizedImages.FLOOR_PLAN[0]}
                     download={`floorplan-${property.listingId}.jpg`}
-                    className="absolute bottom-3 right-3 p-2 bg-white/90 backdrop-blur-xs border border-[#E6E2DE] text-[#6E6B66] hover:text-[#1A1918] rounded-full shadow-sm hover:scale-105 transition-all"
+                    className="absolute bottom-3 right-3 p-2 bg-white/90 backdrop-blur-xs border border-border text-ink-muted hover:text-ink rounded-full shadow-sm hover:scale-105 transition-all"
                     title={isRtl ? "تحميل المخطط" : "Download High-Res PDF Schema"}
                   >
                     <Download size={15} />
@@ -1209,13 +1209,13 @@ export default function PropertyDetailView({
               </div>
 
               {/* LOCATION INTELLIGENCE & MAPS */}
-              <div className="bg-white p-6 rounded-xl border border-[#E6E2DE] space-y-4">
-                <h3 className="font-serif text-lg font-medium text-[#1A1918] border-b border-[#F2EDE8] pb-2">
+              <div className="bg-white p-6 rounded-xl border border-border space-y-4">
+                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
                   {isRtl ? "تحليل الموقع والمرافق المجاورة" : "Location Intelligence & Transit Landmarks"}
                 </h3>
 
                 {/* Mock Privacy Map approximation */}
-                <div className="relative w-full h-56 bg-slate-100 rounded-xl border border-[#E6E2DE] overflow-hidden">
+                <div className="relative w-full h-56 bg-slate-100 rounded-xl border border-border overflow-hidden">
                   <div className="absolute inset-0 bg-[#E5E3DF] flex items-center justify-center">
                     {/* SVG map background mock */}
                     <svg className="w-full h-full opacity-65" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -1226,16 +1226,16 @@ export default function PropertyDetailView({
                     </svg>
 
                     {/* Approximation Circle */}
-                    <div className="absolute w-24 h-24 bg-[#BF9B30]/15 border-2 border-dashed border-[#BF9B30] rounded-full flex items-center justify-center animate-pulse">
-                      <MapPin size={24} className="text-[#BF9B30]" />
+                    <div className="absolute w-24 h-24 bg-gold/15 border-2 border-dashed border-gold rounded-full flex items-center justify-center animate-pulse">
+                      <MapPin size={24} className="text-gold" />
                     </div>
 
-                    <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 border border-[#E6E2DE] rounded text-[10px] text-[#6E6B66] font-bold flex items-center gap-1">
-                      <MapPin size={11} className="text-[#BF9B30]" />
+                    <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 border border-border rounded text-[10px] text-ink-muted font-bold flex items-center gap-1">
+                      <MapPin size={11} className="text-gold" />
                       <span>{property.district}, {property.city}</span>
                     </div>
 
-                    <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-xs p-2 border border-[#E6E2DE] rounded text-[9px] text-[#6E6B66] text-center font-medium flex items-center justify-center gap-1">
+                    <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-xs p-2 border border-border rounded text-[9px] text-ink-muted text-center font-medium flex items-center justify-center gap-1">
                       <AlertTriangle size={11} className="text-amber-600 shrink-0" />
                       <span>{isRtl ? "العنوان الدقيق مخفي لخصوصية البائع. الدائرة تمثل النطاق التقريبي للحي." : "Approximate area only to safeguard property owner's absolute privacy rights."}</span>
                     </div>
@@ -1246,19 +1246,19 @@ export default function PropertyDetailView({
                     own stored coordinates against a real Doha landmarks list, not the same
                     static three places shown on every listing regardless of location. */}
                 <div className="space-y-2 text-xs">
-                  <h4 className="font-bold text-[#1A1918] uppercase tracking-wider text-[10px]">{isRtl ? "مؤشر المسافات والمرافق الحيوية" : "Verified Commutes & Facilities"}</h4>
+                  <h4 className="font-bold text-ink uppercase tracking-wider text-[10px]">{isRtl ? "مؤشر المسافات والمرافق الحيوية" : "Verified Commutes & Facilities"}</h4>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {nearbyPlaces.map((place) => {
                       const NearbyIcon = NEARBY_TYPE_ICON[place.type];
                       return (
-                      <div key={place.name} className="p-3 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg">
-                        <span className="text-[10px] font-bold text-[#6E6B66] uppercase mb-1 flex items-center gap-1">
+                      <div key={place.name} className="p-3 bg-canvas border border-border rounded-lg">
+                        <span className="text-[10px] font-bold text-ink-muted uppercase mb-1 flex items-center gap-1">
                           <NearbyIcon size={11} />
                           <span>{isRtl ? NEARBY_TYPE_LABEL_AR[place.type] : NEARBY_TYPE_LABEL_EN[place.type]}</span>
                         </span>
-                        <p className="font-bold text-[#1A1918]">{isRtl ? place.nameAr : place.name}</p>
-                        <span className="text-[#6E6B66] text-[10px]">
+                        <p className="font-bold text-ink">{isRtl ? place.nameAr : place.name}</p>
+                        <span className="text-ink-muted text-[10px]">
                           {place.distanceKm < 1.2
                             ? (isRtl
                                 ? `${place.walkingMinutes} دقيقة سيراً (${Math.round(place.distanceKm * 1000)} متر)`
@@ -1275,45 +1275,45 @@ export default function PropertyDetailView({
               </div>
 
               {/* SAVED & PROPERTY HISTORY TREND */}
-              <div className="bg-white p-6 rounded-xl border border-[#E6E2DE] space-y-4">
-                <h3 className="font-serif text-lg font-medium text-[#1A1918] border-b border-[#F2EDE8] pb-2">
+              <div className="bg-white p-6 rounded-xl border border-border space-y-4">
+                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
                   {isRtl ? "الشفافية وسجل المعاملات المحدث" : "Listing Freshness & Transaction Logs"}
                 </h3>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center text-xs">
-                  <div className="p-2 border border-[#F2EDE8] rounded bg-[#FCFAF7]">
-                    <span className="text-[#6E6B66] block text-[10px]">{isRtl ? "تاريخ النشر الأولي" : "First Published"}</span>
-                    <strong className="text-[#1A1918]">2026-07-05</strong>
+                  <div className="p-2 border border-surface-2 rounded bg-canvas">
+                    <span className="text-ink-muted block text-[10px]">{isRtl ? "تاريخ النشر الأولي" : "First Published"}</span>
+                    <strong className="text-ink">2026-07-05</strong>
                   </div>
-                  <div className="p-2 border border-[#F2EDE8] rounded bg-[#FCFAF7]">
-                    <span className="text-[#6E6B66] block text-[10px]">{isRtl ? "آخر تحديث للبيانات" : "Last Catalogued"}</span>
-                    <strong className="text-[#1A1918]">{property.updatedDate ? property.updatedDate.split("T")[0] : "Today"}</strong>
+                  <div className="p-2 border border-surface-2 rounded bg-canvas">
+                    <span className="text-ink-muted block text-[10px]">{isRtl ? "آخر تحديث للبيانات" : "Last Catalogued"}</span>
+                    <strong className="text-ink">{property.updatedDate ? property.updatedDate.split("T")[0] : "Today"}</strong>
                   </div>
-                  <div className="p-2 border border-[#F2EDE8] rounded bg-[#FCFAF7]">
-                    <span className="text-[#6E6B66] block text-[10px]">{isRtl ? "معدل الحفظ والاهتمام" : "Bookmark Inquiries"}</span>
-                    <strong className="text-[#1A1918]">48 {isRtl ? "مستخدم" : "Users"}</strong>
+                  <div className="p-2 border border-surface-2 rounded bg-canvas">
+                    <span className="text-ink-muted block text-[10px]">{isRtl ? "معدل الحفظ والاهتمام" : "Bookmark Inquiries"}</span>
+                    <strong className="text-ink">48 {isRtl ? "مستخدم" : "Users"}</strong>
                   </div>
-                  <div className="p-2 border border-[#F2EDE8] rounded bg-[#FCFAF7]">
-                    <span className="text-[#6E6B66] block text-[10px]">{isRtl ? "مستوى اكتمال البيانات" : "Quality Completeness"}</span>
+                  <div className="p-2 border border-surface-2 rounded bg-canvas">
+                    <span className="text-ink-muted block text-[10px]">{isRtl ? "مستوى اكتمال البيانات" : "Quality Completeness"}</span>
                     <strong className="text-emerald-600 font-bold">{property.qualityScore || 95}%</strong>
                   </div>
                 </div>
 
                 {/* Price change timeline */}
                 <div className="space-y-2">
-                  <h4 className="font-bold text-[#1A1918] uppercase tracking-wider text-[10px]">{isRtl ? "سجل التغيرات السعرية" : "Price History Audits"}</h4>
-                  <div className="relative border-l-2 border-[#E6E2DE] pl-4 ml-2 space-y-3">
+                  <h4 className="font-bold text-ink uppercase tracking-wider text-[10px]">{isRtl ? "سجل التغيرات السعرية" : "Price History Audits"}</h4>
+                  <div className="relative border-l-2 border-border pl-4 ml-2 space-y-3">
                     <div className="relative">
-                      <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-[#BF9B30]"></div>
-                      <span className="text-[10px] font-mono text-[#6E6B66] block">2026-07-20</span>
-                      <span className="text-xs font-bold text-[#1A1918]">{formatPrice(property.price, isRtl)} </span>
+                      <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-gold"></div>
+                      <span className="text-[10px] font-mono text-ink-muted block">2026-07-20</span>
+                      <span className="text-xs font-bold text-ink">{formatPrice(property.price, isRtl)} </span>
                       <span className="text-[10px] text-emerald-600">({isRtl ? "السعر الحالي المحدث" : "Latest Certified Price"})</span>
                     </div>
                     {property.priceHistory && property.priceHistory.length > 1 && property.priceHistory.slice(0, -1).reverse().map((hist, idx) => (
                       <div className="relative" key={idx}>
-                        <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-[#6E6B66]"></div>
-                        <span className="text-[10px] font-mono text-[#6E6B66] block">{hist.date}</span>
-                        <span className="text-xs text-[#6E6B66] line-through">{formatPrice(hist.price, isRtl)}</span>
+                        <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-ink-muted"></div>
+                        <span className="text-[10px] font-mono text-ink-muted block">{hist.date}</span>
+                        <span className="text-xs text-ink-muted line-through">{formatPrice(hist.price, isRtl)}</span>
                       </div>
                     ))}
                   </div>
@@ -1321,9 +1321,9 @@ export default function PropertyDetailView({
               </div>
 
               {/* INVESTMENT YIELD AND MORTGAGE TOOLS */}
-              <div className="bg-white p-6 rounded-xl border border-[#E6E2DE] space-y-6">
-                <h3 className="font-serif text-lg font-medium text-[#1A1918] border-b border-[#F2EDE8] pb-2 flex items-center gap-2">
-                  <Calculator size={18} className="text-[#BF9B30]" />
+              <div className="bg-white p-6 rounded-xl border border-border space-y-6">
+                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2 flex items-center gap-2">
+                  <Calculator size={18} className="text-gold" />
                   <span>{isRtl ? "أدوات التخطيط المالي والاستثماري" : "Interactive Financial Planning Suite"}</span>
                 </h3>
 
@@ -1331,16 +1331,16 @@ export default function PropertyDetailView({
 
                   {/* Mortgage Calculator */}
                   <div className="space-y-4">
-                    <h4 className="font-serif text-sm font-bold text-[#1A1918] flex items-center gap-1.5">
+                    <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
                       <DollarSign size={15} />
                       <span>{isRtl ? "حاسبة التمويل العقاري" : "Hypothecary Mortgage Estimator"}</span>
                     </h4>
 
-                    <div className="space-y-3 text-xs text-[#6E6B66]">
+                    <div className="space-y-3 text-xs text-ink-muted">
                       <div className="space-y-1">
                         <div className="flex justify-between">
                           <span>{isRtl ? "الدفعة الأولى (%)" : "Downpayment (%)"}</span>
-                          <span className="font-bold text-[#1A1918]">{downpaymentPercent}% ({formatPrice((property.price * downpaymentPercent) / 100, isRtl)})</span>
+                          <span className="font-bold text-ink">{downpaymentPercent}% ({formatPrice((property.price * downpaymentPercent) / 100, isRtl)})</span>
                         </div>
                         <input
                           type="range"
@@ -1348,14 +1348,14 @@ export default function PropertyDetailView({
                           max="80"
                           value={downpaymentPercent}
                           onChange={(e) => setDownpaymentPercent(Number(e.target.value))}
-                          className="w-full accent-[#BF9B30]"
+                          className="w-full accent-gold"
                         />
                       </div>
 
                       <div className="space-y-1">
                         <div className="flex justify-between">
                           <span>{isRtl ? "معدل الفائدة السنوية (%)" : "Annual Interest Rate (%)"}</span>
-                          <span className="font-bold text-[#1A1918]">{interestRate}%</span>
+                          <span className="font-bold text-ink">{interestRate}%</span>
                         </div>
                         <input
                           type="range"
@@ -1364,14 +1364,14 @@ export default function PropertyDetailView({
                           step="0.25"
                           value={interestRate}
                           onChange={(e) => setInterestRate(Number(e.target.value))}
-                          className="w-full accent-[#BF9B30]"
+                          className="w-full accent-gold"
                         />
                       </div>
 
                       <div className="space-y-1">
                         <div className="flex justify-between">
                           <span>{isRtl ? "فترة التمويل (سنة)" : "Loan Tenure (Years)"}</span>
-                          <span className="font-bold text-[#1A1918]">{loanTenure} {isRtl ? "سنة" : "Years"}</span>
+                          <span className="font-bold text-ink">{loanTenure} {isRtl ? "سنة" : "Years"}</span>
                         </div>
                         <input
                           type="range"
@@ -1379,14 +1379,14 @@ export default function PropertyDetailView({
                           max="30"
                           value={loanTenure}
                           onChange={(e) => setLoanTenure(Number(e.target.value))}
-                          className="w-full accent-[#BF9B30]"
+                          className="w-full accent-gold"
                         />
                       </div>
 
-                      <div className="p-3 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg text-center mt-2">
-                        <span className="text-[10px] text-[#6E6B66] uppercase block mb-1">{isRtl ? "القسط الشهري المقدر" : "ESTIMATED MONTHLY INSTALLMENT"}</span>
-                        <strong className="text-xl text-[#BF9B30]">{Math.round(estimatedMonthlyMortgage).toLocaleString()} QAR / {isRtl ? "شهر" : "Mo"}</strong>
-                        <p className="text-[9px] text-[#6E6B66] mt-1">{isRtl ? "هذا الحساب مبدئي ويخضع لموافقة البنك" : "Calculated purely based on central banking baseline guidelines"}</p>
+                      <div className="p-3 bg-canvas border border-border rounded-lg text-center mt-2">
+                        <span className="text-[10px] text-ink-muted uppercase block mb-1">{isRtl ? "القسط الشهري المقدر" : "ESTIMATED MONTHLY INSTALLMENT"}</span>
+                        <strong className="text-xl text-gold">{Math.round(estimatedMonthlyMortgage).toLocaleString()} QAR / {isRtl ? "شهر" : "Mo"}</strong>
+                        <p className="text-[9px] text-ink-muted mt-1">{isRtl ? "هذا الحساب مبدئي ويخضع لموافقة البنك" : "Calculated purely based on central banking baseline guidelines"}</p>
                       </div>
                     </div>
                   </div>
@@ -1394,7 +1394,7 @@ export default function PropertyDetailView({
               </div>
 
               {/* REPORT PROPERTY BUTTON */}
-              <div className="flex justify-between items-center py-4 text-xs text-[#6E6B66]">
+              <div className="flex justify-between items-center py-4 text-xs text-ink-muted">
                 <span>{isRtl ? "هل لاحظت بيانات خاطئة أو احتيالية؟" : "Spot incorrect parameters or misleading details?"}</span>
                 <button
                   onClick={() => setReportModalOpen(true)}
@@ -1407,8 +1407,8 @@ export default function PropertyDetailView({
 
               {/* SIMILAR LISTINGS SECTION */}
               {finalSimilarListings.length > 0 && (
-                <div className="pt-6 border-t border-[#E6E2DE] space-y-4">
-                  <h4 className="font-serif text-base font-bold text-[#1A1918]">
+                <div className="pt-6 border-t border-border space-y-4">
+                  <h4 className="font-serif text-base font-bold text-ink">
                     {isRtl ? "عقارات مشابهة قد تهمك" : "Similar Properties You Might Interest"}
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1431,7 +1431,7 @@ export default function PropertyDetailView({
                               }
                             }
                           }}
-                          className="bg-white rounded-xl border border-[#E6E2DE] hover:border-[#BF9B30] overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col h-full"
+                          className="bg-white rounded-xl border border-border hover:border-gold overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col h-full"
                         >
                           <div className="relative h-28 overflow-hidden bg-stone-100">
                             <img
@@ -1440,7 +1440,7 @@ export default function PropertyDetailView({
                               referrerPolicy="no-referrer"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
-                            <div className="absolute top-2 right-2 bg-[#1A1918]/80 backdrop-blur-xs px-2 py-0.5 rounded text-[8px] text-white font-bold tracking-wider uppercase">
+                            <div className="absolute top-2 right-2 bg-ink/80 backdrop-blur-xs px-2 py-0.5 rounded text-[8px] text-white font-bold tracking-wider uppercase">
                               {isRtl
                                 ? sim.propertyType === PropertyType.APARTMENT ? "شقة" : sim.propertyType === PropertyType.VILLA ? "فيلا" : "مكتب تجاري"
                                 : sim.propertyType
@@ -1450,20 +1450,20 @@ export default function PropertyDetailView({
 
                           <div className="p-3 flex-grow flex flex-col justify-between space-y-2">
                             <div>
-                              <strong className="text-xs text-[#BF9B30] font-bold block">
+                              <strong className="text-xs text-gold font-bold block">
                                 {formatPrice(sim.price, isRtl)}
-                                {isSimRent && <span className="text-[10px] text-[#6E6B66] font-normal"> / {sim.rentalPeriod || "YR"}</span>}
+                                {isSimRent && <span className="text-[10px] text-ink-muted font-normal"> / {sim.rentalPeriod || "YR"}</span>}
                               </strong>
-                              <h5 className="font-bold text-[11px] text-[#1A1918] line-clamp-1 group-hover:text-[#BF9B30] transition-colors mt-0.5">
+                              <h5 className="font-bold text-[11px] text-ink line-clamp-1 group-hover:text-gold transition-colors mt-0.5">
                                 {isRtl ? sim.titleAr || sim.title : sim.title}
                               </h5>
-                              <p className="text-[9px] text-[#6E6B66] line-clamp-1 flex items-center gap-1 mt-1">
-                                <span className="w-1.5 h-1.5 bg-[#BF9B30] rounded-full"></span>
+                              <p className="text-[9px] text-ink-muted line-clamp-1 flex items-center gap-1 mt-1">
+                                <span className="w-1.5 h-1.5 bg-gold rounded-full"></span>
                                 {sim.district}, {sim.city}
                               </p>
                             </div>
 
-                            <div className="flex justify-between items-center text-[10px] text-[#6E6B66] border-t border-[#F2EDE8] pt-2 mt-1">
+                            <div className="flex justify-between items-center text-[10px] text-ink-muted border-t border-surface-2 pt-2 mt-1">
                               <span>{sim.bedrooms} {isRtl ? "غرف" : "Beds"}</span>
                               <span>•</span>
                               <span>{sim.bathrooms} {isRtl ? "حمامات" : "Baths"}</span>
@@ -1485,12 +1485,12 @@ export default function PropertyDetailView({
               <div className="lg:sticky lg:top-4 space-y-4">
 
                 {/* PRICE HERO CARD (desktop) - previously only visible in the mobile sticky bar */}
-                <div className="hidden lg:block bg-[#1A1918] rounded-xl border border-[#33302a] shadow-sm p-5 space-y-1">
+                <div className="hidden lg:block bg-ink rounded-xl border border-chrome-hover shadow-sm p-5 space-y-1">
                   <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">
                     {isRtl ? "السعر الكلي المقدر" : "Asking Price"}
                   </span>
                   <div className="flex items-baseline gap-1.5">
-                    <strong className="font-serif text-3xl font-semibold text-[#BF9B30]">
+                    <strong className="font-serif text-3xl font-semibold text-gold">
                       {propertyPrice.toLocaleString()} {currencySymbol}
                     </strong>
                     {isRent && (
@@ -1504,16 +1504,16 @@ export default function PropertyDetailView({
                   )}
                   {/* Public trust signal: honest freshness indicator, computed from
                       lastConfirmedAvailableDate rather than fabricated. */}
-                  <div className={`flex items-center gap-1 pt-2 mt-1 border-t border-[#33302a] text-[10px] ${isAvailabilityUnconfirmed ? "text-amber-400" : "text-gray-400"}`}>
+                  <div className={`flex items-center gap-1 pt-2 mt-1 border-t border-chrome-hover text-[10px] ${isAvailabilityUnconfirmed ? "text-amber-400" : "text-gray-400"}`}>
                     <Clock size={11} />
                     <span>{availabilityConfirmedText}</span>
                   </div>
                 </div>
 
                 {/* REPRESENTATIVE AGENCY CARD */}
-                <div className="bg-white p-5 rounded-xl border border-[#E6E2DE] shadow-sm space-y-4">
+                <div className="bg-white p-5 rounded-xl border border-border shadow-sm space-y-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-50 border border-[#E6E2DE]">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-50 border border-border">
                       <img
                         src={agentInfo?.agentPhotoUrl || "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&h=150&q=80"}
                         alt="Agent"
@@ -1521,7 +1521,7 @@ export default function PropertyDetailView({
                       />
                     </div>
                     <div>
-                      <h4 className="font-serif text-sm font-semibold text-[#1A1918]">
+                      <h4 className="font-serif text-sm font-semibold text-ink">
                         {agentInfo?.agentName || agentInfo?.orgName || (isRtl ? "فريق نيرو فايندر" : "Nerou Finder Team")}
                       </h4>
                       {agentInfo?.isVerifiedAgent && (
@@ -1533,7 +1533,7 @@ export default function PropertyDetailView({
                     </div>
                   </div>
 
-                  <div className="space-y-1 text-xs text-[#6E6B66]">
+                  <div className="space-y-1 text-xs text-ink-muted">
                     <p>💼 <strong>{agentInfo?.orgName || "Nerou Finder Partner Network"}</strong></p>
                     <p>🌐 {isRtl ? "يتحدث: العربية، الإنجليزية" : "Languages: Arabic, English"}</p>
                   </div>
@@ -1548,7 +1548,7 @@ export default function PropertyDetailView({
                     </button>
                     <a
                       href={`tel:+${agentInfo?.phone || "97433334444"}`}
-                      className="px-3 py-2 bg-[#1A1918] hover:bg-[#BF9B30] text-white rounded-lg font-bold flex items-center justify-center gap-1 transition-colors"
+                      className="px-3 py-2 bg-ink hover:bg-gold text-white rounded-lg font-bold flex items-center justify-center gap-1 transition-colors"
                     >
                       <Phone size={14} />
                       <span>{isRtl ? "اتصال" : "Call"}</span>
@@ -1558,17 +1558,17 @@ export default function PropertyDetailView({
                   {onViewAgentProfile && (agentInfo?.hasAssignedAgent || agentInfo?.orgName) && (
                     <button
                       onClick={onViewAgentProfile}
-                      className="w-full px-3 py-2 bg-white hover:bg-[#BF9B30]/10 border border-[#E6E2DE] hover:border-[#BF9B30] text-[#1A1918] rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      className="w-full px-3 py-2 bg-white hover:bg-gold/10 border border-border hover:border-gold text-ink rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <Award size={13} className="text-[#BF9B30]" />
+                      <Award size={13} className="text-gold" />
                       <span>{isRtl ? "عرض الملف الشخصي والتقييمات" : "View Full Profile & Reviews"}</span>
                     </button>
                   )}
                 </div>
 
                 {/* SCHEDULE VIEWING INTERACTIVE FORM */}
-                <div className="bg-white p-5 rounded-xl border border-[#E6E2DE] shadow-sm space-y-4">
-                  <h3 className="font-serif text-sm font-semibold text-[#1A1918] border-b border-[#F2EDE8] pb-2">
+                <div className="bg-white p-5 rounded-xl border border-border shadow-sm space-y-4">
+                  <h3 className="font-serif text-sm font-semibold text-ink border-b border-surface-2 pb-2">
                     {isRtl ? "جدولة موعد للمعاينة الفورية" : "Schedule a Private Viewing"}
                   </h3>
 
@@ -1586,19 +1586,19 @@ export default function PropertyDetailView({
                         </div>
                       )}
                       <div className="space-y-1">
-                        <label className="text-[#6E6B66] font-medium">{isRtl ? "الاسم الكريم" : "Your Name"}</label>
+                        <label className="text-ink-muted font-medium">{isRtl ? "الاسم الكريم" : "Your Name"}</label>
                         <input
                           type="text"
                           required
                           value={bookingName}
                           onChange={(e) => setBookingName(e.target.value)}
                           placeholder="e.g. Jassem Al-Thani"
-                          className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg focus:outline-none focus:border-[#BF9B30] text-base md:text-xs"
+                          className="w-full px-3 py-2 bg-canvas border border-border rounded-lg focus:outline-none focus:border-gold text-base md:text-xs"
                         />
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[#6E6B66] font-medium">{isRtl ? "رقم الجوال (مع رمز البلد)" : "Contact Number"}</label>
+                        <label className="text-ink-muted font-medium">{isRtl ? "رقم الجوال (مع رمز البلد)" : "Contact Number"}</label>
                         <input
                           type="tel"
                           inputMode="tel"
@@ -1606,27 +1606,27 @@ export default function PropertyDetailView({
                           value={bookingPhone}
                           onChange={(e) => setBookingPhone(e.target.value)}
                           placeholder="+974 5555 6666"
-                          className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg focus:outline-none focus:border-[#BF9B30] text-base md:text-xs"
+                          className="w-full px-3 py-2 bg-canvas border border-border rounded-lg focus:outline-none focus:border-gold text-base md:text-xs"
                         />
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[#6E6B66] font-medium">{isRtl ? "التاريخ المفضل" : "Preferred Date"}</label>
+                        <label className="text-ink-muted font-medium">{isRtl ? "التاريخ المفضل" : "Preferred Date"}</label>
                         <input
                           type="date"
                           value={bookingDate}
                           onChange={(e) => setBookingDate(e.target.value)}
-                          className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg text-base md:text-xs"
+                          className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-base md:text-xs"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <label className="text-[#6E6B66] font-medium">{isRtl ? "الفترة المفضلة" : "Slot"}</label>
+                          <label className="text-ink-muted font-medium">{isRtl ? "الفترة المفضلة" : "Slot"}</label>
                           <select
                             value={bookingTime}
                             onChange={(e) => setBookingTime(e.target.value)}
-                            className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg text-base md:text-xs"
+                            className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-base md:text-xs"
                           >
                             <option value="MORNING">AM (09:00 - 12:00)</option>
                             <option value="AFTERNOON">PM (12:00 - 16:00)</option>
@@ -1636,7 +1636,7 @@ export default function PropertyDetailView({
                         <div className="flex items-end">
                           <button
                             type="submit"
-                            className="w-full py-2 bg-[#1A1918] hover:bg-[#BF9B30] text-white rounded-lg font-bold transition-colors cursor-pointer"
+                            className="w-full py-2 bg-ink hover:bg-gold text-white rounded-lg font-bold transition-colors cursor-pointer"
                           >
                             {isRtl ? "إرسال حجز" : "Book Now"}
                           </button>
@@ -1653,12 +1653,12 @@ export default function PropertyDetailView({
         </div>
 
         {/* MOBILE STICKY CONVERSION BAR (FOOTER) */}
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-[#E6E2DE] p-3 flex items-center justify-between lg:hidden shadow-lg shrink-0">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-border p-3 flex items-center justify-between lg:hidden shadow-lg shrink-0">
           <div className="space-y-0.5">
-            <span className="text-[10px] text-[#6E6B66] font-medium block">{isRtl ? "السعر الكلي المقدر" : "ASKING PRICE"}</span>
-            <strong className="text-[#BF9B30] text-lg font-bold">
+            <span className="text-[10px] text-ink-muted font-medium block">{isRtl ? "السعر الكلي المقدر" : "ASKING PRICE"}</span>
+            <strong className="text-gold text-lg font-bold">
               {propertyPrice.toLocaleString()} {currencySymbol}
-              {isRent && <span className="text-xs text-[#6E6B66]"> / {property.rentalPeriod || "YR"}</span>}
+              {isRent && <span className="text-xs text-ink-muted"> / {property.rentalPeriod || "YR"}</span>}
             </strong>
           </div>
 
@@ -1671,7 +1671,7 @@ export default function PropertyDetailView({
             </button>
             <a
               href={`tel:+${agentInfo?.phone || "97433334444"}`}
-              className="px-4 py-2.5 bg-[#1A1918] text-white font-bold rounded-lg hover:bg-[#BF9B30] flex items-center gap-1"
+              className="px-4 py-2.5 bg-ink text-white font-bold rounded-lg hover:bg-gold flex items-center gap-1"
             >
               <Phone size={14} />
               <span>{isRtl ? "اتصال" : "Call Agent"}</span>
@@ -1682,8 +1682,8 @@ export default function PropertyDetailView({
         {/* REPORT SUBMIT MODAL DIALOG */}
         {reportModalOpen && (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 flex justify-center items-center p-4">
-            <div className="bg-white rounded-xl border border-[#E6E2DE] shadow-2xl p-5 w-full max-w-md space-y-4 relative">
-              <h4 className="font-serif text-lg font-bold text-[#1A1918] flex items-center gap-1.5">
+            <div className="bg-white rounded-xl border border-border shadow-2xl p-5 w-full max-w-md space-y-4 relative">
+              <h4 className="font-serif text-lg font-bold text-ink flex items-center gap-1.5">
                 <AlertTriangle className="text-red-600" size={18} />
                 <span>{isRtl ? "تقديم تقرير مخالفة عقارية" : "Report Misrepresentation Audit"}</span>
               </h4>
@@ -1702,12 +1702,12 @@ export default function PropertyDetailView({
                     </div>
                   )}
                   <div className="space-y-1">
-                    <label className="text-[#6E6B66] font-medium">{isRtl ? "سبب الإبلاغ" : "Reporting Reason"}</label>
+                    <label className="text-ink-muted font-medium">{isRtl ? "سبب الإبلاغ" : "Reporting Reason"}</label>
                     <select
                       required
                       value={reportReason}
                       onChange={(e) => setReportReason(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg focus:outline-none text-base md:text-xs"
+                      className="w-full px-3 py-2 bg-canvas border border-border rounded-lg focus:outline-none text-base md:text-xs"
                     >
                       <option value="">-- {isRtl ? "اختر السبب" : "Select violation type"} --</option>
                       <option value="fake_listing">{isRtl ? "عقار وهمي أو تم بيعه بالفعل" : "Fake or Sold / Unavailable listing"}</option>
@@ -1718,14 +1718,14 @@ export default function PropertyDetailView({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[#6E6B66] font-medium">{isRtl ? "مزيد من التفاصيل" : "Detailed Notes"}</label>
+                    <label className="text-ink-muted font-medium">{isRtl ? "مزيد من التفاصيل" : "Detailed Notes"}</label>
                     <textarea
                       rows={3}
                       required
                       value={reportDetails}
                       onChange={(e) => setReportDetails(e.target.value)}
                       placeholder="Specify what details are wrong..."
-                      className="w-full px-3 py-2 bg-[#FCFAF7] border border-[#E6E2DE] rounded-lg text-base md:text-xs"
+                      className="w-full px-3 py-2 bg-canvas border border-border rounded-lg text-base md:text-xs"
                     />
                   </div>
 
@@ -1733,7 +1733,7 @@ export default function PropertyDetailView({
                     <button
                       type="button"
                       onClick={() => setReportModalOpen(false)}
-                      className="px-4 py-2 border border-[#E6E2DE] text-[#6E6B66] rounded-lg"
+                      className="px-4 py-2 border border-border text-ink-muted rounded-lg"
                     >
                       Cancel
                     </button>

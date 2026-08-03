@@ -39,11 +39,11 @@ export default function PropertyCompareView({
   if (properties.length === 0) {
     return (
       <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-center items-center p-4">
-        <div className="bg-white rounded-xl border border-[#E6E2DE] p-8 max-w-sm text-center space-y-4">
-          <p className="text-sm text-[#6E6B66]">
+        <div className="bg-white rounded-xl border border-border p-8 max-w-sm text-center space-y-4">
+          <p className="text-sm text-ink-muted">
             {isRtl ? "لم تختر أي عقارات للمقارنة بعد." : "No properties selected for comparison yet."}
           </p>
-          <button onClick={onClose} className="px-4 py-2 bg-[#1A1918] text-white rounded text-xs">
+          <button onClick={onClose} className="px-4 py-2 bg-ink text-white rounded text-xs">
             {isRtl ? "إغلاق" : "Close"}
           </button>
         </div>
@@ -56,15 +56,15 @@ export default function PropertyCompareView({
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-center items-center p-4"
       dir={isRtl ? "rtl" : "ltr"}
     >
-      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden border border-[#E6E2DE] animate-in fade-in duration-300 max-h-[90vh] flex flex-col">
+      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden border border-border animate-in fade-in duration-300 max-h-[90vh] flex flex-col">
         
         {/* HEADER */}
-        <div className="p-4 bg-[#FCFAF7] border-b border-[#E6E2DE] flex justify-between items-center shrink-0">
+        <div className="p-4 bg-canvas border-b border-border flex justify-between items-center shrink-0">
           <div>
-            <h3 className="font-serif text-lg font-medium text-[#1A1918]">
+            <h3 className="font-serif text-lg font-medium text-ink">
               {isRtl ? "مقارنة العقارات جنباً إلى جنب" : "Side-by-Side Property Comparison"}
             </h3>
-            <p className="text-[10px] text-[#6E6B66] mt-0.5">
+            <p className="text-[10px] text-ink-muted mt-0.5">
               {isRtl ? `مقارنة ${properties.length} عقارات لتسهيل قرارك الاستثماري` : `Compare up to 4 listings to find your optimal Qatar choice`}
             </p>
           </div>
@@ -72,14 +72,14 @@ export default function PropertyCompareView({
           <div className="flex items-center gap-4">
             <button
               onClick={() => setDisplayUnit((prev) => (prev === "SQM" ? "SQFT" : "SQM"))}
-              className="text-xs font-bold text-[#BF9B30] hover:underline flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-gold hover:underline flex items-center gap-1 cursor-pointer"
             >
               <RefreshCw size={12} />
               <span>{isRtl ? "تغيير وحدة المساحة" : `Show in ${displayUnit === "SQM" ? "SQFT" : "SQM"}`}</span>
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-full border border-[#E6E2DE] hover:bg-stone-100 cursor-pointer text-[#6E6B66]"
+              className="p-2 rounded-full border border-border hover:bg-stone-100 cursor-pointer text-ink-muted"
             >
               <X size={16} />
             </button>
@@ -87,7 +87,7 @@ export default function PropertyCompareView({
         </div>
 
         {slotCount > 1 && (
-          <p className="md:hidden text-[10px] text-[#6E6B66] text-center py-1.5 bg-[#FCFAF7] border-b border-[#E6E2DE] shrink-0">
+          <p className="md:hidden text-[10px] text-ink-muted text-center py-1.5 bg-canvas border-b border-border shrink-0">
             {isRtl ? "مرر أفقياً لعرض المزيد ←" : "→ Swipe to see more"}
           </p>
         )}
@@ -95,7 +95,7 @@ export default function PropertyCompareView({
         {/* COMPRESSION GRID TABLE SCROLLABLE BODY */}
         <div className="overflow-auto flex-1 p-4 md:p-6">
           <div
-            className="grid border border-[#E6E2DE] rounded-xl overflow-hidden bg-white text-xs divide-x divide-y divide-[#E6E2DE] [grid-auto-rows:minmax(0,1fr)]"
+            className="grid border border-border rounded-xl overflow-hidden bg-white text-xs divide-x divide-y divide-border [grid-auto-rows:minmax(0,1fr)]"
             style={{ gridTemplateColumns, minWidth: `${140 + slotCount * 150}px` }}
           >
 
@@ -120,10 +120,10 @@ export default function PropertyCompareView({
                         <div className="aspect-video rounded overflow-hidden bg-gray-100">
                           <img src={prop.images[0]} alt={prop.title} className="w-full h-full object-cover" />
                         </div>
-                        <h4 className="font-bold text-[#1A1918] line-clamp-2">
+                        <h4 className="font-bold text-ink line-clamp-2">
                           {isRtl ? prop.titleAr || prop.title : prop.title}
                         </h4>
-                        <p className="text-[10px] text-[#6E6B66] flex items-center gap-1">
+                        <p className="text-[10px] text-ink-muted flex items-center gap-1">
                           <MapPin size={10} className="shrink-0" />
                           <span>{prop.district}, {prop.city}</span>
                         </p>
@@ -132,7 +132,7 @@ export default function PropertyCompareView({
                   ) : (
                     <button
                       onClick={onClose}
-                      className="flex flex-col items-center justify-center h-full w-full text-[#BF9B30] text-[11px] py-8 gap-1.5 cursor-pointer hover:bg-[#FCFAF7] transition-colors rounded-lg font-semibold"
+                      className="flex flex-col items-center justify-center h-full w-full text-gold text-[11px] py-8 gap-1.5 cursor-pointer hover:bg-canvas transition-colors rounded-lg font-semibold"
                       title={isRtl ? "العودة للمعرض لإضافة عقار" : "Back to the marketplace to add a property"}
                     >
                       <Plus size={18} />
@@ -152,7 +152,7 @@ export default function PropertyCompareView({
               return (
                 <div key={idx} className="p-4 flex items-center">
                   {prop && (
-                    <span className="px-2 py-0.5 bg-[#1A1918] text-white text-[9px] font-bold rounded uppercase">
+                    <span className="px-2 py-0.5 bg-ink text-white text-[9px] font-bold rounded uppercase">
                       {isRtl
                         ? prop.transactionType === TransactionType.FOR_RENT ? "للإيجار" : "للبيع"
                         : prop.transactionType === TransactionType.FOR_RENT ? "RENT" : "SALE"}
@@ -169,11 +169,11 @@ export default function PropertyCompareView({
             {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
-                <div key={idx} className="p-4 flex items-center text-[#BF9B30] font-bold text-sm">
+                <div key={idx} className="p-4 flex items-center text-gold font-bold text-sm">
                   {prop && (
                     <span>
                       {prop.price.toLocaleString()} {prop.currency || "QAR"}
-                      {prop.transactionType === TransactionType.FOR_RENT && <span className="text-[10px] text-[#6E6B66] font-normal"> / {prop.rentalPeriod || "YR"}</span>}
+                      {prop.transactionType === TransactionType.FOR_RENT && <span className="text-[10px] text-ink-muted font-normal"> / {prop.rentalPeriod || "YR"}</span>}
                     </span>
                   )}
                 </div>
@@ -187,7 +187,7 @@ export default function PropertyCompareView({
             {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
-                <div key={idx} className="p-4 flex items-center font-bold text-[#1A1918]">
+                <div key={idx} className="p-4 flex items-center font-bold text-ink">
                   {prop && <span>{getAreaDisplay(prop.area)}</span>}
                 </div>
               );
@@ -200,7 +200,7 @@ export default function PropertyCompareView({
             {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
-                <div key={idx} className="p-4 flex items-center text-[#1A1918]">
+                <div key={idx} className="p-4 flex items-center text-ink">
                   {prop && (
                     <span className="flex items-center gap-2.5">
                       <span className="flex items-center gap-1"><Bed size={12} />{prop.bedrooms}</span>
@@ -218,7 +218,7 @@ export default function PropertyCompareView({
             {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
-                <div key={idx} className="p-4 flex items-center text-[#6E6B66]">
+                <div key={idx} className="p-4 flex items-center text-ink-muted">
                   {prop && (
                     <span>
                       {prop.furnished === "YES" ? (isRtl ? "مؤثث بالكامل" : "Fully Furnished") :
@@ -265,7 +265,7 @@ export default function PropertyCompareView({
                           <span className="text-emerald-700 font-bold">{isRtl ? "موثق" : "Approved Portal"}</span>
                         </>
                       ) : (
-                        <span className="text-[#6E6B66]">{isRtl ? "قيد المراجعة" : "Under verification"}</span>
+                        <span className="text-ink-muted">{isRtl ? "قيد المراجعة" : "Under verification"}</span>
                       )}
                     </div>
                   )}
@@ -280,7 +280,7 @@ export default function PropertyCompareView({
             {Array.from({ length: slotCount }).map((_, idx) => {
               const prop = properties[idx];
               return (
-                <div key={idx} className="p-4 flex flex-col gap-1 text-[#6E6B66] text-[10px]">
+                <div key={idx} className="p-4 flex flex-col gap-1 text-ink-muted text-[10px]">
                   {prop && prop.amenities.slice(0, 4).map((am, amIdx) => (
                     <div key={amIdx} className="flex items-center gap-1">
                       <Check size={10} className="text-emerald-500 shrink-0" />

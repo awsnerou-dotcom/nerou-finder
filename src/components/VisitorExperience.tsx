@@ -690,7 +690,7 @@ export default function VisitorExperience({
           surface. Pulled up by the header's height (-mt-24 = -6rem = -64px header + 32px main
           padding) so the photo extends behind the transparent floating header at the top of the
           page; pt-24 on the inner content below compensates so nothing is actually hidden. */}
-      <div className="bg-[#1c1a17] rounded-xl border border-[#33302a] shadow-sm relative overflow-hidden -mt-24">
+      <div className="bg-chrome rounded-xl border border-chrome-hover shadow-sm relative overflow-hidden -mt-24">
         <PhotoHero />
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <Sparkles size={160} />
@@ -709,7 +709,7 @@ export default function VisitorExperience({
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
                   currentTab === "MARKETPLACE" && !propType && !transType
-                    ? "bg-[#bf9b30] text-black"
+                    ? "bg-gold text-black"
                     : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
@@ -723,7 +723,7 @@ export default function VisitorExperience({
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
                   currentTab === "MARKETPLACE" && transType === TransactionType.FOR_SALE
-                    ? "bg-[#bf9b30] text-black"
+                    ? "bg-gold text-black"
                     : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
@@ -737,7 +737,7 @@ export default function VisitorExperience({
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
                   currentTab === "MARKETPLACE" && transType === TransactionType.FOR_RENT
-                    ? "bg-[#bf9b30] text-black"
+                    ? "bg-gold text-black"
                     : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
@@ -751,7 +751,7 @@ export default function VisitorExperience({
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
                   currentTab === "MARKETPLACE" && transType === TransactionType.OFF_PLAN
-                    ? "bg-[#bf9b30] text-black"
+                    ? "bg-gold text-black"
                     : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
@@ -763,7 +763,7 @@ export default function VisitorExperience({
                   setCurrentTab("PROJECTS");
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "PROJECTS" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                  currentTab === "PROJECTS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
                 {isRtl ? "المشاريع الكبرى" : "Masterplans"}
@@ -774,7 +774,7 @@ export default function VisitorExperience({
                   setCurrentTab("PLANS");
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "PLANS" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                  currentTab === "PLANS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
                 {isRtl ? "الأسعار والخطط" : "Plans & Pricing"}
@@ -785,7 +785,7 @@ export default function VisitorExperience({
                   setCurrentTab("HELP_CENTER");
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "HELP_CENTER" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                  currentTab === "HELP_CENTER" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
                 {isRtl ? "مركز المساعدة" : "Help Center"}
@@ -796,7 +796,7 @@ export default function VisitorExperience({
                   setCurrentTab("CAREERS");
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "CAREERS" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                  currentTab === "CAREERS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
                 {isRtl ? "وظائف" : "Careers"}
@@ -807,7 +807,7 @@ export default function VisitorExperience({
                   setCurrentTab("PRESS");
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "PRESS" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                  currentTab === "PRESS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
                 {isRtl ? "الصحافة" : "Press"}
@@ -818,7 +818,7 @@ export default function VisitorExperience({
                   setCurrentTab("PARTNERSHIPS");
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "PARTNERSHIPS" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                  currentTab === "PARTNERSHIPS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
                 {isRtl ? "شراكات" : "Partnerships"}
@@ -829,7 +829,7 @@ export default function VisitorExperience({
                   setCurrentTab("LEGAL");
                 }}
                 className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "LEGAL" ? "bg-[#bf9b30] text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
+                  currentTab === "LEGAL" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
                 {isRtl ? "الوثائق القانونية" : "Legal Policies"}
@@ -872,7 +872,7 @@ export default function VisitorExperience({
                     onClick={() => setSearchMode(mode)}
                     className={`px-3.5 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide transition-colors cursor-pointer ${
                       searchMode === mode
-                        ? "bg-[#bf9b30] text-black"
+                        ? "bg-gold text-black"
                         : "bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white"
                     }`}
                   >
@@ -899,7 +899,7 @@ export default function VisitorExperience({
                 </div>
               ) : (
               <div className="max-w-3xl space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#bf9b30] text-black text-xs font-semibold uppercase tracking-wider rounded-full">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gold text-black text-xs font-semibold uppercase tracking-wider rounded-full">
                   <Sparkles size={14} />
                   <span>{t.aiTitle}</span>
                 </div>
@@ -921,7 +921,7 @@ export default function VisitorExperience({
                         <div
                           className={`px-3 py-2 rounded-lg text-xs md:text-sm max-w-[85%] leading-relaxed ${
                             chat.role === "user"
-                              ? "bg-[#bf9b30] text-black font-medium rounded-tr-none"
+                              ? "bg-gold text-black font-medium rounded-tr-none"
                               : "bg-[#2d2925] text-[#eae5df] border border-[#423d37] rounded-tl-none"
                           }`}
                         >
@@ -938,12 +938,12 @@ export default function VisitorExperience({
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     placeholder={t.aiPlaceholder}
-                    className="flex-1 px-4 py-3 bg-[#2c2925] text-white rounded-lg border border-[#44403a] placeholder-gray-400 focus:outline-none focus:border-[#bf9b30] font-sans text-base"
+                    className="flex-1 px-4 py-3 bg-[#2c2925] text-white rounded-lg border border-[#44403a] placeholder-gray-400 focus:outline-none focus:border-gold font-sans text-base"
                   />
                   <button
                     type="submit"
                     disabled={aiLoading}
-                    className="px-6 py-3 bg-[#bf9b30] hover:bg-[#a68628] disabled:bg-gray-600 text-black font-semibold rounded-lg transition-colors text-sm md:text-base flex items-center justify-center gap-2"
+                    className="px-6 py-3 bg-gold hover:bg-gold-hover disabled:bg-gray-600 text-black font-semibold rounded-lg transition-colors text-sm md:text-base flex items-center justify-center gap-2"
                   >
                     {aiLoading ? (
                       <>
@@ -963,7 +963,7 @@ export default function VisitorExperience({
                   <div className="pt-2 flex justify-end">
                     <button
                       onClick={clearAiSearch}
-                      className="text-xs text-[#bf9b30] hover:underline cursor-pointer"
+                      className="text-xs text-gold hover:underline cursor-pointer"
                     >
                       {isRtl ? "إلغاء البحث الذكي والعودة للعرض التقليدي" : "Reset & show all properties"}
                     </button>
@@ -981,11 +981,11 @@ export default function VisitorExperience({
           {/* 2. Central Qatar Parent-Child Location & Property Type Filters */}
       {!aiSearchActive && (
         <div className="space-y-3 mb-6">
-          <div className="bg-white p-4 rounded-xl border border-[#e6e2de] grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
+          <div className="bg-white p-4 rounded-xl border border-border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
 
             {/* Keyword search query */}
             <div className="sm:col-span-2 md:col-span-2">
-              <label className="block text-xs font-medium text-[#6e6b66] mb-1">
+              <label className="block text-xs font-medium text-ink-muted mb-1">
                 {isRtl ? "البحث النصي" : "Keyword"}
               </label>
               <div className="relative">
@@ -994,15 +994,15 @@ export default function VisitorExperience({
                   placeholder={t.searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-base md:text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+                  className="w-full pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink"
                 />
-                <Search size={16} className={`absolute ${isRtl ? "right-3" : "left-3"} top-2.5 text-[#a8a4a0]`} />
+                <Search size={16} className={`absolute ${isRtl ? "right-3" : "left-3"} top-2.5 text-ink-faint`} />
               </div>
             </div>
 
             {/* Municipality Parent selector */}
             <div>
-              <label className="block text-xs font-medium text-[#6e6b66] mb-1">
+              <label className="block text-xs font-medium text-ink-muted mb-1">
                 {isRtl ? "البلدية" : "Municipality"}
               </label>
               <select
@@ -1011,7 +1011,7 @@ export default function VisitorExperience({
                   setSelectedMunicipality(e.target.value);
                   setSelectedArea(""); // Reset child
                 }}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-base md:text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink"
               >
                 <option value="">{isRtl ? "كل البلديات" : "All Municipalities"}</option>
                 {municipalities.map(muni => (
@@ -1024,14 +1024,14 @@ export default function VisitorExperience({
 
             {/* Area Child selector */}
             <div>
-              <label className="block text-xs font-medium text-[#6e6b66] mb-1">
+              <label className="block text-xs font-medium text-ink-muted mb-1">
                 {isRtl ? "المنطقة / الحي" : "Area / District"}
               </label>
               <select
                 value={selectedArea}
                 disabled={!selectedMunicipality}
                 onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-base md:text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918] disabled:opacity-50"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink disabled:opacity-50"
               >
                 <option value="">{isRtl ? "كل المناطق" : "All Areas"}</option>
                 {filteredAreas.map(area => (
@@ -1044,13 +1044,13 @@ export default function VisitorExperience({
 
             {/* Configurable Property Type taxonomy */}
             <div>
-              <label className="block text-xs font-medium text-[#6e6b66] mb-1">
+              <label className="block text-xs font-medium text-ink-muted mb-1">
                 {isRtl ? "نوع العقار" : "Property Type"}
               </label>
               <select
                 value={propType}
                 onChange={(e) => setPropType(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-base md:text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink"
               >
                 <option value="">{isRtl ? "جميع الأنواع" : "All Types"}</option>
                 <option value={PropertyType.APARTMENT}>{isRtl ? "شقة سكنية" : "Apartment"}</option>
@@ -1075,13 +1075,13 @@ export default function VisitorExperience({
 
             {/* Transaction Type */}
             <div>
-              <label className="block text-xs font-medium text-[#6e6b66] mb-1">
+              <label className="block text-xs font-medium text-ink-muted mb-1">
                 {isRtl ? "المعاملة" : "Transaction"}
               </label>
               <select
                 value={transType}
                 onChange={(e) => setTransType(e.target.value)}
-                className="w-full px-3 py-2 bg-[#fdfdfc] border border-[#e6e2de] rounded-lg text-base md:text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+                className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink"
               >
                 <option value="">{isRtl ? "الكل" : "All"}</option>
                 <option value={TransactionType.FOR_RENT}>{isRtl ? "للإيجار" : "For Rent"}</option>
@@ -1099,9 +1099,9 @@ export default function VisitorExperience({
                   fetchSavedSearches();
                   setIsAlertsOpen(true);
                 }}
-                className="flex items-center gap-2 px-3 py-1.5 bg-[#fcfbf9] border border-[#e6e2de] hover:bg-[#f5f2ee] rounded-lg text-xs font-medium text-[#1a1918] cursor-pointer transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 bg-canvas border border-border hover:bg-surface-2 rounded-lg text-xs font-medium text-ink cursor-pointer transition-colors"
               >
-                <Bell size={14} className="text-[#bf9b30]" />
+                <Bell size={14} className="text-gold" />
                 <span>{isRtl ? "تنبيهاتي وعمليات البحث المحفوظة" : "My Saved Searches & Alerts"}</span>
                 {savedSearches.some(s => s.newMatchesCount > 0) && (
                   <span className="flex h-2 w-2 relative">
@@ -1115,7 +1115,7 @@ export default function VisitorExperience({
             )}
             <button
               onClick={handleSaveSearchClick}
-              className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#bf9b30] to-[#8c6d1d] hover:opacity-95 text-white rounded-lg text-xs font-medium cursor-pointer transition-opacity"
+              className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-gold to-gold-active hover:opacity-95 text-white rounded-lg text-xs font-medium cursor-pointer transition-opacity"
             >
               <Bookmark size={14} />
               <span>{isRtl ? "حفظ هذا البحث للتنبيهات" : "Save Active Search"}</span>
@@ -1125,16 +1125,16 @@ export default function VisitorExperience({
       )}
 
       {/* 3. Listings Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e6e2de] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h3 className="text-xl font-serif text-[#1a1918] font-medium flex items-center gap-2">
+          <h3 className="text-xl font-serif text-ink font-medium flex items-center gap-2">
             <span>{aiSearchActive ? (isRtl ? "نتائج الاكتشاف الذكي نيرو فايند" : "Nerou Find AI Discovery Matches") : t.allProperties}</span>
-            <span className="text-sm font-sans text-[#6e6b66] bg-[#f2ede8] px-2 py-0.5 rounded-full font-normal">
+            <span className="text-sm font-sans text-ink-muted bg-surface-2 px-2 py-0.5 rounded-full font-normal">
               {getSortedProperties().length}
             </span>
           </h3>
           {aiSearchActive && (
-            <p className="text-xs text-[#6e6b66] mt-1">
+            <p className="text-xs text-ink-muted mt-1">
               {isRtl ? "تمت التصفية والمطابقة بالذكاء الاصطناعي نيرو فايند مع توضيح أسباب التوافق" : "Live data discovered and scored via server-side Nerou Find AI"}
             </p>
           )}
@@ -1142,13 +1142,13 @@ export default function VisitorExperience({
 
         <div className="flex items-center gap-3">
           {/* View Toggle (List vs Map) */}
-          <div className="flex bg-[#f2ede8] p-1 rounded-lg border border-[#e6e2de]">
+          <div className="flex bg-surface-2 p-1 rounded-lg border border-border">
             <button
               onClick={() => setViewFormat("LIST")}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 viewFormat === "LIST"
-                  ? "bg-white text-[#bf9b30] shadow-xs"
-                  : "text-[#6e6b66] hover:text-[#1a1918]"
+                  ? "bg-white text-gold shadow-xs"
+                  : "text-ink-muted hover:text-ink"
               }`}
               title={isRtl ? "عرض القائمة" : "List View"}
             >
@@ -1159,8 +1159,8 @@ export default function VisitorExperience({
               onClick={() => setViewFormat("MAP")}
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 viewFormat === "MAP"
-                  ? "bg-white text-[#bf9b30] shadow-xs"
-                  : "text-[#6e6b66] hover:text-[#1a1918]"
+                  ? "bg-white text-gold shadow-xs"
+                  : "text-ink-muted hover:text-ink"
               }`}
               title={isRtl ? "عرض الخريطة" : "Map View"}
             >
@@ -1169,14 +1169,14 @@ export default function VisitorExperience({
             </button>
           </div>
 
-          <div className="flex items-center gap-1 text-xs text-[#6e6b66]">
+          <div className="flex items-center gap-1 text-xs text-ink-muted">
             <ArrowUpDown size={14} />
             <span>{isRtl ? "ترتيب حسب:" : "Sort:"}</span>
           </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-[#e6e2de] rounded-lg text-xs focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+            className="px-3 py-1.5 bg-white border border-border rounded-lg text-xs focus:outline-none focus:border-gold text-ink"
           >
             <option value="default">{isRtl ? "الأحدث" : "Latest"}</option>
             <option value="priceAsc">{isRtl ? "السعر (من الأقل)" : "Price (Low to High)"}</option>
@@ -1206,12 +1206,12 @@ export default function VisitorExperience({
           ))}
         </div>
       ) : getSortedProperties().length === 0 ? (
-        <div className="text-center py-20 bg-white border border-[#e6e2de] rounded-xl">
-          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#faf6ea] border border-[#bf9b30]/30 flex items-center justify-center">
-            <Info size={24} className="text-[#bf9b30]" />
+        <div className="text-center py-20 bg-white border border-border rounded-xl">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#faf6ea] border border-gold/30 flex items-center justify-center">
+            <Info size={24} className="text-gold" />
           </div>
-          <h4 className="font-serif text-lg text-[#1a1918] mb-1">{t.noProperties}</h4>
-          <p className="text-xs text-[#6e6b66] max-w-sm mx-auto">
+          <h4 className="font-serif text-lg text-ink mb-1">{t.noProperties}</h4>
+          <p className="text-xs text-ink-muted max-w-sm mx-auto">
             {isRtl
               ? "جرّب تعديل معايير البحث أو تصفح جميع الفئات لاكتشاف فرص جديدة."
               : "Try adjusting your search filters or browse all categories to discover new opportunities."}
@@ -1242,10 +1242,10 @@ export default function VisitorExperience({
                     setSelectedProperty(property);
                   }
                 }}
-                className={`bg-white rounded-xl border transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col justify-between hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-[#bf9b30] focus-visible:outline-offset-2 ${
+                className={`bg-white rounded-xl border transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col justify-between hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-gold focus-visible:outline-offset-2 ${
                   feat
-                    ? "border-[#bf9b30] bg-[#bf9b30]/2 shadow-md hover:border-[#967923] ring-1 ring-[#bf9b30]/20"
-                    : "border-[#e6e2de] hover:border-[#bf9b30] shadow-sm"
+                    ? "border-gold bg-gold/2 shadow-md hover:border-gold-hover ring-1 ring-gold/20"
+                    : "border-border hover:border-gold shadow-sm"
                 }`}
               >
                 <div>
@@ -1259,7 +1259,7 @@ export default function VisitorExperience({
                     <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
                       <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md text-white ${
                         property.transactionType === TransactionType.FOR_RENT ? "bg-blue-600" :
-                        property.transactionType === TransactionType.FOR_SALE ? "bg-green-600" : "bg-[#bf9b30]"
+                        property.transactionType === TransactionType.FOR_SALE ? "bg-green-600" : "bg-gold"
                       }`}>
                         {property.transactionType === TransactionType.FOR_RENT ? (isRtl ? "إيجار" : "Rent") :
                          property.transactionType === TransactionType.FOR_SALE ? (isRtl ? "بيع" : "Buy") : (isRtl ? "على المخطط" : "Off-Plan")}
@@ -1281,8 +1281,8 @@ export default function VisitorExperience({
                           }}
                           className={`p-2 rounded-full shadow-sm hover:scale-110 transition-transform cursor-pointer ${
                             comparedPropertyIds.includes(property.id)
-                              ? "bg-[#bf9b30] text-white"
-                              : "bg-white text-[#6e6b66]"
+                              ? "bg-gold text-white"
+                              : "bg-white text-ink-muted"
                           }`}
                           title={isRtl ? "مقارنة العقار" : "Compare Side-by-Side"}
                         >
@@ -1295,7 +1295,7 @@ export default function VisitorExperience({
                         >
                           <Bookmark
                             size={15}
-                            className={savedPropertyIds.includes(property.id) ? "fill-[#bf9b30] text-[#bf9b30]" : "text-[#6e6b66]"}
+                            className={savedPropertyIds.includes(property.id) ? "fill-gold text-gold" : "text-ink-muted"}
                           />
                         </button>
                       </div>
@@ -1304,8 +1304,8 @@ export default function VisitorExperience({
                     <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center gap-1.5">
                       <div className="flex items-center gap-1.5">
                         {property.verificationStatus === VerificationStatus.APPROVED && (
-                          <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-[#1a1918] flex items-center gap-1 shadow-xs border border-[#bf9b30]/30">
-                            <CheckCircle size={12} className="text-[#bf9b30]" />
+                          <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-ink flex items-center gap-1 shadow-xs border border-gold/30">
+                            <CheckCircle size={12} className="text-gold" />
                             <span>{t.verified}</span>
                           </div>
                         )}
@@ -1321,7 +1321,7 @@ export default function VisitorExperience({
                       </div>
 
                       {feat && (
-                        <div className="bg-[#bf9b30] text-black px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs border border-white ml-auto">
+                        <div className="bg-gold text-black px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs border border-white ml-auto">
                           <Award size={12} className="shrink-0" />
                           <span>{isRtl ? "مميز" : "Featured"}</span>
                         </div>
@@ -1331,11 +1331,11 @@ export default function VisitorExperience({
 
                   <div className="p-4 space-y-3">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-xs text-[#6e6b66]">
+                      <div className="flex items-center gap-1.5 text-xs text-ink-muted">
                         <MapPin size={12} />
                         <span>{property.district}, {property.city}</span>
                       </div>
-                      <h4 className="font-serif text-lg font-medium text-[#1a1918] line-clamp-1 group-hover:text-[#bf9b30] transition-colors">
+                      <h4 className="font-serif text-lg font-medium text-ink line-clamp-1 group-hover:text-gold transition-colors">
                         {isRtl ? property.titleAr : property.title}
                       </h4>
                       {/* FIX 4: verified badge on search-result cards too, showing the agent's
@@ -1352,7 +1352,7 @@ export default function VisitorExperience({
                               e.stopPropagation();
                               setSelectedAgentProfile(listingAgent);
                             }}
-                            className="text-[10px] text-[#8c6d1d] font-semibold truncate hover:text-[#bf9b30] hover:underline cursor-pointer text-left rtl:text-right"
+                            className="text-[10px] text-gold-active font-semibold truncate hover:text-gold hover:underline cursor-pointer text-left rtl:text-right"
                           >
                             {getVerifiedBadgeLabel(listingAgent, organizations.find(o => o.id === listingAgent.orgId)?.name, isRtl)}
                           </button>
@@ -1360,7 +1360,7 @@ export default function VisitorExperience({
                       })()}
                     </div>
 
-                    <div className="flex items-center gap-4 text-xs text-[#6e6b66] border-y border-[#f2ede8] py-2">
+                    <div className="flex items-center gap-4 text-xs text-ink-muted border-y border-surface-2 py-2">
                       <div className="flex items-center gap-1">
                         <Bed size={13} />
                         <span>{property.bedrooms} {t.beds}</span>
@@ -1376,12 +1376,12 @@ export default function VisitorExperience({
                     </div>
 
                     {aiMatchInfo && (
-                      <div className="bg-[#f9f8f6] p-3 rounded-lg border-l-2 border-[#bf9b30] space-y-1 mt-2 animate-in fade-in duration-300">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#bf9b30] uppercase">
+                      <div className="bg-[#f9f8f6] p-3 rounded-lg border-l-2 border-gold space-y-1 mt-2 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-gold uppercase">
                           <Sparkles size={11} />
                           <span>{t.whyMatchHeader}</span>
                         </div>
-                        <p className="text-xs text-[#6e6b66] leading-relaxed">
+                        <p className="text-xs text-ink-muted leading-relaxed">
                           {isRtl ? aiMatchInfo.whyMatchAr : aiMatchInfo.whyMatchEn}
                         </p>
                       </div>
@@ -1389,12 +1389,12 @@ export default function VisitorExperience({
                   </div>
                 </div>
 
-                <div className="px-4 pb-4 pt-2 flex items-center justify-between gap-2 border-t border-[#f2ede8]">
+                <div className="px-4 pb-4 pt-2 flex items-center justify-between gap-2 border-t border-surface-2">
                   <div className="space-y-0.5">
-                    <span className="text-[10px] text-[#6e6b66] block uppercase tracking-wider">
+                    <span className="text-[10px] text-ink-muted block uppercase tracking-wider">
                       {property.transactionType === TransactionType.FOR_RENT ? (isRtl ? "قيمة الإيجار" : "Rent Price") : (isRtl ? "القيمة الإجمالية" : "Total Cost")}
                     </span>
-                    <span className="font-serif text-xl font-semibold text-[#1c1a17]">
+                    <span className="font-serif text-xl font-semibold text-chrome">
                       {formatPrice(property.price, isRtl)}
                     </span>
                   </div>
@@ -1409,7 +1409,7 @@ export default function VisitorExperience({
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleCallAction(property); }}
-                      className="p-2 bg-[#fdf6e8] hover:bg-[#f8ecc9] text-[#8c6d1d] rounded-full transition-colors cursor-pointer"
+                      className="p-2 bg-[#fdf6e8] hover:bg-[#f8ecc9] text-gold-active rounded-full transition-colors cursor-pointer"
                       title={t.callCTA}
                     >
                       <Phone size={16} />
@@ -1457,9 +1457,9 @@ export default function VisitorExperience({
 
       {/* Floating comparison status & triggers */}
       {comparedPropertyIds.length > 0 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-[#1A1918] border border-[#BF9B30]/30 shadow-2xl rounded-full px-5 py-3 flex items-center gap-4 text-white animate-in slide-in-from-bottom duration-300">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-ink border border-gold/30 shadow-2xl rounded-full px-5 py-3 flex items-center gap-4 text-white animate-in slide-in-from-bottom duration-300">
           <div className="flex items-center gap-2">
-            <div className="w-5 h-5 bg-[#BF9B30] text-black font-bold text-xs rounded-full flex items-center justify-center">
+            <div className="w-5 h-5 bg-gold text-black font-bold text-xs rounded-full flex items-center justify-center">
               {comparedPropertyIds.length}
             </div>
             <span className="text-xs font-bold font-serif tracking-wider">
@@ -1470,7 +1470,7 @@ export default function VisitorExperience({
           <div className="flex gap-2">
             <button
               onClick={() => setIsCompareModalOpen(true)}
-              className="px-4 py-1.5 bg-[#BF9B30] hover:bg-[#A68628] text-black font-bold text-[10px] uppercase rounded-full transition-colors cursor-pointer"
+              className="px-4 py-1.5 bg-gold hover:bg-gold-hover text-black font-bold text-[10px] uppercase rounded-full transition-colors cursor-pointer"
             >
               {isRtl ? "قارن الآن" : "Compare Now"}
             </button>
@@ -1521,10 +1521,10 @@ export default function VisitorExperience({
       {currentTab === "LEGAL" && (
         <div className="space-y-6 animate-in fade-in duration-200">
           <div>
-            <h2 className="text-2xl font-serif text-[#1a1918] font-medium">
+            <h2 className="text-2xl font-serif text-ink font-medium">
               {isRtl ? "الوثائق القانونية والامتثال الرقابي" : "Legal Documents & Privacy Regulations"}
             </h2>
-            <p className="text-xs text-[#6e6b66] mt-1">
+            <p className="text-xs text-ink-muted mt-1">
               {isRtl
                 ? "تصفح مستندات وشروط الاستخدام وسياسة الخصوصية المعتمدة وفقاً لقانون حماية الخصوصية رقم ١٣ لعام ٢٠١٦ بدولة قطر."
                 : "Review active terms of service, developer guidelines, and privacy regulations under Law No. 13 of 2016."}
@@ -1533,16 +1533,16 @@ export default function VisitorExperience({
 
           <div className="space-y-4">
             {legalDocs.length === 0 ? (
-              <div className="py-12 text-center text-xs text-[#6e6b66] border border-dashed border-[#e6e2de] rounded-xl bg-white p-8">
+              <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl bg-white p-8">
                 {isRtl ? "لا توجد مستندات قانونية منشورة حالياً." : "No certified documents in repository currently."}
               </div>
             ) : (
               legalDocs.map((doc) => (
-                <div key={doc.id} className="p-6 bg-white border border-[#e6e2de] rounded-xl space-y-4 text-xs">
-                  <div className="flex justify-between items-start border-b border-[#f2ede8] pb-3">
+                <div key={doc.id} className="p-6 bg-white border border-border rounded-xl space-y-4 text-xs">
+                  <div className="flex justify-between items-start border-b border-surface-2 pb-3">
                     <div>
-                      <h3 className="font-serif font-bold text-sm text-[#1a1918]">{isRtl ? doc.titleAr : doc.title}</h3>
-                      <span className="text-[10px] text-[#6e6b66] block font-mono mt-1">
+                      <h3 className="font-serif font-bold text-sm text-ink">{isRtl ? doc.titleAr : doc.title}</h3>
+                      <span className="text-[10px] text-ink-muted block font-mono mt-1">
                         {isRtl ? "الإصدار: " : "Version: "} {doc.version} • {isRtl ? "آخر تحديث: " : "Last updated: "} {doc.lastUpdated ? doc.lastUpdated.split("T")[0] : doc.effectiveDate}
                       </span>
                     </div>
@@ -1550,7 +1550,7 @@ export default function VisitorExperience({
                       {isRtl ? "معتمد وموثق" : "Certified & Valid"}
                     </span>
                   </div>
-                  <p className="leading-relaxed text-[#6e6b66] whitespace-pre-wrap font-sans">
+                  <p className="leading-relaxed text-ink-muted whitespace-pre-wrap font-sans">
                     {isRtl ? doc.contentAr : doc.content}
                   </p>
                 </div>
@@ -1563,10 +1563,10 @@ export default function VisitorExperience({
       {/* 6. FULLY FUNCTIONAL AGENT PROFILE OVERLAY MODAL */}
       {selectedAgentProfile && (
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-[#fcfbfa] rounded-xl border border-[#e6e2de] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className="bg-canvas rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedAgentProfile(null)}
-              className="absolute top-4 right-4 p-1.5 bg-white hover:bg-gray-100 rounded-full border border-[#e6e2de] text-[#1a1918] cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-white hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
             >
               <X size={15} />
             </button>
@@ -1577,16 +1577,16 @@ export default function VisitorExperience({
                 <img
                   src={selectedAgentProfile.avatarUrl || "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&h=150&q=80"}
                   alt={selectedAgentProfile.fullName}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-[#bf9b30]"
+                  className="w-16 h-16 rounded-full object-cover border-2 border-gold"
                 />
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-lg font-serif font-bold text-[#1c1a17]">{selectedAgentProfile.fullName}</h3>
+                    <h3 className="text-lg font-serif font-bold text-chrome">{selectedAgentProfile.fullName}</h3>
                   </div>
-                  <span className="text-[10px] bg-[#bf9b30]/10 text-[#bf9b30] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider block w-max">
+                  <span className="text-[10px] bg-gold/10 text-gold px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider block w-max">
                     {selectedAgentProfile.role.replace("_", " ")}
                   </span>
-                  <div className="flex items-center gap-1 text-xs text-[#6e6b66]">
+                  <div className="flex items-center gap-1 text-xs text-ink-muted">
                     <Building2 size={12} />
                     <span>
                       {selectedAgentProfile.verificationStatus === VerificationStatus.APPROVED
@@ -1598,17 +1598,17 @@ export default function VisitorExperience({
               </div>
 
               {/* Contact methods */}
-              <div className="bg-white p-4 rounded-xl border border-[#e6e2de] space-y-2.5">
+              <div className="bg-white p-4 rounded-xl border border-border space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#6e6b66] font-medium">{isRtl ? "الهاتف المباشر" : "Direct Telephone"}</span>
-                  <a href={`tel:${selectedAgentProfile.phone}`} className="font-bold text-[#1c1a17] hover:text-[#bf9b30] flex items-center gap-1">
+                  <span className="text-ink-muted font-medium">{isRtl ? "الهاتف المباشر" : "Direct Telephone"}</span>
+                  <a href={`tel:${selectedAgentProfile.phone}`} className="font-bold text-chrome hover:text-gold flex items-center gap-1">
                     <Phone size={12} />
                     <span>{selectedAgentProfile.phone}</span>
                   </a>
                 </div>
-                <div className="flex items-center justify-between text-xs border-t border-[#f2ede8] pt-2.5">
-                  <span className="text-[#6e6b66] font-medium">{isRtl ? "البريد الإلكتروني" : "Direct Email"}</span>
-                  <a href={`mailto:${selectedAgentProfile.email}`} className="font-bold text-[#1c1a17] hover:text-[#bf9b30] flex items-center gap-1">
+                <div className="flex items-center justify-between text-xs border-t border-surface-2 pt-2.5">
+                  <span className="text-ink-muted font-medium">{isRtl ? "البريد الإلكتروني" : "Direct Email"}</span>
+                  <a href={`mailto:${selectedAgentProfile.email}`} className="font-bold text-chrome hover:text-gold flex items-center gap-1">
                     <Mail size={12} />
                     <span>{selectedAgentProfile.email}</span>
                   </a>
@@ -1617,10 +1617,10 @@ export default function VisitorExperience({
 
               {/* Bio details */}
               <div className="space-y-2">
-                <span className="text-[10px] font-bold text-[#6e6b66] uppercase tracking-wider block">
+                <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block">
                   {isRtl ? "نبذة تعريفية" : "Professional Profile"}
                 </span>
-                <p className="text-xs text-[#6e6b66] leading-relaxed">
+                <p className="text-xs text-ink-muted leading-relaxed">
                   {selectedAgentProfile.bio || "Registered broker partner serving the Qatar real estate market with professional solutions."}
                 </p>
               </div>
@@ -1628,12 +1628,12 @@ export default function VisitorExperience({
               {/* Specialties / languages */}
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-[#6e6b66] uppercase tracking-wider block">
+                  <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block">
                     {isRtl ? "مناطق التخصص" : "Specialties"}
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {selectedAgentProfile.specialties?.map((s, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-white border border-[#e6e2de] rounded text-[10px] font-semibold text-[#6e6b66]">
+                      <span key={i} className="px-2 py-0.5 bg-white border border-border rounded text-[10px] font-semibold text-ink-muted">
                         {s}
                       </span>
                     )) || <span className="text-[10px] text-gray-400">General Qatar</span>}
@@ -1641,12 +1641,12 @@ export default function VisitorExperience({
                 </div>
 
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-[#6e6b66] uppercase tracking-wider block">
+                  <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block">
                     {isRtl ? "اللغات" : "Languages"}
                   </span>
                   <div className="flex flex-wrap gap-1">
                     {selectedAgentProfile.languages?.map((l, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-white border border-[#e6e2de] rounded text-[10px] font-semibold text-[#6e6b66]">
+                      <span key={i} className="px-2 py-0.5 bg-white border border-border rounded text-[10px] font-semibold text-ink-muted">
                         {l}
                       </span>
                     )) || <span className="text-[10px] text-gray-400">English, Arabic</span>}
@@ -1662,8 +1662,8 @@ export default function VisitorExperience({
               />
 
               {/* Other Listings managed by this Agent */}
-              <div className="space-y-3 pt-3 border-t border-[#e6e2de]">
-                <span className="text-[10px] font-bold text-[#1c1a17] uppercase tracking-wider block">
+              <div className="space-y-3 pt-3 border-t border-border">
+                <span className="text-[10px] font-bold text-chrome uppercase tracking-wider block">
                   {isRtl ? "العقارات التي يديرها هذا المستشار" : "Active Listings Under Management"}
                 </span>
                 
@@ -1677,13 +1677,13 @@ export default function VisitorExperience({
                         <div
                           key={prop.id}
                           onClick={() => { setSelectedProperty(prop); setSelectedAgentProfile(null); }}
-                          className="p-2 bg-white hover:bg-[#bf9b30]/5 border border-[#e6e2de] hover:border-[#bf9b30]/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
+                          className="p-2 bg-white hover:bg-gold/5 border border-border hover:border-gold/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
                         >
                           <div className="flex items-center gap-2 overflow-hidden">
                             <img src={prop.images[0]} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                            <span className="font-medium text-[#1c1a17] truncate">{isRtl ? prop.titleAr : prop.title}</span>
+                            <span className="font-medium text-chrome truncate">{isRtl ? prop.titleAr : prop.title}</span>
                           </div>
-                          <span className="font-bold text-[#bf9b30] flex-shrink-0">{formatPrice(prop.price, isRtl)}</span>
+                          <span className="font-bold text-gold flex-shrink-0">{formatPrice(prop.price, isRtl)}</span>
                         </div>
                       ))
                   )}
@@ -1698,10 +1698,10 @@ export default function VisitorExperience({
       {/* 7. FULLY FUNCTIONAL AGENCY/DEVELOPER PROFILE OVERLAY MODAL */}
       {selectedOrgProfile && (
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-[#fcfbfa] rounded-xl border border-[#e6e2de] w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className="bg-canvas rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedOrgProfile(null)}
-              className="absolute top-4 right-4 p-1.5 bg-white hover:bg-gray-100 rounded-full border border-[#e6e2de] text-[#1a1918] cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-white hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
             >
               <X size={15} />
             </button>
@@ -1712,48 +1712,48 @@ export default function VisitorExperience({
                 <img
                   src={selectedOrgProfile.logoUrl || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=150&h=150&q=80"}
                   alt={selectedOrgProfile.name}
-                  className="w-16 h-16 rounded-lg object-cover border border-[#e6e2de]"
+                  className="w-16 h-16 rounded-lg object-cover border border-border"
                 />
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-lg font-serif font-bold text-[#1c1a17]">
+                    <h3 className="text-lg font-serif font-bold text-chrome">
                       {isRtl && selectedOrgProfile.nameAr ? selectedOrgProfile.nameAr : selectedOrgProfile.name}
                     </h3>
                     {selectedOrgProfile.verificationStatus === VerificationStatus.APPROVED && (
-                      <span className="p-0.5 bg-amber-50 text-[#bf9b30] border border-[#bf9b30]/30 rounded-md" title="Accredited Partner">
-                        <CheckCircle size={12} className="fill-[#bf9b30] text-white" />
+                      <span className="p-0.5 bg-amber-50 text-gold border border-gold/30 rounded-md" title="Accredited Partner">
+                        <CheckCircle size={12} className="fill-gold text-white" />
                       </span>
                     )}
                   </div>
                   <span className="text-[10px] bg-neutral-100 text-neutral-800 px-2.5 py-0.5 rounded-md font-bold uppercase tracking-wider block w-max">
                     {selectedOrgProfile.type}
                   </span>
-                  <div className="text-xs text-[#bf9b30] font-semibold">
+                  <div className="text-xs text-gold font-semibold">
                     {selectedOrgProfile.subscriptionPlanId === "plan-premium" ? "Enterprise SaaS Tier" : "Master Developer SaaS Tier"}
                   </div>
                 </div>
               </div>
 
               {/* Contact methods */}
-              <div className="bg-white p-4 rounded-xl border border-[#e6e2de] space-y-2.5 shadow-2xs">
+              <div className="bg-white p-4 rounded-xl border border-border space-y-2.5 shadow-2xs">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#6e6b66] font-medium">{isRtl ? "هاتف المكتب الرئيسي" : "Main HQ Telephone"}</span>
-                  <a href={`tel:${selectedOrgProfile.phone}`} className="font-bold text-[#1c1a17] hover:text-[#bf9b30] flex items-center gap-1">
+                  <span className="text-ink-muted font-medium">{isRtl ? "هاتف المكتب الرئيسي" : "Main HQ Telephone"}</span>
+                  <a href={`tel:${selectedOrgProfile.phone}`} className="font-bold text-chrome hover:text-gold flex items-center gap-1">
                     <Phone size={12} />
                     <span>{selectedOrgProfile.phone}</span>
                   </a>
                 </div>
-                <div className="flex items-center justify-between text-xs border-t border-[#f2ede8] pt-2.5">
-                  <span className="text-[#6e6b66] font-medium">{isRtl ? "البريد الإلكتروني للعمليات" : "Corporate Operations Email"}</span>
-                  <a href={`mailto:${selectedOrgProfile.email}`} className="font-bold text-[#1c1a17] hover:text-[#bf9b30] flex items-center gap-1">
+                <div className="flex items-center justify-between text-xs border-t border-surface-2 pt-2.5">
+                  <span className="text-ink-muted font-medium">{isRtl ? "البريد الإلكتروني للعمليات" : "Corporate Operations Email"}</span>
+                  <a href={`mailto:${selectedOrgProfile.email}`} className="font-bold text-chrome hover:text-gold flex items-center gap-1">
                     <Mail size={12} />
                     <span>{selectedOrgProfile.email}</span>
                   </a>
                 </div>
                 {selectedOrgProfile.website && (
-                  <div className="flex items-center justify-between text-xs border-t border-[#f2ede8] pt-2.5">
-                    <span className="text-[#6e6b66] font-medium">{isRtl ? "الموقع الإلكتروني" : "Official Website"}</span>
-                    <a href={selectedOrgProfile.website} target="_blank" rel="noreferrer" className="font-bold text-[#bf9b30] hover:underline flex items-center gap-1">
+                  <div className="flex items-center justify-between text-xs border-t border-surface-2 pt-2.5">
+                    <span className="text-ink-muted font-medium">{isRtl ? "الموقع الإلكتروني" : "Official Website"}</span>
+                    <a href={selectedOrgProfile.website} target="_blank" rel="noreferrer" className="font-bold text-gold hover:underline flex items-center gap-1">
                       <ExternalLink size={12} />
                       <span>Visit Site</span>
                     </a>
@@ -1769,8 +1769,8 @@ export default function VisitorExperience({
               />
 
               {/* Other Listings catalogued by this Enterprise */}
-              <div className="space-y-3 pt-3 border-t border-[#e6e2de]">
-                <span className="text-[10px] font-bold text-[#1c1a17] uppercase tracking-wider block">
+              <div className="space-y-3 pt-3 border-t border-border">
+                <span className="text-[10px] font-bold text-chrome uppercase tracking-wider block">
                   {selectedOrgProfile.type === "DEVELOPER"
                     ? (isRtl ? "المشاريع والوحدات العقارية الحالية" : "Active Real Estate Project Inventory")
                     : (isRtl ? "العقارات المدرجة من قبل هذا المكتب" : "Active Agency Portfolio")}
@@ -1786,13 +1786,13 @@ export default function VisitorExperience({
                         <div
                           key={prop.id}
                           onClick={() => { setSelectedProperty(prop); setSelectedOrgProfile(null); }}
-                          className="p-2 bg-white hover:bg-[#bf9b30]/5 border border-[#e6e2de] hover:border-[#bf9b30]/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
+                          className="p-2 bg-white hover:bg-gold/5 border border-border hover:border-gold/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
                         >
                           <div className="flex items-center gap-2 overflow-hidden">
                             <img src={prop.images[0]} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                            <span className="font-medium text-[#1c1a17] truncate">{isRtl ? prop.titleAr : prop.title}</span>
+                            <span className="font-medium text-chrome truncate">{isRtl ? prop.titleAr : prop.title}</span>
                           </div>
-                          <span className="font-bold text-[#bf9b30] flex-shrink-0">{formatPrice(prop.price, isRtl)}</span>
+                          <span className="font-bold text-gold flex-shrink-0">{formatPrice(prop.price, isRtl)}</span>
                         </div>
                       ))
                   )}
@@ -1809,15 +1809,15 @@ export default function VisitorExperience({
         <div className="fixed inset-0 z-[55] overflow-hidden">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-xs transition-opacity" onClick={() => setIsAlertsOpen(false)} />
           <div className={`fixed inset-y-0 ${isRtl ? "left-0" : "right-0"} pl-10 max-w-full flex`}>
-            <div className="w-screen max-w-md bg-[#fcfbfa] border-l border-[#e6e2de] shadow-2xl flex flex-col">
-              <div className="p-6 border-b border-[#e6e2de] flex items-center justify-between">
-                <h3 className="text-lg font-serif font-bold text-[#1a1918] flex items-center gap-2">
-                  <Bell size={18} className="text-[#bf9b30]" />
+            <div className="w-screen max-w-md bg-canvas border-l border-border shadow-2xl flex flex-col">
+              <div className="p-6 border-b border-border flex items-center justify-between">
+                <h3 className="text-lg font-serif font-bold text-ink flex items-center gap-2">
+                  <Bell size={18} className="text-gold" />
                   <span>{isRtl ? "تنبيهاتي وعمليات البحث المحفوظة" : "My Saved Searches & Alerts"}</span>
                 </h3>
                 <button
                   onClick={() => setIsAlertsOpen(false)}
-                  className="p-1 rounded-full border border-[#e6e2de] hover:bg-gray-100 text-[#1a1918] cursor-pointer"
+                  className="p-1 rounded-full border border-border hover:bg-gray-100 text-ink cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -1825,7 +1825,7 @@ export default function VisitorExperience({
 
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {savedSearches.length === 0 ? (
-                  <div className="text-center py-12 text-[#6e6b66] space-y-2">
+                  <div className="text-center py-12 text-ink-muted space-y-2">
                     <Bell size={32} className="mx-auto text-gray-300" />
                     <p className="text-sm font-medium">{isRtl ? "لا توجد عمليات بحث محفوظة" : "No saved searches yet"}</p>
                     <p className="text-xs text-gray-400">{isRtl ? "احفظ بحثك لتلقي تنبيهات بالوحدات الجديدة المطابقة" : "Save active filters to receive updates on matching listings"}</p>
@@ -1834,10 +1834,10 @@ export default function VisitorExperience({
                   savedSearches.map((search) => {
                     const filters = typeof search.filters === 'string' ? JSON.parse(search.filters) : search.filters;
                     return (
-                      <div key={search.id} className="p-4 bg-white rounded-xl border border-[#e6e2de] shadow-2xs hover:shadow-xs transition-all space-y-3">
+                      <div key={search.id} className="p-4 bg-white rounded-xl border border-border shadow-2xs hover:shadow-xs transition-all space-y-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <h4 className="text-sm font-bold text-[#1c1a17]">{search.name}</h4>
+                            <h4 className="text-sm font-bold text-chrome">{search.name}</h4>
                             <p className="text-[10px] text-gray-400">
                               {new Date(search.createdDate).toLocaleDateString()}
                             </p>
@@ -1852,44 +1852,44 @@ export default function VisitorExperience({
                         {/* Filter criteria list */}
                         <div className="flex flex-wrap gap-1">
                           {filters.selectedMunicipality && (
-                            <span className="px-1.5 py-0.5 bg-[#f5f2ee] rounded text-[10px] text-[#6e6b66]">
+                            <span className="px-1.5 py-0.5 bg-surface-2 rounded text-[10px] text-ink-muted">
                               {isRtl ? "البلدية: " : "Muni: "}
                               {locations.find(l => l.id === filters.selectedMunicipality)?.name || filters.selectedMunicipality}
                             </span>
                           )}
                           {filters.selectedArea && (
-                            <span className="px-1.5 py-0.5 bg-[#f5f2ee] rounded text-[10px] text-[#6e6b66]">
+                            <span className="px-1.5 py-0.5 bg-surface-2 rounded text-[10px] text-ink-muted">
                               {isRtl ? "المنطقة: " : "Area: "}
                               {locations.find(l => l.id === filters.selectedArea)?.name || filters.selectedArea}
                             </span>
                           )}
                           {filters.propType && (
-                            <span className="px-1.5 py-0.5 bg-[#f5f2ee] rounded text-[10px] text-[#6e6b66]">
+                            <span className="px-1.5 py-0.5 bg-surface-2 rounded text-[10px] text-ink-muted">
                               {filters.propType}
                             </span>
                           )}
                           {filters.transType && (
-                            <span className="px-1.5 py-0.5 bg-[#f5f2ee] rounded text-[10px] text-[#6e6b66]">
+                            <span className="px-1.5 py-0.5 bg-surface-2 rounded text-[10px] text-ink-muted">
                               {filters.transType === "FOR_RENT" ? (isRtl ? "إيجار" : "Rent") : (isRtl ? "بيع" : "Sale")}
                             </span>
                           )}
                           {filters.maxPrice && (
-                            <span className="px-1.5 py-0.5 bg-[#f5f2ee] rounded text-[10px] text-[#6e6b66]">
+                            <span className="px-1.5 py-0.5 bg-surface-2 rounded text-[10px] text-ink-muted">
                               &lt; {Number(filters.maxPrice).toLocaleString()} QAR
                             </span>
                           )}
                           {filters.searchQuery && (
-                            <span className="px-1.5 py-0.5 bg-[#f5f2ee] rounded text-[10px] text-[#6e6b66]">
+                            <span className="px-1.5 py-0.5 bg-surface-2 rounded text-[10px] text-ink-muted">
                               "{filters.searchQuery}"
                             </span>
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between pt-2 border-t border-[#f2ede8] text-xs">
+                        <div className="flex items-center justify-between pt-2 border-t border-surface-2 text-xs">
                           {search.newMatchesCount > 0 ? (
                             <button
                               onClick={() => handleResetSearchCounter(search.id)}
-                              className="text-xs text-[#bf9b30] hover:underline font-semibold cursor-pointer"
+                              className="text-xs text-gold hover:underline font-semibold cursor-pointer"
                             >
                               {isRtl ? "تصفير العداد / مقروء" : "Reset Match Counter"}
                             </button>
@@ -1920,33 +1920,33 @@ export default function VisitorExperience({
       {/* Save Search Confirmation Modal */}
       {isSaveSearchModalOpen && (
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-[#fcfbfa] rounded-xl border border-[#e6e2de] w-full max-w-md overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className="bg-canvas rounded-xl border border-border w-full max-w-md overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setIsSaveSearchModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 bg-white hover:bg-gray-100 rounded-full border border-[#e6e2de] text-[#1a1918] cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-white hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
             >
               <X size={15} />
             </button>
 
             <div className="p-6 space-y-4">
-              <h3 className="text-lg font-serif font-bold text-[#1c1a17]">
+              <h3 className="text-lg font-serif font-bold text-chrome">
                 {isRtl ? "حفظ كبحث منبه ومطابقة ذكية" : "Save Active Filters as Alert Search"}
               </h3>
 
               <div className="space-y-1">
-                <label className="block text-xs font-bold text-[#6e6b66] uppercase tracking-wider">
+                <label className="block text-xs font-bold text-ink-muted uppercase tracking-wider">
                   {isRtl ? "اسم التنبيه المخصص" : "Alert Name"}
                 </label>
                 <input
                   type="text"
                   value={customSearchName}
                   onChange={(e) => setCustomSearchName(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-[#e6e2de] rounded-lg text-sm focus:outline-none focus:border-[#bf9b30] text-[#1a1918]"
+                  className="w-full px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:border-gold text-ink"
                   placeholder={isRtl ? "أدخل اسماً مخصصاً لهذا البحث" : "Enter a descriptive name"}
                 />
               </div>
 
-              <div className="bg-white p-3 rounded-lg border border-[#e6e2de] space-y-1.5 text-xs text-[#6e6b66]">
+              <div className="bg-white p-3 rounded-lg border border-border space-y-1.5 text-xs text-ink-muted">
                 <p className="font-bold">{isRtl ? "معايير التصفية التي سيتم مراقبتها:" : "Active filters being monitored:"}</p>
                 <ul className="list-disc list-inside space-y-0.5 opacity-80 pl-1">
                   {selectedMunicipality && (
@@ -1971,13 +1971,13 @@ export default function VisitorExperience({
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setIsSaveSearchModalOpen(false)}
-                  className="flex-1 py-2 border border-[#e6e2de] text-[#6e6b66] rounded-lg text-sm hover:bg-[#f2ede8] cursor-pointer"
+                  className="flex-1 py-2 border border-border text-ink-muted rounded-lg text-sm hover:bg-surface-2 cursor-pointer"
                 >
                   {isRtl ? "إلغاء" : "Cancel"}
                 </button>
                 <button
                   onClick={handleConfirmSaveSearch}
-                  className="flex-1 py-2 bg-gradient-to-r from-[#bf9b30] to-[#8c6d1d] text-white font-bold rounded-lg text-sm hover:opacity-90 cursor-pointer"
+                  className="flex-1 py-2 bg-gradient-to-r from-gold to-gold-active text-white font-bold rounded-lg text-sm hover:opacity-90 cursor-pointer"
                 >
                   {isRtl ? "حفظ التنبيه" : "Save Alert"}
                 </button>

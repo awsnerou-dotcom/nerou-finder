@@ -26,7 +26,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
       analytics: false,
       featuredListings: 2,
       popular: false,
-      color: "border-[#e6e2de]",
+      color: "border-border",
       badge: null
     },
     {
@@ -41,7 +41,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
       analytics: true,
       featuredListings: 15,
       popular: true,
-      color: "border-[#bf9b30]",
+      color: "border-gold",
       badge: isRtl ? "الأكثر مبيعاً" : "Most Popular"
     },
     {
@@ -56,7 +56,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
       analytics: true,
       featuredListings: 50,
       popular: false,
-      color: "border-[#1a1918]",
+      color: "border-ink",
       badge: isRtl ? "شريك استراتيجي" : "Enterprise Elite"
     }
   ];
@@ -101,26 +101,26 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
       
       {/* 1. Header Display */}
       <div className="text-center max-w-3xl mx-auto space-y-4">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#bf9b30]/10 text-[#bf9b30] text-xs font-bold uppercase tracking-widest rounded-full">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gold/10 text-gold text-xs font-bold uppercase tracking-widest rounded-full">
           <Award size={13} />
           <span>SaaS PARTNER NETWORK</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-[#1a1918] leading-tight">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-ink leading-tight">
           {t.title}
         </h1>
-        <p className="text-sm sm:text-base text-[#6e6b66] leading-relaxed">
+        <p className="text-sm sm:text-base text-ink-muted leading-relaxed">
           {t.description}
         </p>
 
         {/* Billing Cycle Toggle */}
         <div className="flex items-center justify-center pt-6">
-          <div className="bg-[#fcfbfa] border border-[#e6e2de] rounded-xl p-1.5 flex items-center gap-1.5 shadow-xs">
+          <div className="bg-canvas border border-border rounded-xl p-1.5 flex items-center gap-1.5 shadow-xs">
             <button
               onClick={() => setBillingCycle("monthly")}
               className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer ${
                 billingCycle === "monthly"
-                  ? "bg-[#1a1918] text-white shadow-xs"
-                  : "text-[#6e6b66] hover:text-[#1a1918]"
+                  ? "bg-ink text-white shadow-xs"
+                  : "text-ink-muted hover:text-ink"
               }`}
             >
               {t.monthly}
@@ -129,8 +129,8 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
               onClick={() => setBillingCycle("yearly")}
               className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 ${
                 billingCycle === "yearly"
-                  ? "bg-[#bf9b30] text-[#1a1918] shadow-xs"
-                  : "text-[#6e6b66] hover:text-[#1a1918]"
+                  ? "bg-gold text-ink shadow-xs"
+                  : "text-ink-muted hover:text-ink"
               }`}
             >
               <span>{t.yearly}</span>
@@ -152,13 +152,13 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
               onMouseLeave={() => setHoveredTier(null)}
               className={`relative bg-white rounded-xl border p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 ${
                 tier.popular
-                  ? "ring-2 ring-[#bf9b30] shadow-xl md:-translate-y-2 bg-[#bf9b30]/2"
-                  : "hover:border-[#bf9b30] shadow-xs"
+                  ? "ring-2 ring-gold shadow-xl md:-translate-y-2 bg-gold/2"
+                  : "hover:border-gold shadow-xs"
               }`}
             >
               {/* Popular Badge Overlay */}
               {tier.badge && (
-                <div className={`absolute -top-3.5 ${isRtl ? "left-4" : "right-4"} bg-[#bf9b30] text-black text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white shadow-xs`}>
+                <div className={`absolute -top-3.5 ${isRtl ? "left-4" : "right-4"} bg-gold text-black text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white shadow-xs`}>
                   {tier.badge}
                 </div>
               )}
@@ -166,62 +166,62 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
               {/* Top Details */}
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <h3 className="font-serif text-xl font-bold text-[#1a1918]">{tier.name}</h3>
-                  <p className="text-xs text-[#6e6b66] leading-relaxed min-h-[32px]">{tier.subtitle}</p>
+                  <h3 className="font-serif text-xl font-bold text-ink">{tier.name}</h3>
+                  <p className="text-xs text-ink-muted leading-relaxed min-h-[32px]">{tier.subtitle}</p>
                 </div>
 
                 {/* Price */}
-                <div className="py-4 border-y border-[#f2ede8] space-y-1">
+                <div className="py-4 border-y border-surface-2 space-y-1">
                   <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl sm:text-4xl font-mono font-bold text-[#1a1918]">
+                    <span className="text-3xl sm:text-4xl font-mono font-bold text-ink">
                       {displayPrice.toLocaleString()}
                     </span>
-                    <span className="text-xs text-[#6e6b66] font-medium">{t.qar} {t.perMonth}</span>
+                    <span className="text-xs text-ink-muted font-medium">{t.qar} {t.perMonth}</span>
                   </div>
                   {billingCycle === "yearly" ? (
                     <p className="text-[10px] text-emerald-600 font-bold uppercase">
                       {isRtl ? `فوترة سنوية بقيمة ${totalYearlyPrice.toLocaleString()} رق` : `Billed ${totalYearlyPrice.toLocaleString()} QAR annually`}
                     </p>
                   ) : (
-                    <p className="text-[10px] text-[#a8a4a0]">
+                    <p className="text-[10px] text-ink-faint">
                       {isRtl ? "تجديد شهري مرن" : "Flexible monthly licensing"}
                     </p>
                   )}
                 </div>
 
                 {/* Key Features Bullet List */}
-                <ul className="space-y-3.5 text-xs text-[#6e6b66]">
+                <ul className="space-y-3.5 text-xs text-ink-muted">
                   <li className="flex items-center gap-2.5">
-                    <CheckCircle2 size={15} className="text-[#bf9b30] shrink-0" />
+                    <CheckCircle2 size={15} className="text-gold shrink-0" />
                     <span>
                       {isRtl ? `حتى ${tier.properties} عقار نشط` : `Up to ${tier.properties} active properties`}
                     </span>
                   </li>
                   <li className="flex items-center gap-2.5">
-                    <CheckCircle2 size={15} className="text-[#bf9b30] shrink-0" />
+                    <CheckCircle2 size={15} className="text-gold shrink-0" />
                     <span>
                       {isRtl ? `${tier.agents} حساب وكيل مستقل` : `${tier.agents} dedicated agent seat${tier.agents > 1 ? "s" : ""}`}
                     </span>
                   </li>
                   <li className="flex items-center gap-2.5">
-                    <CheckCircle2 size={15} className="text-[#bf9b30] shrink-0" />
+                    <CheckCircle2 size={15} className="text-gold shrink-0" />
                     <span>
                       {isRtl ? `${tier.aiQuota} استعلام ذكاء اصطناعي` : `${tier.aiQuota} AI search inquiries / mo`}
                     </span>
                   </li>
                   <li className="flex items-center gap-2.5">
-                    <CheckCircle2 size={15} className="text-[#bf9b30] shrink-0" />
+                    <CheckCircle2 size={15} className="text-gold shrink-0" />
                     <span>
                       {isRtl ? `${tier.featuredListings} فتحات ترويج مميزة` : `${tier.featuredListings} featured slot campaigns`}
                     </span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     {tier.analytics ? (
-                      <CheckCircle2 size={15} className="text-[#bf9b30] shrink-0" />
+                      <CheckCircle2 size={15} className="text-gold shrink-0" />
                     ) : (
                       <X size={15} className="text-gray-300 shrink-0" />
                     )}
-                    <span className={tier.analytics ? "text-[#1a1918]" : "text-gray-400 line-through"}>
+                    <span className={tier.analytics ? "text-ink" : "text-gray-400 line-through"}>
                       {t.analyticsAccessLabel}
                     </span>
                   </li>
@@ -234,8 +234,8 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
                   onClick={() => onSelectPlan(tier.id)}
                   className={`w-full py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
                     tier.popular
-                      ? "bg-[#1a1918] hover:bg-[#bf9b30] hover:text-[#1a1918] text-white shadow-md hover:shadow-lg"
-                      : "bg-white border border-[#1a1918] hover:bg-[#1a1918] hover:text-white text-[#1a1918]"
+                      ? "bg-ink hover:bg-gold hover:text-ink text-white shadow-md hover:shadow-lg"
+                      : "bg-white border border-ink hover:bg-ink hover:text-white text-ink"
                   }`}
                 >
                   <span>{t.requestPlan}</span>
@@ -248,10 +248,10 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
       </div>
 
       {/* 3. Deep-Dive Detailed Features Comparison Table */}
-      <div className="max-w-5xl mx-auto bg-white rounded-xl border border-[#e6e2de] overflow-hidden shadow-xs">
-        <div className="p-5 bg-[#fdfcfb] border-b border-[#e6e2de]">
-          <h3 className="font-serif text-base font-semibold text-[#1a1918] flex items-center gap-2">
-            <ShieldCheck className="text-[#bf9b30]" size={18} />
+      <div className="max-w-5xl mx-auto bg-white rounded-xl border border-border overflow-hidden shadow-xs">
+        <div className="p-5 bg-ink-inverse border-b border-border">
+          <h3 className="font-serif text-base font-semibold text-ink flex items-center gap-2">
+            <ShieldCheck className="text-gold" size={18} />
             <span>{t.featuresTitle}</span>
           </h3>
         </div>
@@ -259,40 +259,40 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-[#fcfbfa] border-b border-[#e6e2de] text-[#1a1918]">
+              <tr className="bg-canvas border-b border-border text-ink">
                 <th className={`p-4 font-semibold ${isRtl ? "text-right" : "text-left"}`}>{isRtl ? "الميزة / السعة" : "Operational Capability"}</th>
                 <th className="p-4 text-center font-bold">{isRtl ? "الوسيط المعياري" : "Standard Broker"}</th>
-                <th className="p-4 text-center font-bold text-[#bf9b30]">{isRtl ? "المكتب المتكامل" : "Enterprise Agency"}</th>
+                <th className="p-4 text-center font-bold text-gold">{isRtl ? "المكتب المتكامل" : "Enterprise Agency"}</th>
                 <th className="p-4 text-center font-bold">{isRtl ? "المطور العقاري" : "Master Developer"}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f2ede8] text-[#6e6b66]">
+            <tbody className="divide-y divide-surface-2 text-ink-muted">
               <tr>
-                <td className={`p-4 font-medium text-[#1a1918] ${isRtl ? "text-right" : "text-left"}`}>{t.activeProperties}</td>
+                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.activeProperties}</td>
                 <td className="p-4 text-center font-semibold">15</td>
-                <td className="p-4 text-center font-bold text-[#bf9b30]">100</td>
+                <td className="p-4 text-center font-bold text-gold">100</td>
                 <td className="p-4 text-center font-semibold">500</td>
               </tr>
               <tr>
-                <td className={`p-4 font-medium text-[#1a1918] ${isRtl ? "text-right" : "text-left"}`}>{t.agentSeats}</td>
+                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.agentSeats}</td>
                 <td className="p-4 text-center font-semibold">1</td>
-                <td className="p-4 text-center font-bold text-[#bf9b30]">10</td>
+                <td className="p-4 text-center font-bold text-gold">10</td>
                 <td className="p-4 text-center font-semibold">50</td>
               </tr>
               <tr>
-                <td className={`p-4 font-medium text-[#1a1918] ${isRtl ? "text-right" : "text-left"}`}>{t.aiQuotaLabel}</td>
+                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.aiQuotaLabel}</td>
                 <td className="p-4 text-center">50</td>
-                <td className="p-4 text-center font-bold text-[#bf9b30]">500</td>
+                <td className="p-4 text-center font-bold text-gold">500</td>
                 <td className="p-4 text-center">2,000</td>
               </tr>
               <tr>
-                <td className={`p-4 font-medium text-[#1a1918] ${isRtl ? "text-right" : "text-left"}`}>{t.featuredSlots}</td>
+                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.featuredSlots}</td>
                 <td className="p-4 text-center">2</td>
-                <td className="p-4 text-center font-bold text-[#bf9b30]">15</td>
+                <td className="p-4 text-center font-bold text-gold">15</td>
                 <td className="p-4 text-center">50</td>
               </tr>
               <tr>
-                <td className={`p-4 font-medium text-[#1a1918] ${isRtl ? "text-right" : "text-left"}`}>{t.analyticsAccessLabel}</td>
+                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.analyticsAccessLabel}</td>
                 <td className="p-4 text-center">
                   <X size={14} className="mx-auto text-gray-300" />
                 </td>
@@ -304,9 +304,9 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
                 </td>
               </tr>
               <tr>
-                <td className={`p-4 font-medium text-[#1a1918] ${isRtl ? "text-right" : "text-left"}`}>{t.certifiedSupport}</td>
+                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.certifiedSupport}</td>
                 <td className="p-4 text-center">Standard Support</td>
-                <td className="p-4 text-center text-[#bf9b30] font-bold">Priority SLA (12h)</td>
+                <td className="p-4 text-center text-gold font-bold">Priority SLA (12h)</td>
                 <td className="p-4 text-center font-semibold">Dedicated AM & Elite SLA (2h)</td>
               </tr>
             </tbody>
@@ -315,13 +315,13 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
       </div>
 
       {/* 4. Payment Assurance Guarantee */}
-      <div className="max-w-4xl mx-auto bg-[#fdfcfb] rounded-xl border border-dashed border-[#e6e2de] p-6 sm:p-8 flex flex-col md:flex-row items-center gap-6">
-        <div className="p-4 bg-white border border-[#e6e2de] rounded-full text-[#bf9b30] shadow-xs">
+      <div className="max-w-4xl mx-auto bg-ink-inverse rounded-xl border border-dashed border-border p-6 sm:p-8 flex flex-col md:flex-row items-center gap-6">
+        <div className="p-4 bg-white border border-border rounded-full text-gold shadow-xs">
           <Zap size={32} />
         </div>
         <div className="space-y-1.5 text-center md:text-left">
-          <h4 className="font-serif text-base font-bold text-[#1a1918]">{t.guaranteeTitle}</h4>
-          <p className="text-xs text-[#6e6b66] leading-relaxed">
+          <h4 className="font-serif text-base font-bold text-ink">{t.guaranteeTitle}</h4>
+          <p className="text-xs text-ink-muted leading-relaxed">
             {t.guaranteeDesc}
           </p>
         </div>
@@ -329,23 +329,23 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
 
       {/* 5. FAQs Section */}
       <div className="max-w-4xl mx-auto space-y-6">
-        <h3 className="font-serif text-lg font-bold text-[#1a1918] text-center">{t.faqTitle}</h3>
+        <h3 className="font-serif text-lg font-bold text-ink text-center">{t.faqTitle}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-5 rounded-xl border border-[#e6e2de] space-y-2">
-            <h4 className="font-semibold text-xs text-[#1a1918] flex items-center gap-1.5">
-              <HelpCircle size={14} className="text-[#bf9b30]" />
+          <div className="bg-white p-5 rounded-xl border border-border space-y-2">
+            <h4 className="font-semibold text-xs text-ink flex items-center gap-1.5">
+              <HelpCircle size={14} className="text-gold" />
               <span>{t.faqQ1}</span>
             </h4>
-            <p className="text-xs text-[#6e6b66] leading-relaxed">
+            <p className="text-xs text-ink-muted leading-relaxed">
               {t.faqA1}
             </p>
           </div>
-          <div className="bg-white p-5 rounded-xl border border-[#e6e2de] space-y-2">
-            <h4 className="font-semibold text-xs text-[#1a1918] flex items-center gap-1.5">
-              <HelpCircle size={14} className="text-[#bf9b30]" />
+          <div className="bg-white p-5 rounded-xl border border-border space-y-2">
+            <h4 className="font-semibold text-xs text-ink flex items-center gap-1.5">
+              <HelpCircle size={14} className="text-gold" />
               <span>{t.faqQ2}</span>
             </h4>
-            <p className="text-xs text-[#6e6b66] leading-relaxed">
+            <p className="text-xs text-ink-muted leading-relaxed">
               {t.faqA2}
             </p>
           </div>

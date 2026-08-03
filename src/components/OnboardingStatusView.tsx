@@ -96,14 +96,14 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
   return (
     <div className="space-y-6 max-w-3xl mx-auto" dir={isRtl ? "rtl" : "ltr"}>
       {/* Header */}
-      <div className="text-center space-y-2 border-b border-[#e6e2de] pb-6">
-        <div className="w-14 h-14 mx-auto rounded-full bg-[#1a1918] flex items-center justify-center">
-          <ShieldCheck className="text-[#bf9b30]" size={26} />
+      <div className="text-center space-y-2 border-b border-border pb-6">
+        <div className="w-14 h-14 mx-auto rounded-full bg-ink flex items-center justify-center">
+          <ShieldCheck className="text-gold" size={26} />
         </div>
-        <h2 className="text-2xl font-serif text-[#1a1918] font-medium">
+        <h2 className="text-2xl font-serif text-ink font-medium">
           {isRtl ? "حالة تفعيل حسابك" : "Your Account Activation Status"}
         </h2>
-        <p className="text-xs text-[#6e6b66]">
+        <p className="text-xs text-ink-muted">
           {isRtl
             ? `مرحباً ${user.fullName}، تابع تقدم طلبك أدناه.`
             : `Welcome, ${user.fullName}. Track your onboarding progress below.`}
@@ -111,7 +111,7 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
       </div>
 
       {/* Progress Tracker */}
-      <div className="bg-white p-6 rounded-xl border border-[#e6e2de]">
+      <div className="bg-white p-6 rounded-xl border border-border">
         <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-0">
           {STEPS.map((step, idx) => {
             const stepNumber = idx + 1;
@@ -124,10 +124,10 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
                     <div
                       className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center border-2 ${
                         isDone
-                          ? "bg-[#bf9b30] border-[#bf9b30] text-black"
+                          ? "bg-gold border-gold text-black"
                           : isCurrent
-                          ? "border-[#bf9b30] text-[#bf9b30] bg-white"
-                          : "border-[#e6e2de] text-[#6e6b66] bg-white"
+                          ? "border-gold text-gold bg-white"
+                          : "border-border text-ink-muted bg-white"
                       }`}
                     >
                       {isDone ? <CheckCircle2 size={16} /> : isCurrent ? <Clock size={16} /> : <Circle size={14} />}
@@ -138,14 +138,14 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
                     {idx < STEPS.length - 1 && (
                       <div
                         className={`sm:hidden absolute left-1/2 -translate-x-1/2 top-8 w-0.5 h-6 ${
-                          stepNumber < completedSteps ? "bg-[#bf9b30]" : "bg-[#e6e2de]"
+                          stepNumber < completedSteps ? "bg-gold" : "bg-border"
                         }`}
                       />
                     )}
                   </div>
                   <span
                     className={`text-[10px] font-semibold ${
-                      isDone || isCurrent ? "text-[#1a1918]" : "text-[#6e6b66]"
+                      isDone || isCurrent ? "text-ink" : "text-ink-muted"
                     }`}
                   >
                     {isRtl ? step.ar : step.en}
@@ -154,7 +154,7 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
                 {idx < STEPS.length - 1 && (
                   <div
                     className={`hidden sm:block flex-1 h-0.5 mt-4 ${
-                      stepNumber < completedSteps ? "bg-[#bf9b30]" : "bg-[#e6e2de]"
+                      stepNumber < completedSteps ? "bg-gold" : "bg-border"
                     }`}
                   />
                 )}
@@ -166,24 +166,24 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
 
       {/* Plan + Next Action Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-1 bg-white p-5 rounded-xl border border-[#e6e2de] space-y-2">
-          <div className="flex items-center gap-2 text-[#6e6b66]">
+        <div className="md:col-span-1 bg-white p-5 rounded-xl border border-border space-y-2">
+          <div className="flex items-center gap-2 text-ink-muted">
             <CreditCard size={14} />
             <span className="text-[10px] font-bold uppercase tracking-wider">{isRtl ? "الخطة المختارة" : "Selected Plan"}</span>
           </div>
-          <h4 className="text-sm font-serif font-bold text-[#1a1918]">
+          <h4 className="text-sm font-serif font-bold text-ink">
             {plan?.name || (isRtl ? "لم يتم تحديد خطة بعد" : "No plan selected yet")}
           </h4>
           {plan && (
-            <p className="text-[10px] text-[#6e6b66]">{plan.priceMonthly} QAR/mo</p>
+            <p className="text-[10px] text-ink-muted">{plan.priceMonthly} QAR/mo</p>
           )}
         </div>
 
-        <div className="md:col-span-2 bg-[#fbfaf8] p-5 rounded-xl border border-[#e6e2de] space-y-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-[#6e6b66]">
+        <div className="md:col-span-2 bg-canvas p-5 rounded-xl border border-border space-y-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">
             {isRtl ? "الإجراء التالي المطلوب" : "Next Required Action"}
           </span>
-          <p className="text-xs text-[#1a1918] leading-relaxed">{isRtl ? nextAction.ar : nextAction.en}</p>
+          <p className="text-xs text-ink leading-relaxed">{isRtl ? nextAction.ar : nextAction.en}</p>
         </div>
       </div>
 
@@ -191,8 +191,8 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
       {showDocumentsPanel && (
         <div className="space-y-2">
           <div className="flex items-center gap-2 px-1">
-            <FileText size={14} className="text-[#bf9b30]" />
-            <h3 className="text-sm font-serif font-semibold text-[#1a1918]">
+            <FileText size={14} className="text-gold" />
+            <h3 className="text-sm font-serif font-semibold text-ink">
               {isRtl ? "مستندات التوثيق المطلوبة" : "Required Verification Documents"}
             </h3>
           </div>

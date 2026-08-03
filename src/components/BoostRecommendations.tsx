@@ -75,14 +75,14 @@ export default function BoostRecommendations({ properties, agentId, orgId, isRtl
   if (!loading && !error && recommendations.length === 0) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-[#bf9b30]/30 overflow-hidden">
-      <div className="p-4 bg-[#fdfcfb] border-b border-[#e6e2de] flex items-center gap-2">
-        <Sparkles size={16} className="text-[#bf9b30] shrink-0" />
+    <div className="bg-white rounded-xl border border-gold/30 overflow-hidden">
+      <div className="p-4 bg-ink-inverse border-b border-border flex items-center gap-2">
+        <Sparkles size={16} className="text-gold shrink-0" />
         <div>
-          <h4 className="font-serif text-sm font-semibold text-[#1a1918]">
+          <h4 className="font-serif text-sm font-semibold text-ink">
             {isRtl ? "موصى برفعها" : "Recommended to Boost"}
           </h4>
-          <p className="text-[10px] text-[#6e6b66]">
+          <p className="text-[10px] text-ink-muted">
             {isRtl
               ? "تحليل مدعوم بالذكاء الاصطناعي للإعلانات ذات الأداء المنخفض نسبياً لعمرها."
               : "AI-assisted analysis of listings underperforming relative to their age."}
@@ -91,14 +91,14 @@ export default function BoostRecommendations({ properties, agentId, orgId, isRtl
       </div>
 
       {loading ? (
-        <div className="p-4 divide-y divide-[#f2ede8]">
+        <div className="p-4 divide-y divide-surface-2">
           <RowSkeleton columns={3} />
           <RowSkeleton columns={3} />
         </div>
       ) : error ? (
         <p className="p-4 text-[11px] text-red-600">{error}</p>
       ) : (
-        <div className="divide-y divide-[#f2ede8]">
+        <div className="divide-y divide-surface-2">
           {recommendations.map(rec => {
             const property = properties.find(p => p.id === rec.propertyId);
             if (!property) return null;
@@ -106,13 +106,13 @@ export default function BoostRecommendations({ properties, agentId, orgId, isRtl
               <div key={rec.propertyId} className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div className="min-w-0">
-                    <p className="font-bold text-[#1a1918] text-xs truncate">
+                    <p className="font-bold text-ink text-xs truncate">
                       {isRtl ? property.titleAr || property.title : property.title}
                     </p>
-                    <p className="text-[10px] text-[#6e6b66]">
+                    <p className="text-[10px] text-ink-muted">
                       {property.district}, {property.city} • {property.price.toLocaleString()} {property.currency}
                     </p>
-                    <p className="text-[9px] text-[#a9a49d]">
+                    <p className="text-[9px] text-ink-faint">
                       {isRtl
                         ? `${rec.viewsPerDay}/يوم مشاهدات • ${rec.leadsCount} عميل محتمل • ${rec.ageDays} يوم منذ الإدراج`
                         : `${rec.viewsPerDay}/day views • ${rec.leadsCount} leads • ${rec.ageDays}d since listed`}
@@ -123,7 +123,7 @@ export default function BoostRecommendations({ properties, agentId, orgId, isRtl
                     {isRtl ? "أداء منخفض" : "Low performance"}
                   </span>
                 </div>
-                <p className="text-[10px] text-[#6e6b66] italic leading-relaxed">
+                <p className="text-[10px] text-ink-muted italic leading-relaxed">
                   {isRtl ? rec.reasonAr : rec.reasonEn}
                 </p>
                 <BoostButton property={property} isRtl={isRtl} />

@@ -11,7 +11,7 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 // Shared card surface - standardizes on rounded-xl + border-border + shadow-card, replacing
-// the dozens of hand-written `bg-white rounded-xl border border-[#e6e2de] ...` combinations
+// the dozens of hand-written `bg-white rounded-xl border border-border ...` combinations
 // (and their light drift, e.g. some using shadow-sm, some shadow-md, some none at all).
 export function Card({ padded = true, interactive = false, className = "", children, ...rest }: CardProps) {
   return (
