@@ -19,6 +19,7 @@ import {
 } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
 import { trackEvent, trackPageView } from "../lib/analytics.js";
+import DirectorySearch from "./DirectorySearch.js";
 import {
   Search,
   Sparkles,
@@ -73,7 +74,7 @@ interface VisitorExperienceProps {
   onSignupTrigger?: () => void;
   // One-shot navigation request from outside this component (e.g. the site footer in App.tsx,
   // which sits outside VisitorExperience and doesn't otherwise have access to its tab state).
-  externalNavigation?: { tab: string; transType?: string } | null;
+  externalNavigation?: { tab: string; transType?: string; directoryMode?: "AGENT" | "AGENCY" | "DEVELOPER" } | null;
   onExternalNavigationHandled?: () => void;
 }
 
@@ -107,6 +108,11 @@ export default function VisitorExperience({
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [campaigns, setCampaigns] = useState<any[]>([]);
 
+  // Search mode: "PROPERTIES" keeps the existing filter/AI search entirely unchanged; the
+  // other three switch to a separate identity/directory lookup (see DirectorySearch.tsx) for
+  // finding an agent/agency/developer directly by name rather than finding listings.
+  const [searchMode, setSearchMode] = useState<"PROPERTIES" | "AGENT" | "AGENCY" | "DEVELOPER">("PROPERTIES");
+
   // Public Sub-Pages Tab state
   const [currentTab, setCurrentTab] = useState<
     | "MARKETPLACE"
@@ -130,6 +136,7 @@ export default function VisitorExperience({
         setPropType("");
         setTransType("");
       }
+      setSearchMode(externalNavigation.directoryMode || "PROPERTIES");
       if (onExternalNavigationHandled) onExternalNavigationHandled();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -848,6 +855,49 @@ export default function VisitorExperience({
 
           {currentTab === "MARKETPLACE" && (
             <div className="border-t border-white/10 text-white p-6 md:p-8">
+              {/* Search mode toggle - "Properties" keeps the existing filter/AI search
+                  entirely unchanged; the other three switch to a separate agent/agency/
+                  developer identity lookup (DirectorySearch.tsx), not a property search. */}
+              <div className="max-w-3xl flex flex-wrap gap-2 mb-5" role="tablist">
+                {([
+                  ["PROPERTIES", isRtl ? "العقارات" : "Properties"],
+                  ["AGENT", isRtl ? "الوكلاء" : "Agents"],
+                  ["AGENCY", isRtl ? "المكاتب العقارية" : "Agencies"],
+                  ["DEVELOPER", isRtl ? "المطورون" : "Developers"]
+                ] as const).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    role="tab"
+                    aria-selected={searchMode === mode}
+                    onClick={() => setSearchMode(mode)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide transition-colors cursor-pointer ${
+                      searchMode === mode
+                        ? "bg-[#bf9b30] text-black"
+                        : "bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {searchMode !== "PROPERTIES" ? (
+                <div className="max-w-5xl">
+                  <DirectorySearch
+                    type={searchMode}
+                    isRtl={isRtl}
+                    onSelect={(type, id) => {
+                      if (type === "AGENT") {
+                        const agent = users.find((u) => u.id === id);
+                        if (agent) setSelectedAgentProfile(agent);
+                      } else {
+                        const org = organizations.find((o) => o.id === id);
+                        if (org) setSelectedOrgProfile(org);
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
               <div className="max-w-3xl space-y-4">
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#bf9b30] text-black text-xs font-semibold uppercase tracking-wider rounded-full">
                   <Sparkles size={14} />
@@ -920,12 +970,13 @@ export default function VisitorExperience({
                   </div>
                 )}
               </div>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {currentTab === "MARKETPLACE" && (
+      {currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && (
         <>
           {/* 2. Central Qatar Parent-Child Location & Property Type Filters */}
       {!aiSearchActive && (
@@ -1288,14 +1339,23 @@ export default function VisitorExperience({
                         {isRtl ? property.titleAr : property.title}
                       </h4>
                       {/* FIX 4: verified badge on search-result cards too, showing the agent's
-                          actual company rather than a generic "Nerou" claim. */}
+                          actual company rather than a generic "Nerou" claim. Clickable so the
+                          agent's name/company on the card links straight to their public profile
+                          (directory search Fix 4) without leaving the results grid. */}
                       {(() => {
                         const listingAgent = users.find(u => u.id === property.agentId);
                         if (!listingAgent || listingAgent.verificationStatus !== VerificationStatus.APPROVED) return null;
                         return (
-                          <p className="text-[10px] text-[#8c6d1d] font-semibold truncate">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedAgentProfile(listingAgent);
+                            }}
+                            className="text-[10px] text-[#8c6d1d] font-semibold truncate hover:text-[#bf9b30] hover:underline cursor-pointer text-left rtl:text-right"
+                          >
                             {getVerifiedBadgeLabel(listingAgent, organizations.find(o => o.id === listingAgent.orgId)?.name, isRtl)}
-                          </p>
+                          </button>
                         );
                       })()}
                     </div>

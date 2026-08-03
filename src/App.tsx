@@ -57,10 +57,10 @@ export default function App() {
   // Footer navigation requests: the footer lives outside VisitorExperience (which owns the
   // marketplace's internal tab state), so we hand it a one-shot navigation request that
   // VisitorExperience consumes and clears.
-  const [visitorNavRequest, setVisitorNavRequest] = useState<{ tab: string; transType?: string } | null>(null);
-  const navigateFooter = (tab: string, transType?: string) => {
+  const [visitorNavRequest, setVisitorNavRequest] = useState<{ tab: string; transType?: string; directoryMode?: "AGENT" | "AGENCY" | "DEVELOPER" } | null>(null);
+  const navigateFooter = (tab: string, transType?: string, directoryMode?: "AGENT" | "AGENCY" | "DEVELOPER") => {
     setViewMode("MARKETPLACE");
-    setVisitorNavRequest({ tab, transType });
+    setVisitorNavRequest({ tab, transType, directoryMode });
   };
 
   // Authentication Modals states
@@ -747,6 +747,15 @@ export default function App() {
               </button>
               <button onClick={() => navigateFooter("PROJECTS")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "المشاريع الكبرى" : "Masterplans"}
+              </button>
+              <button onClick={() => navigateFooter("MARKETPLACE", undefined, "AGENT")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "تصفح الوكلاء" : "Browse Agents"}
+              </button>
+              <button onClick={() => navigateFooter("MARKETPLACE", undefined, "AGENCY")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "تصفح المكاتب العقارية" : "Browse Agencies"}
+              </button>
+              <button onClick={() => navigateFooter("MARKETPLACE", undefined, "DEVELOPER")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "تصفح المطورين" : "Browse Developers"}
               </button>
             </div>
           </div>

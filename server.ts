@@ -46,6 +46,7 @@ import {
   JobApplication,
   Invitation,
   Organization,
+  OrganizationType,
   AgentType,
   ApplicationStatus,
   getEffectiveAgentType,
@@ -2428,6 +2429,103 @@ app.post("/api/admin/emails/clear", (req, res) => {
 app.get("/api/organizations", (req, res) => {
   const db = readDb();
   res.json(db.organizations);
+});
+
+// Public directory: search/browse Agents, Agencies, and Developers by name/identity - a
+// separate lookup from property search (which finds listings, not people/companies). Serves
+// both the search-bar "Agents/Agencies/Developers" mode (pass ?q=) and the Browse pages (omit
+// ?q=, use ?city=/?minRating=/?limit=&offset= instead). Only ever returns accounts with
+// verificationStatus === APPROVED - that single check already excludes PENDING, REJECTED, and
+// SUSPENDED accounts (VerificationStatus covers all of those), so an unverified or suspended
+// agent/agency/developer can never appear in a public directory result.
+app.get("/api/directory", (req, res) => {
+  const { type, q, city, minRating, limit, offset } = req.query;
+  if (type !== "AGENT" && type !== "AGENCY" && type !== "DEVELOPER") {
+    return res.status(400).json({ error: "type must be one of: AGENT, AGENCY, DEVELOPER." });
+  }
+  const db = readDb();
+  const query = typeof q === "string" ? q.trim().toLowerCase() : "";
+  const cityFilter = typeof city === "string" ? city.trim().toLowerCase() : "";
+  const minRatingNum = minRating !== undefined ? Number(minRating) || 0 : 0;
+
+  // Reviews have no separate "DEVELOPER" target type - an org-level review is always stored
+  // as targetType "AGENCY" with targetId = the organization's id, regardless of whether that
+  // organization is an AGENCY or a DEVELOPER (eligibility is keyed on orgId, not org type).
+  const ratingFor = (targetType: "AGENT" | "AGENCY", targetId: string) => {
+    const approved = (db.reviews || []).filter(r => r.targetType === targetType && r.targetId === targetId && r.status === "APPROVED");
+    const average = approved.length > 0 ? approved.reduce((sum, r) => sum + r.rating, 0) / approved.length : 0;
+    return { average: Math.round(average * 10) / 10, count: approved.length };
+  };
+
+  let items: any[];
+
+  if (type === "AGENT") {
+    items = db.users
+      .filter(u => u.role === UserRole.AGENT && u.verificationStatus === VerificationStatus.APPROVED)
+      .filter(u => !query || u.fullName.toLowerCase().includes(query))
+      .map(u => {
+        const org = u.orgId ? db.organizations.find(o => o.id === u.orgId) : undefined;
+        const publishedListings = db.properties.filter(p => p.agentId === u.id && p.listingStatus === ListingStatus.PUBLISHED);
+        const cities = Array.from(new Set(publishedListings.map(p => p.city?.toLowerCase()).filter(Boolean)));
+        const rating = ratingFor("AGENT", u.id);
+        return {
+          id: u.id,
+          type: "AGENT",
+          name: u.fullName,
+          photoUrl: u.avatarUrl || null,
+          verifiedBadgeLabel: getVerifiedBadgeLabel(u, org?.name, false),
+          verifiedBadgeLabelAr: getVerifiedBadgeLabel(u, org?.name, true),
+          listingCount: publishedListings.length,
+          averageRating: rating.average,
+          reviewCount: rating.count,
+          cities
+        };
+      });
+  } else {
+    const orgType = type === "AGENCY" ? OrganizationType.AGENCY : OrganizationType.DEVELOPER;
+    items = db.organizations
+      .filter(o => o.type === orgType && o.verificationStatus === VerificationStatus.APPROVED)
+      .filter(o => !query || o.name.toLowerCase().includes(query))
+      .map(o => {
+        const publishedListings = db.properties.filter(p => p.orgId === o.id && p.listingStatus === ListingStatus.PUBLISHED);
+        const cities = Array.from(new Set(publishedListings.map(p => p.city?.toLowerCase()).filter(Boolean)));
+        const rating = ratingFor("AGENCY", o.id);
+        const base = {
+          id: o.id,
+          type,
+          name: o.name,
+          photoUrl: o.logoUrl || null,
+          verifiedBadgeLabel: type === "AGENCY" ? "✓ Verified Agency" : "✓ Verified Developer",
+          verifiedBadgeLabelAr: type === "AGENCY" ? "✓ مكتب موثّق" : "✓ مطور موثّق",
+          averageRating: rating.average,
+          reviewCount: rating.count,
+          cities
+        };
+        if (type === "AGENCY") {
+          return {
+            ...base,
+            teamSize: db.users.filter(u => u.orgId === o.id && (u.role === UserRole.AGENT || u.role === UserRole.AGENCY_ADMIN)).length,
+            listingCount: publishedListings.length
+          };
+        }
+        return {
+          ...base,
+          activeProjectCount: db.projects.filter(p => p.developerId === o.id && p.status !== "COMPLETED").length,
+          listingCount: publishedListings.length
+        };
+      });
+  }
+
+  if (cityFilter) items = items.filter((item: any) => item.cities.includes(cityFilter));
+  if (minRatingNum > 0) items = items.filter((item: any) => item.averageRating >= minRatingNum);
+  items.sort((a: any, b: any) => b.averageRating - a.averageRating || a.name.localeCompare(b.name));
+
+  const total = items.length;
+  const limitNum = limit !== undefined ? Math.max(0, Number(limit)) || 20 : items.length;
+  const offsetNum = offset !== undefined ? Math.max(0, Number(offset)) || 0 : 0;
+  const page = items.slice(offsetNum, offsetNum + limitNum);
+
+  res.json({ type, items: page, total, limit: limitNum, offset: offsetNum });
 });
 
 // Upgrade SaaS Plan (Subscribing)
