@@ -3099,6 +3099,9 @@ app.get("/api/admin/verification-documents", (req, res) => {
   let docs = db.verificationDocuments;
   if (status) docs = docs.filter(d => d.status === status);
   if (context) docs = docs.filter(d => d.context === context);
+  // Most recently submitted first - previously relied on insertion order (this collection is
+  // push()'d, so it was oldest-first, the opposite of every other admin list in the app).
+  docs = [...docs].sort((a, b) => new Date(b.submittedDate).getTime() - new Date(a.submittedDate).getTime());
 
   const enriched = docs.map(d => {
     const contact = getDocumentOwnerContact(db, d);
@@ -4228,6 +4231,8 @@ app.get("/api/support/tickets", authMiddleware, (req, res) => {
   const db = readDb();
   let tickets = db.supportTickets || [];
   tickets = tickets.filter(t => t.userId === authReq.user?.id || t.userEmail === authReq.user?.email);
+  // Most recent first - this collection is push()'d on creation (oldest-first insertion order).
+  tickets = [...tickets].sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
   res.json(tickets);
 });
 
@@ -4314,7 +4319,10 @@ app.post("/api/support/tickets/:id/reply", authMiddleware, (req, res) => {
 
 app.get("/api/admin/support/tickets", (req, res) => {
   const db = readDb();
-  res.json(db.supportTickets || []);
+  const tickets = [...(db.supportTickets || [])].sort(
+    (a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()
+  );
+  res.json(tickets);
 });
 
 app.put("/api/admin/support/tickets/:id", (req, res) => {
