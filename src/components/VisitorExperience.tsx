@@ -689,14 +689,22 @@ export default function VisitorExperience({
       {/* Unified luxury panel: category navigation + AI search share one continuous dark/gold
           surface. Pulled up by the header's height (-mt-24 = -6rem = -64px header + 32px main
           padding) so the photo extends behind the transparent floating header at the top of the
-          page; pt-24 on the inner content below compensates so nothing is actually hidden. */}
-      <div className="bg-chrome rounded-xl border border-chrome-hover shadow-sm relative overflow-hidden -mt-24">
+          page; pt-24 on the inner content below compensates so nothing is actually hidden.
+          Full-bleed breakout (w-screen + left-1/2 + -translate-x-1/2) so this dark hero panel
+          spans the true viewport edge-to-edge instead of sitting inset inside <main>'s
+          max-w-7xl/px-4 container, which previously left the page's light canvas background
+          showing as a gap down both sides. html/body already have overflow-x: hidden (see
+          index.css) so this can't introduce horizontal scroll. rounded-xl/border were dropped
+          since a rounded, bordered edge makes no sense once it's flush against the browser
+          window edge; the inner content below is re-wrapped in the original max-w-7xl
+          container so the foreground (nav/search) still lines up with the rest of the page. */}
+      <div className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 -translate-x-1/2">
         <PhotoHero />
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <Sparkles size={160} />
         </div>
 
-        <div className="relative z-10 pt-24">
+        <div className="relative z-10 pt-24 max-w-7xl mx-auto px-4 md:px-6">
           {/* Premium Multi-Tab Sub-Navigation Menu */}
           <div className="p-2 flex flex-wrap gap-1 items-center justify-between text-xs font-bold">
             <div className="flex flex-wrap gap-1">
