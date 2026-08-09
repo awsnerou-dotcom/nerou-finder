@@ -1402,7 +1402,7 @@ export default function VisitorExperience({
                     <span className="text-[10px] text-ink-muted block uppercase tracking-wider">
                       {property.transactionType === TransactionType.FOR_RENT ? (isRtl ? "قيمة الإيجار" : "Rent Price") : (isRtl ? "القيمة الإجمالية" : "Total Cost")}
                     </span>
-                    <span className="font-serif text-xl font-semibold text-chrome">
+                    <span className="font-serif text-xl font-semibold text-ink">
                       {formatPrice(property.price, isRtl)}
                     </span>
                   </div>
@@ -1589,7 +1589,7 @@ export default function VisitorExperience({
                 />
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-lg font-serif font-bold text-chrome">{selectedAgentProfile.fullName}</h3>
+                    <h3 className="text-lg font-serif font-bold text-ink">{selectedAgentProfile.fullName}</h3>
                   </div>
                   <span className="text-[10px] bg-gold/10 text-gold px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider block w-max">
                     {selectedAgentProfile.role.replace("_", " ")}
@@ -1609,14 +1609,14 @@ export default function VisitorExperience({
               <div className="bg-surface p-4 rounded-xl border border-border space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-ink-muted font-medium">{isRtl ? "الهاتف المباشر" : "Direct Telephone"}</span>
-                  <a href={`tel:${selectedAgentProfile.phone}`} className="font-bold text-chrome hover:text-gold flex items-center gap-1">
+                  <a href={`tel:${selectedAgentProfile.phone}`} className="font-bold text-ink hover:text-gold flex items-center gap-1">
                     <Phone size={12} />
                     <span>{selectedAgentProfile.phone}</span>
                   </a>
                 </div>
                 <div className="flex items-center justify-between text-xs border-t border-surface-2 pt-2.5">
                   <span className="text-ink-muted font-medium">{isRtl ? "البريد الإلكتروني" : "Direct Email"}</span>
-                  <a href={`mailto:${selectedAgentProfile.email}`} className="font-bold text-chrome hover:text-gold flex items-center gap-1">
+                  <a href={`mailto:${selectedAgentProfile.email}`} className="font-bold text-ink hover:text-gold flex items-center gap-1">
                     <Mail size={12} />
                     <span>{selectedAgentProfile.email}</span>
                   </a>
@@ -1671,7 +1671,7 @@ export default function VisitorExperience({
 
               {/* Other Listings managed by this Agent */}
               <div className="space-y-3 pt-3 border-t border-border">
-                <span className="text-[10px] font-bold text-chrome uppercase tracking-wider block">
+                <span className="text-[10px] font-bold text-ink uppercase tracking-wider block">
                   {isRtl ? "العقارات التي يديرها هذا المستشار" : "Active Listings Under Management"}
                 </span>
                 
@@ -1689,7 +1689,7 @@ export default function VisitorExperience({
                         >
                           <div className="flex items-center gap-2 overflow-hidden">
                             <img src={prop.images[0]} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                            <span className="font-medium text-chrome truncate">{isRtl ? prop.titleAr : prop.title}</span>
+                            <span className="font-medium text-ink truncate">{isRtl ? prop.titleAr : prop.title}</span>
                           </div>
                           <span className="font-bold text-gold flex-shrink-0">{formatPrice(prop.price, isRtl)}</span>
                         </div>
@@ -1724,7 +1724,7 @@ export default function VisitorExperience({
                 />
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-lg font-serif font-bold text-chrome">
+                    <h3 className="text-lg font-serif font-bold text-ink">
                       {isRtl && selectedOrgProfile.nameAr ? selectedOrgProfile.nameAr : selectedOrgProfile.name}
                     </h3>
                     {selectedOrgProfile.verificationStatus === VerificationStatus.APPROVED && (
@@ -1746,14 +1746,14 @@ export default function VisitorExperience({
               <div className="bg-surface p-4 rounded-xl border border-border space-y-2.5 shadow-2xs">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-ink-muted font-medium">{isRtl ? "هاتف المكتب الرئيسي" : "Main HQ Telephone"}</span>
-                  <a href={`tel:${selectedOrgProfile.phone}`} className="font-bold text-chrome hover:text-gold flex items-center gap-1">
+                  <a href={`tel:${selectedOrgProfile.phone}`} className="font-bold text-ink hover:text-gold flex items-center gap-1">
                     <Phone size={12} />
                     <span>{selectedOrgProfile.phone}</span>
                   </a>
                 </div>
                 <div className="flex items-center justify-between text-xs border-t border-surface-2 pt-2.5">
                   <span className="text-ink-muted font-medium">{isRtl ? "البريد الإلكتروني للعمليات" : "Corporate Operations Email"}</span>
-                  <a href={`mailto:${selectedOrgProfile.email}`} className="font-bold text-chrome hover:text-gold flex items-center gap-1">
+                  <a href={`mailto:${selectedOrgProfile.email}`} className="font-bold text-ink hover:text-gold flex items-center gap-1">
                     <Mail size={12} />
                     <span>{selectedOrgProfile.email}</span>
                   </a>
@@ -1778,7 +1778,7 @@ export default function VisitorExperience({
 
               {/* Other Listings catalogued by this Enterprise */}
               <div className="space-y-3 pt-3 border-t border-border">
-                <span className="text-[10px] font-bold text-chrome uppercase tracking-wider block">
+                <span className="text-[10px] font-bold text-ink uppercase tracking-wider block">
                   {selectedOrgProfile.type === "DEVELOPER"
                     ? (isRtl ? "المشاريع والوحدات العقارية الحالية" : "Active Real Estate Project Inventory")
                     : (isRtl ? "العقارات المدرجة من قبل هذا المكتب" : "Active Agency Portfolio")}
@@ -1798,7 +1798,7 @@ export default function VisitorExperience({
                         >
                           <div className="flex items-center gap-2 overflow-hidden">
                             <img src={prop.images[0]} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                            <span className="font-medium text-chrome truncate">{isRtl ? prop.titleAr : prop.title}</span>
+                            <span className="font-medium text-ink truncate">{isRtl ? prop.titleAr : prop.title}</span>
                           </div>
                           <span className="font-bold text-gold flex-shrink-0">{formatPrice(prop.price, isRtl)}</span>
                         </div>
@@ -1845,7 +1845,7 @@ export default function VisitorExperience({
                       <div key={search.id} className="p-4 bg-surface rounded-xl border border-border shadow-2xs hover:shadow-xs transition-all space-y-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <h4 className="text-sm font-bold text-chrome">{search.name}</h4>
+                            <h4 className="text-sm font-bold text-ink">{search.name}</h4>
                             <p className="text-[10px] text-gray-400">
                               {new Date(search.createdDate).toLocaleDateString()}
                             </p>
@@ -1937,7 +1937,7 @@ export default function VisitorExperience({
             </button>
 
             <div className="p-6 space-y-4">
-              <h3 className="text-lg font-serif font-bold text-chrome">
+              <h3 className="text-lg font-serif font-bold text-ink">
                 {isRtl ? "حفظ كبحث منبه ومطابقة ذكية" : "Save Active Filters as Alert Search"}
               </h3>
 

@@ -139,7 +139,7 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
             <div className="p-4 border-t border-surface-2 flex items-center justify-between">
               <div className="leading-tight">
                 <span className="text-[9px] text-ink-muted uppercase block">{isRtl ? "سعر البداية" : "STARTING FROM"}</span>
-                <span className="text-xs font-bold text-chrome">{isRtl ? proj.priceAr : proj.price}</span>
+                <span className="text-xs font-bold text-ink">{isRtl ? proj.priceAr : proj.price}</span>
               </div>
               <button
                 onClick={() => setSelectedProject(proj)}

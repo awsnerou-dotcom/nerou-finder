@@ -997,7 +997,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
             {campaigns.map(camp => (
               <div key={camp.id} className="p-5 bg-surface border border-border rounded-xl space-y-4">
                 <div className="flex justify-between items-center border-b border-surface-2 pb-2">
-                  <span className="text-xs font-bold text-chrome uppercase">{camp.type}</span>
+                  <span className="text-xs font-bold text-ink uppercase">{camp.type}</span>
                   <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${
                     camp.status === "ACTIVE" ? "bg-green-50 text-green-700 border-green-200" :
                     camp.status === "PAUSED" ? "bg-amber-50 text-amber-700 border-amber-200" :

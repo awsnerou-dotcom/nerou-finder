@@ -143,7 +143,7 @@ export default function CareersView({ isRtl }: CareersViewProps) {
                     <h3 className="font-serif font-bold text-sm text-ink">{isRtl && job.titleAr ? job.titleAr : job.title}</h3>
                     <p className="text-[10px] text-gold font-bold block uppercase tracking-wider">{isRtl && job.departmentAr ? job.departmentAr : job.department}</p>
                   </div>
-                  <span className="px-2 py-0.5 bg-canvas border border-surface-2 text-chrome text-[9px] font-bold rounded">
+                  <span className="px-2 py-0.5 bg-canvas border border-surface-2 text-ink text-[9px] font-bold rounded">
                     {isRtl && job.typeAr ? job.typeAr : job.type}
                   </span>
                 </div>
@@ -165,7 +165,7 @@ export default function CareersView({ isRtl }: CareersViewProps) {
 
                 {job.requirements && (
                   <div className="pt-2">
-                    <span className="text-[10px] font-bold text-chrome block mb-1">{isRtl ? "المتطلبات الأساسية" : "Requirements"}</span>
+                    <span className="text-[10px] font-bold text-ink block mb-1">{isRtl ? "المتطلبات الأساسية" : "Requirements"}</span>
                     <ul className="list-disc list-inside text-[11px] text-ink-muted space-y-0.5">
                       {((isRtl && job.requirementsAr) || job.requirements || []).slice(0, 3).map((req: string, i: number) => (
                         <li key={i}>{req}</li>

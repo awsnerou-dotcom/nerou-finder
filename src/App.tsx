@@ -430,10 +430,9 @@ export default function App() {
       <header
         className={`sticky top-0 z-40 transition-colors duration-300 backdrop-blur-sm ${
           heroTransparent
-            ? "border-b border-transparent shadow-none"
-            : "border-b border-border shadow-[0_1px_0_0_rgba(191,155,48,0.18)]"
+            ? "border-b border-transparent shadow-none bg-transparent"
+            : "border-b border-border shadow-[0_1px_0_0_rgba(191,155,48,0.18)] bg-surface/95"
         }`}
-        style={{ backgroundColor: heroTransparent ? "transparent" : "rgba(255,255,255,0.95)" }}
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
 
@@ -493,7 +492,7 @@ export default function App() {
             {/* Language Toggle */}
             <button
               onClick={() => setIsRtl(!isRtl)}
-              className="p-2 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-chrome flex items-center gap-1.5 text-xs font-bold"
+              className="p-2 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-ink flex items-center gap-1.5 text-xs font-bold"
               title={isRtl ? "Switch to English" : "تحويل إلى العربية"}
             >
               <Globe size={14} />
@@ -503,7 +502,7 @@ export default function App() {
             {/* Dark mode toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-chrome"
+              className="p-2 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-ink"
               title={
                 resolvedTheme === "dark"
                   ? (isRtl ? "التحويل إلى الوضع الفاتح" : "Switch to light mode")
@@ -560,7 +559,7 @@ export default function App() {
             ) : (
               <div className={`flex items-center gap-3 border-l pl-3 transition-colors duration-300 ${heroTransparent ? "border-white/30" : "border-border"}`}>
                 <div className="hidden md:flex flex-col text-right leading-tight">
-                  <span className={`text-xs font-bold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-chrome"}`}>{currentUser.fullName}</span>
+                  <span className={`text-xs font-bold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-ink"}`}>{currentUser.fullName}</span>
                   <span className="text-[10px] font-semibold text-gold uppercase tracking-wider">
                     {currentUser.role.replace("_", " ")}
                   </span>
@@ -591,7 +590,7 @@ export default function App() {
           {/* Mobile hamburger toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(prev => !prev)}
-            className="md:hidden p-2.5 -mr-1 rtl:mr-0 rtl:-ml-1 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg text-chrome cursor-pointer transition-colors"
+            className="md:hidden p-2.5 -mr-1 rtl:mr-0 rtl:-ml-1 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg text-ink cursor-pointer transition-colors"
             aria-label={isRtl ? "فتح القائمة" : "Open menu"}
             aria-expanded={isMobileMenuOpen}
           >
@@ -635,7 +634,7 @@ export default function App() {
             {/* Language Toggle */}
             <button
               onClick={() => setIsRtl(!isRtl)}
-              className="w-full p-3 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-chrome flex items-center justify-center gap-2 text-sm font-bold"
+              className="w-full p-3 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-ink flex items-center justify-center gap-2 text-sm font-bold"
             >
               <Globe size={16} />
               <span>{isRtl ? "English" : "العربية"}</span>
@@ -644,7 +643,7 @@ export default function App() {
             {/* Dark mode toggle */}
             <button
               onClick={toggleTheme}
-              className="w-full p-3 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-chrome flex items-center justify-center gap-2 text-sm font-bold"
+              className="w-full p-3 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-ink flex items-center justify-center gap-2 text-sm font-bold"
             >
               {resolvedTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
               <span>
@@ -708,7 +707,7 @@ export default function App() {
                     </div>
                   )}
                   <div className="flex flex-col text-left rtl:text-right leading-tight min-w-0">
-                    <span className="text-sm font-bold text-chrome truncate">{currentUser.fullName}</span>
+                    <span className="text-sm font-bold text-ink truncate">{currentUser.fullName}</span>
                     <span className="text-[10px] font-semibold text-gold uppercase tracking-wider truncate">
                       {currentUser.role.replace("_", " ")}
                     </span>
