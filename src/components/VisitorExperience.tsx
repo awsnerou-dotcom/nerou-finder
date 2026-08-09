@@ -690,15 +690,20 @@ export default function VisitorExperience({
           surface. Pulled up by the header's height (-mt-24 = -6rem = -64px header + 32px main
           padding) so the photo extends behind the transparent floating header at the top of the
           page; pt-24 on the inner content below compensates so nothing is actually hidden.
-          Full-bleed breakout (w-screen + left-1/2 + -translate-x-1/2) so this dark hero panel
-          spans the true viewport edge-to-edge instead of sitting inset inside <main>'s
-          max-w-7xl/px-4 container, which previously left the page's light canvas background
-          showing as a gap down both sides. html/body already have overflow-x: hidden (see
-          index.css) so this can't introduce horizontal scroll. rounded-xl/border were dropped
-          since a rounded, bordered edge makes no sense once it's flush against the browser
-          window edge; the inner content below is re-wrapped in the original max-w-7xl
-          container so the foreground (nav/search) still lines up with the rest of the page. */}
-      <div className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 -translate-x-1/2">
+          Full-bleed breakout so this dark hero panel spans the true viewport edge-to-edge
+          instead of sitting inset inside <main>'s max-w-7xl/px-4 container, which previously
+          left the page's light canvas background showing as a gap down both sides. Uses the
+          standard left/right + negative-50vw-margin recipe (NOT left + translateX) - for a
+          `position: relative` element, CSS resolves `left` in LTR but `right` in RTL when both
+          are set (CSS2.1 9.4.3), so both must be present with matching negative margins for
+          this to center correctly under both dir="ltr" and dir="rtl" (this component sets
+          dir explicitly above). A left+translateX-only version broke specifically in RTL.
+          html/body already have overflow-x: hidden (see index.css) so this can't introduce
+          horizontal scroll. rounded-xl/border were dropped since a rounded, bordered edge makes
+          no sense once it's flush against the browser window edge; the inner content below is
+          re-wrapped in the original max-w-7xl container so the foreground (nav/search) still
+          lines up with the rest of the page. */}
+      <div className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
         <PhotoHero />
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <Sparkles size={160} />
