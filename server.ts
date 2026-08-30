@@ -4183,6 +4183,21 @@ ${JSON.stringify(availableProperties, null, 2)}`;
     }
 
     const aiResponse = JSON.parse(textResult.trim());
+
+    // Lightweight AI usage logging (Platform Admin Overview "Nerou Find" stats): no dedicated
+    // aiSearchLog table exists in this schema, so - same pattern already used for boost
+    // recommendations - this reuses the existing AuditLog table rather than adding a new
+    // Prisma model/migration for what's currently just a monthly count + zero-result count.
+    logAudit(
+      "visitor",
+      "Nerou Find Visitor",
+      UserRole.VISITOR,
+      "AI_SEARCH",
+      conversationId || "anonymous",
+      "AISearch",
+      { promptLength: String(prompt).length, matchCount: Array.isArray(aiResponse.matches) ? aiResponse.matches.length : 0 }
+    );
+
     res.json(aiResponse);
 
 
@@ -4776,6 +4791,41 @@ app.get("/api/saved-properties", authMiddleware, async (req, res) => {
   } catch (err) {
     console.error("Error listing saved properties:", err);
     res.status(500).json({ error: "Failed to list saved properties" });
+  }
+});
+
+// Lightweight aggregate for the Agent dashboard's "Saved-By Count" stat: how many distinct
+// SavedProperty rows point at any of this agent's listings. No such aggregate existed anywhere
+// yet (checked - only per-user "my saved list" endpoints above existed), so this adds the one
+// minimal query needed rather than a whole new saved-properties surface. Self, the agent's own
+// org admin, or a platform admin may look this up; anyone else gets 403.
+app.get("/api/agents/:id/saved-count", authMiddleware, async (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const actor = authReq.user;
+  if (!actor) return res.status(401).json({ error: "Access token missing or invalid." });
+
+  const { id: agentId } = req.params;
+  const db = readDb();
+  const targetAgent = db.users.find(u => u.id === agentId);
+  if (!targetAgent) return res.status(404).json({ error: "Agent not found." });
+  const actorDbUser = db.users.find(u => u.id === actor.id);
+
+  const isSelf = actor.id === agentId;
+  const isPlatformStaff = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
+  const isOrgAdmin = !!targetAgent.orgId && actorDbUser?.orgId === targetAgent.orgId &&
+    (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+  if (!isSelf && !isPlatformStaff && !isOrgAdmin) {
+    return res.status(403).json({ error: "Not authorized to view this agent's saved-by count." });
+  }
+
+  try {
+    const propertyIds = db.properties.filter(p => p.agentId === agentId).map(p => p.id);
+    if (propertyIds.length === 0) return res.json({ count: 0 });
+    const count = await prisma.savedProperty.count({ where: { propertyId: { in: propertyIds } } });
+    res.json({ count });
+  } catch (err) {
+    console.error("Error computing agent saved-by count:", err);
+    res.status(500).json({ error: "Failed to compute saved-by count." });
   }
 });
 

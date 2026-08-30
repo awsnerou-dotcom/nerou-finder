@@ -67,8 +67,12 @@ import {
   Clock,
   X,
   Calendar,
-  MapPin
+  MapPin,
+  Search
 } from "lucide-react";
+import StatCard from "./StatCard.js";
+import DashboardChart from "./DashboardChart.js";
+import { buildDailyCountSeries, isThisMonth } from "../lib/dashboardMetrics.js";
 
 interface ControlCenterProps {
   onRefreshAll: () => void;
@@ -1372,6 +1376,21 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 15);
 
+  // 8. "Nerou Find" AI search usage stats (FIX 1 / FIX 0) - reuses the AuditLog rows the
+  // server now writes on every /api/ai/search call (action "AI_SEARCH") rather than a
+  // dedicated aiSearchLog table, which doesn't exist in this schema.
+  const aiSearchLogsThisMonth = auditLogs.filter(log => log.action === "AI_SEARCH" && isThisMonth(log.timestamp));
+  const aiZeroResultSearchesThisMonth = aiSearchLogsThisMonth.filter(log => (log.metadata?.matchCount ?? 0) === 0).length;
+
+  // 9. Leads-per-day trend (last 30 days), computed client-side from the already-fetched
+  // platform-wide `leads` list - no new server aggregation endpoint needed.
+  const leadsPerDaySeries = buildDailyCountSeries(leads.map(l => l.createdDate), 30, isRtl);
+
+  // 10. Quick-action shortcut counts - all backed by queues that already exist elsewhere in
+  // Control Center; these are just navigation shortcuts into them.
+  const pendingReviewsCount = reviews.filter((r: any) => r.status === "PENDING").length;
+  const unsettledAdChargesCount = adCharges.filter((c: any) => !c.settled).length;
+
   // Grouped, collapsible sidebar navigation config (FIX 2) - every existing tab remains reachable,
   // just organized into sections instead of one flat button row. Content behind each tab is unchanged.
   const navGroups: { id: string; label: { en: string; ar: string }; icon: any; tabs: { id: string; label: { en: string; ar: string }; badge?: number }[] }[] = [
@@ -1577,39 +1596,118 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
             <div className="space-y-6">
               {/* Financial Dashboard summary */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-chrome text-white p-5 rounded-xl border border-chrome-hover">
-                  <span className="text-[10px] text-gray-400 block uppercase tracking-wider mb-1">{isRtl ? "إيرادات SaaS الجارية" : "SaaS MRR (Qatar Market)"}</span>
-                  <h3 className="text-2xl font-serif font-bold text-gold flex items-center gap-1">
-                    <DollarSign size={20} />
-                    <span>{totalSaaSMonthlyRevenue.toLocaleString()} QAR</span>
-                  </h3>
-                  <p className="text-[9px] text-gray-400 mt-2">Aggregated from active subscriptions</p>
-                </div>
+                <StatCard
+                  dark
+                  icon={DollarSign}
+                  label={isRtl ? "إيرادات SaaS الجارية" : "SaaS MRR (Qatar Market)"}
+                  value={`${totalSaaSMonthlyRevenue.toLocaleString()} QAR`}
+                  subtitle={isRtl ? "مجمعة من الاشتراكات النشطة" : "Aggregated from active subscriptions"}
+                />
+                <StatCard
+                  icon={DollarSign}
+                  label={isRtl ? "عائدات الترويج والإعلانات" : "Boosted Ad Revenue"}
+                  value={`${totalAdvertisingRevenue.toLocaleString()} QAR`}
+                  subtitle={`${campaigns.filter(c => c.status === "ACTIVE").length} ${isRtl ? "حملة نشطة من" : "active campaigns of"} ${campaigns.length}`}
+                />
+                <StatCard
+                  icon={Layers}
+                  label={isRtl ? "إجمالي العقارات بالمنصة" : "Total Platform Listings"}
+                  value={properties.length}
+                  subtitle={`${properties.filter(p => p.verificationStatus === VerificationStatus.APPROVED).length} ${isRtl ? "موثق ومنشور" : "verified & published"} • ${properties.reduce((sum, p) => sum + (p.views || 0), 0).toLocaleString()} ${isRtl ? "مشاهدة" : "views"}`}
+                />
+                <StatCard
+                  icon={PhoneCall}
+                  label={isRtl ? "قنوات التواصل المسجلة" : "Capturing Client Leads"}
+                  value={leads.length}
+                  trend={
+                    leads.length > 0
+                      ? { direction: "up", label: `${Math.round((leads.filter(l => l.agentId).length / leads.length) * 100)}% ${isRtl ? "موجهة لوكيل" : "routed to an agent"}` }
+                      : { direction: "neutral", label: isRtl ? "لا يوجد عملاء محتملون بعد" : "No leads yet" }
+                  }
+                />
+              </div>
 
-                <div className="bg-surface p-5 rounded-xl border border-border">
-                  <span className="text-[10px] text-ink-muted block uppercase tracking-wider mb-1">{isRtl ? "عائدات الترويج والإعلانات" : "Boosted Ad Revenue"}</span>
-                  <h3 className="text-2xl font-serif font-bold text-ink flex items-center gap-1">
-                    <DollarSign size={20} className="text-ink-muted" />
-                    <span>{totalAdvertisingRevenue.toLocaleString()} QAR</span>
-                  </h3>
-                  <p className="text-[9px] text-ink-muted mt-2">{campaigns.filter(c => c.status === "ACTIVE").length} {isRtl ? "حملة نشطة من" : "active campaigns of"} {campaigns.length}</p>
+              {/* Quick actions - shortcuts into queues that already exist elsewhere in Control
+                  Center (verifications/applications, documents, reviews moderation, ad billing). */}
+              <div className="bg-surface rounded-xl border border-border p-4">
+                <h4 className="font-serif text-sm font-semibold text-ink mb-3 flex items-center gap-1.5">
+                  <Zap size={14} className="text-gold" />
+                  <span>{isRtl ? "إجراءات سريعة" : "Quick Actions"}</span>
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubTab("applications" as any)}
+                    className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg text-left cursor-pointer transition-colors"
+                  >
+                    <ClipboardList size={16} className="text-gold shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-bold text-ink">{isRtl ? "الطلبات المعلقة" : "Pending Applications"}</span>
+                      <span className="block text-[10px] text-ink-muted">{pendingApplications.length} {isRtl ? "بانتظار المراجعة" : "awaiting review"}</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubTab("verifications" as any)}
+                    className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg text-left cursor-pointer transition-colors"
+                  >
+                    <FileText size={16} className="text-gold shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-bold text-ink">{isRtl ? "مستندات التوثيق" : "Verification Documents"}</span>
+                      <span className="block text-[10px] text-ink-muted">{pendingDocuments.length} {isRtl ? "بانتظار المراجعة" : "awaiting review"}</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubTab("reviews" as any)}
+                    className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg text-left cursor-pointer transition-colors"
+                  >
+                    <Star size={16} className="text-gold shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-bold text-ink">{isRtl ? "مراجعة التقييمات" : "Reviews Queue"}</span>
+                      <span className="block text-[10px] text-ink-muted">{pendingReviewsCount} {isRtl ? "بانتظار المراجعة" : "awaiting review"}</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubTab("ad_billing" as any)}
+                    className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg text-left cursor-pointer transition-colors"
+                  >
+                    <DollarSign size={16} className="text-gold shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-bold text-ink">{isRtl ? "فوترة الإعلانات غير المسواة" : "Unsettled Ad Billing"}</span>
+                      <span className="block text-[10px] text-ink-muted">{unsettledAdChargesCount} {isRtl ? "غير مسواة" : "unsettled charges"}</span>
+                    </span>
+                  </button>
                 </div>
+              </div>
 
-                <div className="bg-surface p-5 rounded-xl border border-border">
-                  <span className="text-[10px] text-ink-muted block uppercase tracking-wider mb-1">{isRtl ? "إجمالي العقارات بالمنصة" : "Total Platform Listings"}</span>
-                  <h3 className="text-2xl font-serif font-bold text-ink">{properties.length}</h3>
-                  <p className="text-[9px] text-ink-muted mt-2">
-                    {properties.filter(p => p.verificationStatus === VerificationStatus.APPROVED).length} verified & published
-                    {" • "}{properties.reduce((sum, p) => sum + (p.views || 0), 0).toLocaleString()} {isRtl ? "مشاهدة إجمالية" : "total views"}
-                  </p>
+              {/* Nerou Find AI search usage + leads trend chart */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
+                  <StatCard
+                    icon={Search}
+                    label={isRtl ? "عمليات بحث Nerou Find هذا الشهر" : "Nerou Find Searches This Month"}
+                    value={aiSearchLogsThisMonth.length}
+                    subtitle={isRtl ? "استفسارات البحث الذكي" : "AI discovery queries"}
+                  />
+                  <StatCard
+                    icon={AlertOctagon}
+                    label={isRtl ? "عمليات بحث بدون نتائج" : "Zero-Result Searches"}
+                    value={aiZeroResultSearchesThisMonth}
+                    subtitle={
+                      aiSearchLogsThisMonth.length > 0
+                        ? `${Math.round((aiZeroResultSearchesThisMonth / aiSearchLogsThisMonth.length) * 100)}% ${isRtl ? "من إجمالي البحث" : "of this month's searches"}`
+                        : (isRtl ? "لا توجد عمليات بحث هذا الشهر" : "No searches this month yet")
+                    }
+                  />
                 </div>
-
-                <div className="bg-surface p-5 rounded-xl border border-border">
-                  <span className="text-[10px] text-ink-muted block uppercase tracking-wider mb-1">{isRtl ? "قنوات التواصل المسجلة" : "Capturing Client Leads"}</span>
-                  <h3 className="text-2xl font-serif font-bold text-ink">{leads.length}</h3>
-                  <p className="text-[9px] text-emerald-600 font-bold mt-2">
-                    {leads.length > 0 ? `${Math.round((leads.filter(l => l.agentId).length / leads.length) * 100)}% ${isRtl ? "موجهة لوكيل" : "routed to an agent"}` : (isRtl ? "لا يوجد عملاء محتملون بعد" : "No leads yet")}
-                  </p>
+                <div className="lg:col-span-2 bg-surface rounded-xl border border-border p-4">
+                  <h4 className="font-serif text-sm font-semibold text-ink mb-3 flex items-center gap-1.5">
+                    <TrendingUp size={14} className="text-gold" />
+                    <span>{isRtl ? "العملاء المحتملون يومياً (آخر 30 يوماً)" : "Leads Per Day (Last 30 Days)"}</span>
+                  </h4>
+                  <DashboardChart data={leadsPerDaySeries} valueLabel={isRtl ? "عملاء محتملون" : "Leads"} isRtl={isRtl} />
                 </div>
               </div>
 

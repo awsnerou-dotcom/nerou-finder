@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Organization, Project, Property, User, LocationItem } from "../types.js";
+import { Organization, Project, Property, User, LocationItem, Lead, ListingStatus, PropertyType, TransactionType, VerificationStatus } from "../types.js";
 import {
   FolderKanban,
   Building2,
@@ -23,13 +23,20 @@ import {
   Trash2,
   Camera,
   Lock,
-  Settings
+  Settings,
+  DollarSign,
+  Zap,
+  ShieldCheck
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
 import BoostRecommendations from "./BoostRecommendations.js";
 import { compressImage } from "../lib/image.js";
 import { getActingUserId } from "../lib/auth.js";
+import StatCard from "./StatCard.js";
+import DashboardChart from "./DashboardChart.js";
+import { Badge } from "./ui/Badge.js";
+import { buildDailyCountSeries, isThisMonth, listingStatusTone } from "../lib/dashboardMetrics.js";
 
 interface DeveloperWorkspaceProps {
   developer: Organization;
@@ -40,7 +47,24 @@ interface DeveloperWorkspaceProps {
 export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: DeveloperWorkspaceProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"projects" | "inventory" | "leads" | "verification" | "profile">("projects");
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [adCharges, setAdCharges] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "projects" | "inventory" | "leads" | "verification" | "profile">("dashboard");
+
+  // Minimal "Add Unit" quick form (Dashboard/Inventory quick action) - units are tied to a
+  // master project so city/district are derived from the selected project rather than asking
+  // the developer to repeat the location picker they already filled in when creating it.
+  const [isAddingUnit, setIsAddingUnit] = useState<boolean>(false);
+  const [unitProjectId, setUnitProjectId] = useState<string>("");
+  const [unitTitle, setUnitTitle] = useState<string>("");
+  const [unitType, setUnitType] = useState<PropertyType>(PropertyType.APARTMENT);
+  const [unitTransactionType, setUnitTransactionType] = useState<TransactionType>(TransactionType.OFF_PLAN);
+  const [unitPrice, setUnitPrice] = useState<string>("");
+  const [unitArea, setUnitArea] = useState<string>("");
+  const [unitBedrooms, setUnitBedrooms] = useState<string>("2");
+  const [unitBathrooms, setUnitBathrooms] = useState<string>("2");
+  const [unitDescription, setUnitDescription] = useState<string>("");
+  const [creatingUnit, setCreatingUnit] = useState<boolean>(false);
 
   // Local toast state
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -104,6 +128,18 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
       const propRes = await fetch(`/api/properties?orgId=${developer.id}&includeAllStatuses=true`);
       const propData = await propRes.json();
       setProperties(propData);
+
+      // Get this developer org's leads (GET /api/leads self-scopes non-platform-admin org
+      // admins to their own orgId - no query param needed) and ad billing ledger, for the
+      // Dashboard tab's leads chart and ad billing + boost summary.
+      const token = localStorage.getItem("token");
+      const authHeaders: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      const [leadsRes, adChargesRes] = await Promise.all([
+        fetch("/api/leads", { headers: authHeaders }),
+        fetch("/api/ad-charges", { headers: authHeaders })
+      ]);
+      if (leadsRes.ok) setLeads(await leadsRes.json());
+      if (adChargesRes.ok) setAdCharges(await adChargesRes.json());
     } catch (e) {
       console.error(e);
     }
@@ -160,6 +196,67 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
       console.error(err);
       setToastMessage(isRtl ? "تعذر إضافة المشروع. يرجى المحاولة مرة أخرى." : "Failed to create the project. Please try again.");
       setTimeout(() => setToastMessage(""), 5000);
+    }
+  };
+
+  // Minimal unit-creation form (Inventory tab quick action) - POSTs straight to the same
+  // POST /api/properties endpoint agents use, with city/district derived from the chosen
+  // master project so this stays a short form instead of duplicating the full 5-step agent
+  // listing wizard.
+  const handleCreateUnit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const project = projects.find(p => p.id === unitProjectId);
+    if (!project || !unitTitle || !unitPrice || !unitArea) return;
+
+    setCreatingUnit(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("/api/properties", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          title: unitTitle,
+          description: unitDescription || `${unitType} unit in ${project.name}`,
+          propertyType: unitType,
+          transactionType: unitTransactionType,
+          price: Number(unitPrice),
+          area: Number(unitArea),
+          bedrooms: Number(unitBedrooms),
+          bathrooms: Number(unitBathrooms),
+          city: project.city,
+          district: project.district,
+          projectId: project.id,
+          images: project.images?.length ? [project.images[0]] : []
+        })
+      });
+
+      if (res.ok) {
+        setIsAddingUnit(false);
+        setUnitProjectId("");
+        setUnitTitle("");
+        setUnitPrice("");
+        setUnitArea("");
+        setUnitBedrooms("2");
+        setUnitBathrooms("2");
+        setUnitDescription("");
+        fetchDeveloperContext();
+        onRefreshAll();
+        setToastMessage(isRtl ? "تمت إضافة الوحدة الجديدة بنجاح!" : "New unit added successfully!");
+        setTimeout(() => setToastMessage(""), 4000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "تعذر إضافة الوحدة." : "Failed to add the unit."));
+        setTimeout(() => setToastMessage(""), 5000);
+      }
+    } catch (err) {
+      console.error(err);
+      setToastMessage(isRtl ? "تعذر إضافة الوحدة." : "Failed to add the unit.");
+      setTimeout(() => setToastMessage(""), 5000);
+    } finally {
+      setCreatingUnit(false);
     }
   };
 
@@ -323,8 +420,29 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
   // Stats calculation
   const totalProjects = projects.length;
   const totalUnits = properties.length;
-  const soldUnits = properties.filter(u => u.listingStatus === "SOLD").length;
-  const availableUnits = properties.filter(u => u.listingStatus === "PUBLISHED" || u.listingStatus === "PENDING_REVIEW").length;
+  const soldUnits = properties.filter(u => u.listingStatus === ListingStatus.SOLD).length;
+  const availableUnits = properties.filter(u => u.listingStatus === ListingStatus.PUBLISHED || u.listingStatus === ListingStatus.PENDING_REVIEW).length;
+
+  // Dashboard tab (FIX 4) KPI computations.
+  const activeProjectsCount = projects.filter(p => p.status !== "COMPLETED").length;
+  const salesProgressPercent = totalUnits > 0 ? Math.round((soldUnits / totalUnits) * 100) : 0;
+  const leadsThisMonth = leads.filter(l => isThisMonth(l.createdDate));
+  const leadsPerDaySeries = buildDailyCountSeries(leads.map(l => l.createdDate), 30, isRtl);
+
+  const nowDate = new Date();
+  const currentBillingPeriod = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, "0")}`;
+  const currentPeriodAdCharges = adCharges.filter((c: any) => c.billingPeriod === currentBillingPeriod);
+  const currentPeriodAdTotal = currentPeriodAdCharges.reduce((acc: number, c: any) => acc + c.amount, 0);
+  const currentPeriodAdSettled = currentPeriodAdCharges.filter((c: any) => c.settled).reduce((acc: number, c: any) => acc + c.amount, 0);
+  const currentPeriodAdUnsettled = currentPeriodAdTotal - currentPeriodAdSettled;
+
+  // Per-project unit breakdown, for the Dashboard tab's progress-bar project cards.
+  const projectProgress = projects.map(proj => {
+    const units = properties.filter(u => u.projectId === proj.id);
+    const sold = units.filter(u => u.listingStatus === ListingStatus.SOLD).length;
+    const progress = units.length > 0 ? Math.round((sold / units.length) * 100) : 0;
+    return { project: proj, unitCount: units.length, soldCount: sold, progress };
+  });
 
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
@@ -346,6 +464,12 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
 
         {/* Tab switcher */}
         <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+          >
+            {isRtl ? "لوحة القيادة" : "Dashboard"}
+          </button>
           <button
             onClick={() => setActiveTab("projects")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "projects" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
@@ -372,6 +496,130 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           </button>
         </div>
       </div>
+
+      {/* DASHBOARD TAB */}
+      {activeTab === "dashboard" && (
+        <div className="space-y-6">
+          {developer.verificationStatus !== VerificationStatus.APPROVED && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("verification")}
+              className={`w-full flex items-center gap-3 p-3.5 rounded-xl border text-left cursor-pointer transition-colors ${
+                developer.verificationStatus === VerificationStatus.REJECTED || developer.verificationStatus === VerificationStatus.SUSPENDED
+                  ? "bg-danger-soft border-danger/30 hover:brightness-95"
+                  : "bg-warning-soft border-warning/30 hover:brightness-95"
+              }`}
+            >
+              <ShieldCheck size={18} className={developer.verificationStatus === VerificationStatus.REJECTED || developer.verificationStatus === VerificationStatus.SUSPENDED ? "text-danger shrink-0" : "text-warning shrink-0"} />
+              <span className="text-xs font-semibold text-ink">
+                {developer.verificationStatus === VerificationStatus.PENDING &&
+                  (isRtl ? "توثيق شركتكم قيد المراجعة. يرجى استكمال المستندات المطلوبة." : "Your company verification is pending. Complete your required documents.")}
+                {developer.verificationStatus === VerificationStatus.REJECTED &&
+                  (isRtl ? "تم رفض توثيق الشركة. اضغط لمراجعة السبب وإعادة الرفع." : "Company verification was rejected. Tap to review and resubmit.")}
+                {developer.verificationStatus === VerificationStatus.SUSPENDED &&
+                  (isRtl ? "تم تعليق حساب الشركة. تواصل مع الإدارة أو راجع مستنداتك." : "Company account is suspended. Review your documents or contact support.")}
+              </span>
+            </button>
+          )}
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard icon={FolderKanban} label={isRtl ? "المشاريع النشطة" : "Active Projects"} value={activeProjectsCount} subtitle={isRtl ? `${totalProjects} إجمالي` : `${totalProjects} total`} />
+            <StatCard icon={Boxes} label={isRtl ? "إجمالي الوحدات" : "Total Units"} value={totalUnits} subtitle={isRtl ? `${availableUnits} متاحة • ${soldUnits} مباعة` : `${availableUnits} available • ${soldUnits} sold`} />
+            <StatCard icon={Users} label={isRtl ? "عملاء هذا الشهر" : "Leads This Month"} value={leadsThisMonth.length} subtitle={isRtl ? `${leads.length} إجمالي` : `${leads.length} all-time`} />
+            <StatCard icon={TrendingUp} label={isRtl ? "نسبة إنجاز المبيعات" : "Sales Progress"} value={`${salesProgressPercent}%`} subtitle={isRtl ? "من إجمالي الوحدات" : "of total units sold"} />
+          </div>
+
+          {/* Quick actions */}
+          <div className="bg-surface rounded-xl border border-border p-4">
+            <h4 className="font-serif text-sm font-semibold text-ink mb-3 flex items-center gap-1.5">
+              <Zap size={14} className="text-gold" />
+              <span>{isRtl ? "إجراءات سريعة" : "Quick Actions"}</span>
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => { setActiveTab("projects"); setIsAddingProject(true); }}
+                className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg cursor-pointer transition-colors"
+              >
+                <Plus size={16} className="text-gold shrink-0" />
+                <span className="text-xs font-bold text-ink">{isRtl ? "إضافة مشروع" : "Add Project"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActiveTab("inventory"); setIsAddingUnit(true); }}
+                className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg cursor-pointer transition-colors"
+              >
+                <Boxes size={16} className="text-gold shrink-0" />
+                <span className="text-xs font-bold text-ink">{isRtl ? "إضافة وحدة" : "Add Unit"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("verification")}
+                className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg cursor-pointer transition-colors"
+              >
+                <ShieldCheck size={16} className="text-gold shrink-0" />
+                <span className="text-xs font-bold text-ink">{isRtl ? "التوثيق" : "View Verification"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Leads trend chart */}
+          <div className="bg-surface rounded-xl border border-border p-4">
+            <h4 className="font-serif text-sm font-semibold text-ink mb-3 flex items-center gap-1.5">
+              <TrendingUp size={14} className="text-gold" />
+              <span>{isRtl ? "العملاء المحتملون يومياً (آخر 30 يوماً)" : "Leads Per Day (Last 30 Days)"}</span>
+            </h4>
+            <DashboardChart data={leadsPerDaySeries} valueLabel={isRtl ? "عملاء محتملون" : "Leads"} isRtl={isRtl} />
+          </div>
+
+          {/* Per-project cards with a sales progress bar */}
+          <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div className="p-4 bg-ink-inverse border-b border-border">
+              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "تقدم المبيعات حسب المشروع" : "Sales Progress by Project"}</h4>
+            </div>
+            {projectProgress.length === 0 ? (
+              <p className="p-8 text-center text-xs text-ink-muted">{isRtl ? "لا توجد مشاريع بعد." : "No projects yet."}</p>
+            ) : (
+              <div className="divide-y divide-surface-2">
+                {projectProgress.map(row => (
+                  <div key={row.project.id} className="p-4 space-y-2">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <p className="text-xs font-bold text-ink">{isRtl ? row.project.nameAr || row.project.name : row.project.name}</p>
+                      <span className="text-[10px] text-ink-muted">{row.soldCount} / {row.unitCount} {isRtl ? "مباعة" : "sold"}</span>
+                    </div>
+                    <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
+                      <div className="h-full bg-gold" style={{ width: `${row.progress}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Ad billing + boost summary */}
+          <div className="bg-surface rounded-xl border border-border p-4">
+            <h4 className="font-serif text-sm font-semibold text-ink mb-3 flex items-center gap-1.5">
+              <DollarSign size={14} className="text-gold" />
+              <span>{isRtl ? "ملخص فوترة الإعلانات" : "Ad Billing Summary"}</span>
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mb-4">
+              <div className="p-3 bg-ink-inverse border border-border rounded-lg">
+                <p className="text-[10px] text-ink-muted uppercase tracking-wider">{currentBillingPeriod} {isRtl ? "الإجمالي" : "Total"}</p>
+                <p className="text-lg font-serif font-bold text-ink">{currentPeriodAdTotal.toLocaleString()} QAR</p>
+              </div>
+              <div className="p-3 bg-ink-inverse border border-border rounded-lg">
+                <p className="text-[10px] text-ink-muted uppercase tracking-wider">{isRtl ? "مسواة" : "Settled"}</p>
+                <p className="text-lg font-serif font-bold text-success">{currentPeriodAdSettled.toLocaleString()} QAR</p>
+              </div>
+              <div className="p-3 bg-ink-inverse border border-border rounded-lg">
+                <p className="text-[10px] text-ink-muted uppercase tracking-wider">{isRtl ? "غير مسواة" : "Unsettled"}</p>
+                <p className="text-lg font-serif font-bold text-warning">{currentPeriodAdUnsettled.toLocaleString()} QAR</p>
+              </div>
+            </div>
+            <BoostRecommendations properties={properties} orgId={developer.id} isRtl={isRtl} />
+          </div>
+        </div>
+      )}
 
       {/* VERIFICATION TAB */}
       {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} />}
@@ -740,6 +988,99 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           {/* Smart Boost Recommendations panel - AI-assisted "Recommended to Boost" analysis. */}
           <BoostRecommendations properties={properties} orgId={developer.id} isRtl={isRtl} />
 
+          <div className="flex justify-between items-center">
+            <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "قائمة الوحدات التفصيلية" : "Specific Units Specifications"}</h4>
+            <button
+              onClick={() => setIsAddingUnit(!isAddingUnit)}
+              className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>{isRtl ? "إضافة وحدة" : "Add Unit"}</span>
+            </button>
+          </div>
+
+          {isAddingUnit && (
+            <form onSubmit={handleCreateUnit} className="bg-surface p-5 rounded-xl border border-gold/30 space-y-4 max-w-xl text-xs">
+              <h5 className="font-serif text-sm font-bold text-ink border-b border-surface-2 pb-2">
+                {isRtl ? "تفاصيل الوحدة الجديدة" : "New Unit Details"}
+              </h5>
+              <div>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المشروع" : "Project"}</label>
+                <select
+                  required
+                  value={unitProjectId}
+                  onChange={(e) => setUnitProjectId(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg"
+                >
+                  <option value="">{isRtl ? "اختر مشروعاً" : "Select a project"}</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+                {projects.length === 0 && (
+                  <p className="text-[10px] text-warning mt-1">{isRtl ? "أنشئ مشروعاً أولاً قبل إضافة وحدات." : "Create a project first before adding units."}</p>
+                )}
+              </div>
+              <div>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "اسم الوحدة" : "Unit Title"}</label>
+                <input
+                  type="text"
+                  required
+                  value={unitTitle}
+                  onChange={(e) => setUnitTitle(e.target.value)}
+                  placeholder="e.g. Marina Heights Tower C - Unit 1204"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-lg"
+                />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "النوع" : "Type"}</label>
+                  <select value={unitType} onChange={(e) => setUnitType(e.target.value as PropertyType)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg">
+                    {Object.values(PropertyType).map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المعاملة" : "Transaction"}</label>
+                  <select value={unitTransactionType} onChange={(e) => setUnitTransactionType(e.target.value as TransactionType)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg">
+                    {Object.values(TransactionType).map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "السعر (ر.ق)" : "Price (QAR)"}</label>
+                  <input type="number" required min="0" value={unitPrice} onChange={(e) => setUnitPrice(e.target.value)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المساحة (م²)" : "Area (SQM)"}</label>
+                  <input type="number" required min="0" value={unitArea} onChange={(e) => setUnitArea(e.target.value)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "غرف النوم" : "Bedrooms"}</label>
+                  <input type="number" min="0" value={unitBedrooms} onChange={(e) => setUnitBedrooms(e.target.value)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg" />
+                </div>
+                <div>
+                  <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الحمامات" : "Bathrooms"}</label>
+                  <input type="number" min="0" value={unitBathrooms} onChange={(e) => setUnitBathrooms(e.target.value)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg" />
+                </div>
+              </div>
+              <div>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الوصف (اختياري)" : "Description (optional)"}</label>
+                <textarea rows={2} value={unitDescription} onChange={(e) => setUnitDescription(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-lg" />
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <button type="button" onClick={() => setIsAddingUnit(false)} className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold">
+                  {isRtl ? "إلغاء" : "Cancel"}
+                </button>
+                <button type="submit" disabled={creatingUnit || projects.length === 0} className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg disabled:opacity-50">
+                  {creatingUnit ? (isRtl ? "جارٍ الإضافة..." : "Adding...") : (isRtl ? "إضافة الوحدة" : "Add Unit")}
+                </button>
+              </div>
+            </form>
+          )}
+
           {/* Catalog Table */}
           <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
             <div className="p-4 bg-ink-inverse border-b border-border">
@@ -757,9 +1098,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
                     </div>
                     <div className="flex items-center gap-3">
                       <BoostButton property={unit} isRtl={isRtl} />
-                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold uppercase rounded shrink-0">
-                        Available
-                      </span>
+                      <Badge tone={listingStatusTone(unit.listingStatus)}>{unit.listingStatus.replace(/_/g, " ")}</Badge>
                     </div>
                   </div>
                 ))

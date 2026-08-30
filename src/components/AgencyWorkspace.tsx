@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Organization, User, UserRole, AdCampaign, SubscriptionPlan, Lead, Property } from "../types.js";
+import { Organization, User, UserRole, AdCampaign, SubscriptionPlan, Lead, Property, LeadStatus } from "../types.js";
 import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import {
   CreditCard,
@@ -29,13 +29,19 @@ import {
   Phone,
   Mail,
   MessageSquare,
-  X
+  X,
+  Building2,
+  ArrowUpDown
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
 import BoostRecommendations from "./BoostRecommendations.js";
 import { compressImage } from "../lib/image.js";
 import { getActingUserId } from "../lib/auth.js";
+import StatCard from "./StatCard.js";
+import DashboardChart from "./DashboardChart.js";
+import { Badge } from "./ui/Badge.js";
+import { buildDailySumSeries, datesToDayRecord, isThisMonth } from "../lib/dashboardMetrics.js";
 
 interface AgencyWorkspaceProps {
   agency: Organization;
@@ -47,7 +53,10 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
   const [agents, setAgents] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [activeTab, setActiveTab] = useState<"team" | "routing" | "campaigns" | "subscription" | "leads" | "verification" | "profile">("team");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "team" | "routing" | "campaigns" | "subscription" | "leads" | "verification" | "profile">("dashboard");
+  // Sortable team performance table (Dashboard tab)
+  const [teamSortBy, setTeamSortBy] = useState<"name" | "listings" | "leads" | "conversion">("name");
+  const [teamSortDir, setTeamSortDir] = useState<"asc" | "desc">("asc");
   const [invitations, setInvitations] = useState<any[]>([]);
   const [orgLeads, setOrgLeads] = useState<Lead[]>([]);
   const [orgProperties, setOrgProperties] = useState<Property[]>([]);
@@ -504,6 +513,47 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
   const currentPeriodAdSettled = currentPeriodAdCharges.filter((c: any) => c.settled).reduce((acc: number, c: any) => acc + c.amount, 0);
   const currentPeriodAdUnsettled = currentPeriodAdTotal - currentPeriodAdSettled;
 
+  // Dashboard tab (FIX 3) KPI computations.
+  const pendingInvitationsCount = invitations.filter((i: any) => i.status === "PENDING").length;
+  const leadsThisMonth = orgLeads.filter(l => isThisMonth(l.createdDate));
+  const convertedLeadsThisMonth = leadsThisMonth.filter(l => l.status === LeadStatus.CONVERTED).length;
+  const conversionRateThisMonth = leadsThisMonth.length > 0 ? Math.round((convertedLeadsThisMonth / leadsThisMonth.length) * 100) : 0;
+
+  // Sortable team performance table rows - one row per agent, metrics derived from the
+  // already-fetched org-scoped orgProperties/orgLeads lists.
+  const teamRows = agents.map(a => {
+    const listingsCount = orgProperties.filter(p => p.agentId === a.id).length;
+    const agentLeads = orgLeads.filter(l => l.agentId === a.id);
+    const convertedCount = agentLeads.filter(l => l.status === LeadStatus.CONVERTED).length;
+    const conversion = agentLeads.length > 0 ? Math.round((convertedCount / agentLeads.length) * 100) : 0;
+    return { agent: a, listingsCount, leadsCount: agentLeads.length, conversion };
+  });
+  const sortedTeamRows = [...teamRows].sort((a, b) => {
+    let cmp = 0;
+    if (teamSortBy === "name") cmp = a.agent.fullName.localeCompare(b.agent.fullName);
+    else if (teamSortBy === "listings") cmp = a.listingsCount - b.listingsCount;
+    else if (teamSortBy === "leads") cmp = a.leadsCount - b.leadsCount;
+    else if (teamSortBy === "conversion") cmp = a.conversion - b.conversion;
+    return teamSortDir === "asc" ? cmp : -cmp;
+  });
+  const toggleTeamSort = (col: "name" | "listings" | "leads" | "conversion") => {
+    if (teamSortBy === col) {
+      setTeamSortDir(prev => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setTeamSortBy(col);
+      setTeamSortDir("asc");
+    }
+  };
+
+  // Leads + views trend chart (last 30 days) - views summed from each listing's real per-day
+  // view tracking (Property.viewsByDay), leads from the org-scoped leads list.
+  const agencyTrendSeries = buildDailySumSeries(
+    orgProperties.map(p => p.viewsByDay || {}),
+    30,
+    isRtl,
+    [datesToDayRecord(orgLeads.map(l => l.createdDate))]
+  );
+
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Agency Header Banner */}
@@ -524,6 +574,12 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
 
         {/* Workspace tabs navigator */}
         <div className="flex flex-wrap bg-surface-2 p-0.5 rounded-lg text-xs font-medium">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "dashboard" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+          >
+            {isRtl ? "لوحة القيادة" : "Dashboard"}
+          </button>
           <button
             onClick={() => setActiveTab("team")}
             className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "team" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
@@ -568,6 +624,176 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
           </button>
         </div>
       </div>
+
+      {/* DASHBOARD TAB */}
+      {activeTab === "dashboard" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              icon={Users}
+              label={isRtl ? "إجمالي الوسطاء" : "Total Agents"}
+              value={agents.length}
+              subtitle={isRtl ? `${pendingInvitationsCount} دعوة معلقة` : `${pendingInvitationsCount} pending invite(s)`}
+            />
+            <StatCard
+              icon={Building2}
+              label={isRtl ? "إجمالي العقارات" : "Total Listings"}
+              value={orgProperties.length}
+            />
+            <StatCard
+              icon={TrendingUp}
+              label={isRtl ? "عملاء هذا الشهر" : "Leads This Month"}
+              value={leadsThisMonth.length}
+              subtitle={isRtl ? `${orgLeads.length} إجمالي` : `${orgLeads.length} all-time`}
+            />
+            <StatCard
+              icon={Award}
+              label={isRtl ? "نسبة التحويل" : "Conversion Rate"}
+              value={`${conversionRateThisMonth}%`}
+              subtitle={isRtl ? "هذا الشهر" : "this month"}
+            />
+          </div>
+
+          {/* Quick actions */}
+          <div className="bg-surface rounded-xl border border-border p-4">
+            <h4 className="font-serif text-sm font-semibold text-ink mb-3 flex items-center gap-1.5">
+              <Zap size={14} className="text-gold" />
+              <span>{isRtl ? "إجراءات سريعة" : "Quick Actions"}</span>
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab("team")}
+                className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg cursor-pointer transition-colors"
+              >
+                <UserCheck size={16} className="text-gold shrink-0" />
+                <span className="text-xs font-bold text-ink">{isRtl ? "دعوة وسيط" : "Invite Agent"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("campaigns")}
+                className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg cursor-pointer transition-colors"
+              >
+                <Zap size={16} className="text-gold shrink-0" />
+                <span className="text-xs font-bold text-ink">{isRtl ? "رفع أي إعلان" : "Boost Any Team Listing"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("subscription")}
+                className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg cursor-pointer transition-colors"
+              >
+                <CreditCard size={16} className="text-gold shrink-0" />
+                <span className="text-xs font-bold text-ink">{isRtl ? "عرض الاشتراك" : "View Subscription"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Leads + views trend chart */}
+          <div className="bg-surface rounded-xl border border-border p-4">
+            <h4 className="font-serif text-sm font-semibold text-ink mb-3 flex items-center gap-1.5">
+              <BarChart2 size={14} className="text-gold" />
+              <span>{isRtl ? "المشاهدات والعملاء المحتملون (آخر 30 يوماً)" : "Views & Leads (Last 30 Days)"}</span>
+            </h4>
+            <DashboardChart
+              data={agencyTrendSeries}
+              valueLabel={isRtl ? "مشاهدات" : "Views"}
+              secondaryValueLabel={isRtl ? "عملاء محتملون" : "Leads"}
+              isRtl={isRtl}
+            />
+          </div>
+
+          {/* Sortable team performance table */}
+          <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div className="p-4 bg-ink-inverse border-b border-border">
+              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "أداء الفريق" : "Team Performance"}</h4>
+            </div>
+            {sortedTeamRows.length === 0 ? (
+              <p className="p-8 text-center text-xs text-ink-muted">{isRtl ? "لا يوجد وسطاء بعد." : "No agents yet."}</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-ink-muted">
+                      <th className="text-left px-4 py-2 font-semibold">
+                        <button type="button" onClick={() => toggleTeamSort("name")} className="flex items-center gap-1 cursor-pointer hover:text-ink">
+                          {isRtl ? "الاسم" : "Name"} <ArrowUpDown size={11} />
+                        </button>
+                      </th>
+                      <th className="text-left px-4 py-2 font-semibold">{isRtl ? "الحالة" : "Status"}</th>
+                      <th className="text-left px-4 py-2 font-semibold">
+                        <button type="button" onClick={() => toggleTeamSort("listings")} className="flex items-center gap-1 cursor-pointer hover:text-ink">
+                          {isRtl ? "العقارات" : "Listings"} <ArrowUpDown size={11} />
+                        </button>
+                      </th>
+                      <th className="text-left px-4 py-2 font-semibold">
+                        <button type="button" onClick={() => toggleTeamSort("leads")} className="flex items-center gap-1 cursor-pointer hover:text-ink">
+                          {isRtl ? "العملاء" : "Leads"} <ArrowUpDown size={11} />
+                        </button>
+                      </th>
+                      <th className="text-left px-4 py-2 font-semibold">
+                        <button type="button" onClick={() => toggleTeamSort("conversion")} className="flex items-center gap-1 cursor-pointer hover:text-ink">
+                          {isRtl ? "التحويل" : "Conversion"} <ArrowUpDown size={11} />
+                        </button>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-2">
+                    {sortedTeamRows.map(row => (
+                      <tr key={row.agent.id}>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            {row.agent.avatarUrl ? (
+                              <img src={row.agent.avatarUrl} alt={row.agent.fullName} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                            ) : (
+                              <span className="w-7 h-7 rounded-full bg-surface-2 text-ink font-bold flex items-center justify-center shrink-0 text-[10px]">
+                                {row.agent.fullName.charAt(0)}
+                              </span>
+                            )}
+                            <span className="font-bold text-ink">{row.agent.fullName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <Badge tone="success">{isRtl ? "نشط" : "Active"}</Badge>
+                        </td>
+                        <td className="px-4 py-2.5 text-ink">{row.listingsCount}</td>
+                        <td className="px-4 py-2.5 text-ink">{row.leadsCount}</td>
+                        <td className="px-4 py-2.5 text-ink font-bold">{row.conversion}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Ad billing summary - reuses the same computation as the Subscription tab's full ledger. */}
+          <div className="bg-surface rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                <DollarSign size={14} className="text-gold" />
+                <span>{isRtl ? "ملخص فوترة الإعلانات" : "Ad Billing Summary"}</span>
+              </h4>
+              <button type="button" onClick={() => setActiveTab("subscription")} className="text-[11px] font-bold text-gold hover:underline cursor-pointer">
+                {isRtl ? "عرض السجل الكامل" : "View full ledger"}
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 bg-ink-inverse border border-border rounded-lg">
+                <p className="text-[10px] text-ink-muted uppercase tracking-wider">{currentBillingPeriod} {isRtl ? "الإجمالي" : "Total"}</p>
+                <p className="text-lg font-serif font-bold text-ink">{currentPeriodAdTotal.toLocaleString()} QAR</p>
+              </div>
+              <div className="p-3 bg-ink-inverse border border-border rounded-lg">
+                <p className="text-[10px] text-ink-muted uppercase tracking-wider">{isRtl ? "مسواة" : "Settled"}</p>
+                <p className="text-lg font-serif font-bold text-success">{currentPeriodAdSettled.toLocaleString()} QAR</p>
+              </div>
+              <div className="p-3 bg-ink-inverse border border-border rounded-lg">
+                <p className="text-[10px] text-ink-muted uppercase tracking-wider">{isRtl ? "غير مسواة" : "Unsettled"}</p>
+                <p className="text-lg font-serif font-bold text-warning">{currentPeriodAdUnsettled.toLocaleString()} QAR</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* VERIFICATION TAB */}
       {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} />}

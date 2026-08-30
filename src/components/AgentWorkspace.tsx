@@ -55,12 +55,18 @@ import {
   ChevronDown,
   X,
   Eye,
-  Star
+  Star,
+  Heart,
+  ShieldCheck
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
 import BoostRecommendations from "./BoostRecommendations.js";
 import { compressImage } from "../lib/image.js";
+import StatCard from "./StatCard.js";
+import DashboardChart from "./DashboardChart.js";
+import { Badge } from "./ui/Badge.js";
+import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone } from "../lib/dashboardMetrics.js";
 
 interface AgentWorkspaceProps {
   agent: User;
@@ -78,6 +84,21 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [myReviews, setMyReviews] = useState<any[]>([]);
   const [myReviewSummary, setMyReviewSummary] = useState<{ average: number; count: number; distribution: Record<number, number> } | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+
+  // Dashboard tab: how many distinct users have saved any of this agent's listings.
+  const [savedCount, setSavedCount] = useState<number>(0);
+  const [savedCountLoading, setSavedCountLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    setSavedCountLoading(true);
+    fetch(`/api/agents/${agent.id}/saved-count`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+    })
+      .then(res => (res.ok ? res.json() : { count: 0 }))
+      .then(data => setSavedCount(data.count || 0))
+      .catch(e => console.error("Failed to load saved-by count", e))
+      .finally(() => setSavedCountLoading(false));
+  }, [agent.id]);
 
   const fetchMyReviews = async () => {
     try {
@@ -894,8 +915,25 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   // Stats calculation
   const totalLeads = leads.length;
   const convertedLeads = leads.filter(l => l.status === LeadStatus.CONVERTED).length;
-  const activeListings = properties.length;
+  // "Active Listings" means currently live/public, not every listing ever created (drafts,
+  // sold, paused units all still count toward `properties` but shouldn't inflate this stat).
+  const activeListings = properties.filter(p => p.listingStatus === ListingStatus.PUBLISHED).length;
   const conversionRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+
+  // Dashboard tab (FIX 2): leads captured this calendar month, and total listing views this
+  // month summed from each property's real per-day view tracking (Property.viewsByDay, see
+  // FIX 8 / POST /api/properties/:id/view) - no separate "agent profile view" counter exists,
+  // so this reuses the existing listing-level view data rather than inventing a new metric.
+  const leadsThisMonth = leads.filter(l => isThisMonth(l.createdDate));
+  const convertedLeadsThisMonth = leadsThisMonth.filter(l => l.status === LeadStatus.CONVERTED).length;
+  const conversionRateThisMonth = leadsThisMonth.length > 0 ? Math.round((convertedLeadsThisMonth / leadsThisMonth.length) * 100) : 0;
+  const now = new Date();
+  const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const viewsThisMonth = properties.reduce((sum, p) => {
+    const byDay = p.viewsByDay || {};
+    return sum + Object.entries(byDay).reduce((s, [day, count]) => (day.startsWith(currentMonthPrefix) ? s + (count || 0) : s), 0);
+  }, 0);
+  const leadsPerDaySeries = buildDailyCountSeries(leads.map(l => l.createdDate), 30, isRtl);
 
   return (
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
@@ -1030,107 +1068,197 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {/* DASHBOARD TAB */}
       {activeTab === "dashboard" && (
         <div className="space-y-6">
+          {/* Verification status banner - links straight into the existing document upload flow. */}
+          {agent.verificationStatus !== VerificationStatus.APPROVED && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("verification")}
+              className={`w-full flex items-center gap-3 p-3.5 rounded-xl border text-left cursor-pointer transition-colors ${
+                agent.verificationStatus === VerificationStatus.REJECTED || agent.verificationStatus === VerificationStatus.SUSPENDED
+                  ? "bg-danger-soft border-danger/30 hover:brightness-95"
+                  : "bg-warning-soft border-warning/30 hover:brightness-95"
+              }`}
+            >
+              <ShieldCheck size={18} className={agent.verificationStatus === VerificationStatus.REJECTED || agent.verificationStatus === VerificationStatus.SUSPENDED ? "text-danger shrink-0" : "text-warning shrink-0"} />
+              <span className="text-xs font-semibold text-ink">
+                {agent.verificationStatus === VerificationStatus.PENDING &&
+                  (isRtl ? "توثيق حسابك قيد المراجعة. يرجى استكمال المستندات المطلوبة." : "Your account verification is pending. Complete your required documents.")}
+                {agent.verificationStatus === VerificationStatus.REJECTED &&
+                  (isRtl ? "تم رفض توثيق حسابك. اضغط لمراجعة السبب وإعادة الرفع." : "Your account verification was rejected. Tap to review and resubmit.")}
+                {agent.verificationStatus === VerificationStatus.SUSPENDED &&
+                  (isRtl ? "تم تعليق حسابك. تواصل مع الإدارة أو راجع مستنداتك." : "Your account is suspended. Review your documents or contact support.")}
+              </span>
+            </button>
+          )}
+          {effectiveAgentType === AgentType.INDEPENDENT_AGENT && authLetterStatus !== null && authLetterStatus !== DocumentStatus.APPROVED && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("verification")}
+              className="w-full flex items-center gap-3 p-3.5 rounded-xl border bg-warning-soft border-warning/30 hover:brightness-95 text-left cursor-pointer transition-colors"
+            >
+              <AlertTriangle size={18} className="text-warning shrink-0" />
+              <span className="text-xs font-semibold text-ink">
+                {isRtl
+                  ? "لا يمكن نشر إعلانات جديدة حتى تتم الموافقة على خطاب تفويض الوكالة الخاص بك."
+                  : "New listings can't go live until your Agency Authorization Letter is approved."}
+              </span>
+            </button>
+          )}
+
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-surface p-4 rounded-xl border border-border">
-              <div className="flex items-center justify-between text-ink-muted mb-2">
-                <span className="text-xs font-medium">{isRtl ? "إجمالي العملاء" : "Total Leads Assigned"}</span>
-                <Users size={16} />
-              </div>
-              <h3 className="text-2xl font-serif font-bold text-ink">{totalLeads}</h3>
-              <p className="text-[10px] text-emerald-600 font-medium mt-1">↑ 14% {isRtl ? "هذا الأسبوع" : "vs last week"}</p>
-            </div>
-
-            <div className="bg-surface p-4 rounded-xl border border-border">
-              <div className="flex items-center justify-between text-ink-muted mb-2">
-                <span className="text-xs font-medium">{isRtl ? "نسبة التحويل" : "Conversion Efficiency"}</span>
-                <TrendingUp size={16} />
-              </div>
-              <h3 className="text-2xl font-serif font-bold text-ink">{conversionRate}%</h3>
-              <p className="text-[10px] text-ink-muted mt-1">{isRtl ? "معدل الإغلاق الكلي" : "Of total processed inquiries"}</p>
-            </div>
-
-            <div className="bg-surface p-4 rounded-xl border border-border">
-              <div className="flex items-center justify-between text-ink-muted mb-2">
-                <span className="text-xs font-medium">{isRtl ? "عقارات معروضة" : "Active Listings"}</span>
-                <Building size={16} />
-              </div>
-              <h3 className="text-2xl font-serif font-bold text-ink">{activeListings}</h3>
-              <p className="text-[10px] text-ink-muted mt-1">{isRtl ? "منشورة ومتاحة للتداول" : "Published properties online"}</p>
-            </div>
-
-            <div className="bg-surface p-4 rounded-xl border border-border">
-              <div className="flex items-center justify-between text-ink-muted mb-2">
-                <span className="text-xs font-medium">{isRtl ? "زمن الاستجابة" : "Avg. Response Time"}</span>
-                <Clock size={16} />
-              </div>
-              <h3 className="text-2xl font-serif font-bold text-ink">12 min</h3>
-              <p className="text-[10px] text-emerald-600 font-medium mt-1">↓ 3 min {isRtl ? "أسرع اليوم" : "industry gold class"}</p>
-            </div>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            <StatCard
+              icon={Building}
+              label={isRtl ? "عقارات نشطة" : "Active Listings"}
+              value={activeListings}
+              subtitle={isRtl ? `${properties.length} إجمالي` : `${properties.length} total`}
+            />
+            <StatCard
+              icon={Users}
+              label={isRtl ? "عملاء هذا الشهر" : "Leads This Month"}
+              value={leadsThisMonth.length}
+              subtitle={isRtl ? `${totalLeads} إجمالي` : `${totalLeads} all-time`}
+            />
+            <StatCard
+              icon={TrendingUp}
+              label={isRtl ? "نسبة التحويل" : "Conversion Rate"}
+              value={`${conversionRate}%`}
+              subtitle={isRtl ? `${conversionRateThisMonth}% هذا الشهر` : `${conversionRateThisMonth}% this month`}
+            />
+            <StatCard
+              icon={Eye}
+              label={isRtl ? "المشاهدات هذا الشهر" : "Views This Month"}
+              value={viewsThisMonth.toLocaleString()}
+              subtitle={isRtl ? "لجميع إعلاناتك" : "across your listings"}
+            />
+            <StatCard
+              icon={Heart}
+              label={isRtl ? "عدد الحفظ" : "Saved-By Count"}
+              value={savedCount}
+              loading={savedCountLoading}
+              subtitle={isRtl ? "مستخدمون حفظوا إعلاناتك" : "users saved your listings"}
+            />
           </div>
 
-          {/* Quick Tasks & Recent Activity */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
-              <h4 className="font-serif text-base font-semibold text-ink">
-                {isRtl ? "العملاء الجدد المعلقين" : "Unaddressed Hot Leads"}
-              </h4>
-              <div className="space-y-3">
-                {leads.filter(l => l.status === LeadStatus.NEW).length === 0 ? (
-                  <p className="text-xs text-center text-ink-muted py-4">{isRtl ? "لا توجد عملاء جدد معلقين." : "All incoming requests processed!"}</p>
-                ) : (
-                  leads.filter(l => l.status === LeadStatus.NEW).map(lead => (
-                    <div key={lead.id} className="p-3 bg-canvas border border-border rounded-lg flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <h5 className="text-xs font-bold text-ink">{lead.visitorName}</h5>
+          {/* Billing split - independent agents self-manage a subscription, agency agents ride
+              on their agency's plan and never see a self-serve billing surface of their own. */}
+          {effectiveAgentType === AgentType.INDEPENDENT_AGENT ? (
+            <div className="bg-surface rounded-xl border border-border p-4 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-lg bg-gold-soft text-gold-active flex items-center justify-center shrink-0">
+                  <CreditCard size={16} />
+                </span>
+                <div>
+                  <p className="text-xs font-bold text-ink">{isRtl ? "اشتراك الوكيل المستقل" : "Independent Agent Billing"}</p>
+                  <p className="text-[10px] text-ink-muted">
+                    {plans.find(p => p.id === agent.subscriptionPlanId)?.name || (isRtl ? "لم يتم تحديد خطة بعد" : "No plan selected yet")}
+                    {" • "}
+                    {agent.subscriptionStatus || "PENDING_APPROVAL"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("subscription")}
+                className="text-[11px] font-bold text-gold hover:underline cursor-pointer shrink-0"
+              >
+                {isRtl ? "عرض التفاصيل" : "View details"}
+              </button>
+            </div>
+          ) : (
+            <div className="bg-surface rounded-xl border border-border p-4 flex items-center gap-3">
+              <span className="w-9 h-9 rounded-lg bg-gold-soft text-gold-active flex items-center justify-center shrink-0">
+                <Building size={16} />
+              </span>
+              <div>
+                <p className="text-xs font-bold text-ink">{isRtl ? "الفوترة عبر المكتب العقاري" : "Billed via your agency"}</p>
+                <p className="text-[10px] text-ink-muted">
+                  {isRtl ? "لا يوجد اشتراك شخصي - يغطي مكتبك العقاري كافة الرسوم." : "No personal subscription - your agency covers all platform fees."}
+                  {agencyOrg?.subscriptionStatus && ` (${agencyOrg.subscriptionStatus})`}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Leads trend chart */}
+          <div className="bg-surface rounded-xl border border-border p-4">
+            <h4 className="font-serif text-sm font-semibold text-ink mb-3 flex items-center gap-1.5">
+              <TrendingUp size={14} className="text-gold" />
+              <span>{isRtl ? "العملاء المحتملون يومياً (آخر 30 يوماً)" : "Leads Per Day (Last 30 Days)"}</span>
+            </h4>
+            <DashboardChart data={leadsPerDaySeries} valueLabel={isRtl ? "عملاء محتملون" : "Leads"} isRtl={isRtl} />
+          </div>
+
+          {/* Quick-access listings grid */}
+          <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between">
+              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إعلاناتي" : "My Listings"}</h4>
+              <button type="button" onClick={() => setActiveTab("properties")} className="text-[11px] font-bold text-gold hover:underline cursor-pointer">
+                {isRtl ? "عرض الكل" : "View all"}
+              </button>
+            </div>
+            {properties.length === 0 ? (
+              <p className="p-8 text-center text-xs text-ink-muted">{isRtl ? "لا توجد إعلانات بعد." : "No listings yet."}</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+                {properties.slice(0, 6).map(prop => (
+                  <div key={prop.id} className="border border-border rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <Badge tone={listingStatusTone(prop.listingStatus)}>{prop.listingStatus.replace(/_/g, " ")}</Badge>
+                      <span className="text-[9px] text-ink-faint flex items-center gap-1">
+                        <Eye size={10} /> {prop.views || 0}
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-ink truncate">{isRtl ? prop.titleAr || prop.title : prop.title}</p>
+                    <p className="text-[10px] text-ink-muted">{prop.district}, {prop.city}</p>
+                    <p className="text-xs font-bold text-gold">{prop.price?.toLocaleString()} {prop.currency}</p>
+                    {effectiveAgentType !== AgentType.AGENCY_AGENT && <BoostButton property={prop} isRtl={isRtl} />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Smart Boost Recommendations panel - reused as-is, not duplicated. */}
+          <BoostRecommendations properties={properties} agentId={agent.id} isRtl={isRtl} />
+
+          {/* Recent Leads (5) with real lead-status controls */}
+          <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between">
+              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "أحدث العملاء المحتملين" : "Recent Leads"}</h4>
+              <button type="button" onClick={() => setActiveTab("leads")} className="text-[11px] font-bold text-gold hover:underline cursor-pointer">
+                {isRtl ? "عرض الكل" : "View all"}
+              </button>
+            </div>
+            {leads.length === 0 ? (
+              <p className="p-8 text-center text-xs text-ink-muted">{isRtl ? "لا يوجد عملاء محتملون بعد." : "No leads yet."}</p>
+            ) : (
+              <div className="divide-y divide-surface-2">
+                {[...leads]
+                  .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime())
+                  .slice(0, 5)
+                  .map(lead => (
+                    <div key={lead.id} className="p-3.5 flex items-center justify-between gap-3 flex-wrap">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs font-bold text-ink">{lead.visitorName}</p>
+                          <Badge tone={leadStatusTone(lead.status)}>{lead.status.replace(/_/g, " ")}</Badge>
+                        </div>
                         <p className="text-[10px] text-ink-muted line-clamp-1">{lead.message}</p>
                       </div>
-                      <button
-                        onClick={() => handleUpdateLeadStatus(lead.id, LeadStatus.CONTACTED)}
-                        className="px-2.5 py-1 bg-chrome hover:bg-gold text-white text-[10px] rounded"
+                      <select
+                        value={lead.status}
+                        onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
+                        className="px-2 py-1.5 bg-surface border border-border rounded text-[10px] font-semibold text-ink shrink-0"
                       >
-                        {isRtl ? "تأكيد التواصل" : "Acknowledge"}
-                      </button>
+                        {Object.values(LeadStatus).map(s => (
+                          <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+                        ))}
+                      </select>
                     </div>
-                  ))
-                )}
+                  ))}
               </div>
-            </div>
-
-            <div className="bg-surface p-5 rounded-xl border border-border space-y-4">
-              <h4 className="font-serif text-base font-semibold text-ink">
-                {isRtl ? "قنوات الإغلاق والإنتاجية" : "Lead Channel Attribution"}
-              </h4>
-              <div className="space-y-3 text-xs">
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span>{isRtl ? "واتساب مباشر" : "Direct WhatsApp Inquiries"}</span>
-                    <span className="font-bold">60%</span>
-                  </div>
-                  <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500" style={{ width: "60%" }}></div>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span>{isRtl ? "اتصال هاتفي" : "Direct Telephone Contacts"}</span>
-                    <span className="font-bold">25%</span>
-                  </div>
-                  <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500" style={{ width: "25%" }}></div>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span>{isRtl ? "جدولة معاينات نموذج الموقع" : "Interactive Booking Forms"}</span>
-                    <span className="font-bold">15%</span>
-                  </div>
-                  <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-gold" style={{ width: "15%" }}></div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
