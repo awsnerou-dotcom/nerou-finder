@@ -41,6 +41,8 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
     "@types/supertest": "^6.0.2",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
