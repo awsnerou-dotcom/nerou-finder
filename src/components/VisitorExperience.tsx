@@ -157,6 +157,10 @@ export default function VisitorExperience({
 
   // Detail overlay state
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  // "Recently viewed" strip - resolved from the id/timestamp trail PropertyDetailView.tsx
+  // writes to localStorage on every property it opens. Re-read whenever the detail overlay
+  // closes, so a property just viewed shows up in the strip immediately without a reload.
+  const [recentlyViewedProperties, setRecentlyViewedProperties] = useState<Property[]>([]);
   const [viewFormat, setViewFormat] = useState<"LIST" | "MAP">("LIST");
   const [savedPropertyIds, setSavedPropertyIds] = useState<string[]>([]);
   const [comparedPropertyIds, setComparedPropertyIds] = useState<string[]>([]);
@@ -214,6 +218,37 @@ export default function VisitorExperience({
     fetchTaxonomyData();
   }, []);
 
+  // Resolve the "recently viewed" id trail (written by PropertyDetailView.tsx) into full
+  // property records for the strip below. Re-runs whenever the detail overlay closes (covers
+  // "just viewed one" without needing a reload) - a property that's since been unpublished or
+  // deleted simply won't come back from the API and is silently skipped rather than shown broken.
+  useEffect(() => {
+    if (selectedProperty) return;
+    let cancelled = false;
+    try {
+      const raw = localStorage.getItem("nerou_recently_viewed");
+      const entries: { id: string; ts: number }[] = raw ? JSON.parse(raw) : [];
+      if (entries.length === 0) {
+        setRecentlyViewedProperties([]);
+        return;
+      }
+      Promise.all(
+        entries.map(e =>
+          fetch(`/api/properties/${e.id}`)
+            .then(res => (res.ok ? res.json() : null))
+            .catch(() => null)
+        )
+      ).then(results => {
+        if (!cancelled) setRecentlyViewedProperties(results.filter((p): p is Property => !!p));
+      });
+    } catch (e) {
+      console.error("Failed to load recently-viewed properties:", e);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProperty]);
+
   useEffect(() => {
     fetchProperties();
   }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, verifiedOnly, debouncedSearchQuery, locations]);
@@ -226,6 +261,71 @@ export default function VisitorExperience({
       trackPageView("/");
     }
   }, [selectedProperty]);
+
+  // Real, working deep links for property pages. The server already builds the pieces that
+  // promise these URLs work - sitemap.xml lists them, robots.txt allows crawling them, and the
+  // GET /properties/:id route injects correct per-property Open Graph tags - but nothing on the
+  // client ever read the URL back, so a search engine hit or a shared/copied link only ever
+  // loaded the generic marketplace instead of the specific property. This closes that gap for
+  // properties specifically (agent/agency profile modals remain deliberately un-routed, as
+  // noted where profileStatsSummary is set up above - that's a separate, larger scope).
+  const deepLinkConsumedRef = React.useRef(false);
+  useEffect(() => {
+    if (deepLinkConsumedRef.current) return;
+    deepLinkConsumedRef.current = true;
+    const match = window.location.pathname.match(/^\/properties\/([^/]+)\/?$/);
+    if (!match) return;
+    fetch(`/api/properties/${match[1]}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (data) setSelectedProperty(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Keep the address bar in sync with the open/closed property overlay: push a real
+  // /properties/:id URL while one is open (so the browser's own "copy link" / "share" and the
+  // Share button below both grab a working link), and restore "/" when it closes. Skipped on
+  // the very first render after a deep link already put us at the right URL, so opening a
+  // shared link doesn't push a redundant duplicate history entry.
+  const lastSyncedPathRef = React.useRef<string | null>(
+    window.location.pathname.match(/^\/properties\/[^/]+\/?$/) ? window.location.pathname : null
+  );
+  useEffect(() => {
+    const targetPath = selectedProperty ? `/properties/${selectedProperty.id}` : "/";
+    if (lastSyncedPathRef.current === targetPath) return;
+    lastSyncedPathRef.current = targetPath;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, "", targetPath);
+    }
+  }, [selectedProperty]);
+
+  // Back/forward support for the above: e.g. Property A -> Property B -> Back should reopen A,
+  // and Property A -> Back should return to the marketplace list, not leave the app stuck.
+  useEffect(() => {
+    const onPopState = () => {
+      const match = window.location.pathname.match(/^\/properties\/([^/]+)\/?$/);
+      if (!match) {
+        lastSyncedPathRef.current = "/";
+        setSelectedProperty(null);
+        return;
+      }
+      const id = match[1];
+      lastSyncedPathRef.current = `/properties/${id}`;
+      const known = properties.find(p => p.id === id);
+      if (known) {
+        setSelectedProperty(known);
+      } else {
+        fetch(`/api/properties/${id}`)
+          .then(res => (res.ok ? res.json() : null))
+          .then(data => { if (data) setSelectedProperty(data); })
+          .catch(() => {});
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [properties]);
 
   const fetchTaxonomyData = async () => {
     try {
@@ -1182,6 +1282,39 @@ export default function VisitorExperience({
               <Bookmark size={14} />
               <span>{isRtl ? "حفظ هذا البحث للتنبيهات" : "Save Active Search"}</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Recently Viewed strip - localStorage-only, no account needed. Only shown on the plain
+          properties list (not mid-AI-search or on the agent/agency/developer directory tabs)
+          so it doesn't compete with active search results for attention. */}
+      {!aiSearchActive && searchMode === "PROPERTIES" && recentlyViewedProperties.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-serif text-ink font-medium flex items-center gap-2">
+            <Clock size={16} className="text-gold" />
+            <span>{isRtl ? "شوهدت مؤخراً" : "Recently Viewed"}</span>
+          </h3>
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+            {recentlyViewedProperties.map(rv => (
+              <button
+                key={rv.id}
+                type="button"
+                onClick={() => setSelectedProperty(rv)}
+                className="flex items-center gap-2.5 shrink-0 w-64 p-2 bg-surface border border-border rounded-lg hover:border-gold transition-colors text-left rtl:text-right cursor-pointer"
+              >
+                <img
+                  src={rv.images && rv.images[0]}
+                  alt=""
+                  className="w-12 h-12 rounded-md object-cover shrink-0 bg-canvas"
+                />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-ink truncate">{isRtl ? (rv.titleAr || rv.title) : rv.title}</p>
+                  <p className="text-[11px] text-ink-muted truncate">{rv.district}, {rv.city}</p>
+                  <p className="text-[11px] font-bold text-gold">{formatPrice(rv.price, isRtl)}</p>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       )}

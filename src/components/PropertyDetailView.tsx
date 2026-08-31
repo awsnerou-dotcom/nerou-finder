@@ -141,6 +141,70 @@ export default function PropertyDetailView({
     };
   }, [property.id]);
 
+  // Structured data (schema.org RealEstateListing), mirroring what the server already injects
+  // for the same URL in server.ts's GET /properties/:id route. That server copy is what search
+  // engines see on first crawl; this client copy covers the case where a visitor arrives here
+  // via in-app navigation (no full page load) instead of a direct/shared link, and covers
+  // preview tools that do execute JS. Added/removed as this view mounts/unmounts so it never
+  // lingers describing a property that's no longer open.
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.id = "property-jsonld";
+    const existing = document.getElementById("property-jsonld");
+    if (existing) existing.remove();
+    script.text = JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "RealEstateListing",
+      name: property.title,
+      description: property.description,
+      url: `${window.location.origin}/properties/${property.id}`,
+      image: property.images && property.images.length > 0 ? property.images : undefined,
+      datePosted: property.createdDate,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: property.district,
+        addressRegion: property.city,
+        addressCountry: "QA"
+      },
+      offers: {
+        "@type": "Offer",
+        price: property.price,
+        priceCurrency: property.currency || "QAR",
+        availability: "https://schema.org/InStock"
+      },
+      numberOfRooms: property.bedrooms,
+      numberOfBathroomsTotal: property.bathrooms,
+      floorSize: {
+        "@type": "QuantitativeValue",
+        value: property.area,
+        unitCode: property.sizeUnit === "SQFT" ? "FTK" : "MTK"
+      }
+    });
+    document.head.appendChild(script);
+    return () => {
+      script.remove();
+    };
+  }, [property]);
+
+  // "Recently viewed" trail for visitors - a lightweight, per-browser localStorage list (no
+  // account or backend needed) that VisitorExperience.tsx surfaces on the marketplace so a
+  // visitor can get back to properties they looked at earlier. Most-recent-first, de-duplicated
+  // by id, capped so it can't grow without bound.
+  useEffect(() => {
+    try {
+      const RECENTLY_VIEWED_KEY = "nerou_recently_viewed";
+      const RECENTLY_VIEWED_MAX = 12;
+      const raw = localStorage.getItem(RECENTLY_VIEWED_KEY);
+      const list: { id: string; ts: number }[] = raw ? JSON.parse(raw) : [];
+      const next = [{ id: property.id, ts: Date.now() }, ...list.filter(e => e.id !== property.id)]
+        .slice(0, RECENTLY_VIEWED_MAX);
+      localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(next));
+    } catch (e) {
+      console.error("Failed to update recently-viewed list:", e);
+    }
+  }, [property.id]);
+
   // Real, honest view count shown near the price panel - starts from the count already on
   // the property object (as seen in search results) and is bumped to the server's authoritative
   // total once this visit's own view finishes recording, so the visible number includes the
@@ -349,10 +413,29 @@ export default function PropertyDetailView({
     });
   };
 
+  // The permalink for this specific listing. Not window.location.href - this app previously
+  // never updated the address bar when opening a property (see VisitorExperience.tsx's deep-
+  // link effects), so window.location.href was always just the site root regardless of which
+  // property was open, and "Share" silently copied a useless link. VisitorExperience now keeps
+  // the address bar in sync too, but building the URL directly here means this keeps working
+  // even if this view is ever rendered somewhere that doesn't do that syncing.
+  const shareLink = `${window.location.origin}/properties/${property.id}`;
+
   const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
+    navigator.clipboard.writeText(shareLink);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  // Share the listing itself with a friend/family member - distinct from the sidebar's
+  // "WhatsApp" button, which contacts the agent as a lead and is tracked as one.
+  const handleShareViaWhatsApp = () => {
+    const titleText = isRtl ? (property.titleAr || property.title) : property.title;
+    const priceText = formatPrice(property.price, isRtl);
+    const text = isRtl
+      ? `شاهد هذا العقار على Nerou Finder:\n${titleText} - ${priceText}\n${shareLink}`
+      : `Check out this property on Nerou Finder:\n${titleText} - ${priceText}\n${shareLink}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const handleWhatsAppAction = async () => {
@@ -400,12 +483,11 @@ export default function PropertyDetailView({
     const titleText = isRtl ? (property.titleAr || property.title) : property.title;
     const locationText = `${property.district || ""}, ${property.city || ""}`;
     const priceText = formatPrice(property.price, isRtl);
-    const shareUrl = `${window.location.origin}/properties/${property.id}`;
 
     // Format pre-filled message exactly as requested
     const messageText = isRtl
-      ? `مرحباً، أنا مهتم بهذا العقار:\nالعقار: ${titleText}\nالموقع: ${locationText}\nالسعر: ${priceText}\nرقم الإعلان: ${property.listingId}\nالرابط: ${shareUrl}`
-      : `Hello, I am interested in this property:\nProperty: ${titleText}\nLocation: ${locationText}\nPrice: ${priceText}\nProperty ID: ${property.listingId}\nLink: ${shareUrl}`;
+      ? `مرحباً، أنا مهتم بهذا العقار:\nالعقار: ${titleText}\nالموقع: ${locationText}\nالسعر: ${priceText}\nرقم الإعلان: ${property.listingId}\nالرابط: ${shareLink}`
+      : `Hello, I am interested in this property:\nProperty: ${titleText}\nLocation: ${locationText}\nPrice: ${priceText}\nProperty ID: ${property.listingId}\nLink: ${shareLink}`;
 
     const waUrl = `https://wa.me/${contactNumber}?text=${encodeURIComponent(messageText)}`;
     if (waTab) {
@@ -644,9 +726,16 @@ export default function PropertyDetailView({
               <Bookmark size={15} fill={isSaved ? "currentColor" : "none"} />
             </button>
             <button
+              onClick={handleShareViaWhatsApp}
+              className="p-2 rounded-full border bg-surface border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
+              title={isRtl ? "مشاركة عبر واتساب" : "Share via WhatsApp"}
+            >
+              <MessageCircle size={15} />
+            </button>
+            <button
               onClick={handleShare}
               className="p-2 rounded-full border bg-surface border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
-              title={isRtl ? "مشاركة" : "Share"}
+              title={isRtl ? "نسخ رابط العقار" : "Copy Link"}
             >
               {copiedLink ? <Check size={15} className="text-emerald-600" /> : <Share2 size={15} />}
             </button>

@@ -294,6 +294,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [selectedArea, setSelectedArea] = useState<string>("");
 
   const [listingDesc, setListingDesc] = useState<string>("");
+  // Optional Arabic-language description. If left blank, the server mirrors the English
+  // `description` into `descriptionAr` so the listing still has *something* for Arabic-locale
+  // visitors - but until this field existed, that mirroring happened completely silently, so
+  // agents had no way to know (or intend) that their English text was being shown to Arabic
+  // readers as if it were a translation. See the honest notice under the textarea below.
+  const [listingDescAr, setListingDescAr] = useState<string>("");
   const [listingImages, setListingImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState<boolean>(false);
   const [listingAmenities, setListingAmenities] = useState<string>("Pool, Gym, Parking");
@@ -325,7 +331,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       const raw = localStorage.getItem(listingDraftKey);
       if (!raw) return;
       const draft = JSON.parse(raw);
-      const hasContent = !!(draft.listingTitle || draft.listingPrice || draft.listingDesc || draft.selectedMunicipality || (draft.listingImages && draft.listingImages.length > 0));
+      const hasContent = !!(draft.listingTitle || draft.listingPrice || draft.listingDesc || draft.listingDescAr || draft.selectedMunicipality || (draft.listingImages && draft.listingImages.length > 0));
       if (!hasContent) return;
 
       if (draft.selectedMunicipality) restoredMunicipalityRef.current = true;
@@ -349,6 +355,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       setSelectedMunicipality(draft.selectedMunicipality || "");
       setSelectedArea(draft.selectedArea || "");
       setListingDesc(draft.listingDesc || "");
+      setListingDescAr(draft.listingDescAr || "");
       setListingImages(draft.listingImages || []);
       setListingAmenities(draft.listingAmenities || "Pool, Gym, Parking");
       setIsAddingListing(true);
@@ -370,7 +377,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
         listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
         listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
-        selectedMunicipality, selectedArea, listingDesc, listingImages, listingAmenities
+        selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities
       };
       localStorage.setItem(listingDraftKey, JSON.stringify(draft));
     } catch (e) {
@@ -380,7 +387,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     isAddingListing, editingPropertyId, wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
     listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
     listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
-    selectedMunicipality, selectedArea, listingDesc, listingImages, listingAmenities, listingDraftKey
+    selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingDraftKey
   ]);
 
   useEffect(() => {
@@ -867,6 +874,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           city: finalCity,
           district: finalDistrict,
           description: listingDesc,
+          // Always send descriptionAr explicitly (even "") so an edit can re-sync it to the
+          // (possibly just-changed) English description instead of leaving a stale Arabic
+          // description frozen from whenever the listing was first created - see server.ts's
+          // POST /api/properties edit branch.
+          descriptionAr: listingDescAr,
           images: listingImages,
           amenities: listingAmenities.split(",").map(a => a.trim()),
           agentId: agent.id,
@@ -896,6 +908,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         setListingPrice("");
         setListingArea("");
         setListingDesc("");
+        setListingDescAr("");
         setListingImages([]);
         setSelectedArea("");
         setListingCompletionYear("");
@@ -967,6 +980,13 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     const area = locations.find(l => l.parentId === muni?.id && l.name === prop.district);
     setSelectedArea(area?.id || "");
     setListingDesc(prop.description || "");
+    // Pre-fill the Arabic field only with a *genuine* Arabic description. Every listing
+    // created before this field existed (and any listing whose agent simply left it blank)
+    // has descriptionAr silently mirrored to the English description server-side - showing
+    // that mirrored text back as if it were deliberately-written Arabic content would just
+    // perpetuate the original confusion. Leaving the field blank here means saving again
+    // keeps it correctly in sync with whatever the English description says.
+    setListingDescAr(prop.descriptionAr && prop.descriptionAr !== prop.description ? prop.descriptionAr : "");
     setListingImages(prop.images || []);
     setListingAmenities((prop.amenities || []).join(", "));
     setWizardStep(1);
@@ -2147,7 +2167,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               {wizardStep === 5 && (
                 <div className="space-y-4">
                   <div>
-                    <label className="block font-medium text-ink-muted mb-1">{isRtl ? "شرح وتفاصيل الإعلان" : "Property Details & Descriptions"}</label>
+                    <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الوصف بالإنجليزية" : "Description (English)"}</label>
                     <textarea
                       rows={3}
                       required
@@ -2156,6 +2176,23 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       placeholder="Provide comprehensive details about amenities, location near schools, views..."
                       className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                     ></textarea>
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الوصف بالعربية (اختياري)" : "Description (Arabic) - optional"}</label>
+                    <textarea
+                      rows={3}
+                      value={listingDescAr}
+                      onChange={(e) => setListingDescAr(e.target.value)}
+                      placeholder="أدخل وصف العقار باللغة العربية..."
+                      dir="rtl"
+                      className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
+                    ></textarea>
+                    <p className="text-[10px] text-ink-muted mt-1">
+                      {isRtl
+                        ? "إذا تركت هذا الحقل فارغاً، سيظهر الوصف الإنجليزي أعلاه للزوار الذين يستخدمون الموقع بالعربية."
+                        : "If you leave this blank, visitors browsing the site in Arabic will see your English description above instead of a translation."}
+                    </p>
                   </div>
 
                   {(() => {
@@ -2194,6 +2231,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           <div className="flex justify-between sm:block">
                             <span className="text-ink-muted">{isRtl ? "الصور" : "Photos"}</span>
                             <span className="font-bold text-ink sm:block">{listingImages.length} / {MAX_LISTING_IMAGES}</span>
+                          </div>
+                          <div className="flex justify-between sm:block">
+                            <span className="text-ink-muted">{isRtl ? "الوصف بالعربية" : "Arabic Description"}</span>
+                            <span className="font-bold text-ink sm:block">
+                              {listingDescAr.trim()
+                                ? (isRtl ? "مكتوب" : "Provided")
+                                : (isRtl ? "سيُعرض الوصف الإنجليزي بدلاً منه" : "Will fall back to English text")}
+                            </span>
                           </div>
                           {(listingCompletionYear || listingFurnishingStatus || listingTenureType || listingUtilitiesIncluded || listingMetroStation || listingParkingType) && (
                             <div className="sm:col-span-2 pt-2 border-t border-border text-[10px] text-ink-muted space-y-0.5">

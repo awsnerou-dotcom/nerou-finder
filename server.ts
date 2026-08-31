@@ -1511,6 +1511,19 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       priceHistory.push({ price: newPrice, date: new Date().toISOString().split("T")[0] });
     }
 
+    // The Arabic description silently mirrors the English one whenever no real Arabic text
+    // was provided (see the create branch below) - but "provided" has to be evaluated against
+    // the *new* description, not the stale one on `existing`. Without this, editing/rewriting
+    // the English description would leave descriptionAr frozen at whatever it was mirrored to
+    // (or manually written as) at creation time, silently showing visitors old text the agent
+    // no longer wrote or already changed. The client always sends descriptionAr explicitly
+    // (even as "") once a real value has been entered/cleared - a bare `undefined` means an
+    // older/other caller didn't send the field at all, so we leave it untouched in that case.
+    const newDescription = propData.description !== undefined ? propData.description : existing.description;
+    const resolvedDescriptionAr = propData.descriptionAr !== undefined
+      ? (propData.descriptionAr && propData.descriptionAr.trim() ? propData.descriptionAr : newDescription)
+      : existing.descriptionAr;
+
     const updatedProp: Property = {
       ...existing,
       ...propData,
@@ -1522,6 +1535,7 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       area: propData.area !== undefined ? Number(propData.area) : existing.area,
       bedrooms: propData.bedrooms !== undefined ? Number(propData.bedrooms) : existing.bedrooms,
       bathrooms: propData.bathrooms !== undefined ? Number(propData.bathrooms) : existing.bathrooms,
+      descriptionAr: resolvedDescriptionAr,
       priceHistory,
       qualityScore,
       updatedDate: new Date().toISOString()
@@ -1552,7 +1566,10 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       title: propData.title,
       titleAr: propData.titleAr || propData.title,
       description: propData.description,
-      descriptionAr: propData.descriptionAr || propData.description,
+      // Mirrors the English description when no real Arabic text was provided (whitespace-only
+      // counts as "not provided") - the wizard now discloses this fallback to the agent instead
+      // of doing it silently. See the matching, edit-time-aware logic in the isEdit branch above.
+      descriptionAr: (propData.descriptionAr && propData.descriptionAr.trim()) ? propData.descriptionAr : propData.description,
       propertyType: propData.propertyType,
       transactionType: propData.transactionType,
       price: Number(propData.price),
@@ -5919,6 +5936,50 @@ async function startServer() {
         html = html.replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/g, `<meta name="twitter:title" content="${title}" />`);
         html = html.replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/g, `<meta name="twitter:description" content="${desc}" />`);
         html = html.replace(/<meta name="twitter:image" content="[^"]*"\s*\/?>/g, `<meta name="twitter:image" content="${absoluteCoverImage}" />`);
+
+        // Structured data (schema.org RealEstateListing) so search engines can render this
+        // listing as a rich result (price, address, photo) instead of a plain blue link - the
+        // single highest-leverage SEO gap this app had, since sitemap.xml/robots.txt already
+        // advertise every one of these URLs and this route already computes everything the
+        // JSON-LD block needs. Injected server-side (not just client-side) so it's present in
+        // the very first response a crawler sees, with no JS execution required.
+        const permalink = `${protocol}://${host}/properties/${property.id}`;
+        const structuredData = {
+          "@context": "https://schema.org",
+          "@type": "RealEstateListing",
+          name: property.title,
+          description: desc,
+          url: permalink,
+          image: (property.images && property.images.length > 0 ? property.images : [absoluteCoverImage])
+            .map(img => (img.startsWith("http") ? img : `${protocol}://${host}${img}`)),
+          datePosted: property.createdDate,
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: property.district,
+            addressRegion: property.city,
+            addressCountry: "QA"
+          },
+          offers: {
+            "@type": "Offer",
+            price: property.price,
+            priceCurrency: property.currency || "QAR",
+            availability: "https://schema.org/InStock",
+            businessFunction: property.transactionType === "FOR_RENT"
+              ? "http://purl.org/goodrelations/v1#LeaseOut"
+              : "http://purl.org/goodrelations/v1#Sell"
+          },
+          numberOfRooms: property.bedrooms,
+          numberOfBathroomsTotal: property.bathrooms,
+          floorSize: {
+            "@type": "QuantitativeValue",
+            value: property.area,
+            unitCode: property.sizeUnit === "SQFT" ? "FTK" : "MTK"
+          }
+        };
+        const jsonLdScript = `<script type="application/ld+json">${JSON.stringify(structuredData).replace(/</g, "\\u003c")}</script>`;
+        html = html.includes("</head>")
+          ? html.replace("</head>", `${jsonLdScript}</head>`)
+          : html + jsonLdScript;
 
         return res.send(html);
       } catch (err) {
