@@ -69,6 +69,7 @@ import { Badge } from "./ui/Badge.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Button } from "./ui/Button.js";
 import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone } from "../lib/dashboardMetrics.js";
+import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 
 interface AgentWorkspaceProps {
   agent: User;
@@ -161,6 +162,83 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
   // Local toast state
   const [toastMessage, setToastMessage] = useState<string>("");
+
+  // First-time onboarding tour: shows once automatically for an account that hasn't seen it
+  // yet, and can be replayed on demand from the Profile tab.
+  const [showTour, setShowTour] = useState(false);
+  useEffect(() => {
+    if (!agent.hasSeenOnboardingTour) {
+      setShowTour(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent.id]);
+
+  const AGENT_TOUR_STEPS: TourStep[] = [
+    {
+      selector: "agent-dashboard-tab",
+      title: isRtl ? "لوحة القيادة" : "Stats Center",
+      body: isRtl
+        ? "نظرة سريعة على أداءك: العملاء المحتملون هذا الشهر، المشاهدات، والإعلانات النشطة."
+        : "Your at-a-glance performance: leads this month, listing views, and active listings."
+    },
+    {
+      selector: "agent-leads-tab",
+      title: isRtl ? "العملاء المحتملون" : "Leads Panel",
+      body: isRtl
+        ? "تابع كل استفسار وارد على عقاراتك، وتواصل معهم، وحدّث حالتهم حتى الإغلاق."
+        : "Track every inquiry on your listings, contact leads, and update their status through to close."
+    },
+    {
+      selector: "agent-properties-tab",
+      title: isRtl ? "عقاراتي" : "My Listings",
+      body: isRtl
+        ? "أضف عقارات جديدة عبر المعالج، وتحكم في حالة كل عقار (نشط/متوقف/مباع)."
+        : "Add new listings through the wizard, and control each listing's status (active/paused/sold)."
+    },
+    {
+      selector: "agent-verification-tab",
+      title: isRtl ? "التوثيق" : "Verification",
+      body: isRtl
+        ? "ارفع مستنداتك (البطاقة الشخصية، وخطاب تفويض الوكالة إن كنت وسيطاً مستقلاً) لتفعيل النشر."
+        : "Upload your documents (QID, plus your Agency Authorization Letter if you're an independent agent) to unlock publishing."
+    },
+    {
+      selector: "agent-reviews-tab",
+      title: isRtl ? "التقييمات" : "Reviews",
+      body: isRtl
+        ? "اطّلع على تقييمات العملاء وردّ عليها لبناء سمعتك على المنصة."
+        : "See client reviews and reply to them to build your reputation on the platform."
+    },
+    {
+      selector: "agent-profile-tab",
+      title: isRtl ? "الحساب" : "My Profile",
+      body: isRtl
+        ? "حدّث بياناتك الشخصية وكلمة المرور من هنا في أي وقت."
+        : "Update your personal details and password here any time."
+    }
+  ];
+
+  const handleFinishTour = async () => {
+    setShowTour(false);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      await fetch(`/api/users/${agent.id}/onboarding-tour-seen`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ seen: true })
+      });
+      const stored = localStorage.getItem("nerou_user");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        localStorage.setItem("nerou_user", JSON.stringify({ ...parsed, hasSeenOnboardingTour: true }));
+      }
+      onRefreshAll();
+    } catch (err) {
+      console.error("Failed to persist onboarding tour state", err);
+    }
+  };
 
   // Profile Edit States
   const [fullName, setFullName] = useState<string>(agent.fullName);
@@ -957,24 +1035,28 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
         <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
           <button
+            data-tour="agent-dashboard-tab"
             onClick={() => setActiveTab("dashboard")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "لوحة القيادة" : "Stats Center"}
           </button>
           <button
+            data-tour="agent-leads-tab"
             onClick={() => setActiveTab("leads")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "العملاء المحتملون" : "Leads Panel"}
           </button>
           <button
+            data-tour="agent-properties-tab"
             onClick={() => setActiveTab("properties")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "properties" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "عقاراتي" : "My Listings"}
           </button>
           <button
+            data-tour="agent-verification-tab"
             onClick={() => setActiveTab("verification")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
@@ -991,12 +1073,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             </button>
           )}
           <button
+            data-tour="agent-reviews-tab"
             onClick={() => setActiveTab("reviews")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "reviews" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التقييمات" : "Reviews"}
           </button>
           <button
+            data-tour="agent-profile-tab"
             onClick={() => setActiveTab("profile")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
@@ -2467,12 +2551,32 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         </form>
       )}
 
+      {activeTab === "profile" && (
+        <div className="bg-surface p-6 rounded-xl border border-border flex items-center justify-between gap-4 text-xs">
+          <div>
+            <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "الجولة التعريفية" : "Guided Tour"}</h4>
+            <p className="text-ink-muted mt-0.5">{isRtl ? "أعد مشاهدة جولة التعريف بلوحة التحكم الخاصة بك." : "Replay the guided tour of your dashboard."}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowTour(true)}
+            className="px-4 py-2 bg-surface-2 hover:bg-border text-ink font-semibold rounded-lg cursor-pointer shrink-0"
+          >
+            {isRtl ? "أرني الجولة مرة أخرى" : "Show me the tour again"}
+          </button>
+        </div>
+      )}
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 max-w-sm bg-chrome text-white p-4 rounded-xl shadow-2xl border border-gold flex items-center gap-3 animate-slide-in">
           <div className="w-2 h-2 rounded-full bg-gold animate-ping" />
           <span className="text-xs font-medium">{toastMessage}</span>
         </div>
+      )}
+
+      {showTour && (
+        <OnboardingTour steps={AGENT_TOUR_STEPS} isRtl={isRtl} onFinish={handleFinishTour} />
       )}
     </div>
   );

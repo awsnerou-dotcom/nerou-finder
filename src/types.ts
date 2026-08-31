@@ -139,6 +139,10 @@ export interface User {
   subscriptionStatus?: "ACTIVE" | "SUSPENDED" | "CANCELLED" | "PENDING_APPROVAL";
   subscriptionActivationMethod?: "MANUAL" | "BANK_TRANSFER" | "INVOICE" | "OTHER";
   subscriptionNotes?: string;
+  // First-time contextual onboarding tour (Agent/Agency Admin/Developer Admin dashboards) -
+  // true once the user has dismissed/finished it, so it only auto-shows once. Undefined is
+  // treated the same as false (never seen it) for every pre-existing account.
+  hasSeenOnboardingTour?: boolean;
 }
 
 // Resolves an AGENT's effective type defensively: existing accounts created before

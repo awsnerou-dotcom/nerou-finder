@@ -39,14 +39,16 @@ import { Badge } from "./ui/Badge.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Button } from "./ui/Button.js";
 import { buildDailyCountSeries, isThisMonth, listingStatusTone } from "../lib/dashboardMetrics.js";
+import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 
 interface DeveloperWorkspaceProps {
   developer: Organization;
+  currentUser: User;
   onRefreshAll: () => void;
   isRtl: boolean;
 }
 
-export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: DeveloperWorkspaceProps) {
+export default function DeveloperWorkspace({ developer, currentUser, onRefreshAll, isRtl }: DeveloperWorkspaceProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -70,6 +72,76 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
 
   // Local toast state
   const [toastMessage, setToastMessage] = useState<string>("");
+
+  // First-time onboarding tour: shows once automatically for an account that hasn't seen it
+  // yet, and can be replayed on demand from the Profile tab.
+  const [showTour, setShowTour] = useState(false);
+  useEffect(() => {
+    if (!currentUser.hasSeenOnboardingTour) {
+      setShowTour(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser.id]);
+
+  const DEVELOPER_TOUR_STEPS: TourStep[] = [
+    {
+      selector: "developer-dashboard-tab",
+      title: isRtl ? "لوحة القيادة" : "Dashboard",
+      body: isRtl
+        ? "نظرة عامة على أداء شركتك: العملاء المحتملون هذا الشهر، والوحدات المتاحة."
+        : "Your developer enterprise overview: leads this month and available units at a glance."
+    },
+    {
+      selector: "developer-projects-tab",
+      title: isRtl ? "المشاريع الكبرى" : "Master Projects",
+      body: isRtl
+        ? "أضف مشاريعك العقارية الكبرى وأدرها من هنا."
+        : "Add and manage your master real-estate projects here."
+    },
+    {
+      selector: "developer-inventory-tab",
+      title: isRtl ? "مخزون الوحدات" : "Units Inventory",
+      body: isRtl
+        ? "أضف الوحدات الفردية المرتبطة بكل مشروع وتابع حالتها."
+        : "Add the individual units tied to each project and track their status."
+    },
+    {
+      selector: "developer-verification-tab",
+      title: isRtl ? "التوثيق" : "Verification",
+      body: isRtl
+        ? "ارفع مستندات شركتك (السجل التجاري، تصريح المشروع البلدي، إلخ) لتفعيل التوثيق."
+        : "Upload your company documents (commercial registration, municipality project permit, etc.) for verification."
+    },
+    {
+      selector: "developer-profile-tab",
+      title: isRtl ? "الإعدادات" : "Profile",
+      body: isRtl
+        ? "حدّث بيانات شركتك من هنا في أي وقت."
+        : "Update your developer enterprise's details here any time."
+    }
+  ];
+
+  const handleFinishTour = async () => {
+    setShowTour(false);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      await fetch(`/api/users/${currentUser.id}/onboarding-tour-seen`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ seen: true })
+      });
+      const stored = localStorage.getItem("nerou_user");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        localStorage.setItem("nerou_user", JSON.stringify({ ...parsed, hasSeenOnboardingTour: true }));
+      }
+      onRefreshAll();
+    } catch (err) {
+      console.error("Failed to persist onboarding tour state", err);
+    }
+  };
 
   // Profile / organization settings state (Part B/C: developer admin's own org profile
   // fields - Organization has no fullName/bio like a User, so this edits org-level
@@ -467,30 +539,35 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
         {/* Tab switcher */}
         <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
           <button
+            data-tour="developer-dashboard-tab"
             onClick={() => setActiveTab("dashboard")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "لوحة القيادة" : "Dashboard"}
           </button>
           <button
+            data-tour="developer-projects-tab"
             onClick={() => setActiveTab("projects")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "projects" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "المشاريع الكبرى" : "Master Projects"}
           </button>
           <button
+            data-tour="developer-inventory-tab"
             onClick={() => setActiveTab("inventory")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "inventory" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "مخزون الوحدات" : "Units Inventory"}
           </button>
           <button
+            data-tour="developer-verification-tab"
             onClick={() => setActiveTab("verification")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
           <button
+            data-tour="developer-profile-tab"
             onClick={() => setActiveTab("profile")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
@@ -629,6 +706,20 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
       {/* PROFILE / SETTINGS TAB */}
       {activeTab === "profile" && (
         <div className="space-y-6">
+          <div className="bg-surface p-6 rounded-xl border border-border flex items-center justify-between gap-4 text-xs">
+            <div>
+              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "الجولة التعريفية" : "Guided Tour"}</h4>
+              <p className="text-ink-muted mt-0.5">{isRtl ? "أعد مشاهدة جولة التعريف بلوحة تحكم شركتك." : "Replay the guided tour of your developer dashboard."}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowTour(true)}
+              className="px-4 py-2 bg-surface-2 hover:bg-border text-ink font-semibold rounded-lg cursor-pointer shrink-0"
+            >
+              {isRtl ? "أرني الجولة مرة أخرى" : "Show me the tour again"}
+            </button>
+          </div>
+
           <form onSubmit={handleSaveOrgProfile} className="bg-surface p-6 rounded-xl border border-border space-y-4 text-xs">
             <div className="flex items-center gap-4 border-b border-surface-2 pb-4">
               <div className="relative shrink-0">
@@ -1138,6 +1229,10 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           <div className="w-2 h-2 rounded-full bg-gold animate-ping" />
           <span className="text-xs font-medium">{toastMessage}</span>
         </div>
+      )}
+
+      {showTour && (
+        <OnboardingTour steps={DEVELOPER_TOUR_STEPS} isRtl={isRtl} onFinish={handleFinishTour} />
       )}
     </div>
   );

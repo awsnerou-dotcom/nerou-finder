@@ -7,6 +7,7 @@ import React, { useState, useEffect, Suspense, lazy } from "react";
 import VisitorExperience from "./components/VisitorExperience.js";
 import CinematicSkyline from "./components/CinematicSkyline.js";
 import CookieConsent from "./components/CookieConsent.js";
+import HelpAssistantWidget from "./components/HelpAssistantWidget.js";
 import { trackEvent } from "./lib/analytics.js";
 import { User, UserRole, Organization, OrganizationType, VerificationStatus, TransactionType, ApplicationStatus, AgentType, getEffectiveAgentType } from "./types.js";
 import { useCurrency, CURRENCIES, CurrencyCode } from "./currencyContext.js";
@@ -364,6 +365,7 @@ export default function App() {
         return currentOrg ? (
           <AgencyWorkspace
             agency={currentOrg}
+            currentUser={currentUser}
             onRefreshAll={handleDatabaseRefresh}
             isRtl={isRtl}
           />
@@ -379,6 +381,7 @@ export default function App() {
         return currentOrg ? (
           <DeveloperWorkspace
             developer={currentOrg}
+            currentUser={currentUser}
             onRefreshAll={handleDatabaseRefresh}
             isRtl={isRtl}
           />
@@ -1171,6 +1174,7 @@ export default function App() {
       )}
 
       <CookieConsent isRtl={isRtl} />
+      <HelpAssistantWidget isRtl={isRtl} currentUser={currentUser} />
     </div>
   );
 }

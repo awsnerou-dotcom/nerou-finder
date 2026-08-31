@@ -52,6 +52,7 @@ import {
   Bell,
   Scale,
   HelpCircle,
+  Sparkles,
   AlertOctagon,
   Briefcase,
   Award,
@@ -1383,6 +1384,13 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   // dedicated aiSearchLog table, which doesn't exist in this schema.
   const aiSearchLogsThisMonth = auditLogs.filter(log => log.action === "AI_SEARCH" && isThisMonth(log.timestamp));
   const aiZeroResultSearchesThisMonth = aiSearchLogsThisMonth.filter(log => (log.metadata?.matchCount ?? 0) === 0).length;
+
+  // "Nerou Assistant" (Help Center chatbot) question log - same pattern as the AI search
+  // stats above: reuses AuditLog rows (action "HELP_ASSISTANT_QUESTION") rather than a
+  // dedicated table, since the questions are just a lightweight admin review list.
+  const helpAssistantLogs = [...auditLogs]
+    .filter(log => log.action === "HELP_ASSISTANT_QUESTION")
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   // 9. Leads-per-day trend (last 30 days), computed client-side from the already-fetched
   // platform-wide `leads` list - no new server aggregation endpoint needed.
@@ -4022,6 +4030,47 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   ))}
                 </div>
               )}
+
+              {/* Nerou Assistant question log - minimal read view, not full CMS treatment */}
+              <div className="border-t border-surface-2 pt-5 mt-2">
+                <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-2 mb-1">
+                  <Sparkles className="text-gold" size={16} />
+                  <span>Nerou Assistant - Recent Questions</span>
+                </h4>
+                <p className="text-[10px] text-ink-muted mb-3">
+                  Every question asked to the in-app help chatbot, and whether it could be answered from a real Help Center article ("Grounded") or fell back to the "contact support" response.
+                </p>
+                {helpAssistantLogs.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-ink-muted border border-dashed border-border rounded-lg">
+                    No questions have been asked to Nerou Assistant yet.
+                  </p>
+                ) : (
+                  <div className="divide-y divide-surface-2 border border-border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                    {helpAssistantLogs.slice(0, 100).map(log => (
+                      <div key={log.id} className="p-3 text-xs space-y-1">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="font-bold text-ink">{log.metadata?.question || "(no question text)"}</span>
+                          <span
+                            className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                              log.metadata?.grounded ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                            }`}
+                          >
+                            {log.metadata?.grounded ? "Grounded" : "Not sure / Fallback"}
+                          </span>
+                        </div>
+                        <p className="text-ink-muted line-clamp-2">{log.metadata?.answer}</p>
+                        <div className="flex items-center gap-3 text-[10px] text-ink-faint">
+                          <span>{log.actorRole}</span>
+                          <span>{new Date(log.timestamp).toLocaleString()}</span>
+                          {Array.isArray(log.metadata?.matchedArticleIds) && log.metadata.matchedArticleIds.length > 0 && (
+                            <span>Articles: {log.metadata.matchedArticleIds.join(", ")}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
