@@ -566,8 +566,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
       if (res.ok) {
         const data = await res.json();
-        // Update user session in localStorage
-        localStorage.setItem("nerou_user", JSON.stringify(data.user));
+        // Update user session in localStorage. Guarded: if the response ever lacked a `user`
+        // field, JSON.stringify(undefined) would write the literal string "undefined" and
+        // crash every future page load that reads it back.
+        if (data.user) {
+          localStorage.setItem("nerou_user", JSON.stringify(data.user));
+        }
         // Trigger page/workspace refresh
         onRefreshAll();
         setToastMessage(isRtl ? "تم حفظ تغييرات الملف الشخصي بنجاح!" : "Profile details saved successfully!");
@@ -628,7 +632,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       if (patchRes.ok) {
         const data = await patchRes.json();
         setCurrentAvatarUrl(newAvatarUrl);
-        localStorage.setItem("nerou_user", JSON.stringify(data.user));
+        // Guarded for the same reason as the profile-save handler above: never write
+        // JSON.stringify(undefined) ("undefined" as a literal string) into localStorage.
+        if (data.user) {
+          localStorage.setItem("nerou_user", JSON.stringify(data.user));
+        }
         onRefreshAll();
         setToastMessage(isRtl ? "تم تحديث الصورة الشخصية بنجاح!" : "Profile picture updated successfully!");
       } else {

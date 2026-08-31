@@ -53,8 +53,18 @@ export default function App() {
   const { resolved: resolvedTheme, toggle: toggleTheme } = useTheme();
   const [viewMode, setViewMode] = useState<"MARKETPLACE" | "DASHBOARD">("MARKETPLACE");
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    // A corrupted/stale localStorage value (e.g. the literal string "undefined" left behind by
+    // an earlier failed write) must never crash the whole app - this runs synchronously during
+    // the very first render, before any effect or error boundary could recover from it.
     const saved = localStorage.getItem("nerou_user");
-    return saved ? JSON.parse(saved) : null;
+    if (!saved) return null;
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse saved user, clearing corrupted value:", e);
+      localStorage.removeItem("nerou_user");
+      return null;
+    }
   });
   
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);

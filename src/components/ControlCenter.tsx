@@ -171,8 +171,17 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
   // 2FA Security settings state
   const [adminUser, setAdminUser] = useState<any>(() => {
+    // Same class of hazard as App.tsx's currentUser initializer: a corrupted/stale value
+    // (e.g. the literal string "undefined") must never crash this dashboard on first render.
     const saved = localStorage.getItem("nerou_user");
-    return saved ? JSON.parse(saved) : null;
+    if (!saved) return null;
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Failed to parse saved user, clearing corrupted value:", e);
+      localStorage.removeItem("nerou_user");
+      return null;
+    }
   });
   const [show2faSetup, setShow2faSetup] = useState<boolean>(false);
   const [tfaSecret, setTfaSecret] = useState<string>("");
