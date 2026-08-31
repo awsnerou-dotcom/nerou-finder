@@ -31,11 +31,14 @@ import {
   MessageSquare,
   X,
   Building2,
-  ArrowUpDown
+  ArrowUpDown,
+  UserPlus
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
 import BoostRecommendations from "./BoostRecommendations.js";
+import { EmptyState } from "./ui/EmptyState.js";
+import { Button } from "./ui/Button.js";
 import { compressImage } from "../lib/image.js";
 import { getActingUserId } from "../lib/auth.js";
 import StatCard from "./StatCard.js";
@@ -950,8 +953,32 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
           {/* Active Agents list */}
           <div className="lg:col-span-2 bg-surface rounded-xl border border-border overflow-hidden">
             <div className="p-4 bg-ink-inverse border-b border-border">
-              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "قائمة المستشارين العقاريين" : "Active Certified Brokers"}</h4>
+              <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                <Users size={14} className="text-gold" />
+                <span>{isRtl ? "قائمة المستشارين العقاريين" : "Active Certified Brokers"}</span>
+              </h4>
             </div>
+            {agents.length === 0 ? (
+              <EmptyState
+                icon={<Users size={20} />}
+                title={isRtl ? "لا يوجد وسطاء بعد" : "No agents yet"}
+                description={isRtl ? "ادعُ وسيطك العقاري الأول للانضمام إلى مساحة عمل مكتبك." : "Invite your first broker to join your agency workspace."}
+                action={
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leftIcon={<UserPlus size={14} />}
+                    onClick={() => {
+                      const el = document.getElementById("agency-invite-broker-name");
+                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                      (el as HTMLInputElement | null)?.focus();
+                    }}
+                  >
+                    {isRtl ? "دعوة وسيط" : "Invite Agent"}
+                  </Button>
+                }
+              />
+            ) : (
             <div className="divide-y divide-surface-2 text-xs">
               {agents.map(agent => {
                 const agentListingCount = orgProperties.filter(p => p.agentId === agent.id).length;
@@ -982,6 +1009,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
                 );
               })}
             </div>
+            )}
 
             {/* Pending Invitations Section */}
             <div className="p-4 bg-ink-inverse border-t border-b border-border">
@@ -1018,6 +1046,7 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
               <div>
                 <label className="block text-[10px] text-ink-muted mb-1">{isRtl ? "اسم الوسيط" : "Broker Name"}</label>
                 <input
+                  id="agency-invite-broker-name"
                   type="text"
                   required
                   value={newAgentName}
@@ -1311,7 +1340,10 @@ export default function AgencyWorkspace({ agency, onRefreshAll, isRtl }: AgencyW
         <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
           <div className="p-4 bg-ink-inverse border-b border-border flex justify-between items-center">
             <div>
-              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إدارة وتوزيع العملاء المحتملين" : "Leads Management Suite"}</h4>
+              <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                <MessageSquare size={14} className="text-gold" />
+                <span>{isRtl ? "إدارة وتوزيع العملاء المحتملين" : "Leads Management Suite"}</span>
+              </h4>
               <p className="text-[11px] text-ink-muted mt-0.5">{isRtl ? "عرض وإعادة تعيين العملاء المحتملين لوسطاء الوكالة يدوياً." : "Oversee team leads and reassign clients to optimize representative response times."}</p>
             </div>
             <span className="px-2.5 py-1 bg-chrome text-white text-[10px] font-bold rounded-full">

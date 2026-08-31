@@ -1842,6 +1842,13 @@ export default function VisitorExperience({
                     <Bell size={32} className="mx-auto text-gray-300" />
                     <p className="text-sm font-medium">{isRtl ? "لا توجد عمليات بحث محفوظة" : "No saved searches yet"}</p>
                     <p className="text-xs text-gray-400">{isRtl ? "احفظ بحثك لتلقي تنبيهات بالوحدات الجديدة المطابقة" : "Save active filters to receive updates on matching listings"}</p>
+                    <button
+                      type="button"
+                      onClick={() => setIsAlertsOpen(false)}
+                      className="mt-2 px-4 py-1.5 bg-gold hover:bg-gold-hover text-black font-semibold text-xs rounded-lg transition-colors cursor-pointer"
+                    >
+                      {isRtl ? "تصفح العقارات" : "Browse Properties"}
+                    </button>
                   </div>
                 ) : (
                   savedSearches.map((search) => {

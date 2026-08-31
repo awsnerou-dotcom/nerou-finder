@@ -72,6 +72,8 @@ import {
 } from "lucide-react";
 import StatCard from "./StatCard.js";
 import DashboardChart from "./DashboardChart.js";
+import { EmptyState } from "./ui/EmptyState.js";
+import { Button } from "./ui/Button.js";
 import { buildDailyCountSeries, isThisMonth } from "../lib/dashboardMetrics.js";
 
 interface ControlCenterProps {
@@ -2409,7 +2411,10 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
               <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">
-                  <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "جميع الإعلانات" : "All Listings"}</h4>
+                  <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                    <Layers size={14} className="text-gold" />
+                    <span>{isRtl ? "جميع الإعلانات" : "All Listings"}</span>
+                  </h4>
                   <input
                     type="text"
                     value={listingSearch}
@@ -2420,7 +2425,18 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                 </div>
                 <div className="divide-y divide-surface-2 max-h-[600px] overflow-y-auto">
                   {filteredListings.length === 0 ? (
-                    <p className="p-8 text-center text-ink-muted">{isRtl ? "لا توجد نتائج." : "No listings match your search."}</p>
+                    <EmptyState
+                      icon={<Layers size={20} />}
+                      title={isRtl ? "لا توجد نتائج" : "No listings match your search"}
+                      description={listingSearch.trim() ? (isRtl ? "جرّب كلمات بحث مختلفة أو امسح البحث لعرض الكل." : "Try different search terms, or clear the search to see everything.") : undefined}
+                      action={
+                        listingSearch.trim() ? (
+                          <Button variant="secondary" size="sm" onClick={() => setListingSearch("")}>
+                            {isRtl ? "مسح البحث" : "Clear search"}
+                          </Button>
+                        ) : undefined
+                      }
+                    />
                   ) : (
                     filteredListings.map(prop => (
                       <div key={prop.id} className="p-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
@@ -2480,7 +2496,10 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {activeSubTab === "users" && (
             <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
               <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">
-                <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "كل المستخدمين" : "All Users"}</h4>
+                <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                  <Users size={14} className="text-gold" />
+                  <span>{isRtl ? "كل المستخدمين" : "All Users"}</span>
+                </h4>
                 <input
                   type="text"
                   value={userSearch}
@@ -2489,6 +2508,27 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] min-w-[220px]"
                 />
               </div>
+              {(() => {
+                const filteredUsers = users.filter(u => {
+                  if (!userSearch.trim()) return true;
+                  const q = userSearch.trim().toLowerCase();
+                  return u.fullName?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
+                });
+                if (filteredUsers.length === 0) {
+                  return (
+                    <EmptyState
+                      icon={<Users size={20} />}
+                      title={isRtl ? "لا توجد نتائج" : "No users match your search"}
+                      description={isRtl ? "جرّب كلمات بحث مختلفة أو امسح البحث لعرض الكل." : "Try different search terms, or clear the search to see everyone."}
+                      action={
+                        <Button variant="secondary" size="sm" onClick={() => setUserSearch("")}>
+                          {isRtl ? "مسح البحث" : "Clear search"}
+                        </Button>
+                      }
+                    />
+                  );
+                }
+                return (
               <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                 <table className="w-full text-left">
                   <thead className="bg-canvas sticky top-0">
@@ -2504,12 +2544,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-2">
-                    {users
-                      .filter(u => {
-                        if (!userSearch.trim()) return true;
-                        const q = userSearch.trim().toLowerCase();
-                        return u.fullName?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q);
-                      })
+                    {filteredUsers
                       .map(u => {
                         const org = organizations.find(o => o.id === u.orgId);
                         const effType = u.role === UserRole.AGENT ? getEffectiveAgentType(u) : undefined;
@@ -2538,6 +2573,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   </tbody>
                 </table>
               </div>
+                );
+              })()}
             </div>
           )}
 
@@ -2716,7 +2753,10 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               {/* Running per-org billing ledger */}
               <div className="bg-surface rounded-xl border border-border overflow-hidden">
                 <div className="p-4 bg-ink-inverse border-b border-border">
-                  <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "دفتر إعلانات الترويج الذاتي" : "Ad Billing Ledger"}</h4>
+                  <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                    <DollarSign size={14} className="text-gold" />
+                    <span>{isRtl ? "دفتر إعلانات الترويج الذاتي" : "Ad Billing Ledger"}</span>
+                  </h4>
                   <p className="text-[10px] text-ink-muted mt-0.5">
                     {isRtl
                       ? "لا يمكن للمؤسسة تفعيل رفعات جديدة إذا كانت فترة سابقة غير مسواة."
@@ -4529,7 +4569,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
             <div className="bg-surface p-5 md:p-6 rounded-xl border border-border space-y-6">
               <div className="flex justify-between items-center border-b border-surface-2 pb-3">
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-ink">
+                  <h3 className="font-serif text-lg font-bold text-ink flex items-center gap-2">
+                    <Scale size={18} className="text-gold" />
                     {isRtl ? "إدارة البيانات الصحفية والاتصال المؤسسي" : "Corporate Press Releases & Media CMS"}
                   </h3>
                   <p className="text-xs text-ink-muted mt-0.5">
@@ -4716,7 +4757,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
             <div className="bg-surface p-5 md:p-6 rounded-xl border border-border space-y-6">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-surface-2 pb-4">
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-ink">
+                  <h3 className="font-serif text-lg font-bold text-ink flex items-center gap-2">
+                    <Mail size={18} className="text-gold" />
                     {isRtl ? "محاكي سجلات البريد الإلكتروني الصادر (SMTP)" : "Outbound Mock SMTP Email Logs Queue"}
                   </h3>
                   <p className="text-xs text-ink-muted mt-0.5">
@@ -4834,7 +4876,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {activeSubTab === "reviews" && (
             <div className="bg-surface p-5 md:p-6 rounded-xl border border-border space-y-6">
               <div>
-                <h3 className="font-serif text-lg font-bold text-ink">
+                <h3 className="font-serif text-lg font-bold text-ink flex items-center gap-2">
+                  <Award size={18} className="text-gold" />
                   {isRtl ? "إدارة وتقييم مراجعات المستشارين" : "Ratings & Reviews Moderation Queue"}
                 </h3>
                 <p className="text-xs text-ink-muted mt-0.5">
@@ -4995,7 +5038,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
             <div className="bg-surface p-5 md:p-6 rounded-xl border border-border space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-ink">
+                  <h3 className="font-serif text-lg font-bold text-ink flex items-center gap-2">
+                    <FolderTree size={18} className="text-gold" />
                     {isRtl ? "إدارة هيكل وتقسيم المناطق الجغرافية" : "Qatar Geographic Location Hierarchy"}
                   </h3>
                   <p className="text-xs text-ink-muted mt-0.5">

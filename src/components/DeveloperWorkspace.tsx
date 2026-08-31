@@ -36,6 +36,8 @@ import { getActingUserId } from "../lib/auth.js";
 import StatCard from "./StatCard.js";
 import DashboardChart from "./DashboardChart.js";
 import { Badge } from "./ui/Badge.js";
+import { EmptyState } from "./ui/EmptyState.js";
+import { Button } from "./ui/Button.js";
 import { buildDailyCountSeries, isThisMonth, listingStatusTone } from "../lib/dashboardMetrics.js";
 
 interface DeveloperWorkspaceProps {
@@ -774,7 +776,10 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
       {activeTab === "projects" && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "سجل المشاريع الإنشائية والتطويرية" : "Developer Master projects"}</h4>
+            <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+              <Building2 size={14} className="text-gold" />
+              <span>{isRtl ? "سجل المشاريع الإنشائية والتطويرية" : "Developer Master projects"}</span>
+            </h4>
             <button
               onClick={() => setIsAddingProject(!isAddingProject)}
               className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
@@ -935,6 +940,18 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           )}
 
           {/* Project Cards */}
+          {projects.length === 0 ? (
+            <EmptyState
+              icon={<Building2 size={20} />}
+              title={isRtl ? "لا توجد مشاريع بعد" : "No projects yet"}
+              description={isRtl ? "أنشئ أول مشروع تطويري ليظهر هنا وتتمكن من إضافة الوحدات إليه." : "Create your first development project to see it here and start adding units to it."}
+              action={
+                <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsAddingProject(true)}>
+                  {isRtl ? "إضافة مشروع جديد" : "Create Project"}
+                </Button>
+              }
+            />
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {projects.map(proj => (
               <div key={proj.id} className="bg-surface rounded-xl border border-border overflow-hidden flex flex-col justify-between">
@@ -963,6 +980,7 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
               </div>
             ))}
           </div>
+          )}
         </div>
       )}
 
@@ -989,7 +1007,10 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           <BoostRecommendations properties={properties} orgId={developer.id} isRtl={isRtl} />
 
           <div className="flex justify-between items-center">
-            <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "قائمة الوحدات التفصيلية" : "Specific Units Specifications"}</h4>
+            <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+              <Boxes size={14} className="text-gold" />
+              <span>{isRtl ? "قائمة الوحدات التفصيلية" : "Specific Units Specifications"}</span>
+            </h4>
             <button
               onClick={() => setIsAddingUnit(!isAddingUnit)}
               className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
@@ -1084,7 +1105,10 @@ export default function DeveloperWorkspace({ developer, onRefreshAll, isRtl }: D
           {/* Catalog Table */}
           <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
             <div className="p-4 bg-ink-inverse border-b border-border">
-              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "قائمة الوحدات التفصيلية" : "Specific Units Specifications"}</h4>
+              <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                <Boxes size={14} className="text-gold" />
+                <span>{isRtl ? "قائمة الوحدات التفصيلية" : "Specific Units Specifications"}</span>
+              </h4>
             </div>
             <div className="divide-y divide-surface-2">
               {properties.length === 0 ? (

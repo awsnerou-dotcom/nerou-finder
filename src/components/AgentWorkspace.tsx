@@ -66,6 +66,8 @@ import { compressImage } from "../lib/image.js";
 import StatCard from "./StatCard.js";
 import DashboardChart from "./DashboardChart.js";
 import { Badge } from "./ui/Badge.js";
+import { EmptyState } from "./ui/EmptyState.js";
+import { Button } from "./ui/Button.js";
 import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone } from "../lib/dashboardMetrics.js";
 
 interface AgentWorkspaceProps {
@@ -1267,7 +1269,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {activeTab === "leads" && (
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
           <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">
-            <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إدارة وتتبع تواصل العملاء" : "Assigned Lead Lifecycle Funnel"}</h4>
+            <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+              <Users size={14} className="text-gold" />
+              <span>{isRtl ? "إدارة وتتبع تواصل العملاء" : "Assigned Lead Lifecycle Funnel"}</span>
+            </h4>
             <button
               type="button"
               onClick={() => setShowArchivedLeads(prev => !prev)}
@@ -1451,7 +1456,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {activeTab === "properties" && (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إدارة مخزون العقارات المعروضة" : "Active Exclusive Listings"}</h4>
+            <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+              <Building size={14} className="text-gold" />
+              <span>{isRtl ? "إدارة مخزون العقارات المعروضة" : "Active Exclusive Listings"}</span>
+            </h4>
             <button
               onClick={() => setIsAddingListing(!isAddingListing)}
               className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
@@ -2090,6 +2098,18 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             </form>
           )}
 
+          {properties.length === 0 ? (
+            <EmptyState
+              icon={<Building size={20} />}
+              title={isRtl ? "لا توجد إعلانات بعد" : "No listings yet"}
+              description={isRtl ? "أضف عقارك الأول ليظهر هنا وفي نتائج البحث." : "Add your first property to see it listed here and in search results."}
+              action={
+                <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => setIsAddingListing(true)}>
+                  {isRtl ? "إضافة عقار جديد" : "New Property"}
+                </Button>
+              }
+            />
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {properties.map(prop => {
               // Availability refresh cycle: staleness is computed live from
@@ -2196,6 +2216,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               );
             })}
           </div>
+          )}
         </div>
       )}
 
@@ -2227,7 +2248,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
           <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
             <div className="p-4 bg-ink-inverse border-b border-border">
-              <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "التقييمات المستلمة" : "Reviews Received"}</h4>
+              <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                <Star size={14} className="text-gold" />
+                <span>{isRtl ? "التقييمات المستلمة" : "Reviews Received"}</span>
+              </h4>
             </div>
             <div className="divide-y divide-surface-2">
               {myReviews.length === 0 ? (
