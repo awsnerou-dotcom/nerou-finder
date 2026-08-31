@@ -141,6 +141,12 @@ export default function PropertyDetailView({
     };
   }, [property.id]);
 
+  // Real, honest view count shown near the price panel - starts from the count already on
+  // the property object (as seen in search results) and is bumped to the server's authoritative
+  // total once this visit's own view finishes recording, so the visible number includes the
+  // current visit rather than lagging one behind it.
+  const [liveViewCount, setLiveViewCount] = useState(property.views || 0);
+
   // FIX 8: real view tracking - fires once per genuine mount of this detail view (not on
   // every re-render/state update), using a stable per-browser fingerprint for unique-view
   // dedup on the server side.
@@ -154,7 +160,12 @@ export default function PropertyDetailView({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fingerprint })
-    }).catch((e) => console.error("Failed to record property view:", e));
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && typeof data.views === "number") setLiveViewCount(data.views);
+      })
+      .catch((e) => console.error("Failed to record property view:", e));
     // Intentionally runs once per mount (property.id identity) - not re-fired by unrelated
     // re-renders, since this effect has no other dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1507,6 +1518,17 @@ export default function PropertyDetailView({
                   <div className={`flex items-center gap-1 pt-2 mt-1 border-t border-chrome-hover text-[10px] ${isAvailabilityUnconfirmed ? "text-amber-400" : "text-gray-400"}`}>
                     <Clock size={11} />
                     <span>{availabilityConfirmedText}</span>
+                  </div>
+                  {/* Real view count - Property.views is the running total maintained by
+                      POST /api/properties/:id/view (see the effect above that fires it on
+                      mount). Never fabricated: a genuinely fresh listing honestly shows 0/1. */}
+                  <div className="flex items-center gap-1 pt-1 text-[10px] text-gray-400">
+                    <Eye size={11} />
+                    <span>
+                      {isRtl
+                        ? `${liveViewCount.toLocaleString()} مشاهدة`
+                        : `${liveViewCount.toLocaleString()} ${liveViewCount === 1 ? "view" : "views"}`}
+                    </span>
                   </div>
                 </div>
 

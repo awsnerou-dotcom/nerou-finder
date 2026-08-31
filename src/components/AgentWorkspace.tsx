@@ -71,6 +71,7 @@ import { Button } from "./ui/Button.js";
 import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone } from "../lib/dashboardMetrics.js";
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
+import ListingPerformanceModal from "./ListingPerformanceModal.js";
 
 interface AgentWorkspaceProps {
   agent: User;
@@ -267,6 +268,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   // updates rather than creates, per POST /api/properties' isEdit branch).
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
   const [deletingListingId, setDeletingListingId] = useState<string | null>(null);
+  const [performanceListingId, setPerformanceListingId] = useState<string | null>(null);
   const [isDeletingListing, setIsDeletingListing] = useState<boolean>(false);
   const [listingTitle, setListingTitle] = useState<string>("");
   const [listingPrice, setListingPrice] = useState<string>("");
@@ -2393,6 +2395,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <div className="flex items-center gap-2 pt-2 border-t border-surface-2 mt-1">
                       <button
                         type="button"
+                        onClick={() => setPerformanceListingId(prop.id)}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
+                      >
+                        <TrendingUp size={11} />
+                        <span>{isRtl ? "الأداء" : "Performance"}</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => startEditListing(prop)}
                         className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
                       >
@@ -2422,6 +2432,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             title={isRtl ? "هل تريد حذف هذا العقار؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this listing? This cannot be undone."}
             tone="danger"
             loading={isDeletingListing}
+            isRtl={isRtl}
+          />
+
+          <ListingPerformanceModal
+            open={!!performanceListingId}
+            onClose={() => setPerformanceListingId(null)}
+            property={properties.find(p => p.id === performanceListingId) || null}
+            leads={leads}
             isRtl={isRtl}
           />
         </div>

@@ -49,7 +49,8 @@ import {
   Trash,
   Award,
   Map,
-  List
+  List,
+  Eye
 } from "lucide-react";
 import PropertyDetailView from "./PropertyDetailView.js";
 import PropertyCompareView from "./PropertyCompareView.js";
@@ -101,6 +102,9 @@ export default function VisitorExperience({
   const [minPrice, setMinPrice] = useState<string>("");
   const [maxPrice, setMaxPrice] = useState<string>("");
   const [beds, setBeds] = useState<string>("");
+  // Wires up GET /api/properties's existing `verifiedOnly` server-side filter, which had no
+  // UI control anywhere in the marketplace despite being fully implemented server-side.
+  const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
 
   // DB taxonomy lists
   const [locations, setLocations] = useState<LocationItem[]>([]);
@@ -168,6 +172,30 @@ export default function VisitorExperience({
   // In-depth representative profiles modals
   const [selectedAgentProfile, setSelectedAgentProfile] = useState<User | null>(null);
   const [selectedOrgProfile, setSelectedOrgProfile] = useState<Organization | null>(null);
+  // Real listing count + rating summary shown together at the top of the profile modal (the
+  // closest thing this app has to a public agent/agency profile "page" - there's no client-side
+  // routing anywhere in this app to give it a real shareable URL, so this enriches the existing
+  // modal rather than inventing a routing subsystem). Rating/count reuses the same
+  // GET /api/reviews/summary endpoint ProfileReviewsSection already calls further down.
+  const [profileStatsSummary, setProfileStatsSummary] = useState<{ average: number; count: number } | null>(null);
+  useEffect(() => {
+    const targetType = selectedAgentProfile ? "AGENT" : selectedOrgProfile ? "AGENCY" : null;
+    const targetId = selectedAgentProfile?.id || selectedOrgProfile?.id;
+    if (!targetType || !targetId) {
+      setProfileStatsSummary(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/reviews/summary?targetType=${targetType}&targetId=${targetId}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (!cancelled && data) setProfileStatsSummary(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAgentProfile, selectedOrgProfile]);
 
   // Sorting
   const [sortBy, setSortBy] = useState<string>("default");
@@ -188,7 +216,7 @@ export default function VisitorExperience({
 
   useEffect(() => {
     fetchProperties();
-  }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, debouncedSearchQuery, locations]);
+  }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, verifiedOnly, debouncedSearchQuery, locations]);
 
   useEffect(() => {
     if (selectedProperty) {
@@ -260,6 +288,7 @@ export default function VisitorExperience({
       if (maxPrice) params.append("maxPrice", maxPrice);
       if (beds) params.append("bedrooms", beds);
       if (debouncedSearchQuery) params.append("searchQuery", debouncedSearchQuery);
+      if (verifiedOnly) params.append("verifiedOnly", "true");
 
       const res = await fetch(`/api/properties?${params.toString()}`);
       const data = await res.json();
@@ -632,6 +661,16 @@ export default function VisitorExperience({
       list.sort((a, b) => b.price - a.price);
     } else if (sortBy === "areaDesc") {
       list.sort((a, b) => b.area - a.area);
+    } else if (sortBy === "mostViewed") {
+      list.sort((a, b) => (b.views || 0) - (a.views || 0));
+    } else if (sortBy === "recentlyConfirmed") {
+      // Most recently reconfirmed availability first - real signal from the freshness system
+      // (falls back to createdDate for listings that never had an explicit confirm action).
+      list.sort((a, b) => {
+        const aDate = new Date(a.lastConfirmedAvailableDate || a.createdDate).getTime();
+        const bDate = new Date(b.lastConfirmedAvailableDate || b.createdDate).getTime();
+        return bDate - aDate;
+      });
     }
 
     // Always sort featured listings first
@@ -1106,6 +1145,16 @@ export default function VisitorExperience({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <label className="flex items-center gap-2 px-3 py-1.5 bg-canvas border border-border rounded-lg text-xs font-medium text-ink cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={verifiedOnly}
+                onChange={(e) => setVerifiedOnly(e.target.checked)}
+                className="accent-gold w-3.5 h-3.5 cursor-pointer"
+              />
+              <CheckCircle size={14} className="text-gold" />
+              <span>{isRtl ? "العقارات الموثقة فقط" : "Verified Listings Only"}</span>
+            </label>
             {currentUser ? (
               <button
                 onClick={() => {
@@ -1153,7 +1202,7 @@ export default function VisitorExperience({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {/* View Toggle (List vs Map) */}
           <div className="flex bg-surface-2 p-1 rounded-lg border border-border">
             <button
@@ -1195,6 +1244,8 @@ export default function VisitorExperience({
             <option value="priceAsc">{isRtl ? "السعر (من الأقل)" : "Price (Low to High)"}</option>
             <option value="priceDesc">{isRtl ? "السعر (من الأعلى)" : "Price (High to Low)"}</option>
             <option value="areaDesc">{isRtl ? "المساحة (الأكبر)" : "Area (Largest)"}</option>
+            <option value="mostViewed">{isRtl ? "الأكثر مشاهدة" : "Most Viewed"}</option>
+            <option value="recentlyConfirmed">{isRtl ? "الأحدث تأكيداً للتوفر" : "Recently Confirmed Available"}</option>
           </select>
         </div>
       </div>
@@ -1385,6 +1436,12 @@ export default function VisitorExperience({
                       <div className="flex items-center gap-1">
                         <Maximize2 size={13} />
                         <span>{property.area} {t.sqm}</span>
+                      </div>
+                      {/* Honest, real view count - sourced from Property.views (the running
+                          total maintained by POST /api/properties/:id/view), never fabricated. */}
+                      <div className="flex items-center gap-1 ml-auto" title={isRtl ? "عدد المشاهدات" : "View count"}>
+                        <Eye size={13} />
+                        <span>{property.views || 0}</span>
                       </div>
                     </div>
 
@@ -1610,6 +1667,23 @@ export default function VisitorExperience({
                 </div>
               </div>
 
+              {/* At-a-glance stats: real listing count + rating/review count together, so a
+                  visitor doesn't have to scroll to the reviews section below to see them. */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-ink">
+                  <Building2 size={13} className="text-gold" />
+                  <span>{properties.filter(p => p.agentId === selectedAgentProfile.id).length}</span>
+                  <span className="text-ink-muted font-medium">{isRtl ? "عقار نشط" : "active listings"}</span>
+                </span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-ink">
+                  <Award size={13} className="text-gold" />
+                  <span>{profileStatsSummary && profileStatsSummary.count > 0 ? profileStatsSummary.average.toFixed(1) : "—"}</span>
+                  <span className="text-ink-muted font-medium">
+                    ({profileStatsSummary?.count || 0} {isRtl ? "تقييم" : "reviews"})
+                  </span>
+                </span>
+              </div>
+
               {/* Contact methods */}
               <div className="bg-surface p-4 rounded-xl border border-border space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
@@ -1745,6 +1819,22 @@ export default function VisitorExperience({
                     {selectedOrgProfile.subscriptionPlanId === "plan-premium" ? "Enterprise SaaS Tier" : "Master Developer SaaS Tier"}
                   </div>
                 </div>
+              </div>
+
+              {/* At-a-glance stats: real listing count + rating/review count together. */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-ink">
+                  <Building2 size={13} className="text-gold" />
+                  <span>{properties.filter(p => p.orgId === selectedOrgProfile.id).length}</span>
+                  <span className="text-ink-muted font-medium">{isRtl ? "عقار نشط" : "active listings"}</span>
+                </span>
+                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-ink">
+                  <Award size={13} className="text-gold" />
+                  <span>{profileStatsSummary && profileStatsSummary.count > 0 ? profileStatsSummary.average.toFixed(1) : "—"}</span>
+                  <span className="text-ink-muted font-medium">
+                    ({profileStatsSummary?.count || 0} {isRtl ? "تقييم" : "reviews"})
+                  </span>
+                </span>
               </div>
 
               {/* Contact methods */}

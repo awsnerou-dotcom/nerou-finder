@@ -41,8 +41,15 @@ export function buildDailyCountSeries(dates: (string | undefined | null)[], days
     counts.set(key, (counts.get(key) || 0) + 1);
   }
 
+  // Anchored to the UTC calendar day, not the viewer's local midnight: dayKey() below reads
+  // the UTC date (via toISOString), and server-recorded day-bucketed data (e.g.
+  // Property.viewsByDay, keyed by `new Date().toISOString().split("T")[0]` in server.ts) is
+  // also UTC-keyed. For any viewer whose local timezone is ahead of UTC, local-midnight-today
+  // converts to the *previous* UTC calendar day, silently dropping "today"'s real data off the
+  // end of the chart. Using setUTCHours keeps this window's day boundaries consistent with the
+  // data it's bucketing regardless of viewer timezone.
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
   const series: DashboardChartDatum[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today.getTime() - i * DAY_MS);
@@ -79,8 +86,11 @@ export function buildDailySumSeries(
   const primaryTotals = mergeByDay(primary);
   const secondaryTotals = secondary ? mergeByDay(secondary) : null;
 
+  // See the matching comment in buildDailyCountSeries above: anchor to UTC midnight, not local
+  // midnight, so this window's day keys line up with the UTC-keyed data (e.g. viewsByDay) being
+  // bucketed regardless of the viewer's timezone.
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
   const series: DashboardChartDatum[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today.getTime() - i * DAY_MS);

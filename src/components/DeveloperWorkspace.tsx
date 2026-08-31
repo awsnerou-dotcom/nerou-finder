@@ -45,6 +45,7 @@ import { Button } from "./ui/Button.js";
 import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone } from "../lib/dashboardMetrics.js";
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
+import ListingPerformanceModal from "./ListingPerformanceModal.js";
 
 interface DeveloperWorkspaceProps {
   developer: Organization;
@@ -78,6 +79,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
   // submitting sends the unit's own id back so POST /api/properties updates it.
   const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
   const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
+  const [performanceListingId, setPerformanceListingId] = useState<string | null>(null);
   const [isDeletingUnit, setIsDeletingUnit] = useState<boolean>(false);
   // Leads tab (FIX 4): inline related-unit preview, same pattern as Agent/AgencyWorkspace.
   const [leadPropertyPreview, setLeadPropertyPreview] = useState<Property | null>(null);
@@ -1495,6 +1497,14 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                       <Badge tone={listingStatusTone(unit.listingStatus)}>{unit.listingStatus.replace(/_/g, " ")}</Badge>
                       <button
                         type="button"
+                        onClick={() => setPerformanceListingId(unit.id)}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
+                      >
+                        <TrendingUp size={11} />
+                        <span>{isRtl ? "الأداء" : "Performance"}</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => startEditUnit(unit)}
                         className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
                       >
@@ -1523,6 +1533,14 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
             title={isRtl ? "هل تريد حذف هذه الوحدة؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this unit? This cannot be undone."}
             tone="danger"
             loading={isDeletingUnit}
+            isRtl={isRtl}
+          />
+
+          <ListingPerformanceModal
+            open={!!performanceListingId}
+            onClose={() => setPerformanceListingId(null)}
+            property={properties.find(p => p.id === performanceListingId) || null}
+            leads={leads}
             isRtl={isRtl}
           />
         </div>

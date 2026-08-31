@@ -48,6 +48,7 @@ import DashboardChart from "./DashboardChart.js";
 import { Badge } from "./ui/Badge.js";
 import { buildDailySumSeries, datesToDayRecord, isThisMonth, listingStatusTone } from "../lib/dashboardMetrics.js";
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
+import ListingPerformanceModal from "./ListingPerformanceModal.js";
 
 interface AgencyWorkspaceProps {
   agency: Organization;
@@ -74,6 +75,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   const [listingEditDesc, setListingEditDesc] = useState<string>("");
   const [savingListing, setSavingListing] = useState<boolean>(false);
   const [deletingListingId, setDeletingListingId] = useState<string | null>(null);
+  const [performanceListingId, setPerformanceListingId] = useState<string | null>(null);
   const [isDeletingListing, setIsDeletingListing] = useState<boolean>(false);
   // Sortable team performance table (Dashboard tab)
   const [teamSortBy, setTeamSortBy] = useState<"name" | "listings" | "leads" | "conversion">("name");
@@ -1205,6 +1207,14 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
+                        onClick={() => setPerformanceListingId(prop.id)}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
+                      >
+                        <TrendingUp size={11} />
+                        <span>{isRtl ? "الأداء" : "Performance"}</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => (editingListingId === prop.id ? cancelEditListing() : startEditListing(prop))}
                         className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
                       >
@@ -1284,6 +1294,14 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
             title={isRtl ? "هل تريد حذف هذا العقار؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this listing? This cannot be undone."}
             tone="danger"
             loading={isDeletingListing}
+            isRtl={isRtl}
+          />
+
+          <ListingPerformanceModal
+            open={!!performanceListingId}
+            onClose={() => setPerformanceListingId(null)}
+            property={orgProperties.find(p => p.id === performanceListingId) || null}
+            leads={orgLeads}
             isRtl={isRtl}
           />
         </div>
