@@ -1771,6 +1771,37 @@ app.patch("/api/properties/:id/status", authMiddleware, (req, res) => {
   res.json(property);
 });
 
+// Scoped (non-admin) listing delete: callable by the property's own agent, or an org admin
+// (AGENCY_ADMIN/DEVELOPER_ADMIN) belonging to the property's own orgId - same ownership
+// pattern as PATCH /api/properties/:id/status and /confirm-available above. A platform admin
+// still has the separate DELETE /api/admin/properties/:id for moderation-driven removal.
+app.delete("/api/properties/:id", authMiddleware, (req, res) => {
+  const db = readDb();
+  const idx = db.properties.findIndex(p => p.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: "Property not found." });
+  const property = db.properties[idx];
+
+  const authReq = req as AuthenticatedRequest;
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const isOwnAgent = actor.id === property.agentId;
+  const isOrgAdmin =
+    !!property.orgId &&
+    actor.orgId === property.orgId &&
+    (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+  if (!isOwnAgent && !isOrgAdmin) {
+    return res.status(403).json({ error: "You are not authorized to delete this listing." });
+  }
+
+  db.properties.splice(idx, 1);
+  writeDb(db);
+
+  logAudit(actor.id, actor.fullName, actor.role, "DELETE_PROPERTY", property.id, "Property", { title: property.title });
+
+  res.json({ success: true });
+});
+
 async function checkAndIncrementSavedSearches(property: Property) {
   try {
     const list = await prisma.savedSearch.findMany();
@@ -2354,6 +2385,10 @@ app.post("/api/projects", authMiddleware, (req, res) => {
     status: projData.status || "PLANNING",
     deliveryDate: projData.deliveryDate,
     images: projData.images || ["https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80"],
+    // FIX 5: PDF brochure - Project.data is persisted as an opaque JSON blob (see
+    // server-db.ts's prisma.project.upsert), so this needs no schema migration - it's
+    // simply included in the object that already gets serialized wholesale.
+    brochureUrl: projData.brochureUrl || undefined,
     createdDate: new Date().toISOString()
   };
 

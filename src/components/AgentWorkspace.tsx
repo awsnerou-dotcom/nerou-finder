@@ -68,6 +68,7 @@ import DashboardChart from "./DashboardChart.js";
 import { Badge } from "./ui/Badge.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Button } from "./ui/Button.js";
+import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone } from "../lib/dashboardMetrics.js";
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 
@@ -261,6 +262,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   // when handleAddListing fires) changed.
   const [isAddingListing, setIsAddingListing] = useState<boolean>(false);
   const [wizardStep, setWizardStep] = useState<number>(1);
+  // Non-null while the wizard is editing an existing listing in place (reuses the same
+  // 5-step form/state as "Add Listing" - submitting POSTs the same id back so the server
+  // updates rather than creates, per POST /api/properties' isEdit branch).
+  const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
+  const [deletingListingId, setDeletingListingId] = useState<string | null>(null);
+  const [isDeletingListing, setIsDeletingListing] = useState<boolean>(false);
   const [listingTitle, setListingTitle] = useState<string>("");
   const [listingPrice, setListingPrice] = useState<string>("");
   const [listingType, setListingType] = useState<PropertyType>(PropertyType.APARTMENT);
@@ -353,7 +360,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
   // Persist the in-progress wizard state on every change while the form is open.
   useEffect(() => {
-    if (!isAddingListing) return;
+    // Never persist an in-progress *edit* into the "new listing" draft slot - that draft is
+    // for recovering an unsaved new listing, not for resuming edits to an existing one.
+    if (!isAddingListing || editingPropertyId) return;
     try {
       const draft = {
         wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
@@ -366,7 +375,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       console.error("Failed to save listing draft:", e);
     }
   }, [
-    isAddingListing, wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
+    isAddingListing, editingPropertyId, wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
     listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
     listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
     selectedMunicipality, selectedArea, listingDesc, listingImages, listingAmenities, listingDraftKey
@@ -845,6 +854,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         method: "POST",
         headers,
         body: JSON.stringify({
+          id: editingPropertyId || undefined,
           title: listingTitle,
           price: Number(listingPrice),
           propertyType: listingType,
@@ -876,8 +886,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
+        const wasEdit = !!editingPropertyId;
         setIsAddingListing(false);
         setWizardStep(1);
+        setEditingPropertyId(null);
         setListingTitle("");
         setListingPrice("");
         setListingArea("");
@@ -900,7 +912,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         // account-level gate passes - message reflects the actual resulting status instead
         // of the old "pending review" copy.
         setToastMessage(
-          data.listingStatus === ListingStatus.DRAFT
+          wasEdit
+            ? (isRtl ? "تم تحديث بيانات العقار بنجاح!" : "Listing updated successfully!")
+            : data.listingStatus === ListingStatus.DRAFT
             ? (isRtl ? "تم حفظ العقار كمسودة." : "Property saved as a draft.")
             : (isRtl ? "تم نشر العقار بنجاح!" : "Property listing published successfully!")
         );
@@ -923,6 +937,63 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       console.error("Failed to add property listing", err);
       setToastMessage(isRtl ? "تعذر إضافة العقار. يرجى المحاولة مرة أخرى." : "Failed to add the property listing. Please try again.");
       setTimeout(() => setToastMessage(""), 5000);
+    }
+  };
+
+  // Opens the same 5-step wizard used for "Add Listing", pre-filled from an existing property.
+  // Submitting sends the property's own id back in the body so POST /api/properties updates
+  // it in place instead of creating a new listing.
+  const startEditListing = (prop: Property) => {
+    setEditingPropertyId(prop.id);
+    setListingTitle(prop.title || "");
+    setListingPrice(prop.price !== undefined ? String(prop.price) : "");
+    setListingType(prop.propertyType);
+    setListingTrans(prop.transactionType);
+    setListingArea(prop.area !== undefined ? String(prop.area) : "");
+    setListingBeds(prop.bedrooms !== undefined ? String(prop.bedrooms) : "2");
+    setListingBaths(prop.bathrooms !== undefined ? String(prop.bathrooms) : "2");
+    setListingCompletionYear(prop.completionYear !== undefined ? String(prop.completionYear) : "");
+    setListingFurnishingStatus(prop.furnishingStatus || "");
+    setListingMetroStation(prop.metroStation || "");
+    setListingMetroWalkingMinutes(prop.metroWalkingMinutes !== undefined ? String(prop.metroWalkingMinutes) : "");
+    setListingUtilitiesIncluded(prop.utilitiesIncluded || "");
+    setListingParkingType(prop.parkingType || "");
+    setListingParkingSpaces(prop.parkingSpaces !== undefined ? String(prop.parkingSpaces) : "");
+    setListingTenureType(prop.tenureType || "");
+    const muni = locations.find(l => l.type === "MUNICIPALITY" && l.name === prop.city);
+    setSelectedMunicipality(muni?.id || "");
+    const area = locations.find(l => l.parentId === muni?.id && l.name === prop.district);
+    setSelectedArea(area?.id || "");
+    setListingDesc(prop.description || "");
+    setListingImages(prop.images || []);
+    setListingAmenities((prop.amenities || []).join(", "));
+    setWizardStep(1);
+    setIsAddingListing(true);
+    setPossibleDuplicates([]);
+  };
+
+  const handleDeleteListing = async (propertyId: string) => {
+    setIsDeletingListing(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/properties/${propertyId}`, { method: "DELETE", headers });
+      if (res.ok) {
+        setProperties(prev => prev.filter(p => p.id !== propertyId));
+        onRefreshAll();
+        setToastMessage(isRtl ? "تم حذف الإعلان." : "Listing deleted.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "تعذر حذف الإعلان." : "Failed to delete the listing."));
+      }
+    } catch (e) {
+      console.error("Failed to delete listing", e);
+      setToastMessage(isRtl ? "تعذر حذف الإعلان." : "Failed to delete the listing.");
+    } finally {
+      setIsDeletingListing(false);
+      setDeletingListingId(null);
+      setTimeout(() => setToastMessage(""), 4000);
     }
   };
 
@@ -1545,7 +1616,23 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               <span>{isRtl ? "إدارة مخزون العقارات المعروضة" : "Active Exclusive Listings"}</span>
             </h4>
             <button
-              onClick={() => setIsAddingListing(!isAddingListing)}
+              onClick={() => {
+                // Opening fresh (not currently mid-edit) must not carry over a previously
+                // edited/cancelled listing's field values into a brand-new listing.
+                if (!isAddingListing && editingPropertyId) {
+                  setListingTitle("");
+                  setListingPrice("");
+                  setListingArea("");
+                  setListingDesc("");
+                  setListingImages([]);
+                  setSelectedMunicipality("");
+                  setSelectedArea("");
+                  setListingAmenities("Pool, Gym, Parking");
+                  setWizardStep(1);
+                }
+                setEditingPropertyId(null);
+                setIsAddingListing(!isAddingListing);
+              }}
               className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
@@ -1620,7 +1707,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             >
               <div>
                 <h5 className="font-serif text-sm font-bold text-ink pb-2">
-                  {isRtl ? "إدخال بيانات عقار جديد" : "Provide New Property Specifications"}
+                  {editingPropertyId
+                    ? (isRtl ? "تعديل بيانات العقار" : "Edit Property Listing")
+                    : (isRtl ? "إدخال بيانات عقار جديد" : "Provide New Property Specifications")}
                 </h5>
 
                 {/* Progress indicator - "Step X of 5" with clickable back-navigation to any
@@ -2174,7 +2263,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       type="submit"
                       className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer"
                     >
-                      {isRtl ? "نشر الإعلان" : "Publish Listing"}
+                      {editingPropertyId
+                        ? (isRtl ? "حفظ التغييرات" : "Save Changes")
+                        : (isRtl ? "نشر الإعلان" : "Publish Listing")}
                     </button>
                   )}
                 </div>
@@ -2295,12 +2386,44 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         </p>
                       )}
                     </div>
+
+                    {/* Edit / Delete - edit reopens the same wizard pre-filled, submitting
+                        the same id so POST /api/properties updates in place; delete calls
+                        the scoped DELETE /api/properties/:id behind a ConfirmDialog. */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-surface-2 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => startEditListing(prop)}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
+                      >
+                        <Edit2 size={11} />
+                        <span>{isRtl ? "تعديل" : "Edit"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingListingId(prop.id)}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                      >
+                        <Trash2 size={11} />
+                        <span>{isRtl ? "حذف" : "Delete"}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
           )}
+
+          <ConfirmDialog
+            open={!!deletingListingId}
+            onCancel={() => setDeletingListingId(null)}
+            onConfirm={() => deletingListingId && handleDeleteListing(deletingListingId)}
+            title={isRtl ? "هل تريد حذف هذا العقار؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this listing? This cannot be undone."}
+            tone="danger"
+            loading={isDeletingListing}
+            isRtl={isRtl}
+          />
         </div>
       )}
 

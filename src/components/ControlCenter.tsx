@@ -869,17 +869,25 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     }
   };
 
-  const handleVerifyUser = async (userId: string, status: VerificationStatus) => {
+  // NOTE: individual account-level user verification (the old POST /api/admin/verify-user
+  // action) has been superseded by the per-document verification pipeline below. Every user
+  // now signs up VerificationStatus.APPROVED, and the only role that can drift to PENDING
+  // (AGENT) has that status fully owned and self-healed by recomputeAccountVerification on
+  // the server whenever a document is approved/rejected - a manual override here would just
+  // get silently clobbered on the next document review. Removed the dead handleVerifyUser/
+  // pendingUsers wiring rather than building unreachable UI for it.
+
+  const handleResolveReport = async (reportId: string, status: "RESOLVED" | "DISMISSED") => {
     try {
       const token = localStorage.getItem("token") || "";
-      const res = await fetch("/api/admin/verify-user", {
+      const res = await fetch("/api/admin/reports/resolve", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          userId,
+          reportId,
           status,
           actorId: currentUser.id,
           actorName: currentUser.fullName,
@@ -887,8 +895,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
         })
       });
       if (res.ok) {
-        fetchControlContext();
-        onRefreshAll();
+        const { report } = await res.json();
+        setReports(prev => prev.map(r => (r.id === reportId ? report : r)));
       }
     } catch (e) {
       console.error(e);
@@ -1274,7 +1282,6 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     return p.title?.toLowerCase().includes(q) || p.listingId?.toLowerCase().includes(q) || p.city?.toLowerCase().includes(q);
   });
   const pendingOrgs = organizations.filter(o => o.verificationStatus === VerificationStatus.PENDING);
-  const pendingUsers = users.filter(u => u.verificationStatus === VerificationStatus.PENDING);
   const pendingCampaigns = campaigns.filter(c => c.status === "PENDING_REVIEW");
   const pendingDocuments = verificationDocs.filter(d => d.status === "PENDING");
   // FIX3: onboarding pipeline applicants - undefined applicationStatus means grandfathered/active,
@@ -1418,7 +1425,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
         {
           id: "verifications",
           label: { en: "Verifications Queue", ar: "طلبات التوثيق" },
-          badge: pendingOrgs.length + pendingUsers.length + pendingDocuments.length
+          badge: pendingOrgs.length + pendingDocuments.length
         },
         {
           id: "applications",
@@ -2086,13 +2093,40 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     ) : (
                       reports.map(report => (
                         <div key={report.id} className="p-4 space-y-2">
-                          <div className="flex justify-between items-center">
+                          <div className="flex justify-between items-center gap-2">
                             <span className="font-bold text-red-700 uppercase tracking-wider text-[10px] bg-red-50 px-1.5 py-0.5 rounded border border-red-200">
                               {report.reason}
                             </span>
                             <span className="text-[10px] text-ink-muted">{report.reporterName}</span>
                           </div>
                           <p className="text-ink-muted leading-relaxed italic">"{report.details}"</p>
+                          <div className="flex justify-between items-center gap-2 pt-1">
+                            <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
+                              report.status === "RESOLVED"
+                                ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                                : report.status === "DISMISSED"
+                                ? "text-ink-muted bg-surface-2 border-border"
+                                : "text-amber-700 bg-amber-50 border-amber-200"
+                            }`}>
+                              {report.status}
+                            </span>
+                            {(report.status === "OPEN" || report.status === "INVESTIGATING") && (
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => handleResolveReport(report.id, "RESOLVED")}
+                                  className="px-2.5 py-1 bg-emerald-600 text-white rounded font-semibold cursor-pointer"
+                                >
+                                  {isRtl ? "حل" : "Resolve"}
+                                </button>
+                                <button
+                                  onClick={() => handleResolveReport(report.id, "DISMISSED")}
+                                  className="px-2.5 py-1 bg-surface-2 text-ink rounded font-semibold border border-border cursor-pointer"
+                                >
+                                  {isRtl ? "تجاهل" : "Dismiss"}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ))
                     )}

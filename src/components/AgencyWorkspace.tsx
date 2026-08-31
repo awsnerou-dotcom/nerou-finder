@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Organization, User, UserRole, AdCampaign, SubscriptionPlan, Lead, Property, LeadStatus } from "../types.js";
+import { Organization, User, UserRole, AdCampaign, SubscriptionPlan, Lead, Property, LeadStatus, PropertyType, TransactionType } from "../types.js";
 import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import {
   CreditCard,
@@ -32,7 +32,9 @@ import {
   X,
   Building2,
   ArrowUpDown,
-  UserPlus
+  UserPlus,
+  Edit2,
+  Trash2
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -44,7 +46,7 @@ import { getActingUserId } from "../lib/auth.js";
 import StatCard from "./StatCard.js";
 import DashboardChart from "./DashboardChart.js";
 import { Badge } from "./ui/Badge.js";
-import { buildDailySumSeries, datesToDayRecord, isThisMonth } from "../lib/dashboardMetrics.js";
+import { buildDailySumSeries, datesToDayRecord, isThisMonth, listingStatusTone } from "../lib/dashboardMetrics.js";
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 
 interface AgencyWorkspaceProps {
@@ -58,7 +60,21 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   const [agents, setAgents] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "team" | "routing" | "campaigns" | "subscription" | "leads" | "verification" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "team" | "listings" | "routing" | "campaigns" | "subscription" | "leads" | "verification" | "profile">("dashboard");
+  // Listings tab (FIX 3): edit-in-place form state, submitted back to POST /api/properties
+  // with the listing's own id so it updates rather than creates a new one.
+  const [editingListingId, setEditingListingId] = useState<string | null>(null);
+  const [listingEditTitle, setListingEditTitle] = useState<string>("");
+  const [listingEditPrice, setListingEditPrice] = useState<string>("");
+  const [listingEditArea, setListingEditArea] = useState<string>("");
+  const [listingEditBeds, setListingEditBeds] = useState<string>("");
+  const [listingEditBaths, setListingEditBaths] = useState<string>("");
+  const [listingEditType, setListingEditType] = useState<PropertyType>(PropertyType.APARTMENT);
+  const [listingEditTrans, setListingEditTrans] = useState<TransactionType>(TransactionType.FOR_RENT);
+  const [listingEditDesc, setListingEditDesc] = useState<string>("");
+  const [savingListing, setSavingListing] = useState<boolean>(false);
+  const [deletingListingId, setDeletingListingId] = useState<string | null>(null);
+  const [isDeletingListing, setIsDeletingListing] = useState<boolean>(false);
   // Sortable team performance table (Dashboard tab)
   const [teamSortBy, setTeamSortBy] = useState<"name" | "listings" | "leads" | "conversion">("name");
   const [teamSortDir, setTeamSortDir] = useState<"asc" | "desc">("asc");
@@ -451,6 +467,91 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
     }
   };
 
+  // Listings tab (FIX 3): edit-in-place for any listing under this org. The server's
+  // ownership gate on POST /api/properties (isEdit branch) already allows an AGENCY_ADMIN
+  // to edit any listing whose orgId matches their own - not just their own personal listings.
+  const startEditListing = (prop: Property) => {
+    setEditingListingId(prop.id);
+    setListingEditTitle(prop.title || "");
+    setListingEditPrice(prop.price !== undefined ? String(prop.price) : "");
+    setListingEditArea(prop.area !== undefined ? String(prop.area) : "");
+    setListingEditBeds(prop.bedrooms !== undefined ? String(prop.bedrooms) : "");
+    setListingEditBaths(prop.bathrooms !== undefined ? String(prop.bathrooms) : "");
+    setListingEditType(prop.propertyType);
+    setListingEditTrans(prop.transactionType);
+    setListingEditDesc(prop.description || "");
+  };
+
+  const cancelEditListing = () => {
+    setEditingListingId(null);
+  };
+
+  const handleSaveListing = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingListingId) return;
+    setSavingListing(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/properties", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          id: editingListingId,
+          title: listingEditTitle,
+          price: Number(listingEditPrice),
+          area: Number(listingEditArea),
+          bedrooms: Number(listingEditBeds),
+          bathrooms: Number(listingEditBaths),
+          propertyType: listingEditType,
+          transactionType: listingEditTrans,
+          description: listingEditDesc
+        })
+      });
+      if (res.ok) {
+        setEditingListingId(null);
+        fetchAgencyContext();
+        onRefreshAll();
+        setToastMessage(isRtl ? "تم تحديث بيانات العقار بنجاح!" : "Listing updated successfully!");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "تعذر تحديث العقار." : "Failed to update the listing."));
+      }
+    } catch (err) {
+      console.error("Failed to update listing", err);
+      setToastMessage(isRtl ? "تعذر تحديث العقار." : "Failed to update the listing.");
+    } finally {
+      setSavingListing(false);
+      setTimeout(() => setToastMessage(""), 4000);
+    }
+  };
+
+  const handleDeleteListing = async (propertyId: string) => {
+    setIsDeletingListing(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/properties/${propertyId}`, { method: "DELETE", headers });
+      if (res.ok) {
+        fetchAgencyContext();
+        onRefreshAll();
+        setToastMessage(isRtl ? "تم حذف الإعلان." : "Listing deleted.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "تعذر حذف الإعلان." : "Failed to delete the listing."));
+      }
+    } catch (e) {
+      console.error("Failed to delete listing", e);
+      setToastMessage(isRtl ? "تعذر حذف الإعلان." : "Failed to delete the listing.");
+    } finally {
+      setIsDeletingListing(false);
+      setDeletingListingId(null);
+      setTimeout(() => setToastMessage(""), 4000);
+    }
+  };
+
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!campBudget || !campEndDate) return;
@@ -627,6 +728,17 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
     }
   };
 
+  // FIX 7: the SaaS Billing tab's "Current Active Plan" card must reflect the org's real
+  // subscriptionPlanId/subscriptionStatus, not a hardcoded "Silver Broker" plan - reuses the
+  // `plans` list already fetched from GET /api/plans above (fetchAgencyContext).
+  const currentPlan = plans.find(p => p.id === agency.subscriptionPlanId);
+  // FIX 6: the upsell card advertises itself as the Enterprise Agency plan (matching
+  // "plan-premium"'s real limits - 100 properties / 10 agents - in DEFAULT_SUB_PLANS) but its
+  // button used to call handleUpgradeSubscription("plan-developer") (Master Developer, wrong
+  // tier for an agency). Resolve the plan by name instead of a hardcoded id so this stays
+  // correct even if ids ever change, falling back to the known id.
+  const enterprisePlan = plans.find(p => p.name === "Enterprise Agency") || plans.find(p => p.id === "plan-premium");
+
   // Leads + views trend chart (last 30 days) - views summed from each listing's real per-day
   // view tracking (Property.viewsByDay), leads from the org-scoped leads list.
   const agencyTrendSeries = buildDailySumSeries(
@@ -669,6 +781,13 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
             className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "team" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "فريق العمل" : "Agents Team"}
+          </button>
+          <button
+            data-tour="agency-listings-tab"
+            onClick={() => setActiveTab("listings")}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "listings" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+          >
+            {isRtl ? "العقارات المدرجة" : "Listings"}
           </button>
           <button
             data-tour="agency-leads-tab"
@@ -1043,6 +1162,130 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* LISTINGS TAB (FIX 3) - agency admins can edit or delete any listing under their own
+          org, not just their personal ones; POST /api/properties (isEdit branch) and
+          DELETE /api/properties/:id already authorize an AGENCY_ADMIN whose orgId matches
+          the listing's orgId, so no new backend logic is needed beyond the scoped DELETE
+          route added alongside this UI. */}
+      {activeTab === "listings" && (
+        <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
+          <div className="p-4 bg-ink-inverse border-b border-border flex justify-between items-center">
+            <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+              <Building2 size={14} className="text-gold" />
+              <span>{isRtl ? "جميع عقارات المكتب" : "All Agency Listings"}</span>
+            </h4>
+            <span className="px-2.5 py-1 bg-chrome text-white text-[10px] font-bold rounded-full">
+              {orgProperties.length} {isRtl ? "عقار" : "listings"}
+            </span>
+          </div>
+
+          {orgProperties.length === 0 ? (
+            <EmptyState
+              icon={<Building2 size={20} />}
+              title={isRtl ? "لا توجد عقارات بعد" : "No listings yet"}
+              description={isRtl ? "ستظهر هنا عقارات وسطائكم بمجرد إضافتها." : "Listings added by your agents will appear here."}
+            />
+          ) : (
+            <div className="divide-y divide-surface-2">
+              {orgProperties.map(prop => (
+                <div key={prop.id} className="p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-bold text-slate-500">{prop.listingId}</span>
+                        <Badge tone={listingStatusTone(prop.listingStatus)}>{prop.listingStatus.replace(/_/g, " ")}</Badge>
+                      </div>
+                      <p className="font-bold text-ink truncate">{isRtl ? prop.titleAr : prop.title}</p>
+                      <p className="text-[10px] text-ink-muted">{prop.district}, {prop.city} • {agents.find(a => a.id === prop.agentId)?.fullName || "—"}</p>
+                      <p className="text-xs font-bold text-gold">{prop.price?.toLocaleString()} QAR</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => (editingListingId === prop.id ? cancelEditListing() : startEditListing(prop))}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
+                      >
+                        <Edit2 size={11} />
+                        <span>{editingListingId === prop.id ? (isRtl ? "إغلاق" : "Close") : (isRtl ? "تعديل" : "Edit")}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingListingId(prop.id)}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                      >
+                        <Trash2 size={11} />
+                        <span>{isRtl ? "حذف" : "Delete"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {editingListingId === prop.id && (
+                    <form onSubmit={handleSaveListing} className="bg-canvas p-4 rounded-lg border border-gold/30 space-y-3">
+                      <div>
+                        <label className="block font-medium text-ink-muted mb-1">{isRtl ? "العنوان" : "Title"}</label>
+                        <input type="text" required value={listingEditTitle} onChange={(e) => setListingEditTitle(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-lg" />
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                          <label className="block font-medium text-ink-muted mb-1">{isRtl ? "النوع" : "Type"}</label>
+                          <select value={listingEditType} onChange={(e) => setListingEditType(e.target.value as PropertyType)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg">
+                            {Object.values(PropertyType).map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المعاملة" : "Transaction"}</label>
+                          <select value={listingEditTrans} onChange={(e) => setListingEditTrans(e.target.value as TransactionType)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg">
+                            {Object.values(TransactionType).map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block font-medium text-ink-muted mb-1">{isRtl ? "السعر (ر.ق)" : "Price (QAR)"}</label>
+                          <input type="number" required min="0" value={listingEditPrice} onChange={(e) => setListingEditPrice(e.target.value)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg" />
+                        </div>
+                        <div>
+                          <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المساحة (م²)" : "Area (SQM)"}</label>
+                          <input type="number" required min="0" value={listingEditArea} onChange={(e) => setListingEditArea(e.target.value)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg" />
+                        </div>
+                        <div>
+                          <label className="block font-medium text-ink-muted mb-1">{isRtl ? "غرف النوم" : "Bedrooms"}</label>
+                          <input type="number" min="0" value={listingEditBeds} onChange={(e) => setListingEditBeds(e.target.value)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg" />
+                        </div>
+                        <div>
+                          <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الحمامات" : "Bathrooms"}</label>
+                          <input type="number" min="0" value={listingEditBaths} onChange={(e) => setListingEditBaths(e.target.value)} className="w-full px-2 py-2 bg-surface border border-border rounded-lg" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الوصف" : "Description"}</label>
+                        <textarea rows={2} value={listingEditDesc} onChange={(e) => setListingEditDesc(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-lg" />
+                      </div>
+                      <div className="flex gap-2 justify-end pt-1">
+                        <button type="button" onClick={cancelEditListing} className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold cursor-pointer">
+                          {isRtl ? "إلغاء" : "Cancel"}
+                        </button>
+                        <button type="submit" disabled={savingListing} className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg disabled:opacity-50 cursor-pointer">
+                          {savingListing ? (isRtl ? "جارٍ الحفظ..." : "Saving...") : (isRtl ? "حفظ التغييرات" : "Save Changes")}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <ConfirmDialog
+            open={!!deletingListingId}
+            onCancel={() => setDeletingListingId(null)}
+            onConfirm={() => deletingListingId && handleDeleteListing(deletingListingId)}
+            title={isRtl ? "هل تريد حذف هذا العقار؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this listing? This cannot be undone."}
+            tone="danger"
+            loading={isDeletingListing}
+            isRtl={isRtl}
+          />
         </div>
       )}
 
@@ -1641,11 +1884,15 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
           <div className="p-5 bg-chrome text-white rounded-xl border border-chrome-hover flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="space-y-1">
               <span className="text-[10px] text-gold font-bold uppercase tracking-wider block">{isRtl ? "الخطة النشطة الحالية" : "Current Active Plan Tier"}</span>
-              <h4 className="font-serif text-lg font-bold">{isRtl ? "الخطة الفضية للمكاتب العقارية" : "SaaS Silver Broker Plan"}</h4>
-              <p className="text-xs text-gray-400">{isRtl ? "تاريخ التجديد التلقائي: ٢٠ يوليو ٢٠٢٧" : "Idempotent subscription renewal: July 20, 2027"}</p>
+              <h4 className="font-serif text-lg font-bold">{currentPlan?.name || (isRtl ? "لا توجد خطة نشطة" : "No active plan")}</h4>
+              <p className="text-xs text-gray-400">
+                {isRtl ? "تاريخ انتهاء الاشتراك: " : "Subscription expiry: "}
+                {agency.subscriptionExpiry ? new Date(agency.subscriptionExpiry).toLocaleDateString() : "—"}
+                {agency.subscriptionStatus && ` • ${agency.subscriptionStatus.replace(/_/g, " ")}`}
+              </p>
             </div>
             <div className="px-4 py-2 bg-white/10 rounded-lg text-sm font-bold border border-white/20">
-              1,800 QAR <span className="text-xs font-normal">/ month</span>
+              {(currentPlan?.priceMonthly ?? 0).toLocaleString()} QAR <span className="text-xs font-normal">/ month</span>
             </div>
           </div>
 
@@ -1680,11 +1927,11 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
               <div className="pt-6 border-t border-surface-2 flex items-center justify-between gap-4">
                 <div className="space-y-0.5">
                   <span className="text-[10px] text-ink-muted uppercase block">Monthly charge</span>
-                  <span className="text-xl font-bold text-ink">4,500 QAR</span>
+                  <span className="text-xl font-bold text-ink">{(enterprisePlan?.priceMonthly ?? 1800).toLocaleString()} QAR</span>
                 </div>
 
                 <button
-                  onClick={() => handleUpgradeSubscription("plan-developer")}
+                  onClick={() => handleUpgradeSubscription(enterprisePlan?.id || "plan-premium")}
                   disabled={paymentProcessing}
                   className="px-5 py-2 bg-chrome hover:bg-gold disabled:bg-gray-400 text-white font-bold rounded-lg text-xs uppercase tracking-wider cursor-pointer"
                 >

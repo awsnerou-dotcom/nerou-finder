@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { HelpCircle, Search, ChevronRight, BookOpen, User, Building2, ShieldAlert, FileText, Sparkles } from "lucide-react";
 
 interface HelpCenterViewProps {
@@ -10,6 +10,11 @@ export default function HelpCenterView({ isRtl }: HelpCenterViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
+  // Every published article's full content is shown inline as soon as it's in the filtered
+  // list (there's no separate "open article" click-through), so that's the moment it counts
+  // as "viewed". Guards against re-counting the same article on every re-render/search
+  // keystroke - each id is only ever POSTed to /api/help/:id/view once per page visit.
+  const countedViewIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     fetchHelpArticles();
@@ -27,6 +32,13 @@ export default function HelpCenterView({ isRtl }: HelpCenterViewProps) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fire-and-forget view increment, once per article id for the lifetime of this component.
+  const registerArticleView = (articleId: string) => {
+    if (countedViewIds.current.has(articleId)) return;
+    countedViewIds.current.add(articleId);
+    fetch(`/api/help/${articleId}/view`, { method: "POST" }).catch(err => console.error(err));
   };
 
   const categories = [
@@ -47,6 +59,14 @@ export default function HelpCenterView({ isRtl }: HelpCenterViewProps) {
     
     return art.isPublished && matchesCategory && matchesSearch;
   });
+
+  // Count a view the moment an article's full content actually renders on screen (each
+  // card already shows the complete content inline, with no separate "open" click) -
+  // registerArticleView's own de-dup guard keeps this from re-firing on every render.
+  useEffect(() => {
+    filteredArticles.forEach(art => registerArticleView(art.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredArticles.map(a => a.id).join(",")]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200" dir={isRtl ? "rtl" : "ltr"}>

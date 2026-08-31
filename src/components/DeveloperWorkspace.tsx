@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Organization, Project, Property, User, LocationItem, Lead, ListingStatus, PropertyType, TransactionType, VerificationStatus } from "../types.js";
+import { Organization, Project, Property, User, LocationItem, Lead, LeadStatus, ListingStatus, PropertyType, TransactionType, VerificationStatus } from "../types.js";
 import {
   FolderKanban,
   Building2,
@@ -21,12 +21,16 @@ import {
   Image as ImageIcon,
   Loader2,
   Trash2,
+  Edit2,
   Camera,
   Lock,
   Settings,
   DollarSign,
   Zap,
-  ShieldCheck
+  ShieldCheck,
+  MessageSquare,
+  Mail,
+  X
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -38,7 +42,8 @@ import DashboardChart from "./DashboardChart.js";
 import { Badge } from "./ui/Badge.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Button } from "./ui/Button.js";
-import { buildDailyCountSeries, isThisMonth, listingStatusTone } from "../lib/dashboardMetrics.js";
+import { ConfirmDialog } from "./ui/ConfirmDialog.js";
+import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone } from "../lib/dashboardMetrics.js";
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 
 interface DeveloperWorkspaceProps {
@@ -69,6 +74,13 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
   const [unitBathrooms, setUnitBathrooms] = useState<string>("2");
   const [unitDescription, setUnitDescription] = useState<string>("");
   const [creatingUnit, setCreatingUnit] = useState<boolean>(false);
+  // Non-null while the "Add Unit" form is instead editing an existing unit in place -
+  // submitting sends the unit's own id back so POST /api/properties updates it.
+  const [editingUnitId, setEditingUnitId] = useState<string | null>(null);
+  const [deletingUnitId, setDeletingUnitId] = useState<string | null>(null);
+  const [isDeletingUnit, setIsDeletingUnit] = useState<boolean>(false);
+  // Leads tab (FIX 4): inline related-unit preview, same pattern as Agent/AgencyWorkspace.
+  const [leadPropertyPreview, setLeadPropertyPreview] = useState<Property | null>(null);
 
   // Local toast state
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -176,6 +188,10 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
   const [projDate, setProjDate] = useState<string>("");
   const [projectImages, setProjectImages] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState<boolean>(false);
+  // FIX 5: PDF brochure upload - reuses the same generic /api/media/upload endpoint the
+  // verification-documents PDF uploads already use (VerificationDocumentsPanel.tsx).
+  const [projectBrochureUrl, setProjectBrochureUrl] = useState<string>("");
+  const [uploadingBrochure, setUploadingBrochure] = useState<boolean>(false);
 
   useEffect(() => {
     fetchDeveloperContext();
@@ -246,6 +262,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
           status: projStatus,
           deliveryDate: projDate,
           images: projectImages,
+          brochureUrl: projectBrochureUrl || undefined,
           actorId: developer.id,
           actorName: developer.name,
           actorRole: "DEVELOPER_ADMIN"
@@ -258,6 +275,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
         setProjDesc("");
         setSelectedArea("");
         setProjectImages([]);
+        setProjectBrochureUrl("");
         fetchDeveloperContext();
         onRefreshAll();
         setToastMessage(isRtl ? "تمت إضافة المشروع الجديد بنجاح في المنصة وتحديث الدليل!" : "New master project catalogued and published successfully!");
@@ -288,10 +306,13 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
       const headers: HeadersInit = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
+      const isEdit = !!editingUnitId;
+      const existingUnit = isEdit ? properties.find(p => p.id === editingUnitId) : undefined;
       const res = await fetch("/api/properties", {
         method: "POST",
         headers,
         body: JSON.stringify({
+          id: editingUnitId || undefined,
           title: unitTitle,
           description: unitDescription || `${unitType} unit in ${project.name}`,
           propertyType: unitType,
@@ -303,12 +324,13 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
           city: project.city,
           district: project.district,
           projectId: project.id,
-          images: project.images?.length ? [project.images[0]] : []
+          images: isEdit && existingUnit?.images?.length ? existingUnit.images : (project.images?.length ? [project.images[0]] : [])
         })
       });
 
       if (res.ok) {
         setIsAddingUnit(false);
+        setEditingUnitId(null);
         setUnitProjectId("");
         setUnitTitle("");
         setUnitPrice("");
@@ -318,19 +340,89 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
         setUnitDescription("");
         fetchDeveloperContext();
         onRefreshAll();
-        setToastMessage(isRtl ? "تمت إضافة الوحدة الجديدة بنجاح!" : "New unit added successfully!");
+        setToastMessage(
+          isEdit
+            ? (isRtl ? "تم تحديث بيانات الوحدة بنجاح!" : "Unit updated successfully!")
+            : (isRtl ? "تمت إضافة الوحدة الجديدة بنجاح!" : "New unit added successfully!")
+        );
         setTimeout(() => setToastMessage(""), 4000);
       } else {
         const data = await res.json().catch(() => ({}));
-        setToastMessage(data.error || (isRtl ? "تعذر إضافة الوحدة." : "Failed to add the unit."));
+        setToastMessage(data.error || (isRtl ? "تعذر حفظ الوحدة." : "Failed to save the unit."));
         setTimeout(() => setToastMessage(""), 5000);
       }
     } catch (err) {
       console.error(err);
-      setToastMessage(isRtl ? "تعذر إضافة الوحدة." : "Failed to add the unit.");
+      setToastMessage(isRtl ? "تعذر حفظ الوحدة." : "Failed to save the unit.");
       setTimeout(() => setToastMessage(""), 5000);
     } finally {
       setCreatingUnit(false);
+    }
+  };
+
+  const startEditUnit = (unit: Property) => {
+    setEditingUnitId(unit.id);
+    setUnitProjectId(unit.projectId || "");
+    setUnitTitle(unit.title || "");
+    setUnitType(unit.propertyType);
+    setUnitTransactionType(unit.transactionType);
+    setUnitPrice(unit.price !== undefined ? String(unit.price) : "");
+    setUnitArea(unit.area !== undefined ? String(unit.area) : "");
+    setUnitBedrooms(unit.bedrooms !== undefined ? String(unit.bedrooms) : "2");
+    setUnitBathrooms(unit.bathrooms !== undefined ? String(unit.bathrooms) : "2");
+    setUnitDescription(unit.description || "");
+    setIsAddingUnit(true);
+  };
+
+  const handleDeleteUnit = async (unitId: string) => {
+    setIsDeletingUnit(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/properties/${unitId}`, { method: "DELETE", headers });
+      if (res.ok) {
+        setProperties(prev => prev.filter(p => p.id !== unitId));
+        onRefreshAll();
+        setToastMessage(isRtl ? "تم حذف الوحدة." : "Unit deleted.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "تعذر حذف الوحدة." : "Failed to delete the unit."));
+      }
+    } catch (e) {
+      console.error("Failed to delete unit", e);
+      setToastMessage(isRtl ? "تعذر حذف الوحدة." : "Failed to delete the unit.");
+    } finally {
+      setIsDeletingUnit(false);
+      setDeletingUnitId(null);
+      setTimeout(() => setToastMessage(""), 4000);
+    }
+  };
+
+  // Same POST /api/leads/status action AgentWorkspace/AgencyWorkspace already use - no new
+  // backend logic needed, GET /api/leads already self-scopes this org's leads correctly.
+  const handleUpdateLeadStatus = async (leadId: string, status: LeadStatus) => {
+    try {
+      const res = await fetch("/api/leads/status", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({
+          leadId,
+          status,
+          actorId: currentUser.id,
+          actorName: currentUser.fullName,
+          actorRole: currentUser.role
+        })
+      });
+      if (res.ok) {
+        setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, status } : l)));
+        onRefreshAll();
+      }
+    } catch (e) {
+      console.error("Failed to update lead status", e);
     }
   };
 
@@ -374,6 +466,36 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
 
   const removeProjectImage = (index: number) => {
     setProjectImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleBrochureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBrochure(true);
+    try {
+      const formData = new FormData();
+      formData.append("files", file);
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/media/upload", { method: "POST", headers, body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        const uploadedUrl = (data.fileUrls || data.urls || [])[0];
+        if (uploadedUrl) setProjectBrochureUrl(uploadedUrl);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "فشل رفع ملف البروشور." : "Failed to upload the brochure."));
+        setTimeout(() => setToastMessage(""), 4000);
+      }
+    } catch (err) {
+      console.error("Brochure upload error:", err);
+      setToastMessage(isRtl ? "فشل رفع ملف البروشور." : "Failed to upload the brochure.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setUploadingBrochure(false);
+      e.target.value = "";
+    }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -560,6 +682,13 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
             {isRtl ? "مخزون الوحدات" : "Units Inventory"}
           </button>
           <button
+            data-tour="developer-leads-tab"
+            onClick={() => setActiveTab("leads")}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+          >
+            {isRtl ? "العملاء المحتملون" : "Leads"}
+          </button>
+          <button
             data-tour="developer-verification-tab"
             onClick={() => setActiveTab("verification")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
@@ -696,6 +825,100 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
               </div>
             </div>
             <BoostRecommendations properties={properties} orgId={developer.id} isRtl={isRtl} />
+          </div>
+        </div>
+      )}
+
+      {/* LEADS TAB (FIX 4) - reuses GET /api/leads, which already self-scopes to this
+          developer org's leads server-side; follows the same status-badge / contact-info
+          visual pattern as AgentWorkspace's and AgencyWorkspace's own leads tabs. */}
+      {activeTab === "leads" && (
+        <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
+          <div className="p-4 bg-ink-inverse border-b border-border flex justify-between items-center">
+            <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+              <Users size={14} className="text-gold" />
+              <span>{isRtl ? "العملاء المحتملون لمشاريعكم" : "Project & Unit Inquiries"}</span>
+            </h4>
+            <span className="px-2.5 py-1 bg-chrome text-white text-[10px] font-bold rounded-full">
+              {leads.length} {isRtl ? "عملاء كلي" : "Total Leads"}
+            </span>
+          </div>
+          <div className="divide-y divide-surface-2">
+            {leads.length === 0 ? (
+              <p className="p-8 text-center text-ink-muted italic">
+                {isRtl ? "لا توجد أي طلبات تواصل مسجلة بعد." : "No leads registered for your projects yet."}
+              </p>
+            ) : (
+              leads.map(lead => {
+                const waPhone = (lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "");
+                return (
+                  <div key={lead.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-ink text-sm">{lead.visitorName}</span>
+                        <Badge tone={leadStatusTone(lead.status)}>{lead.status.replace(/_/g, " ")}</Badge>
+                      </div>
+                      <div className="text-ink-muted space-y-0.5">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <a
+                            href={`https://wa.me/${waPhone}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold"
+                          >
+                            <MessageSquare size={12} /> {lead.visitorPhone}
+                          </a>
+                          {lead.visitorEmail && (
+                            <a href={`mailto:${lead.visitorEmail}`} className="flex items-center gap-1 text-ink hover:text-gold font-semibold">
+                              <Mail size={12} /> {lead.visitorEmail}
+                            </a>
+                          )}
+                        </div>
+                        <p className="italic">"{lead.message}"</p>
+                        {lead.propertyId && (
+                          <button
+                            type="button"
+                            onClick={() => setLeadPropertyPreview(properties.find(p => p.id === lead.propertyId) || null)}
+                            className="text-[10px] text-gold underline cursor-pointer"
+                          >
+                            {isRtl ? "عرض الوحدة المرتبطة" : "View related unit"}
+                          </button>
+                        )}
+                        <span className="text-[9px] text-ink-faint block">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap shrink-0">
+                      <select
+                        value={lead.status}
+                        onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
+                        className="px-2 py-1.5 bg-surface border border-border rounded text-[10px] font-semibold text-ink"
+                      >
+                        {Object.values(LeadStatus).map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Inline related-unit preview modal for the Leads tab above. */}
+      {leadPropertyPreview && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setLeadPropertyPreview(null)}>
+          <div className="bg-surface rounded-xl max-w-md w-full overflow-hidden text-xs" onClick={(e) => e.stopPropagation()}>
+            <img src={leadPropertyPreview.images?.[0]} alt={leadPropertyPreview.title} className="w-full h-40 object-cover" />
+            <div className="p-4 space-y-1">
+              <div className="flex items-start justify-between">
+                <h5 className="font-serif text-sm font-bold text-ink">{isRtl ? leadPropertyPreview.titleAr : leadPropertyPreview.title}</h5>
+                <button type="button" onClick={() => setLeadPropertyPreview(null)} className="text-ink-muted hover:text-ink cursor-pointer"><X size={16} /></button>
+              </div>
+              <p className="text-ink-muted">{leadPropertyPreview.district}, {leadPropertyPreview.city}</p>
+              <p className="font-bold text-gold">{leadPropertyPreview.price?.toLocaleString()} QAR</p>
+            </div>
           </div>
         </div>
       )}
@@ -1012,6 +1235,37 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                 )}
               </div>
 
+              <div>
+                <label className="block font-medium text-ink-muted mb-1">{isRtl ? "ملف البروشور (PDF)" : "PDF Brochure"}</label>
+                <div className="border-2 border-dashed border-border hover:border-gold rounded-xl p-4 text-center cursor-pointer bg-surface transition-colors relative">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleBrochureUpload}
+                    disabled={uploadingBrochure}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex items-center justify-center gap-2">
+                    {uploadingBrochure ? (
+                      <>
+                        <Loader2 className="animate-spin text-gold" size={16} />
+                        <p className="text-xs font-medium text-ink-muted">{isRtl ? "جارٍ رفع الملف..." : "Uploading brochure..."}</p>
+                      </>
+                    ) : projectBrochureUrl ? (
+                      <>
+                        <FileText size={16} className="text-emerald-600" />
+                        <p className="text-xs font-medium text-ink">{isRtl ? "تم رفع ملف البروشور - اضغط للاستبدال" : "Brochure uploaded - click to replace"}</p>
+                      </>
+                    ) : (
+                      <>
+                        <FileText size={16} className="text-gray-400" />
+                        <p className="text-xs font-medium text-ink">{isRtl ? "اضغط لرفع ملف PDF (اختياري)" : "Click to upload a PDF (optional)"}</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className="flex gap-2 justify-end pt-2">
                 <button
                   type="button"
@@ -1066,7 +1320,13 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
 
                 <div className="p-4 border-t border-surface-2 flex justify-between items-center text-[11px] text-ink-muted">
                   <span>Handover Target: <strong className="text-ink">{proj.deliveryDate || "TBD"}</strong></span>
-                  <span className="font-bold text-gold">{isRtl ? "عرض ملف البروشور" : "View PDF Brochure"}</span>
+                  {proj.brochureUrl ? (
+                    <a href={proj.brochureUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-gold underline cursor-pointer">
+                      {isRtl ? "عرض ملف البروشور" : "View PDF Brochure"}
+                    </a>
+                  ) : (
+                    <span className="italic text-ink-faint">{isRtl ? "لم يتم رفع بروشور بعد" : "No brochure uploaded yet"}</span>
+                  )}
                 </div>
               </div>
             ))}
@@ -1103,7 +1363,20 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
               <span>{isRtl ? "قائمة الوحدات التفصيلية" : "Specific Units Specifications"}</span>
             </h4>
             <button
-              onClick={() => setIsAddingUnit(!isAddingUnit)}
+              onClick={() => {
+                if (!isAddingUnit && editingUnitId) {
+                  setEditingUnitId(null);
+                  setUnitProjectId("");
+                  setUnitTitle("");
+                  setUnitPrice("");
+                  setUnitArea("");
+                  setUnitBedrooms("2");
+                  setUnitBathrooms("2");
+                  setUnitDescription("");
+                }
+                setEditingUnitId(null);
+                setIsAddingUnit(!isAddingUnit);
+              }}
               className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
@@ -1114,7 +1387,9 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
           {isAddingUnit && (
             <form onSubmit={handleCreateUnit} className="bg-surface p-5 rounded-xl border border-gold/30 space-y-4 max-w-xl text-xs">
               <h5 className="font-serif text-sm font-bold text-ink border-b border-surface-2 pb-2">
-                {isRtl ? "تفاصيل الوحدة الجديدة" : "New Unit Details"}
+                {editingUnitId
+                  ? (isRtl ? "تعديل بيانات الوحدة" : "Edit Unit Details")
+                  : (isRtl ? "تفاصيل الوحدة الجديدة" : "New Unit Details")}
               </h5>
               <div>
                 <label className="block font-medium text-ink-muted mb-1">{isRtl ? "المشروع" : "Project"}</label>
@@ -1183,11 +1458,15 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                 <textarea rows={2} value={unitDescription} onChange={(e) => setUnitDescription(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-lg" />
               </div>
               <div className="flex gap-2 justify-end pt-2">
-                <button type="button" onClick={() => setIsAddingUnit(false)} className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold">
+                <button type="button" onClick={() => { setIsAddingUnit(false); setEditingUnitId(null); }} className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold">
                   {isRtl ? "إلغاء" : "Cancel"}
                 </button>
                 <button type="submit" disabled={creatingUnit || projects.length === 0} className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg disabled:opacity-50">
-                  {creatingUnit ? (isRtl ? "جارٍ الإضافة..." : "Adding...") : (isRtl ? "إضافة الوحدة" : "Add Unit")}
+                  {creatingUnit
+                    ? (isRtl ? "جارٍ الحفظ..." : "Saving...")
+                    : editingUnitId
+                    ? (isRtl ? "حفظ التغييرات" : "Save Changes")
+                    : (isRtl ? "إضافة الوحدة" : "Add Unit")}
                 </button>
               </div>
             </form>
@@ -1214,12 +1493,38 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                     <div className="flex items-center gap-3">
                       <BoostButton property={unit} isRtl={isRtl} />
                       <Badge tone={listingStatusTone(unit.listingStatus)}>{unit.listingStatus.replace(/_/g, " ")}</Badge>
+                      <button
+                        type="button"
+                        onClick={() => startEditUnit(unit)}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
+                      >
+                        <Edit2 size={11} />
+                        <span>{isRtl ? "تعديل" : "Edit"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeletingUnitId(unit.id)}
+                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                      >
+                        <Trash2 size={11} />
+                        <span>{isRtl ? "حذف" : "Delete"}</span>
+                      </button>
                     </div>
                   </div>
                 ))
               )}
             </div>
           </div>
+
+          <ConfirmDialog
+            open={!!deletingUnitId}
+            onCancel={() => setDeletingUnitId(null)}
+            onConfirm={() => deletingUnitId && handleDeleteUnit(deletingUnitId)}
+            title={isRtl ? "هل تريد حذف هذه الوحدة؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this unit? This cannot be undone."}
+            tone="danger"
+            loading={isDeletingUnit}
+            isRtl={isRtl}
+          />
         </div>
       )}
 
