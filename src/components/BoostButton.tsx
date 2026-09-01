@@ -11,6 +11,12 @@ interface BoostButtonProps {
   property: Property;
   isRtl: boolean;
   onBoosted?: () => void;
+  // Referral Program: when the acting user has a free boost credit available, the server
+  // (POST /api/ad-charges) automatically consumes one instead of charging - this is purely a
+  // display hint so the button can say "Free" instead of a price. Optional: callers that don't
+  // have the acting user's record handy (e.g. BoostRecommendations.tsx) simply omit it, and the
+  // charge still goes through the same free-credit path server-side either way.
+  bonusBoostCredits?: number;
 }
 
 // AI Listing Quality Score (pre-boost check) - a quick, entirely client-side completeness
@@ -60,8 +66,9 @@ function checkListingQuality(property: Property): QualityWarning[] {
   return warnings;
 }
 
-export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonProps) {
+export default function BoostButton({ property, isRtl, onBoosted, bonusBoostCredits = 0 }: BoostButtonProps) {
   const propertyId = property.id;
+  const hasFreeCredit = bonusBoostCredits > 0;
   const [loading, setLoading] = useState<"BUMP" | "FEATURED" | null>(null);
   const [message, setMessage] = useState<string>("");
   // Pending boost awaiting a "Boost anyway" confirmation after a quality warning was shown.
@@ -82,7 +89,11 @@ export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonP
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(isRtl ? `تم التفعيل! (${data.charge.amount} ر.ق)` : `Activated! (${data.charge.amount} QAR)`);
+        setMessage(
+          data.viaBonusCredit
+            ? (isRtl ? "تم التفعيل مجاناً باستخدام رصيد الإحالة!" : "Activated free using a referral boost credit!")
+            : (isRtl ? `تم التفعيل! (${data.charge.amount} ر.ق)` : `Activated! (${data.charge.amount} QAR)`)
+        );
         onBoosted?.();
       } else {
         setMessage(data.error || (isRtl ? "فشل التفعيل" : "Activation failed"));
@@ -123,6 +134,11 @@ export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonP
 
   return (
     <div className="space-y-1">
+      {hasFreeCredit && (
+        <p className="text-[9px] font-bold text-gold">
+          {isRtl ? `🎁 لديك ${bonusBoostCredits} رصيد رفع مجاني - سيُستخدم تلقائياً` : `🎁 You have ${bonusBoostCredits} free boost credit${bonusBoostCredits === 1 ? "" : "s"} - used automatically`}
+        </p>
+      )}
       <div className="flex items-center gap-1.5 flex-wrap">
         <button
           type="button"
@@ -131,7 +147,7 @@ export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonP
           className="px-2 py-1 bg-surface-2 hover:bg-border text-ink rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
         >
           {loading === "BUMP" ? <Loader2 className="animate-spin" size={11} /> : <Zap size={11} />}
-          {isRtl ? "رفع (٤٩ ر.ق)" : "Bump (49 QAR)"}
+          {hasFreeCredit ? (isRtl ? "رفع (مجاناً)" : "Bump (Free)") : (isRtl ? "رفع (٤٩ ر.ق)" : "Bump (49 QAR)")}
         </button>
         <button
           type="button"
@@ -140,7 +156,7 @@ export default function BoostButton({ property, isRtl, onBoosted }: BoostButtonP
           className="px-2 py-1 bg-gold hover:bg-[#a8842a] text-black rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
         >
           {loading === "FEATURED" ? <Loader2 className="animate-spin" size={11} /> : <Star size={11} />}
-          {isRtl ? "مميز (٢٩٩ ر.ق/أسبوع)" : "Featured (299 QAR/wk)"}
+          {hasFreeCredit ? (isRtl ? "مميز (مجاناً)" : "Featured (Free)") : (isRtl ? "مميز (٢٩٩ ر.ق/أسبوع)" : "Featured (299 QAR/wk)")}
         </button>
       </div>
 

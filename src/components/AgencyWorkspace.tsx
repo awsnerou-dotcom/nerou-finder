@@ -49,6 +49,8 @@ import { Badge } from "./ui/Badge.js";
 import { buildDailySumSeries, datesToDayRecord, isThisMonth, listingStatusTone } from "../lib/dashboardMetrics.js";
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 import ListingPerformanceModal from "./ListingPerformanceModal.js";
+import NotificationBell from "./NotificationBell.js";
+import ReferralPanel from "./ReferralPanel.js";
 
 interface AgencyWorkspaceProps {
   agency: Organization;
@@ -469,6 +471,18 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
     }
   };
 
+  // In-app Lead Notification Center: fire-and-forget mark-as-read the moment a lead row is
+  // opened (the whole row here - there's no separate expand/detail step in this table-style
+  // Leads tab). Optimistically updates local state too, matching handleArchiveLead-style
+  // fetch-and-forget calls already used elsewhere in this component.
+  const markLeadRead = (leadId: string) => {
+    setOrgLeads(prev => prev.map(l => (l.id === leadId ? { ...l, readByRecipient: true } : l)));
+    fetch(`/api/leads/${leadId}/read`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+    }).catch(err => console.error("Failed to mark lead as read:", err));
+  };
+
   // Listings tab (FIX 3): edit-in-place for any listing under this org. The server's
   // ownership gate on POST /api/properties (isEdit branch) already allows an AGENCY_ADMIN
   // to edit any listing whose orgId matches their own - not just their own personal listings.
@@ -769,7 +783,9 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
         </div>
 
         {/* Workspace tabs navigator */}
-        <div className="flex flex-wrap bg-surface-2 p-0.5 rounded-lg text-xs font-medium">
+        <div className="flex items-center gap-2 flex-wrap">
+          <NotificationBell isRtl={isRtl} onClick={() => setActiveTab("leads")} />
+          <div className="flex flex-wrap bg-surface-2 p-0.5 rounded-lg text-xs font-medium">
           <button
             data-tour="agency-dashboard-tab"
             onClick={() => setActiveTab("dashboard")}
@@ -831,6 +847,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
           >
             {isRtl ? "الإعدادات" : "Profile"}
           </button>
+          </div>
         </div>
       </div>
 
@@ -862,6 +879,9 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
               subtitle={isRtl ? "هذا الشهر" : "this month"}
             />
           </div>
+
+          {/* Referral Program: "Invite & Earn" */}
+          <ReferralPanel user={currentUser} isRtl={isRtl} />
 
           {/* Quick actions */}
           <div className="bg-surface rounded-xl border border-border p-4">
@@ -1523,7 +1543,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                       <p className="font-bold text-ink truncate">{isRtl ? prop.titleAr : prop.title}</p>
                       <p className="text-[10px] text-ink-muted">{prop.district}, {prop.city}</p>
                     </div>
-                    <BoostButton property={prop} isRtl={isRtl} />
+                    <BoostButton property={prop} isRtl={isRtl} bonusBoostCredits={currentUser.bonusBoostCredits} />
                   </div>
                 ))
               )}
@@ -1730,9 +1750,14 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                   </thead>
                   <tbody className="divide-y divide-surface-2">
                     {orgLeads.map((lead) => (
-                      <tr key={lead.id} className="hover:bg-canvas/50 transition-colors">
+                      <tr key={lead.id} className="hover:bg-canvas/50 transition-colors cursor-pointer" onClick={() => markLeadRead(lead.id)}>
                         <td className="p-4">
-                          <div className="font-bold text-sm text-ink">{lead.visitorName}</div>
+                          <div className="font-bold text-sm text-ink flex items-center gap-1.5">
+                            {lead.visitorName}
+                            {lead.readByRecipient === false && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-danger shrink-0" title={isRtl ? "غير مقروء" : "Unread"} />
+                            )}
+                          </div>
                           <div className="text-[10px] mt-0.5 flex items-center gap-2">
                             <a href={`https://wa.me/${(lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold">
                               <MessageSquare size={10} /> {lead.visitorPhone}
@@ -1790,10 +1815,15 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
               {/* Mobile: stacked cards instead of a horizontally-scrolling table */}
               <div className="md:hidden divide-y divide-surface-2">
                 {orgLeads.map((lead) => (
-                  <div key={lead.id} className="p-4 space-y-3">
+                  <div key={lead.id} className="p-4 space-y-3 cursor-pointer" onClick={() => markLeadRead(lead.id)}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="font-bold text-sm text-ink">{lead.visitorName}</div>
+                        <div className="font-bold text-sm text-ink flex items-center gap-1.5">
+                          {lead.visitorName}
+                          {lead.readByRecipient === false && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-danger shrink-0" title={isRtl ? "غير مقروء" : "Unread"} />
+                          )}
+                        </div>
                         <div className="text-[11px] mt-0.5 flex flex-wrap items-center gap-2">
                           <a href={`https://wa.me/${(lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold">
                             <MessageSquare size={11} /> {lead.visitorPhone}

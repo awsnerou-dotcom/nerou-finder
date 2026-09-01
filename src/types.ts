@@ -143,7 +143,29 @@ export interface User {
   // true once the user has dismissed/finished it, so it only auto-shows once. Undefined is
   // treated the same as false (never seen it) for every pre-existing account.
   hasSeenOnboardingTour?: boolean;
+  // ---------------------------------------------------------------------------
+  // Referral Program
+  // ---------------------------------------------------------------------------
+  // Short, unique, human-shareable code generated for every new user at signup (see
+  // generateUniqueReferralCode() in server.ts). Optional only because accounts created
+  // before this feature existed won't have one until a future backfill.
+  referralCode?: string;
+  // The referralCode of whoever referred this user, captured once at signup time from an
+  // optional `?ref=` query param. Undefined for organic signups.
+  referredByCode?: string;
+  // How many other users have successfully signed up using this user's own referralCode.
+  // Incremented on the REFERRING user at the moment a new signup redeems their code.
+  successfulReferralsCount?: number;
+  // Free ad-boost activations earned via the referral reward ladder (see
+  // AGENT_REFERRALS_PER_BOOST_CREDIT below) - consumed one at a time by POST /api/ad-charges
+  // instead of charging AD_CHARGE_PRICES when available.
+  bonusBoostCredits?: number;
 }
+
+// Referral reward ladder: every this-many successful referrals grants the referring
+// AGENT/AGENCY_ADMIN/DEVELOPER_ADMIN one bonusBoostCredits unit (see POST /api/auth/signup's
+// referral redemption and POST /api/ad-charges's credit-consumption logic in server.ts).
+export const REFERRALS_PER_BOOST_CREDIT = 3;
 
 // Resolves an AGENT's effective type defensively: existing accounts created before
 // AgentType existed have agentType === undefined, so we derive it from orgId rather
@@ -404,6 +426,13 @@ export interface Lead {
   // FIX 2: soft-close - preserves history, unlike a hard delete. Archived leads are hidden
   // from the default lead list with a toggle to reveal them.
   isArchived?: boolean;
+  // In-app Lead Notification Center: whether the owning agent/org has actually opened this
+  // lead yet (distinct from `status`, which tracks the sales pipeline stage, not whether
+  // anyone has looked at it). Defaults to false at creation in POST /api/leads. Undefined
+  // (leads created before this field existed) is treated as read, never as unread, so old
+  // leads don't suddenly all show up as unread noise the first time this ships - see
+  // GET /api/leads/unread-count.
+  readByRecipient?: boolean;
 }
 
 export interface LeadNote {

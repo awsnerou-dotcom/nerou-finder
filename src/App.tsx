@@ -162,6 +162,20 @@ export default function App() {
     }
   }, []);
 
+  // Referral Program: capture ?ref=CODE from a shared referral link once on initial load and
+  // persist it for the signup form (see handleSignupSubmit below), mirroring the campaignId
+  // capture just above. Cleared from the visible URL the same way.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) {
+      sessionStorage.setItem("referralCode", ref);
+      params.delete("ref");
+      const newSearch = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (newSearch ? `?${newSearch}` : ""));
+    }
+  }, []);
+
   // Keep state sync notifications
   const [syncCount, setSyncCount] = useState<number>(0);
   const handleDatabaseRefresh = () => {
@@ -293,6 +307,7 @@ export default function App() {
     setAuthError("");
     try {
       const inviteToken = sessionStorage.getItem("inviteToken") || undefined;
+      const referralCode = sessionStorage.getItem("referralCode") || undefined;
       const res = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -305,7 +320,8 @@ export default function App() {
           orgName: signupOrgName,
           orgType: signupOrgType,
           selectedPlanId: signupPlanId,
-          inviteToken
+          inviteToken,
+          referralCode
         })
       });
       const data = await res.json();
@@ -314,6 +330,7 @@ export default function App() {
       } else {
         sessionStorage.removeItem("presetPlanId");
         sessionStorage.removeItem("inviteToken");
+        sessionStorage.removeItem("referralCode");
         setSignupSuccess(true);
         trackEvent("subscription_plan_requested", "saas", signupPlanId);
         setTimeout(() => {

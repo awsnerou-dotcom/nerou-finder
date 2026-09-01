@@ -72,6 +72,8 @@ import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone } from "../lib/dashboardMetrics.js";
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 import ListingPerformanceModal from "./ListingPerformanceModal.js";
+import NotificationBell from "./NotificationBell.js";
+import ReferralPanel from "./ReferralPanel.js";
 
 interface AgentWorkspaceProps {
   agent: User;
@@ -510,6 +512,19 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     } catch (e) {
       console.error(e);
     }
+  };
+
+  // In-app Lead Notification Center: fire-and-forget mark-as-read the moment a lead's detail
+  // is actually opened (mirrors HelpCenterView's registerArticleView fire-and-forget style).
+  // Optimistically flips the local flag too so the unread dot disappears immediately rather
+  // than waiting on the next fetchLeadsAndProperties() refresh.
+  const markLeadRead = (leadId: string) => {
+    setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, readByRecipient: true } : l)));
+    const token = localStorage.getItem("token");
+    fetch(`/api/leads/${leadId}/read`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}` }
+    }).catch(err => console.error("Failed to mark lead as read:", err));
   };
 
   // FIX 2: soft-close/reopen a lead - preserves history, never deletes it.
@@ -1134,7 +1149,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           </p>
         </div>
 
-        <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
+        <div className="flex items-center gap-2">
+          <NotificationBell isRtl={isRtl} onClick={() => setActiveTab("leads")} />
+          <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
           <button
             data-tour="agent-dashboard-tab"
             onClick={() => setActiveTab("dashboard")}
@@ -1187,6 +1204,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           >
             {isRtl ? "الحساب" : "My Profile"}
           </button>
+          </div>
         </div>
       </div>
 
@@ -1327,6 +1345,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             />
           </div>
 
+          {/* Referral Program: "Invite & Earn" */}
+          <ReferralPanel user={agent} isRtl={isRtl} />
+
           {/* Billing split - independent agents self-manage a subscription, agency agents ride
               on their agency's plan and never see a self-serve billing surface of their own. */}
           {effectiveAgentType === AgentType.INDEPENDENT_AGENT ? (
@@ -1399,7 +1420,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <p className="text-xs font-bold text-ink truncate">{isRtl ? prop.titleAr || prop.title : prop.title}</p>
                     <p className="text-[10px] text-ink-muted">{prop.district}, {prop.city}</p>
                     <p className="text-xs font-bold text-gold">{prop.price?.toLocaleString()} {prop.currency}</p>
-                    {effectiveAgentType !== AgentType.AGENCY_AGENT && <BoostButton property={prop} isRtl={isRtl} />}
+                    {effectiveAgentType !== AgentType.AGENCY_AGENT && <BoostButton property={prop} isRtl={isRtl} bonusBoostCredits={agent.bonusBoostCredits} />}
                   </div>
                 ))}
               </div>
@@ -1487,11 +1508,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <div className="flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
-                        onClick={() => setSelectedLeadId(lead.id)}
+                        onClick={() => { setSelectedLeadId(lead.id); markLeadRead(lead.id); }}
                         className="font-bold text-ink text-sm hover:text-gold cursor-pointer underline decoration-dotted"
                       >
                         {lead.visitorName}
                       </button>
+                      {lead.readByRecipient === false && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-danger shrink-0" title={isRtl ? "غير مقروء" : "Unread"} />
+                      )}
                       <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
                         lead.status === LeadStatus.NEW ? "bg-red-50 text-red-700 border border-red-200" :
                         lead.status === LeadStatus.CONTACTED || lead.status === LeadStatus.VIEWING_REQUESTED || lead.status === LeadStatus.VIEWING_SCHEDULED ? "bg-yellow-50 text-yellow-700 border border-yellow-200" :
@@ -2413,7 +2437,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     {/* AGENCY_AGENT never self-triggers a boost - their agency admin does it on
                         their behalf from AgencyWorkspace, billed to the agency ledger. */}
                     {effectiveAgentType !== AgentType.AGENCY_AGENT && (
-                      <BoostButton property={prop} isRtl={isRtl} />
+                      <BoostButton property={prop} isRtl={isRtl} bonusBoostCredits={agent.bonusBoostCredits} />
                     )}
 
                     {/* One-click "Confirm Still Available" - shown prominently when confirmation

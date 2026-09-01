@@ -46,6 +46,8 @@ import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone } from "../lib/dashboardMetrics.js";
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 import ListingPerformanceModal from "./ListingPerformanceModal.js";
+import NotificationBell from "./NotificationBell.js";
+import ReferralPanel from "./ReferralPanel.js";
 
 interface DeveloperWorkspaceProps {
   developer: Organization;
@@ -428,6 +430,16 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
     }
   };
 
+  // In-app Lead Notification Center: fire-and-forget mark-as-read the moment a lead row is
+  // opened (mirrors handleUpdateLeadStatus's fire-and-forget style above).
+  const markLeadRead = (leadId: string) => {
+    setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, readByRecipient: true } : l)));
+    fetch(`/api/leads/${leadId}/read`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+    }).catch(err => console.error("Failed to mark lead as read:", err));
+  };
+
   const handleProjectMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -661,7 +673,9 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
         </div>
 
         {/* Tab switcher */}
-        <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
+        <div className="flex items-center gap-2">
+          <NotificationBell isRtl={isRtl} onClick={() => setActiveTab("leads")} />
+          <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
           <button
             data-tour="developer-dashboard-tab"
             onClick={() => setActiveTab("dashboard")}
@@ -704,6 +718,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
           >
             {isRtl ? "الإعدادات" : "Profile"}
           </button>
+          </div>
         </div>
       </div>
 
@@ -738,6 +753,9 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
             <StatCard icon={Users} label={isRtl ? "عملاء هذا الشهر" : "Leads This Month"} value={leadsThisMonth.length} subtitle={isRtl ? `${leads.length} إجمالي` : `${leads.length} all-time`} />
             <StatCard icon={TrendingUp} label={isRtl ? "نسبة إنجاز المبيعات" : "Sales Progress"} value={`${salesProgressPercent}%`} subtitle={isRtl ? "من إجمالي الوحدات" : "of total units sold"} />
           </div>
+
+          {/* Referral Program: "Invite & Earn" */}
+          <ReferralPanel user={currentUser} isRtl={isRtl} />
 
           {/* Quick actions */}
           <div className="bg-surface rounded-xl border border-border p-4">
@@ -854,10 +872,13 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
               leads.map(lead => {
                 const waPhone = (lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "");
                 return (
-                  <div key={lead.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div key={lead.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer" onClick={() => markLeadRead(lead.id)}>
                     <div className="space-y-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-ink text-sm">{lead.visitorName}</span>
+                        {lead.readByRecipient === false && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-danger shrink-0" title={isRtl ? "غير مقروء" : "Unread"} />
+                        )}
                         <Badge tone={leadStatusTone(lead.status)}>{lead.status.replace(/_/g, " ")}</Badge>
                       </div>
                       <div className="text-ink-muted space-y-0.5">
@@ -1493,7 +1514,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                       <p className="text-[10px] text-ink-muted">District: {unit.district} | {unit.bedrooms} Bed | {unit.area} SQM</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <BoostButton property={unit} isRtl={isRtl} />
+                      <BoostButton property={unit} isRtl={isRtl} bonusBoostCredits={currentUser.bonusBoostCredits} />
                       <Badge tone={listingStatusTone(unit.listingStatus)}>{unit.listingStatus.replace(/_/g, " ")}</Badge>
                       <button
                         type="button"

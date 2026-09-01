@@ -54,7 +54,8 @@ import {
   getAvailabilityStaleDays,
   AVAILABILITY_CONFIRM_DUE_DAYS,
   AVAILABILITY_UNCONFIRMED_DAYS,
-  AVAILABILITY_AUTO_PAUSE_DAYS
+  AVAILABILITY_AUTO_PAUSE_DAYS,
+  REFERRALS_PER_BOOST_CREDIT
 } from "./src/types.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
@@ -593,6 +594,31 @@ export function sanitizeUser<T extends { password?: string }>(user: T): Omit<T, 
   return safe;
 }
 
+// Referral Program: an 8-character, human-shareable code (uppercase alphanumeric, excluding
+// visually ambiguous 0/O/1/I) generated for every new user at signup - see POST /api/auth/signup.
+function generateReferralCode(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const randomBytes = crypto.randomBytes(8);
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += alphabet[randomBytes[i] % alphabet.length];
+  }
+  return code;
+}
+
+// Retries generation on collision against every existing user's referralCode. A collision at
+// 8 chars from a 32-symbol alphabet is vanishingly unlikely, but this is checked explicitly
+// rather than assumed - 10 attempts is far more than enough headroom.
+function generateUniqueReferralCode(db: DatabaseState): string {
+  let code = generateReferralCode();
+  let attempts = 0;
+  while (db.users.some(u => u.referralCode === code) && attempts < 10) {
+    code = generateReferralCode();
+    attempts++;
+  }
+  return code;
+}
+
 // -----------------------------------------------------------------------------
 // REST API ENDPOINTS
 // -----------------------------------------------------------------------------
@@ -792,7 +818,7 @@ app.post("/api/auth/2fa/disable", authMiddleware, (req, res) => {
 // (e.g. a trusted admin creating one directly), never handed out to whatever the client sends.
 const SELF_SIGNUP_ALLOWED_ROLES = [UserRole.AGENT, UserRole.AGENCY_ADMIN, UserRole.DEVELOPER_ADMIN, UserRole.REGISTERED];
 app.post("/api/auth/signup", authRateLimiter, (req, res) => {
-  const { email, password, fullName, phone, role, orgName, orgType, selectedPlanId, inviteToken } = req.body;
+  const { email, password, fullName, phone, role, orgName, orgType, selectedPlanId, inviteToken, referralCode } = req.body;
   const db = readDb();
 
   if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -889,6 +915,17 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
     applicationStatus = consumedInvitation ? ApplicationStatus.ACTIVE : ApplicationStatus.PENDING_APPROVAL;
   }
 
+  // Referral Program: resolve an optional referralCode (captured client-side from a
+  // shared ?ref=CODE link, see App.tsx) into the actual referring user, if any - matched
+  // against real referralCodes only, so a bogus/expired code just silently doesn't attribute
+  // rather than erroring out the whole signup.
+  let referredByCode: string | undefined;
+  let referrer: (typeof db.users)[number] | undefined;
+  if (referralCode && typeof referralCode === "string" && referralCode.trim()) {
+    referrer = db.users.find(u => u.referralCode === referralCode.trim().toUpperCase());
+    if (referrer) referredByCode = referrer.referralCode;
+  }
+
   const userId = `user-${Date.now()}`;
   const hashedPassword = bcrypt.hashSync(password || "nerou123", 10);
   const newUser = {
@@ -907,7 +944,9 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
     languages: ["English", "Arabic"],
     specialties: ["Pearl Qatar", "West Bay"],
     verificationStatus: VerificationStatus.APPROVED,
-    createdDate: new Date().toISOString()
+    createdDate: new Date().toISOString(),
+    referralCode: generateUniqueReferralCode(db),
+    referredByCode
   };
 
   db.users.push(newUser);
@@ -916,9 +955,23 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
     consumedInvitation.status = "ACCEPTED";
   }
 
+  // Referral reward ladder: credit the REFERRING user, not the new signup. Only
+  // AGENT/AGENCY_ADMIN/DEVELOPER_ADMIN referrers ever earn ad-boost credits - the only roles
+  // that can spend one via POST /api/ad-charges - but successfulReferralsCount itself is
+  // tracked for any referring role for basic stats visibility on GET /api/users/:id/referral-stats.
+  if (referrer) {
+    referrer.successfulReferralsCount = (referrer.successfulReferralsCount || 0) + 1;
+    if (
+      (referrer.role === UserRole.AGENT || referrer.role === UserRole.AGENCY_ADMIN || referrer.role === UserRole.DEVELOPER_ADMIN) &&
+      referrer.successfulReferralsCount % REFERRALS_PER_BOOST_CREDIT === 0
+    ) {
+      referrer.bonusBoostCredits = (referrer.bonusBoostCredits || 0) + 1;
+    }
+  }
+
   writeDb(db);
 
-  logAudit(userId, fullName, effectiveRole, "USER_SIGNUP", userId, "User", { email, viaInvitation: !!consumedInvitation });
+  logAudit(userId, fullName, effectiveRole, "USER_SIGNUP", userId, "User", { email, viaInvitation: !!consumedInvitation, referredByCode });
 
   // FIX 9: welcome email to the new user themself - previously only admins were ever notified
   // (and only for org signups), the new user got nothing.
@@ -1057,6 +1110,28 @@ app.patch("/api/users/:id", authMiddleware, (req, res) => {
   }
 
   res.json({ success: true, user: sanitizeUser(db.users[idx]) });
+});
+
+// Referral Program: a user's own referral code + reward progress. Self-or-admin scoped,
+// same pattern as PATCH /api/users/:id above - no one else's referral stats are exposed.
+app.get("/api/users/:id/referral-stats", authMiddleware, (req, res) => {
+  const { id } = req.params;
+  const authReq = req as AuthenticatedRequest;
+  const actor = authReq.user;
+  if (!actor) return res.status(401).json({ error: "Access token missing or invalid." });
+  if (actor.id !== id && actor.role !== UserRole.PLATFORM_ADMIN && actor.role !== UserRole.SUPER_ADMIN) {
+    return res.status(403).json({ error: "You may only view your own referral stats." });
+  }
+
+  const db = readDb();
+  const user = db.users.find(u => u.id === id);
+  if (!user) return res.status(404).json({ error: "User not found." });
+
+  res.json({
+    referralCode: user.referralCode || null,
+    successfulReferralsCount: user.successfulReferralsCount || 0,
+    bonusBoostCredits: user.bonusBoostCredits || 0
+  });
 });
 
 // Mark the first-time onboarding tour as seen (or replay-eligible) for the caller's own
@@ -2079,6 +2154,9 @@ app.post("/api/leads", publicWriteRateLimiter, (req, res) => {
     orgId,
     createdDate: new Date().toISOString(),
     updatedDate: new Date().toISOString(),
+    // In-app Lead Notification Center: every new lead starts unread for its owning
+    // agent/org so NotificationBell's unread-count endpoint has something to count.
+    readByRecipient: false,
     attribution: {
       source: source || "Direct Website",
       campaign: campaign || "Organic discovery",
@@ -2182,6 +2260,37 @@ app.get("/api/leads", authMiddleware, (req, res) => {
   }
 
   res.json(leads);
+});
+
+// In-app Lead Notification Center: unread-lead count for NotificationBell's polling. Scoped
+// identically to GET /api/leads above (own leads for an agent, org-wide for agency/developer
+// admins, everything - optionally filtered - for a platform admin) so a caller never learns
+// about leads they couldn't otherwise see via GET /api/leads. A lead with no readByRecipient
+// at all (created before this field existed) counts as read, not unread - see the field's
+// comment in src/types.ts.
+app.get("/api/leads/unread-count", authMiddleware, (req, res) => {
+  const db = readDb();
+  const authReq = req as AuthenticatedRequest;
+  const actor = authReq.user;
+  if (!actor) return res.status(401).json({ error: "Access token missing or invalid." });
+
+  const isPlatformAdmin = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
+  let leads = db.leads;
+
+  if (isPlatformAdmin) {
+    const { agentId, orgId } = req.query;
+    if (agentId) leads = leads.filter(l => l.agentId === agentId);
+    if (orgId) leads = leads.filter(l => l.orgId === orgId);
+  } else {
+    const dbUser = db.users.find(u => u.id === actor.id);
+    const isOrgAdmin = !!dbUser?.orgId && (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+    leads = isOrgAdmin
+      ? leads.filter(l => l.orgId === dbUser!.orgId)
+      : leads.filter(l => l.agentId === actor.id);
+  }
+
+  const count = leads.filter(l => l.readByRecipient === false).length;
+  res.json({ count });
 });
 
 // Update Lead Status
@@ -2290,6 +2399,33 @@ app.patch("/api/leads/:id/archive", authMiddleware, (req, res) => {
   writeDb(db);
 
   logAudit(actor.id, actor.fullName, actor.role, isArchived ? "ARCHIVE_LEAD" : "UNARCHIVE_LEAD", id, "Lead", {});
+
+  res.json({ success: true, lead });
+});
+
+// In-app Lead Notification Center: mark a single lead as opened/viewed by its owning
+// agent/org (or a platform admin) - fire-and-forget from the client the moment a lead's
+// row/card is opened. Ownership check mirrors POST /api/leads/:id/archive exactly.
+app.patch("/api/leads/:id/read", authMiddleware, (req, res) => {
+  const { id } = req.params;
+
+  const db = readDb();
+  const lead = db.leads.find(l => l.id === id);
+  if (!lead) return res.status(404).json({ error: "Lead not found" });
+
+  const authReq = req as AuthenticatedRequest;
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const isPlatformAdmin = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
+  const isOwnAgent = actor.id === lead.agentId;
+  const isOrgAdmin = !!lead.orgId && actor.orgId === lead.orgId && (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+  if (!isOwnAgent && !isOrgAdmin && !isPlatformAdmin) {
+    return res.status(403).json({ error: "You are not authorized to mark this lead as read." });
+  }
+
+  lead.readByRecipient = true;
+  writeDb(db);
 
   res.json({ success: true, lead });
 });
@@ -3769,22 +3905,30 @@ app.post("/api/ad-charges", authMiddleware, (req, res) => {
     subscriptionPlanId = org.subscriptionPlanId;
   }
 
-  if (subscriptionStatus !== "ACTIVE") {
+  // Referral Program reward: a free boost credit lives on the acting user (whoever earned it
+  // via referrals), independent of whether this charge itself bills to their own account or
+  // to their org's ledger below - so this is checked against `actor`, not `billingOwnerId`.
+  // When available, it's consumed instead of requiring an active subscription or counting
+  // against the monthly self-service cap, since no money is actually changing hands.
+  const useBonusCredit = (actor.bonusBoostCredits || 0) > 0;
+
+  if (!useBonusCredit && subscriptionStatus !== "ACTIVE") {
     return res.status(403).json({ error: "An active subscription is required to activate self-service ad boosts." });
   }
 
   if (!db.adCharges) db.adCharges = [];
   const currentPeriod = getCurrentBillingPeriod();
-
-  const hasUnsettledPastPeriod = db.adCharges.some(c => c.orgId === billingOwnerId && c.billingPeriod !== currentPeriod && !c.settled);
-  if (hasUnsettledPastPeriod) {
-    return res.status(403).json({ error: "You have an unsettled ad billing period from a previous month. Please contact support to settle it before activating new boosts." });
-  }
-
   const cap = db.aiConfig?.adBoostCaps?.[subscriptionPlanId || ""] ?? DEFAULT_BOOST_CAP_FALLBACK;
   const usedThisPeriod = db.adCharges.filter(c => c.orgId === billingOwnerId && c.billingPeriod === currentPeriod).length;
-  if (usedThisPeriod >= cap) {
-    return res.status(403).json({ error: `Monthly self-service boost cap (${cap}) reached for your plan this billing period.` });
+
+  if (!useBonusCredit) {
+    const hasUnsettledPastPeriod = db.adCharges.some(c => c.orgId === billingOwnerId && c.billingPeriod !== currentPeriod && !c.settled);
+    if (hasUnsettledPastPeriod) {
+      return res.status(403).json({ error: "You have an unsettled ad billing period from a previous month. Please contact support to settle it before activating new boosts." });
+    }
+    if (usedThisPeriod >= cap) {
+      return res.status(403).json({ error: `Monthly self-service boost cap (${cap}) reached for your plan this billing period.` });
+    }
   }
 
   const charge: AdCharge = {
@@ -3792,17 +3936,29 @@ app.post("/api/ad-charges", authMiddleware, (req, res) => {
     orgId: billingOwnerId,
     propertyId,
     type,
-    amount: AD_CHARGE_PRICES[type],
+    // Free via a referral bonus credit - nothing owed, so there's nothing left to settle.
+    amount: useBonusCredit ? 0 : AD_CHARGE_PRICES[type],
     createdDate: new Date().toISOString(),
     billingPeriod: currentPeriod,
-    settled: false
+    settled: useBonusCredit ? true : false
   };
   db.adCharges.push(charge);
+
+  if (useBonusCredit) {
+    actor.bonusBoostCredits = (actor.bonusBoostCredits || 0) - 1;
+  }
+
   writeDb(db);
 
-  logAudit(actor.id, actor.fullName, actor.role, "ACTIVATE_AD_BOOST", charge.id, "AdCharge", { propertyId, type, amount: charge.amount });
+  logAudit(actor.id, actor.fullName, actor.role, "ACTIVATE_AD_BOOST", charge.id, "AdCharge", { propertyId, type, amount: charge.amount, viaBonusCredit: useBonusCredit });
 
-  res.json({ success: true, charge, remainingThisPeriod: Math.max(0, cap - usedThisPeriod - 1) });
+  res.json({
+    success: true,
+    charge,
+    viaBonusCredit: useBonusCredit,
+    remainingBonusCredits: actor.bonusBoostCredits || 0,
+    remainingThisPeriod: useBonusCredit ? undefined : Math.max(0, cap - usedThisPeriod - 1)
+  });
 });
 
 // List ad charges - org members see only their own org's ledger, admins may query any org
