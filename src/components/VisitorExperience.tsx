@@ -56,6 +56,9 @@ import PropertyDetailView from "./PropertyDetailView.js";
 import PropertyCompareView from "./PropertyCompareView.js";
 import InteractiveMap from "./InteractiveMap.js";
 import ProfileReviewsSection from "./ProfileReviewsSection.js";
+import MarketPriceIndex from "./MarketPriceIndex.js";
+import AreaGuidesView from "./AreaGuidesView.js";
+import AreaGuideView from "./AreaGuideView.js";
 
 // Enterprise & Public Sub-Pages
 import ProjectsView from "./ProjectsView.js";
@@ -128,6 +131,7 @@ export default function VisitorExperience({
     | "SUPPORT_TICKETS"
     | "LEGAL"
     | "PLANS"
+    | "AREA_GUIDES"
   >("MARKETPLACE");
 
   // Consume one-shot navigation requests coming from outside this component (the App.tsx footer).
@@ -157,6 +161,10 @@ export default function VisitorExperience({
 
   // Detail overlay state
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  // Area Guide overlay state (see AreaGuideView.tsx / GET /api/areas/:slug) - mutually
+  // exclusive with selectedProperty above; both are reconciled into a single /properties/:id
+  // vs /areas/:slug vs "/" URL by the combined deep-link effects further down.
+  const [selectedAreaGuideSlug, setSelectedAreaGuideSlug] = useState<string | null>(null);
   // "Recently viewed" strip - resolved from the id/timestamp trail PropertyDetailView.tsx
   // writes to localStorage on every property it opens. Re-read whenever the detail overlay
   // closes, so a property just viewed shows up in the strip immediately without a reload.
@@ -283,43 +291,71 @@ export default function VisitorExperience({
       .catch(() => {});
   }, []);
 
-  // Keep the address bar in sync with the open/closed property overlay: push a real
-  // /properties/:id URL while one is open (so the browser's own "copy link" / "share" and the
-  // Share button below both grab a working link), and restore "/" when it closes. Skipped on
-  // the very first render after a deep link already put us at the right URL, so opening a
-  // shared link doesn't push a redundant duplicate history entry.
+  // Same deep-link pattern as above, for /areas/:slug (see AreaGuideView.tsx / GET
+  // /api/areas/:slug). Area guide content is static/curated, so - unlike the property fetch
+  // above - there's no 404 case worth distinguishing here: AreaGuideView itself renders a
+  // "not found" state if the slug doesn't resolve.
+  const areaGuideDeepLinkConsumedRef = React.useRef(false);
+  useEffect(() => {
+    if (areaGuideDeepLinkConsumedRef.current) return;
+    areaGuideDeepLinkConsumedRef.current = true;
+    const match = window.location.pathname.match(/^\/areas\/([^/]+)\/?$/);
+    if (match) setSelectedAreaGuideSlug(match[1]);
+  }, []);
+
+  // Keep the address bar in sync with whichever full-page overlay is open (property detail or
+  // area guide - mutually exclusive in practice): push a real /properties/:id or /areas/:slug
+  // URL while one is open (so the browser's own "copy link" / "share" and the Share button
+  // below both grab a working link), and restore "/" when both are closed. Skipped on the very
+  // first render after a deep link already put us at the right URL, so opening a shared link
+  // doesn't push a redundant duplicate history entry. A single shared ref (rather than one per
+  // overlay type) avoids the two ever fighting over the URL or double-pushing the same path.
   const lastSyncedPathRef = React.useRef<string | null>(
-    window.location.pathname.match(/^\/properties\/[^/]+\/?$/) ? window.location.pathname : null
+    window.location.pathname.match(/^\/properties\/[^/]+\/?$/) || window.location.pathname.match(/^\/areas\/[^/]+\/?$/)
+      ? window.location.pathname
+      : null
   );
   useEffect(() => {
-    const targetPath = selectedProperty ? `/properties/${selectedProperty.id}` : "/";
+    const targetPath = selectedProperty
+      ? `/properties/${selectedProperty.id}`
+      : selectedAreaGuideSlug
+      ? `/areas/${selectedAreaGuideSlug}`
+      : "/";
     if (lastSyncedPathRef.current === targetPath) return;
     lastSyncedPathRef.current = targetPath;
     if (window.location.pathname !== targetPath) {
       window.history.pushState(null, "", targetPath);
     }
-  }, [selectedProperty]);
+  }, [selectedProperty, selectedAreaGuideSlug]);
 
   // Back/forward support for the above: e.g. Property A -> Property B -> Back should reopen A,
-  // and Property A -> Back should return to the marketplace list, not leave the app stuck.
+  // Area Guide X -> Property A -> Back should reopen Area Guide X, and either -> Back from the
+  // first overlay should return to the marketplace list, not leave the app stuck.
   useEffect(() => {
     const onPopState = () => {
-      const match = window.location.pathname.match(/^\/properties\/([^/]+)\/?$/);
-      if (!match) {
+      const propMatch = window.location.pathname.match(/^\/properties\/([^/]+)\/?$/);
+      const areaMatch = window.location.pathname.match(/^\/areas\/([^/]+)\/?$/);
+      if (propMatch) {
+        const id = propMatch[1];
+        lastSyncedPathRef.current = `/properties/${id}`;
+        setSelectedAreaGuideSlug(null);
+        const known = properties.find(p => p.id === id);
+        if (known) {
+          setSelectedProperty(known);
+        } else {
+          fetch(`/api/properties/${id}`)
+            .then(res => (res.ok ? res.json() : null))
+            .then(data => { if (data) setSelectedProperty(data); })
+            .catch(() => {});
+        }
+      } else if (areaMatch) {
+        lastSyncedPathRef.current = `/areas/${areaMatch[1]}`;
+        setSelectedProperty(null);
+        setSelectedAreaGuideSlug(areaMatch[1]);
+      } else {
         lastSyncedPathRef.current = "/";
         setSelectedProperty(null);
-        return;
-      }
-      const id = match[1];
-      lastSyncedPathRef.current = `/properties/${id}`;
-      const known = properties.find(p => p.id === id);
-      if (known) {
-        setSelectedProperty(known);
-      } else {
-        fetch(`/api/properties/${id}`)
-          .then(res => (res.ok ? res.json() : null))
-          .then(data => { if (data) setSelectedProperty(data); })
-          .catch(() => {});
+        setSelectedAreaGuideSlug(null);
       }
     };
     window.addEventListener("popstate", onPopState);
@@ -788,6 +824,49 @@ export default function VisitorExperience({
   const municipalities = locations.filter(l => l.type === "MUNICIPALITY" && l.isActive);
   // Find area choices belonging to selected municipality
   const filteredAreas = locations.filter(l => l.parentId === selectedMunicipality && l.isActive);
+
+  // Resolved display name for the currently-selected Area/District filter (if any) - passed to
+  // MarketPriceIndex so its "selected district" mode matches whatever the visitor has actually
+  // filtered to, using the exact same LocationItem lookup fetchProperties() uses above.
+  const selectedDistrictName = selectedArea ? locations.find(l => l.id === selectedArea)?.name : undefined;
+
+  const openAreaGuide = (slug: string) => {
+    setSelectedProperty(null);
+    setSelectedAreaGuideSlug(slug);
+  };
+  const closeAreaGuide = () => setSelectedAreaGuideSlug(null);
+
+  // "View X listings in {area}" CTA (AreaGuideView.tsx): reuses the exact same Municipality ->
+  // Area select-driven filter mechanism a manual user selection would produce, rather than
+  // building a parallel filtering path. `districtName` must match a LocationItem.name exactly
+  // (see src/data/areaGuides.ts's `district` field doc comment).
+  const handleViewListingsInDistrict = (districtName: string) => {
+    setSelectedAreaGuideSlug(null);
+    setSelectedProperty(null);
+    setCurrentTab("MARKETPLACE");
+    setSearchMode("PROPERTIES");
+
+    const matchedLocation = locations.find(l => l.name === districtName && (l.type === "AREA" || l.type === "DISTRICT"));
+    if (matchedLocation) {
+      // A DISTRICT-type location (e.g. a Pearl sub-precinct) sits one level below its AREA,
+      // which itself sits under the MUNICIPALITY - the Area/District dropdown's own options are
+      // filtered by `parentId === selectedMunicipality`, so a DISTRICT match needs its parent
+      // AREA's municipality, not its own immediate parent.
+      let municipalityId = matchedLocation.parentId;
+      if (matchedLocation.type === "DISTRICT") {
+        const parentArea = locations.find(l => l.id === matchedLocation.parentId);
+        municipalityId = parentArea?.parentId;
+      }
+      setSelectedMunicipality(municipalityId || "");
+      setSelectedArea(matchedLocation.id);
+    } else {
+      // Shouldn't happen for a curated guide's district, but fail safe rather than silently
+      // no-oping: fall back to a plain keyword search on the district name.
+      setSelectedMunicipality("");
+      setSelectedArea("");
+      setSearchQuery(districtName);
+    }
+  };
 
   // Find responsible agent and org for current property
   const responsibleAgent = selectedProperty ? users.find(u => u.id === selectedProperty.agentId) : null;
@@ -1286,6 +1365,12 @@ export default function VisitorExperience({
         </div>
       )}
 
+      {/* District Market Price Index - compact live pricing context for the current district
+          filter (or a top-5-most-active-districts overview when none is selected). Shown
+          alongside the filters rather than gated on aiSearchActive, since it's market context
+          independent of whichever search mode produced the current results. */}
+      <MarketPriceIndex isRtl={isRtl} selectedDistrict={selectedDistrictName} />
+
       {/* Recently Viewed strip - localStorage-only, no account needed. Only shown on the plain
           properties list (not mid-AI-search or on the agent/agency/developer directory tabs)
           so it doesn't compete with active search results for attention. */}
@@ -1699,6 +1784,18 @@ export default function VisitorExperience({
         </>
       )}
 
+      {/* Area Guide detail overlay - full-page like PropertyDetailView above, but rendered
+          unconditionally on currentTab/searchMode so a direct /areas/:slug deep link always
+          works regardless of which tab the app happened to mount into. */}
+      {selectedAreaGuideSlug && (
+        <AreaGuideView
+          isRtl={isRtl}
+          slug={selectedAreaGuideSlug}
+          onClose={closeAreaGuide}
+          onViewListings={handleViewListingsInDistrict}
+        />
+      )}
+
       {currentTab === "PROJECTS" && <ProjectsView isRtl={isRtl} organizations={organizations} />}
       {currentTab === "PLANS" && (
         <PlansPricingView
@@ -1713,6 +1810,7 @@ export default function VisitorExperience({
       {currentTab === "CAREERS" && <CareersView isRtl={isRtl} />}
       {currentTab === "PRESS" && <PressView isRtl={isRtl} />}
       {currentTab === "PARTNERSHIPS" && <PartnershipsView isRtl={isRtl} />}
+      {currentTab === "AREA_GUIDES" && <AreaGuidesView isRtl={isRtl} onSelectGuide={openAreaGuide} />}
       {currentTab === "SUPPORT_TICKETS" && (
         <SupportTicketsView
           isRtl={isRtl}

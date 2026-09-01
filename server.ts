@@ -20,6 +20,7 @@ import {
   VerificationStatus,
   ListingStatus,
   LeadStatus,
+  TransactionType,
   Lead,
   Property,
   AdCampaign,
@@ -57,6 +58,7 @@ import {
   AVAILABILITY_AUTO_PAUSE_DAYS,
   REFERRALS_PER_BOOST_CREDIT
 } from "./src/types.js";
+import { AREA_GUIDES, getAreaGuideBySlug } from "./src/data/areaGuides.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
 
@@ -1348,6 +1350,177 @@ app.get("/api/properties", (req, res) => {
   }
 
   res.json(properties);
+});
+
+// -----------------------------------------------------------------------------
+// DISTRICT MARKET PRICE INDEX
+// -----------------------------------------------------------------------------
+// Below this many listings in a district+transactionType group, there isn't enough data to
+// report an average/median at all - reporting one from a single (or zero) data point would be
+// misleading rather than merely imprecise, so stats are reported as null instead.
+const MARKET_INDEX_MIN_SAMPLE = 2;
+// Below this (but at/above MARKET_INDEX_MIN_SAMPLE), stats ARE computed and returned, but
+// flagged lowConfidence so callers can visually hedge them - a handful of listings can still
+// swing an average/median wildly even though it's technically not a divide-by-zero case.
+const MARKET_INDEX_LOW_CONFIDENCE_THRESHOLD = 5;
+
+// Coarse RENT/SALE bucketing for the market index - the underlying TransactionType enum has
+// six values (see src/types.ts) but the market index groups by the two ways buyers actually
+// compare pricing. OFF_PLAN/COMMERCIAL_SALE/LAND_SALE all bucket as SALE since they're each a
+// one-time purchase price rather than a recurring rent; COMMERCIAL_LEASE buckets as RENT for
+// the same reason. Returns null (excluded from the index) for any future enum value this
+// mapping hasn't been extended to cover, rather than silently mis-bucketing it.
+function getMarketIndexBucket(transactionType: TransactionType): "RENT" | "SALE" | null {
+  switch (transactionType) {
+    case TransactionType.FOR_RENT:
+    case TransactionType.COMMERCIAL_LEASE:
+      return "RENT";
+    case TransactionType.FOR_SALE:
+    case TransactionType.OFF_PLAN:
+    case TransactionType.COMMERCIAL_SALE:
+    case TransactionType.LAND_SALE:
+      return "SALE";
+    default:
+      return null;
+  }
+}
+
+export interface MarketIndexGroup {
+  district: string;
+  city: string;
+  transactionType: "RENT" | "SALE";
+  listingCount: number;
+  avgPricePerSqm: number | null;
+  medianPrice: number | null;
+  lowConfidence: boolean;
+}
+
+// Pure derived computation over currently-PUBLISHED properties - deliberately not a persisted
+// table (see the module docstring at the top of server-db.ts's DatabaseState for why: this is
+// fully derivable from Property rows already stored, so a second copy would just be another
+// thing to keep in sync). Shared by GET /api/market-index (arbitrary district/city filter) and
+// GET /api/areas/:slug (one specific curated area guide's live stats), so the aggregation math
+// only lives in one place.
+function computeMarketIndexGroups(properties: Property[], filters: { district?: string; city?: string }): MarketIndexGroup[] {
+  // "Live" mirrors GET /api/properties's own default (no includeAllStatuses=true) - only
+  // listings a visitor could actually find and inquire about today count toward the index.
+  const live = properties.filter(p => p.listingStatus === ListingStatus.PUBLISHED);
+
+  const districtFilter = filters.district?.trim().toLowerCase();
+  const cityFilter = filters.city?.trim().toLowerCase();
+
+  const filtered = live.filter(p => {
+    if (districtFilter && p.district.toLowerCase() !== districtFilter) return false;
+    if (cityFilter && p.city.toLowerCase() !== cityFilter) return false;
+    return true;
+  });
+
+  // Group by district + city (case-insensitive key, original casing kept for display) + the
+  // RENT/SALE bucket above.
+  const groups = new Map<
+    string,
+    { district: string; city: string; transactionType: "RENT" | "SALE"; prices: number[]; pricesPerSqm: number[] }
+  >();
+
+  for (const p of filtered) {
+    const bucket = getMarketIndexBucket(p.transactionType);
+    if (!bucket) continue;
+    if (!p.area || p.area <= 0 || !p.price || p.price <= 0) continue; // guards against divide-by-zero / garbage data
+
+    const key = `${p.district.toLowerCase()}|${p.city.toLowerCase()}|${bucket}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = { district: p.district, city: p.city, transactionType: bucket, prices: [], pricesPerSqm: [] };
+      groups.set(key, g);
+    }
+    g.prices.push(p.price);
+    g.pricesPerSqm.push(p.price / p.area); // Property.area is always stored in square meters (sizeUnit is a display-only toggle)
+  }
+
+  const result: MarketIndexGroup[] = [];
+  for (const g of groups.values()) {
+    const count = g.prices.length;
+    const hasStats = count >= MARKET_INDEX_MIN_SAMPLE;
+
+    const sortedPrices = [...g.prices].sort((a, b) => a - b);
+    const mid = Math.floor(sortedPrices.length / 2);
+    const median =
+      sortedPrices.length % 2 !== 0
+        ? sortedPrices[mid]
+        : (sortedPrices[mid - 1] + sortedPrices[mid]) / 2;
+    const avgPerSqm = g.pricesPerSqm.reduce((a, b) => a + b, 0) / g.pricesPerSqm.length;
+
+    result.push({
+      district: g.district,
+      city: g.city,
+      transactionType: g.transactionType,
+      listingCount: count,
+      avgPricePerSqm: hasStats ? Math.round(avgPerSqm * 100) / 100 : null,
+      medianPrice: hasStats ? Math.round(median) : null,
+      lowConfidence: count < MARKET_INDEX_LOW_CONFIDENCE_THRESHOLD
+    });
+  }
+
+  // Highest listing count first - the ordering the frontend's no-filter "top districts"
+  // overview wants without having to re-sort client-side.
+  result.sort((a, b) => b.listingCount - a.listingCount);
+  return result;
+}
+
+// GET /api/market-index - public, no auth required (same reasoning as public property
+// search: this is meant to be discoverable/shareable). Optional ?district=&city= narrow the
+// grouping to one specific location; omitted, every district currently carrying at least one
+// live listing is returned, sorted by listing count.
+app.get("/api/market-index", (req, res) => {
+  const db = readDb();
+  const { district, city } = req.query as { district?: string; city?: string };
+  const groups = computeMarketIndexGroups(db.properties, { district, city });
+  res.json({
+    generatedAt: new Date().toISOString(),
+    filters: { district: district || null, city: city || null },
+    minSampleSize: MARKET_INDEX_MIN_SAMPLE,
+    lowConfidenceThreshold: MARKET_INDEX_LOW_CONFIDENCE_THRESHOLD,
+    groups
+  });
+});
+
+// -----------------------------------------------------------------------------
+// AREA GUIDE SEO CONTENT PAGES
+// -----------------------------------------------------------------------------
+// GET /api/areas - directory listing (id/slug/title only) for the Area Guides directory page.
+// Public, no auth - this is curated marketing/SEO content, not user data.
+app.get("/api/areas", (req, res) => {
+  res.json(
+    AREA_GUIDES.map(g => ({
+      id: g.id,
+      slug: g.slug,
+      title: g.title,
+      titleAr: g.titleAr,
+      cityLabel: g.cityLabel,
+      cityLabelAr: g.cityLabelAr
+    }))
+  );
+});
+
+// GET /api/areas/:slug - one full curated guide plus its LIVE market stats, reusing the exact
+// same computeMarketIndexGroups() aggregation GET /api/market-index uses (never duplicated).
+app.get("/api/areas/:slug", (req, res) => {
+  const guide = getAreaGuideBySlug(req.params.slug);
+  if (!guide) {
+    return res.status(404).json({ error: "Area guide not found." });
+  }
+
+  const db = readDb();
+  const marketStats = computeMarketIndexGroups(db.properties, { district: guide.district });
+  const liveListingCount = db.properties.filter(
+    p => p.listingStatus === ListingStatus.PUBLISHED && p.district.toLowerCase() === guide.district.toLowerCase()
+  ).length;
+
+  res.json({
+    ...guide,
+    liveListingCount,
+    marketStats
+  });
 });
 
 // Single Property Detail
@@ -5648,6 +5821,7 @@ app.get("/robots.txt", (req, res) => {
   res.send(`User-agent: *
 Allow: /
 Allow: /properties/
+Allow: /areas/
 Allow: /help-center
 Allow: /careers
 Allow: /press
@@ -5701,6 +5875,18 @@ app.get("/sitemap.xml", (req, res) => {
     <lastmod>${prop.updatedDate ? prop.updatedDate.split("T")[0] : now}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
+  </url>`;
+  });
+
+  // Area guide SEO content pages (Feature: District Market Price Index / Area Guides) -
+  // static curated content, so every guide is always indexable regardless of live listing data.
+  AREA_GUIDES.forEach(guide => {
+    xml += `
+  <url>
+    <loc>${host}/areas/${guide.slug}</loc>
+    <lastmod>${now}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
   </url>`;
   });
 
@@ -6140,6 +6326,60 @@ async function startServer() {
         return res.send(html);
       } catch (err) {
         console.error("SEO dynamic meta hydration failed:", err);
+      }
+    }
+    next();
+  });
+
+  // Dynamic SEO meta tags for area guides - same pattern as GET /properties/:id above (must
+  // also be registered before the Vite/static-file catch-all below for the same reason).
+  app.get("/areas/:slug", (req, res, next) => {
+    const guide = getAreaGuideBySlug(req.params.slug);
+    if (!guide) {
+      return next();
+    }
+
+    let indexPath = path.join(process.cwd(), "dist", "index.html");
+    if (!fs.existsSync(indexPath)) {
+      indexPath = path.join(process.cwd(), "index.html");
+    }
+
+    if (fs.existsSync(indexPath)) {
+      try {
+        let html = fs.readFileSync(indexPath, "utf-8");
+        const title = escapeHtml(`${guide.title} | Nerou Finder`);
+        const desc = escapeHtml(guide.overview.slice(0, 200).trim() + (guide.overview.length > 200 ? "…" : ""));
+
+        html = html.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
+        html = html.replace(/<meta property="og:title" content="[^"]*"\s*\/?>/g, `<meta property="og:title" content="${title}" />`);
+        html = html.replace(/<meta property="og:description" content="[^"]*"\s*\/?>/g, `<meta property="og:description" content="${desc}" />`);
+        html = html.replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/g, `<meta name="twitter:title" content="${title}" />`);
+        html = html.replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/g, `<meta name="twitter:description" content="${desc}" />`);
+
+        const host = req.get("host") || "nerou.io";
+        const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+        const permalink = `${protocol}://${host}/areas/${guide.slug}`;
+        const structuredData = {
+          "@context": "https://schema.org",
+          "@type": "Place",
+          name: guide.title,
+          description: guide.overview,
+          url: permalink,
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: guide.district,
+            addressRegion: guide.cityLabel,
+            addressCountry: "QA"
+          }
+        };
+        const jsonLdScript = `<script type="application/ld+json">${JSON.stringify(structuredData).replace(/</g, "\\u003c")}</script>`;
+        html = html.includes("</head>")
+          ? html.replace("</head>", `${jsonLdScript}</head>`)
+          : html + jsonLdScript;
+
+        return res.send(html);
+      } catch (err) {
+        console.error("SEO dynamic meta hydration failed (area guide):", err);
       }
     }
     next();

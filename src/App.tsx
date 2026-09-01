@@ -817,6 +817,9 @@ export default function App() {
               <button onClick={() => navigateFooter("MARKETPLACE", undefined, "DEVELOPER")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "تصفح المطورين" : "Browse Developers"}
               </button>
+              <button onClick={() => navigateFooter("AREA_GUIDES")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
+                {isRtl ? "أدلة الأحياء" : "Area Guides"}
+              </button>
             </div>
           </div>
 

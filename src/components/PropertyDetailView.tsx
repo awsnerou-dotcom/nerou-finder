@@ -141,6 +141,39 @@ export default function PropertyDetailView({
     };
   }, [property.id]);
 
+  // District Market Price Index context: how this listing's own QAR/sqm compares to the live
+  // average for its district + RENT/SALE bucket (see server.ts's computeMarketIndexGroups(),
+  // shared with GET /api/market-index and GET /api/areas/:slug). Left null - and the hint
+  // stays hidden - whenever there isn't a same-bucket, non-low-confidence group to compare
+  // against, rather than showing a shaky percentage off a handful of listings.
+  const [marketContext, setMarketContext] = useState<{ diffPercent: number; avgPricePerSqm: number } | null>(null);
+  useEffect(() => {
+    setMarketContext(null);
+    if (!property.district || !property.area || !property.price) return;
+    let cancelled = false;
+    fetch(`/api/market-index?district=${encodeURIComponent(property.district)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.groups) return;
+        const bucket =
+          property.transactionType === TransactionType.FOR_RENT || property.transactionType === TransactionType.COMMERCIAL_LEASE
+            ? "RENT"
+            : "SALE";
+        const match = data.groups.find(
+          (g: any) => g.transactionType === bucket && g.district.toLowerCase() === property.district.toLowerCase()
+        );
+        if (match?.avgPricePerSqm && !match.lowConfidence) {
+          const ownPerSqm = property.price / property.area;
+          const diffPercent = ((ownPerSqm - match.avgPricePerSqm) / match.avgPricePerSqm) * 100;
+          setMarketContext({ diffPercent, avgPricePerSqm: match.avgPricePerSqm });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [property.id, property.district, property.transactionType, property.price, property.area]);
+
   // Structured data (schema.org RealEstateListing), mirroring what the server already injects
   // for the same URL in server.ts's GET /properties/:id route. That server copy is what search
   // engines see on first crawl; this client copy covers the case where a visitor arrives here
@@ -1619,6 +1652,32 @@ export default function PropertyDetailView({
                         : `${liveViewCount.toLocaleString()} ${liveViewCount === 1 ? "view" : "views"}`}
                     </span>
                   </div>
+                  {/* District Market Price Index context - real comparison against the live
+                      QAR/sqm average for this district + transaction bucket, never fabricated
+                      (see the effect above; stays hidden entirely when there's no confident
+                      comparison group). */}
+                  {marketContext && (
+                    <div
+                      className={`flex items-center gap-1 pt-1 text-[10px] ${
+                        Math.abs(marketContext.diffPercent) < 1
+                          ? "text-gray-400"
+                          : marketContext.diffPercent > 0
+                          ? "text-amber-400"
+                          : "text-emerald-400"
+                      }`}
+                    >
+                      <Activity size={11} />
+                      <span>
+                        {Math.abs(marketContext.diffPercent) < 1
+                          ? isRtl
+                            ? `هذا السعر يتماشى مع متوسط سعر المتر المربع في ${property.district}`
+                            : `In line with the average QAR/sqm for ${property.district}`
+                          : isRtl
+                          ? `هذا السعر ${Math.abs(Math.round(marketContext.diffPercent))}% ${marketContext.diffPercent > 0 ? "أعلى" : "أقل"} من متوسط سعر المتر المربع في ${property.district}`
+                          : `${Math.abs(Math.round(marketContext.diffPercent))}% ${marketContext.diffPercent > 0 ? "above" : "below"} the average QAR/sqm for ${property.district}`}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* REPRESENTATIVE AGENCY CARD */}
