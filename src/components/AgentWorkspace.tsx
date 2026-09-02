@@ -63,6 +63,7 @@ import {
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
 import BoostRecommendations from "./BoostRecommendations.js";
+import CmaReportButton from "./CmaReportButton.js";
 import { compressImage } from "../lib/image.js";
 import StatCard from "./StatCard.js";
 import DashboardChart from "./DashboardChart.js";
@@ -2678,6 +2679,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         <TrendingUp size={11} />
                         <span>{isRtl ? "الأداء" : "Performance"}</span>
                       </button>
+                      <CmaReportButton property={prop} agent={agent} orgName={agencyOrg?.name} isRtl={isRtl} />
                       <button
                         type="button"
                         onClick={() => startEditListing(prop)}

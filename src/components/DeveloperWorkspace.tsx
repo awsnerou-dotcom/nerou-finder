@@ -37,6 +37,7 @@ import {
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
 import BoostRecommendations from "./BoostRecommendations.js";
+import CmaReportButton from "./CmaReportButton.js";
 import { compressImage } from "../lib/image.js";
 import { getActingUserId } from "../lib/auth.js";
 import StatCard from "./StatCard.js";
@@ -1643,6 +1644,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                         <TrendingUp size={11} />
                         <span>{isRtl ? "الأداء" : "Performance"}</span>
                       </button>
+                      <CmaReportButton property={unit} agent={currentUser} orgName={developer.name} isRtl={isRtl} />
                       <button
                         type="button"
                         onClick={() => startEditUnit(unit)}

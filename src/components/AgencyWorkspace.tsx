@@ -39,6 +39,7 @@ import {
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
 import BoostRecommendations from "./BoostRecommendations.js";
+import CmaReportButton from "./CmaReportButton.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Button } from "./ui/Button.js";
 import { compressImage } from "../lib/image.js";
@@ -1283,6 +1284,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                         <TrendingUp size={11} />
                         <span>{isRtl ? "الأداء" : "Performance"}</span>
                       </button>
+                      <CmaReportButton property={prop} agent={currentUser} orgName={agency.name} isRtl={isRtl} />
                       <button
                         type="button"
                         onClick={() => (editingListingId === prop.id ? cancelEditListing() : startEditListing(prop))}
