@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Organization, User, UserRole, AdCampaign, SubscriptionPlan, Lead, Property, LeadStatus, PropertyType, TransactionType } from "../types.js";
+import { Organization, User, UserRole, AdCampaign, SubscriptionPlan, Lead, Property, Project, LeadStatus, PropertyType, TransactionType } from "../types.js";
 import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import {
   CreditCard,
@@ -75,7 +75,13 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   const [listingEditType, setListingEditType] = useState<PropertyType>(PropertyType.APARTMENT);
   const [listingEditTrans, setListingEditTrans] = useState<TransactionType>(TransactionType.FOR_RENT);
   const [listingEditDesc, setListingEditDesc] = useState<string>("");
+  const [listingEditProjectId, setListingEditProjectId] = useState<string>("");
   const [savingListing, setSavingListing] = useState<boolean>(false);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  // Set when POST /api/properties 403s because the selected project requires developer
+  // authorization the agency isn't (yet) granted.
+  const [projectAuthError, setProjectAuthError] = useState<{ projectId: string; message: string } | null>(null);
+  const [requestingRepresentation, setRequestingRepresentation] = useState<boolean>(false);
   const [deletingListingId, setDeletingListingId] = useState<string | null>(null);
   const [performanceListingId, setPerformanceListingId] = useState<string | null>(null);
   const [isDeletingListing, setIsDeletingListing] = useState<boolean>(false);
@@ -212,6 +218,11 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
 
   useEffect(() => {
     fetchAgencyContext();
+    // Load the developer project catalog for the listing edit form's project selector.
+    fetch("/api/projects")
+      .then(res => res.json())
+      .then((data: Project[]) => setAllProjects(data))
+      .catch(e => console.error("Error fetching projects:", e));
   }, [agency.id]);
 
   const fetchAgencyContext = async () => {
@@ -496,16 +507,20 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
     setListingEditType(prop.propertyType);
     setListingEditTrans(prop.transactionType);
     setListingEditDesc(prop.description || "");
+    setListingEditProjectId(prop.projectId || "");
+    setProjectAuthError(null);
   };
 
   const cancelEditListing = () => {
     setEditingListingId(null);
+    setProjectAuthError(null);
   };
 
   const handleSaveListing = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingListingId) return;
     setSavingListing(true);
+    setProjectAuthError(null);
     try {
       const token = localStorage.getItem("token");
       const headers: HeadersInit = { "Content-Type": "application/json" };
@@ -522,7 +537,8 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
           bathrooms: Number(listingEditBaths),
           propertyType: listingEditType,
           transactionType: listingEditTrans,
-          description: listingEditDesc
+          description: listingEditDesc,
+          projectId: listingEditProjectId || undefined
         })
       });
       if (res.ok) {
@@ -532,7 +548,11 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
         setToastMessage(isRtl ? "تم تحديث بيانات العقار بنجاح!" : "Listing updated successfully!");
       } else {
         const data = await res.json().catch(() => ({}));
-        setToastMessage(data.error || (isRtl ? "تعذر تحديث العقار." : "Failed to update the listing."));
+        if (res.status === 403 && data.projectId) {
+          setProjectAuthError({ projectId: data.projectId, message: data.error });
+        } else {
+          setToastMessage(data.error || (isRtl ? "تعذر تحديث العقار." : "Failed to update the listing."));
+        }
       }
     } catch (err) {
       console.error("Failed to update listing", err);
@@ -540,6 +560,36 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
     } finally {
       setSavingListing(false);
       setTimeout(() => setToastMessage(""), 4000);
+    }
+  };
+
+  // Fired from the "Request representation" banner shown after a 403 on POST /api/properties
+  // for an isPlatformDeveloper project this agency isn't (yet) authorized for.
+  const handleRequestRepresentation = async () => {
+    if (!projectAuthError) return;
+    setRequestingRepresentation(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/projects/${projectAuthError.projectId}/representation-requests`, {
+        method: "POST",
+        headers
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setToastMessage(isRtl ? "تم إرسال طلب التمثيل إلى المطور. سيتم إعلامك عند الموافقة." : "Representation request sent to the developer. You'll be notified once approved.");
+        setProjectAuthError(null);
+      } else {
+        setToastMessage(data.error || (isRtl ? "تعذر إرسال طلب التمثيل." : "Failed to send the representation request."));
+      }
+      setTimeout(() => setToastMessage(""), 5000);
+    } catch (err) {
+      console.error("Failed to request representation", err);
+      setToastMessage(isRtl ? "تعذر إرسال طلب التمثيل." : "Failed to send the representation request.");
+      setTimeout(() => setToastMessage(""), 5000);
+    } finally {
+      setRequestingRepresentation(false);
     }
   };
 
@@ -1292,6 +1342,35 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                         <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الوصف" : "Description"}</label>
                         <textarea rows={2} value={listingEditDesc} onChange={(e) => setListingEditDesc(e.target.value)} className="w-full px-3 py-2 bg-surface border border-border rounded-lg" />
                       </div>
+                      <div>
+                        <label className="block font-medium text-ink-muted mb-1">{isRtl ? "ربط بمشروع تطوير (اختياري)" : "Link to a developer project (optional)"}</label>
+                        <select
+                          value={listingEditProjectId}
+                          onChange={(e) => setListingEditProjectId(e.target.value)}
+                          className="w-full px-3 py-2 bg-surface border border-border rounded-lg"
+                        >
+                          <option value="">{isRtl ? "بدون مشروع" : "No project"}</option>
+                          {allProjects.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} — {p.developerName}{p.isPlatformDeveloper ? "" : (isRtl ? " (خارج المنصة)" : " (off-platform)")}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      {projectAuthError && (
+                        <div className="p-3 bg-warning-soft border border-warning/30 rounded-lg space-y-2 text-[11px]">
+                          <p className="font-semibold text-ink">{projectAuthError.message}</p>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            loading={requestingRepresentation}
+                            onClick={handleRequestRepresentation}
+                          >
+                            {isRtl ? "طلب تمثيل هذا المشروع" : "Request representation"}
+                          </Button>
+                        </div>
+                      )}
                       <div className="flex gap-2 justify-end pt-1">
                         <button type="button" onClick={cancelEditListing} className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold cursor-pointer">
                           {isRtl ? "إلغاء" : "Cancel"}

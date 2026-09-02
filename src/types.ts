@@ -385,9 +385,47 @@ export function getAvailabilityStaleDays(lastConfirmedAvailableDate?: string): n
   return Math.floor(diffMs / (24 * 60 * 60 * 1000));
 }
 
+// A representation request: an AGENT/AGENCY_ADMIN asking a platform-developer's Project owner
+// to authorize them to attach Property listings to it. Only meaningful/actionable when the
+// target Project has isPlatformDeveloper === true. Embedded directly on the Project's own JSON
+// blob, mirroring how LeadNote[] is embedded on Lead and PriceHistoryItem[] on Property, rather
+// than introducing a new top-level DatabaseState collection for what is a small related-record
+// array.
+export interface RepresentationRequest {
+  id: string;
+  requesterUserId: string;
+  requesterOrgId?: string;
+  requesterName: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+  requestedDate: string;
+}
+
 export interface Project {
   id: string;
-  developerId: string;
+  // Organization id this project is attributed to. Only meaningful as a real platform account
+  // reference when isPlatformDeveloper === true - when false, this may be undefined (the
+  // developer has no platform account at all; developerName is the only identity on file).
+  developerId?: string;
+  // Free-text display name of the developer - ALWAYS present, regardless of whether the
+  // developer is a real platform account. For a platform DEVELOPER_ADMIN this defaults to
+  // their Organization's real name at creation time; for an agent/agency entering a
+  // real-world project on behalf of a developer with no platform account, this is whatever
+  // name the submitting agent/agency typed in (full responsibility for accuracy sits with
+  // them, same as any other listing field they publish).
+  developerName: string;
+  developerNameAr?: string;
+  // True only when `developerId` actually resolves to a real DEVELOPER_ADMIN Organization on
+  // the platform (set exclusively by the server, never trusted from client input) - gates the
+  // authorizedAgentIds/authorizedOrgIds/representationRequests authorization flow below. False
+  // means this project was entered by a representing agent/agency on behalf of an off-platform
+  // developer, and any listing-creator role may freely attach Property listings to it.
+  isPlatformDeveloper: boolean;
+  // Whoever actually submitted this Project record - the developer themselves (isPlatformDeveloper
+  // true) or the representing agent/agency (isPlatformDeveloper false). Always the authenticated
+  // actor, never client-supplied. Drives the public "Represented by" badge and the ownership
+  // check on editing the project itself.
+  createdByUserId: string;
+  createdByOrgId?: string;
   name: string;
   nameAr?: string;
   description: string;
@@ -398,6 +436,13 @@ export interface Project {
   images: string[];
   brochureUrl?: string;
   createdDate: string;
+  // The platform-developer's approved list of agents/agencies allowed to attach Property
+  // listings to this project. Only meaningful/enforced when isPlatformDeveloper === true.
+  authorizedAgentIds?: string[];
+  authorizedOrgIds?: string[];
+  // Pending/resolved representation requests from agents/agencies wanting to market this
+  // platform-developer's project. Only meaningful when isPlatformDeveloper === true.
+  representationRequests?: RepresentationRequest[];
 }
 
 export interface Lead {

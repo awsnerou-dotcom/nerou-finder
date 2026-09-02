@@ -1453,7 +1453,13 @@ export default function PropertyDetailView({
                 </div>
               </div>
 
-              {/* INVESTMENT YIELD AND MORTGAGE TOOLS */}
+              {/* INVESTMENT YIELD AND MORTGAGE TOOLS - a mortgage/downpayment calculator makes
+                  no sense for a rental (no one takes out a mortgage on a lease), so this whole
+                  suite is hidden entirely (not just disabled) for FOR_RENT/COMMERCIAL_LEASE. */}
+              {(property.transactionType === TransactionType.FOR_SALE ||
+                property.transactionType === TransactionType.OFF_PLAN ||
+                property.transactionType === TransactionType.COMMERCIAL_SALE ||
+                property.transactionType === TransactionType.LAND_SALE) && (
               <div className="bg-surface p-6 rounded-xl border border-border space-y-6">
                 <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2 flex items-center gap-2">
                   <Calculator size={18} className="text-gold" />
@@ -1525,6 +1531,7 @@ export default function PropertyDetailView({
                   </div>
                 </div>
               </div>
+              )}
 
               {/* REPORT PROPERTY BUTTON */}
               <div className="flex justify-between items-center py-4 text-xs text-ink-muted">

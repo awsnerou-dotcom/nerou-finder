@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Organization, Project, Property, User, LocationItem, Lead, LeadStatus, ListingStatus, PropertyType, TransactionType, VerificationStatus } from "../types.js";
+import { Organization, Project, Property, User, LocationItem, Lead, LeadStatus, ListingStatus, PropertyType, TransactionType, VerificationStatus, RepresentationRequest } from "../types.js";
 import {
   FolderKanban,
   Building2,
@@ -30,7 +30,9 @@ import {
   ShieldCheck,
   MessageSquare,
   Mail,
-  X
+  X,
+  Check,
+  UserCheck
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -59,6 +61,11 @@ interface DeveloperWorkspaceProps {
 export default function DeveloperWorkspace({ developer, currentUser, onRefreshAll, isRtl }: DeveloperWorkspaceProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
+  // Representation Requests panel: pending/resolved requests from agents/agencies asking to
+  // market this developer's own isPlatformDeveloper projects. Keyed by projectId so the panel
+  // can show which project each request is for.
+  const [representationRequests, setRepresentationRequests] = useState<{ projectId: string; projectName: string; request: RepresentationRequest }[]>([]);
+  const [decidingRequestId, setDecidingRequestId] = useState<string | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [adCharges, setAdCharges] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<"dashboard" | "projects" | "inventory" | "leads" | "verification" | "profile">("dashboard");
@@ -217,6 +224,25 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
       const projData = await projRes.json();
       const developerProjects = projData.filter((p: Project) => p.developerId === developer.id);
       setProjects(developerProjects);
+
+      // Representation Requests panel: fetch each of this developer's own projects' pending/
+      // resolved requests from GET /api/projects/:id/representation-requests (ownership-scoped
+      // server-side to this project's own developer org admin / platform admin).
+      const repToken = localStorage.getItem("token");
+      const repHeaders: HeadersInit = repToken ? { Authorization: `Bearer ${repToken}` } : {};
+      const repResults = await Promise.all(
+        developerProjects.map(async (p: Project) => {
+          try {
+            const r = await fetch(`/api/projects/${p.id}/representation-requests`, { headers: repHeaders });
+            if (!r.ok) return [];
+            const reqs: RepresentationRequest[] = await r.json();
+            return reqs.map(request => ({ projectId: p.id, projectName: p.name, request }));
+          } catch {
+            return [];
+          }
+        })
+      );
+      setRepresentationRequests(repResults.flat());
 
       // Get units / properties belonging to these projects or this developer
       const propRes = await fetch(`/api/properties?orgId=${developer.id}&includeAllStatuses=true`);
@@ -438,6 +464,38 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
       method: "PATCH",
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
     }).catch(err => console.error("Failed to mark lead as read:", err));
+  };
+
+  // Approve/reject a pending representation request on one of this developer's own projects.
+  const handleDecideRepresentationRequest = async (projectId: string, requestId: string, status: "APPROVED" | "REJECTED") => {
+    setDecidingRequestId(requestId);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/projects/${projectId}/representation-requests/${requestId}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        setRepresentationRequests(prev => prev.map(r => (r.request.id === requestId ? { ...r, request: { ...r.request, status } } : r)));
+        setToastMessage(
+          status === "APPROVED"
+            ? (isRtl ? "تمت الموافقة على طلب التمثيل." : "Representation request approved.")
+            : (isRtl ? "تم رفض طلب التمثيل." : "Representation request rejected.")
+        );
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToastMessage(data.error || (isRtl ? "تعذر تحديث الطلب." : "Failed to update the request."));
+      }
+    } catch (err) {
+      console.error("Failed to decide representation request", err);
+      setToastMessage(isRtl ? "تعذر تحديث الطلب." : "Failed to update the request.");
+    } finally {
+      setDecidingRequestId(null);
+      setTimeout(() => setToastMessage(""), 4000);
+    }
   };
 
   const handleProjectMediaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1305,6 +1363,67 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                 </button>
               </div>
             </form>
+          )}
+
+          {/* Representation Requests panel - agents/agencies asking to market one of this
+              developer's own platform-listed projects. Only pending requests need action; a
+              resolved one still shows in the list for reference. */}
+          {representationRequests.length > 0 && (
+            <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
+              <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between">
+                <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                  <UserCheck size={14} className="text-gold" />
+                  <span>{isRtl ? "طلبات التمثيل" : "Representation Requests"}</span>
+                </h4>
+                {representationRequests.some(r => r.request.status === "PENDING") && (
+                  <span className="px-2.5 py-1 bg-gold text-black text-[10px] font-bold rounded-full">
+                    {representationRequests.filter(r => r.request.status === "PENDING").length} {isRtl ? "قيد الانتظار" : "pending"}
+                  </span>
+                )}
+              </div>
+              <div className="divide-y divide-surface-2">
+                {representationRequests.map(({ projectId, projectName, request }) => (
+                  <div key={request.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold text-ink">{request.requesterName}</p>
+                      <p className="text-[10px] text-ink-muted">
+                        {isRtl ? "يطلب تمثيل مشروع" : "requesting to represent"} <strong className="text-ink">{projectName}</strong>
+                        {" • "}
+                        {new Date(request.requestedDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {request.status === "PENDING" ? (
+                        <>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            leftIcon={<Check size={13} />}
+                            loading={decidingRequestId === request.id}
+                            onClick={() => handleDecideRepresentationRequest(projectId, request.id, "APPROVED")}
+                          >
+                            {isRtl ? "موافقة" : "Approve"}
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            leftIcon={<X size={13} />}
+                            loading={decidingRequestId === request.id}
+                            onClick={() => handleDecideRepresentationRequest(projectId, request.id, "REJECTED")}
+                          >
+                            {isRtl ? "رفض" : "Reject"}
+                          </Button>
+                        </>
+                      ) : (
+                        <Badge tone={request.status === "APPROVED" ? "success" : "danger"}>
+                          {request.status === "APPROVED" ? (isRtl ? "تمت الموافقة" : "APPROVED") : (isRtl ? "مرفوض" : "REJECTED")}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Project Cards */}

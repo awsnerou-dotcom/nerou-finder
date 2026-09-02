@@ -23,6 +23,8 @@ import {
   TransactionType,
   Lead,
   Property,
+  Project,
+  RepresentationRequest,
   AdCampaign,
   AuditLog,
   SupportReport,
@@ -556,6 +558,14 @@ function getGeminiClient(): GoogleGenAI {
     });
   }
   return aiClient;
+}
+
+// Normalizes a free-text string for loose duplicate matching (project names entered
+// independently by different agents/agencies for the same real-world development often differ
+// only in casing/whitespace). Mirrors the same lowercase/collapse-whitespace approach as the
+// existing informational duplicate-listing check in POST /api/properties.
+function normalizeForDuplicateMatch(s: string | undefined | null): string {
+  return (s || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 // Helper to log platform audits
@@ -1728,6 +1738,35 @@ app.post("/api/properties", authMiddleware, (req, res) => {
     }
   }
 
+  // Developer-project authorization gate: previously POST /api/properties accepted a
+  // projectId from any AGENT/AGENCY_ADMIN with zero check that they were authorized to attach
+  // a listing to that project. A project only has a real account to protect impersonation of
+  // when isPlatformDeveloper is true - in that case, attaching a listing requires being the
+  // project's own creator, a member of the developer's own organization, or an
+  // agent/org explicitly approved via the representation-request flow (or a platform admin).
+  // A project with isPlatformDeveloper false has no such account - any listing-creator role
+  // may freely attach to it (full responsibility sits with the listing agent/agency, same as
+  // any other listing field they publish).
+  if (propData.projectId) {
+    const project = db.projects.find(p => p.id === propData.projectId);
+    if (!project) {
+      return res.status(400).json({ error: "The referenced project was not found." });
+    }
+    if (project.isPlatformDeveloper) {
+      const isPlatformAdminActor = actorRole === UserRole.PLATFORM_ADMIN;
+      const isProjectCreator = actorId === project.createdByUserId;
+      const isProjectOrgMember = !!actor?.orgId && actor.orgId === project.developerId;
+      const isAuthorizedOrg = !!actor?.orgId && !!project.authorizedOrgIds?.includes(actor.orgId);
+      const isAuthorizedAgent = !!project.authorizedAgentIds?.includes(actorId);
+      if (!isProjectCreator && !isProjectOrgMember && !isAuthorizedOrg && !isAuthorizedAgent && !isPlatformAdminActor) {
+        return res.status(403).json({
+          error: "You are not an authorized representative of this developer's project. Request representation first.",
+          projectId: project.id
+        });
+      }
+    }
+  }
+
   let qualityScore = 70; // Base score
   if (propData.description && propData.description.length > 100) qualityScore += 10;
   if (propData.images && propData.images.length >= 3) qualityScore += 10;
@@ -2304,9 +2343,17 @@ app.post("/api/leads", publicWriteRateLimiter, (req, res) => {
   } else if (projectId) {
     const project = db.projects.find(p => p.id === projectId);
     if (project) {
-      orgId = project.developerId;
-      const developerAdmin = db.users.find(u => u.orgId === project.developerId && u.role === UserRole.DEVELOPER_ADMIN);
-      agentId = developerAdmin?.id;
+      if (project.isPlatformDeveloper && project.developerId) {
+        orgId = project.developerId;
+        const developerAdmin = db.users.find(u => u.orgId === project.developerId && u.role === UserRole.DEVELOPER_ADMIN);
+        agentId = developerAdmin?.id;
+      } else {
+        // Off-platform developer - there's no developer account to route this to, so the lead
+        // goes to whichever agent/agency actually submitted (and is responsible for) this
+        // project entry, same as any other listing lead.
+        orgId = project.createdByOrgId;
+        agentId = project.createdByUserId;
+      }
     }
   }
 
@@ -2690,19 +2737,117 @@ app.get("/api/projects", (req, res) => {
   res.json(db.projects);
 });
 
+// Only listing-capable roles may ever create a Project. Previously this endpoint had no role
+// restriction at all, and `developerId: projData.developerId || actorId` let any authenticated
+// caller create a "project" claiming any developerId they wanted (or silently act as if they
+// themselves were the developer). Mirrors LISTING_CREATOR_ROLES used by POST /api/properties.
+const PROJECT_CREATOR_ROLES = [UserRole.AGENT, UserRole.AGENCY_ADMIN, UserRole.DEVELOPER_ADMIN, UserRole.PLATFORM_ADMIN];
+
 app.post("/api/projects", authMiddleware, (req, res) => {
   const db = readDb();
   const projData = req.body;
-  const id = `proj-${Date.now()}`;
 
   const authReq = req as AuthenticatedRequest;
   const actorId = authReq.user?.id || "unknown";
   const actorName = authReq.user?.fullName || "Developer";
-  const actorRole = authReq.user?.role || UserRole.DEVELOPER_ADMIN;
+  const actorRole = (authReq.user?.role as UserRole) || UserRole.DEVELOPER_ADMIN;
+  const actor = db.users.find(u => u.id === actorId);
 
-  const newProject = {
+  if (!PROJECT_CREATOR_ROLES.includes(actorRole)) {
+    return res.status(403).json({ error: "Your account type is not permitted to create developer projects." });
+  }
+
+  const REQUIRED_CREATE_FIELDS = ["name", "description", "city", "district"];
+  const missing = REQUIRED_CREATE_FIELDS.filter(f => !projData[f] || (typeof projData[f] === "string" && !projData[f].trim()));
+  if (missing.length > 0) {
+    return res.status(400).json({ error: `Missing required field(s): ${missing.join(", ")}` });
+  }
+
+  // Resolve developerId/isPlatformDeveloper/developerName server-side only - never trust the
+  // client for any of these. This is the actual security fix: a non-DEVELOPER_ADMIN/
+  // non-PLATFORM_ADMIN caller can never set isPlatformDeveloper true or attach to a real
+  // developerId they don't own, regardless of what the request body claims.
+  let developerId: string | undefined;
+  let isPlatformDeveloper = false;
+  let developerName: string;
+  let developerNameAr: string | undefined;
+
+  if (actorRole === UserRole.DEVELOPER_ADMIN) {
+    if (!actor?.orgId) {
+      return res.status(403).json({ error: "Your account is not linked to a developer organization." });
+    }
+    const org = db.organizations.find(o => o.id === actor.orgId && o.type === OrganizationType.DEVELOPER);
+    if (!org) {
+      return res.status(403).json({ error: "Your account is not linked to a developer organization." });
+    }
+    developerId = org.id;
+    isPlatformDeveloper = true;
+    developerName = org.name;
+    developerNameAr = projData.developerNameAr || org.nameAr || org.name;
+  } else if (actorRole === UserRole.PLATFORM_ADMIN) {
+    // A platform admin may still explicitly attribute a project to an existing platform
+    // developer org (e.g. support/back-office entry on the developer's behalf) - but only to
+    // an org that genuinely exists and is a DEVELOPER org, never an arbitrary id.
+    const org = projData.developerId ? db.organizations.find(o => o.id === projData.developerId && o.type === OrganizationType.DEVELOPER) : undefined;
+    if (org) {
+      developerId = org.id;
+      isPlatformDeveloper = true;
+      developerName = projData.developerName || org.name;
+      developerNameAr = projData.developerNameAr || org.nameAr || developerName;
+    } else {
+      if (!projData.developerName || !String(projData.developerName).trim()) {
+        return res.status(400).json({ error: "developerName is required when not attaching to an existing platform developer." });
+      }
+      developerId = undefined;
+      isPlatformDeveloper = false;
+      developerName = projData.developerName;
+      developerNameAr = projData.developerNameAr;
+    }
+  } else {
+    // AGENT / AGENCY_ADMIN representing a real-world developer that has no platform account.
+    // There is no account here to protect from impersonation, so no authorization gate applies
+    // - but a plain developerName is required since there's no org to resolve one from.
+    if (!projData.developerName || !String(projData.developerName).trim()) {
+      return res.status(400).json({ error: "developerName is required (the real-world developer's name)." });
+    }
+    developerId = undefined;
+    isPlatformDeveloper = false;
+    developerName = projData.developerName;
+    developerNameAr = projData.developerNameAr;
+  }
+
+  // Soft duplicate-project guard for the isPlatformDeveloper:false path only - the whole point
+  // of that path is multiple agents/agencies independently entering the *same* real-world,
+  // off-platform development. Without this, each one would silently create its own duplicate
+  // Project row instead of grouping under one project with multiple "Represented by" listings.
+  // Matches the existing informational duplicate-listing check's normalization approach.
+  if (!isPlatformDeveloper) {
+    const normName = normalizeForDuplicateMatch(projData.name);
+    const normNameAr = normalizeForDuplicateMatch(projData.nameAr);
+    const normDistrict = normalizeForDuplicateMatch(projData.district);
+    const existingMatch = db.projects.find(p => {
+      if (normalizeForDuplicateMatch(p.district) !== normDistrict) return false;
+      const pName = normalizeForDuplicateMatch(p.name);
+      const pNameAr = normalizeForDuplicateMatch(p.nameAr);
+      return (normName && pName === normName) || (normNameAr && pNameAr && pNameAr === normNameAr);
+    });
+    if (existingMatch) {
+      return res.status(409).json({
+        error: "A project with this name and district already exists. Attach your listing to the existing project instead of creating a duplicate.",
+        existingProject: { id: existingMatch.id, name: existingMatch.name, nameAr: existingMatch.nameAr, district: existingMatch.district }
+      });
+    }
+  }
+
+  const id = `proj-${Date.now()}`;
+  const newProject: Project = {
     id,
-    developerId: projData.developerId || actorId, // Organization id (matches how projects are looked up), falls back to actor id if omitted
+    developerId,
+    developerName,
+    developerNameAr,
+    isPlatformDeveloper,
+    createdByUserId: actorId,
+    createdByOrgId: actor?.orgId || undefined,
     name: projData.name,
     nameAr: projData.nameAr || projData.name,
     description: projData.description,
@@ -2715,7 +2860,10 @@ app.post("/api/projects", authMiddleware, (req, res) => {
     // server-db.ts's prisma.project.upsert), so this needs no schema migration - it's
     // simply included in the object that already gets serialized wholesale.
     brochureUrl: projData.brochureUrl || undefined,
-    createdDate: new Date().toISOString()
+    createdDate: new Date().toISOString(),
+    authorizedAgentIds: [],
+    authorizedOrgIds: [],
+    representationRequests: []
   };
 
   db.projects.unshift(newProject);
@@ -2728,10 +2876,151 @@ app.post("/api/projects", authMiddleware, (req, res) => {
     "CREATE_PROJECT",
     id,
     "Project",
-    { name: newProject.name }
+    { name: newProject.name, isPlatformDeveloper }
   );
 
   res.json(newProject);
+});
+
+// An AGENT/AGENCY_ADMIN requests authorization to represent (attach Property listings to) a
+// platform-developer's Project. Only meaningful when the target project is isPlatformDeveloper
+// - there's no account to ask permission from otherwise.
+app.post("/api/projects/:id/representation-requests", authMiddleware, (req, res) => {
+  const db = readDb();
+  const project = db.projects.find(p => p.id === req.params.id);
+  if (!project) return res.status(404).json({ error: "Project not found." });
+  if (!project.isPlatformDeveloper) {
+    return res.status(400).json({ error: "This project has no platform developer account to request representation from." });
+  }
+
+  const authReq = req as AuthenticatedRequest;
+  const actorId = authReq.user?.id || "unknown";
+  const actorRole = (authReq.user?.role as UserRole) || UserRole.AGENT;
+  if (actorRole !== UserRole.AGENT && actorRole !== UserRole.AGENCY_ADMIN) {
+    return res.status(403).json({ error: "Only agents or agency admins may request representation of a developer project." });
+  }
+  const actor = db.users.find(u => u.id === actorId);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  if (!project.representationRequests) project.representationRequests = [];
+
+  // Already authorized - nothing to request.
+  const alreadyAuthorized = project.authorizedAgentIds?.includes(actorId) || (actor.orgId && project.authorizedOrgIds?.includes(actor.orgId));
+  if (alreadyAuthorized) {
+    return res.status(400).json({ error: "You are already an authorized representative of this project." });
+  }
+  const existingPending = project.representationRequests.find(r => r.requesterUserId === actorId && r.status === "PENDING");
+  if (existingPending) {
+    return res.status(400).json({ error: "You already have a pending representation request for this project.", request: existingPending });
+  }
+
+  const newRequest: RepresentationRequest = {
+    id: `rep-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    requesterUserId: actorId,
+    requesterOrgId: actor.orgId,
+    requesterName: actor.fullName,
+    status: "PENDING",
+    requestedDate: new Date().toISOString()
+  };
+  project.representationRequests.unshift(newRequest);
+  writeDb(db);
+
+  logAudit(actorId, actor.fullName, actorRole, "REQUEST_PROJECT_REPRESENTATION", project.id, "Project", { requestId: newRequest.id });
+
+  res.json({ success: true, request: newRequest });
+});
+
+// The project's own developer org admin (or a platform admin) lists/approves/rejects
+// representation requests. Ownership check mirrors PATCH /api/leads/:id/read's style.
+app.get("/api/projects/:id/representation-requests", authMiddleware, (req, res) => {
+  const db = readDb();
+  const project = db.projects.find(p => p.id === req.params.id);
+  if (!project) return res.status(404).json({ error: "Project not found." });
+
+  const authReq = req as AuthenticatedRequest;
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const isPlatformAdmin = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
+  const isOwnCreator = actor.id === project.createdByUserId;
+  const isOwnOrgAdmin = !!project.developerId && actor.orgId === project.developerId && actor.role === UserRole.DEVELOPER_ADMIN;
+  if (!isOwnCreator && !isOwnOrgAdmin && !isPlatformAdmin) {
+    return res.status(403).json({ error: "You are not authorized to view this project's representation requests." });
+  }
+
+  res.json(project.representationRequests || []);
+});
+
+app.patch("/api/projects/:id/representation-requests/:requestId", authMiddleware, (req, res) => {
+  const db = readDb();
+  const project = db.projects.find(p => p.id === req.params.id);
+  if (!project) return res.status(404).json({ error: "Project not found." });
+
+  const { status } = req.body;
+  if (status !== "APPROVED" && status !== "REJECTED") {
+    return res.status(400).json({ error: "status must be APPROVED or REJECTED." });
+  }
+
+  const authReq = req as AuthenticatedRequest;
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(404).json({ error: "User not found." });
+
+  const isPlatformAdmin = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
+  const isOwnCreator = actor.id === project.createdByUserId;
+  const isOwnOrgAdmin = !!project.developerId && actor.orgId === project.developerId && actor.role === UserRole.DEVELOPER_ADMIN;
+  if (!isOwnCreator && !isOwnOrgAdmin && !isPlatformAdmin) {
+    return res.status(403).json({ error: "You are not authorized to act on this project's representation requests." });
+  }
+
+  const request = (project.representationRequests || []).find(r => r.id === req.params.requestId);
+  if (!request) return res.status(404).json({ error: "Representation request not found." });
+  if (request.status !== "PENDING") {
+    return res.status(400).json({ error: `This request was already ${request.status.toLowerCase()}.` });
+  }
+
+  request.status = status;
+
+  if (status === "APPROVED") {
+    if (!project.authorizedAgentIds) project.authorizedAgentIds = [];
+    if (!project.authorizedAgentIds.includes(request.requesterUserId)) {
+      project.authorizedAgentIds.push(request.requesterUserId);
+    }
+    if (request.requesterOrgId) {
+      if (!project.authorizedOrgIds) project.authorizedOrgIds = [];
+      if (!project.authorizedOrgIds.includes(request.requesterOrgId)) {
+        project.authorizedOrgIds.push(request.requesterOrgId);
+      }
+    }
+  }
+
+  writeDb(db);
+
+  logAudit(
+    actor.id,
+    actor.fullName,
+    actor.role,
+    status === "APPROVED" ? "APPROVE_PROJECT_REPRESENTATION" : "REJECT_PROJECT_REPRESENTATION",
+    project.id,
+    "Project",
+    { requestId: request.id, requesterUserId: request.requesterUserId }
+  );
+
+  // Notify the requester of the outcome.
+  const requester = db.users.find(u => u.id === request.requesterUserId);
+  if (requester?.email) {
+    sendMockEmail(
+      requester.email,
+      `[Nerou Finder] Representation Request ${status === "APPROVED" ? "Approved" : "Rejected"}: ${project.name}`,
+      generateNotificationEmailHtml(
+        status === "APPROVED" ? "Representation Request Approved" : "Representation Request Rejected",
+        requester.fullName,
+        `<p>Your request to represent <strong>${project.name}</strong> has been ${status === "APPROVED" ? "approved. You may now attach listings to this project." : "rejected."}</p>`
+      ),
+      "project_representation_decision"
+    );
+  }
+
+  res.json({ success: true, project });
 });
 
 

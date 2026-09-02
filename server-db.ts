@@ -228,10 +228,19 @@ const DEFAULT_ORGANIZATIONS: Organization[] = [
   }
 ];
 
+// Both seed projects were originally submitted straight from the platform developer org
+// itself (org-developer-1 / user-developer-admin), before isPlatformDeveloper/developerName/
+// createdByUserId existed - backfilled here so no pre-existing record is left with a
+// required-looking field undefined.
 const DEFAULT_PROJECTS: Project[] = [
   {
     id: "proj-1",
     developerId: "org-developer-1",
+    developerName: "Al Shamal Developments",
+    developerNameAr: "تطوير الشمال",
+    isPlatformDeveloper: true,
+    createdByUserId: "user-developer-admin",
+    createdByOrgId: "org-developer-1",
     name: "Marina Heights Lusail",
     nameAr: "أبراج مارينا لوسيل",
     description: "Premium high-rise residential towers offering scenic views of the Lusail Yacht Marina. Features smart home technology, temperature-controlled pool, and 24/7 private concierge.",
@@ -249,6 +258,11 @@ const DEFAULT_PROJECTS: Project[] = [
   {
     id: "proj-2",
     developerId: "org-developer-1",
+    developerName: "Al Shamal Developments",
+    developerNameAr: "تطوير الشمال",
+    isPlatformDeveloper: true,
+    createdByUserId: "user-developer-admin",
+    createdByOrgId: "org-developer-1",
     name: "Pearl Breeze Villas",
     nameAr: "فلل نسيم اللؤلؤة",
     description: "Ultra-luxurious beachfront villas with private yacht berths, beach access, and state-of-the-art security.",
@@ -1045,6 +1059,28 @@ export function ensureStateDefaults(db: DatabaseState): void {
   if (!db.verificationDocuments) db.verificationDocuments = [];
   if (!db.adCharges) db.adCharges = [];
   if (!db.aiConfig) db.aiConfig = DEFAULT_AI_CONFIG;
+
+  // Backfill Project.developerName/isPlatformDeveloper/createdByUserId for any project record
+  // persisted before these fields existed (this app's Postgres store is the sole source of
+  // truth - restarting the server never re-seeds it from DEFAULT_PROJECTS once users exist, so
+  // pre-existing rows need this same self-healing treatment `locations`/`legalDocuments` above
+  // already get). Best-effort resolution mirrors how ProjectsView.tsx already resolves a
+  // project's developer display name today: look up developerId against organizations.
+  if (db.projects) {
+    for (const proj of db.projects as any[]) {
+      if (proj.isPlatformDeveloper === undefined) {
+        const org = db.organizations.find(o => o.id === proj.developerId && o.type === OrganizationType.DEVELOPER);
+        proj.isPlatformDeveloper = !!org;
+        if (!proj.developerName) proj.developerName = org?.name || "Verified Developer";
+        if (!proj.developerNameAr) proj.developerNameAr = org?.nameAr || proj.developerName;
+        if (!proj.createdByUserId) {
+          const admin = org ? db.users.find(u => u.orgId === org.id && u.role === UserRole.DEVELOPER_ADMIN) : undefined;
+          proj.createdByUserId = admin?.id || proj.developerId || "unknown";
+        }
+        if (org && !proj.createdByOrgId) proj.createdByOrgId = org.id;
+      }
+    }
+  }
 }
 
 

@@ -1796,7 +1796,7 @@ export default function VisitorExperience({
         />
       )}
 
-      {currentTab === "PROJECTS" && <ProjectsView isRtl={isRtl} organizations={organizations} />}
+      {currentTab === "PROJECTS" && <ProjectsView isRtl={isRtl} organizations={organizations} users={users} />}
       {currentTab === "PLANS" && (
         <PlansPricingView
           isRtl={isRtl}

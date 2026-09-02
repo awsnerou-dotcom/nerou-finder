@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Property,
+  Project,
   Lead,
   LeadStatus,
   User,
@@ -295,6 +296,22 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [selectedMunicipality, setSelectedMunicipality] = useState<string>("");
   const [selectedArea, setSelectedArea] = useState<string>("");
 
+  // "Link to a developer project" (optional) - lets an agent attach this unit to an existing
+  // developer Project, or enter a brand-new one inline for a real-world developer that has no
+  // platform account (isPlatformDeveloper: false; full responsibility sits with this agent,
+  // same as any other listing field they publish). Attaching to an existing isPlatformDeveloper
+  // project this agent isn't authorized for is handled by the 403 flow in handleAddListing below.
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [linkedProjectId, setLinkedProjectId] = useState<string>("");
+  const [creatingNewProject, setCreatingNewProject] = useState<boolean>(false);
+  const [newProjectName, setNewProjectName] = useState<string>("");
+  const [newProjectDeveloperName, setNewProjectDeveloperName] = useState<string>("");
+  const [newProjectDistrict, setNewProjectDistrict] = useState<string>("");
+  // Set when POST /api/properties 403s because this project requires developer authorization -
+  // surfaces the error plus a "Request representation" action instead of a generic failure.
+  const [projectAuthError, setProjectAuthError] = useState<{ projectId: string; message: string } | null>(null);
+  const [requestingRepresentation, setRequestingRepresentation] = useState<boolean>(false);
+
   const [listingDesc, setListingDesc] = useState<string>("");
   // Optional Arabic-language description. If left blank, the server mirrors the English
   // `description` into `descriptionAr` so the listing still has *something* for Arabic-locale
@@ -394,6 +411,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
   useEffect(() => {
     fetchLeadsAndProperties();
+    // Load the developer project catalog for the "Link to a developer project" selector.
+    fetch("/api/projects")
+      .then(res => res.json())
+      .then((data: Project[]) => setAllProjects(data))
+      .catch(e => console.error("Error fetching projects:", e));
     // Load central dynamic locations list
     fetch("/api/locations")
       .then(res => res.json())
@@ -875,11 +897,57 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     const finalCity = muniItem ? muniItem.name : "Doha";
     const finalDistrict = areaItem ? areaItem.name : "West Bay";
 
+    setProjectAuthError(null);
+
     try {
       const token = localStorage.getItem("token");
       const headers: HeadersInit = { "Content-Type": "application/json" };
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      // "Link to a developer project": if the agent is entering a brand-new, not-on-platform
+      // project inline, create it first (no developerId - the server resolves
+      // isPlatformDeveloper: false for an AGENT/AGENCY_ADMIN caller) and use its id below.
+      let resolvedProjectId = linkedProjectId || undefined;
+      if (creatingNewProject && newProjectName.trim() && newProjectDistrict.trim() && newProjectDeveloperName.trim()) {
+        const projRes = await fetch("/api/projects", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            name: newProjectName,
+            developerName: newProjectDeveloperName,
+            description: `${newProjectName} - ${isRtl ? "مشروع مطوّر خارج المنصة" : "off-platform developer project"}`,
+            city: finalCity,
+            district: newProjectDistrict
+          })
+        });
+        if (projRes.status === 409) {
+          // Soft duplicate guard tripped - a project with this name+district already exists.
+          // Don't create a second one; attach to the existing project instead and let the agent
+          // review/resubmit rather than silently proceeding.
+          const dupData = await projRes.json().catch(() => ({}));
+          setCreatingNewProject(false);
+          setLinkedProjectId(dupData.existingProject?.id || "");
+          setNewProjectName("");
+          setNewProjectDistrict("");
+          setToastMessage(
+            isRtl
+              ? `يوجد مشروع مطابق بالفعل باسم "${dupData.existingProject?.name}" - تم اختياره تلقائياً. راجع ثم أعد الحفظ.`
+              : `A matching project "${dupData.existingProject?.name}" already exists - it has been selected for you. Review and save again.`
+          );
+          setTimeout(() => setToastMessage(""), 7000);
+          return;
+        }
+        if (!projRes.ok) {
+          const projErr = await projRes.json().catch(() => ({}));
+          setToastMessage(projErr.error || (isRtl ? "تعذر إنشاء المشروع." : "Failed to create the project."));
+          setTimeout(() => setToastMessage(""), 6000);
+          return;
+        }
+        const newProj = await projRes.json();
+        resolvedProjectId = newProj.id;
+        setAllProjects(prev => [newProj, ...prev]);
       }
 
       const res = await fetch("/api/properties", {
@@ -906,6 +974,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           amenities: listingAmenities.split(",").map(a => a.trim()),
           agentId: agent.id,
           orgId: agent.orgId,
+          projectId: resolvedProjectId,
           actorId: agent.id,
           actorName: agent.fullName,
           actorRole: agent.role,
@@ -942,6 +1011,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         setListingParkingType("");
         setListingParkingSpaces("");
         setListingTenureType("");
+        setLinkedProjectId("");
+        setCreatingNewProject(false);
+        setNewProjectName("");
+        setNewProjectDeveloperName("");
+        setNewProjectDistrict("");
+        setProjectAuthError(null);
         // Draft fully consumed - clear it so a stale draft doesn't reappear on next visit.
         try { localStorage.removeItem(listingDraftKey); } catch (e) { console.error(e); }
         fetchLeadsAndProperties();
@@ -968,13 +1043,50 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         // Surface the backend's exact error (e.g. the Agency Authorization Letter gate for
         // INDEPENDENT_AGENT) instead of a generic message, so the agent knows exactly what's missing.
         const data = await res.json().catch(() => ({}));
-        setToastMessage(data.error || (isRtl ? "تعذر إضافة العقار. يرجى المحاولة مرة أخرى." : "Failed to add the property listing. Please try again."));
-        setTimeout(() => setToastMessage(""), 6000);
+        if (res.status === 403 && data.projectId) {
+          // Not (yet) an authorized representative of this platform-developer's project -
+          // surface a dedicated banner with a "Request representation" action instead of a
+          // generic failure toast.
+          setProjectAuthError({ projectId: data.projectId, message: data.error });
+        } else {
+          setToastMessage(data.error || (isRtl ? "تعذر إضافة العقار. يرجى المحاولة مرة أخرى." : "Failed to add the property listing. Please try again."));
+          setTimeout(() => setToastMessage(""), 6000);
+        }
       }
     } catch (err) {
       console.error("Failed to add property listing", err);
       setToastMessage(isRtl ? "تعذر إضافة العقار. يرجى المحاولة مرة أخرى." : "Failed to add the property listing. Please try again.");
       setTimeout(() => setToastMessage(""), 5000);
+    }
+  };
+
+  // Fired from the "Request representation" banner shown after a 403 on POST /api/properties
+  // for an isPlatformDeveloper project this agent isn't (yet) authorized for.
+  const handleRequestRepresentation = async () => {
+    if (!projectAuthError) return;
+    setRequestingRepresentation(true);
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch(`/api/projects/${projectAuthError.projectId}/representation-requests`, {
+        method: "POST",
+        headers
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setToastMessage(isRtl ? "تم إرسال طلب التمثيل إلى المطور. سيتم إعلامك عند الموافقة." : "Representation request sent to the developer. You'll be notified once approved.");
+        setProjectAuthError(null);
+      } else {
+        setToastMessage(data.error || (isRtl ? "تعذر إرسال طلب التمثيل." : "Failed to send the representation request."));
+      }
+      setTimeout(() => setToastMessage(""), 5000);
+    } catch (err) {
+      console.error("Failed to request representation", err);
+      setToastMessage(isRtl ? "تعذر إرسال طلب التمثيل." : "Failed to send the representation request.");
+      setTimeout(() => setToastMessage(""), 5000);
+    } finally {
+      setRequestingRepresentation(false);
     }
   };
 
@@ -2226,6 +2338,94 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         : "If you leave this blank, visitors browsing the site in Arabic will see your English description above instead of a translation."}
                     </p>
                   </div>
+
+                  {/* Link to a developer project (optional) - either pick an existing project
+                      from the catalog, or enter a brand-new real-world project inline that has
+                      no platform account of its own. */}
+                  <div className="border-t border-surface-2 pt-4 space-y-2">
+                    <label className="block font-medium text-ink-muted mb-1 flex items-center gap-1.5">
+                      <Building size={13} className="text-gold" />
+                      <span>{isRtl ? "ربط بمشروع تطوير (اختياري)" : "Link to a developer project (optional)"}</span>
+                    </label>
+                    {!creatingNewProject ? (
+                      <>
+                        <select
+                          value={linkedProjectId}
+                          onChange={(e) => setLinkedProjectId(e.target.value)}
+                          className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
+                        >
+                          <option value="">{isRtl ? "بدون مشروع" : "No project"}</option>
+                          {allProjects.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} — {p.developerName}{p.isPlatformDeveloper ? "" : (isRtl ? " (خارج المنصة)" : " (off-platform)")}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => { setCreatingNewProject(true); setLinkedProjectId(""); }}
+                          className="text-[10px] text-gold underline cursor-pointer"
+                        >
+                          {isRtl ? "+ إدخال مشروع جديد غير مسجل بالمنصة" : "+ Enter a new project not yet on the platform"}
+                        </button>
+                      </>
+                    ) : (
+                      <div className="space-y-2 bg-canvas border border-border rounded-lg p-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            value={newProjectName}
+                            onChange={(e) => setNewProjectName(e.target.value)}
+                            placeholder={isRtl ? "اسم المشروع" : "Project name"}
+                            className="w-full px-3 py-2 bg-surface border border-border rounded-lg"
+                          />
+                          <input
+                            type="text"
+                            value={newProjectDeveloperName}
+                            onChange={(e) => setNewProjectDeveloperName(e.target.value)}
+                            placeholder={isRtl ? "اسم المطور" : "Developer name"}
+                            className="w-full px-3 py-2 bg-surface border border-border rounded-lg"
+                          />
+                          <input
+                            type="text"
+                            value={newProjectDistrict}
+                            onChange={(e) => setNewProjectDistrict(e.target.value)}
+                            placeholder={isRtl ? "الحي / المنطقة" : "District / Area"}
+                            className="w-full px-3 py-2 bg-surface border border-border rounded-lg sm:col-span-2"
+                          />
+                        </div>
+                        <p className="text-[10px] text-ink-muted">
+                          {isRtl
+                            ? "هذا المشروع غير مسجل على المنصة - أنت المسؤول الكامل عن دقة بيانات هذا الإعلان."
+                            : "This developer has no platform account - you (as the listing agent/agency) carry full responsibility for this listing, same as any other."}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => { setCreatingNewProject(false); setNewProjectName(""); setNewProjectDeveloperName(""); setNewProjectDistrict(""); }}
+                          className="text-[10px] text-ink-muted underline cursor-pointer"
+                        >
+                          {isRtl ? "إلغاء وإظهار قائمة المشاريع الحالية" : "Cancel and show the existing project list"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Surfaced when POST /api/properties 403s because this is an
+                      isPlatformDeveloper project the agent isn't (yet) authorized for. */}
+                  {projectAuthError && (
+                    <div className="p-3 bg-warning-soft border border-warning/30 rounded-lg space-y-2 text-[11px]">
+                      <p className="font-semibold text-ink">{projectAuthError.message}</p>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        loading={requestingRepresentation}
+                        onClick={handleRequestRepresentation}
+                      >
+                        {isRtl ? "طلب تمثيل هذا المشروع" : "Request representation"}
+                      </Button>
+                    </div>
+                  )}
 
                   {(() => {
                     const muniItem = locations.find(l => l.id === selectedMunicipality);

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { Sparkles, Building2, Calendar, MapPin, Download, ArrowRight, CheckCircle2, ChevronRight, X, DollarSign } from "lucide-react";
-import { Project, Organization } from "../types.js";
+import { Sparkles, Building2, Calendar, MapPin, Download, ArrowRight, CheckCircle2, ChevronRight, X, DollarSign, UserCheck } from "lucide-react";
+import { Project, Organization, User } from "../types.js";
 
 interface ProjectsViewProps {
   isRtl: boolean;
   organizations: Organization[];
+  users: User[];
 }
 
-export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps) {
+export default function ProjectsView({ isRtl, organizations, users }: ProjectsViewProps) {
   const [selectedProject, setSelectedProject] = useState<any | null>(null);
   const [inquiryName, setInquiryName] = useState("");
   const [inquiryPhone, setInquiryPhone] = useState("");
@@ -23,15 +24,35 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
   }, []);
 
   const developerProjects = liveProjects.map(proj => {
-    const org = organizations.find(o => o.id === proj.developerId);
-    const developerName = org?.name || "Verified Developer";
-    const developerNameAr = org?.nameAr || developerName;
+    // A platform-developer project's display name still resolves live against the
+    // Organization record (in case the org later renames itself); an off-platform project's
+    // developerName is plain free text the submitting agent/agency typed in, so it's used as-is.
+    const org = proj.isPlatformDeveloper ? organizations.find(o => o.id === proj.developerId) : undefined;
+    const developerName = org?.name || proj.developerName || "Verified Developer";
+    const developerNameAr = org?.nameAr || proj.developerNameAr || developerName;
+
+    // "Represented by" attribution - only relevant when this project has no platform developer
+    // account of its own, i.e. an agent/agency entered it on behalf of a real-world developer.
+    // Resolves the representing agent/agency's display name the same way agent/org names are
+    // already resolved elsewhere in this app (agent full name, or their org's name).
+    let representedBy: string | undefined;
+    let representedByAr: string | undefined;
+    if (!proj.isPlatformDeveloper) {
+      const creatorOrg = proj.createdByOrgId ? organizations.find(o => o.id === proj.createdByOrgId) : undefined;
+      const creatorUser = users.find(u => u.id === proj.createdByUserId);
+      representedBy = creatorOrg?.name || creatorUser?.fullName;
+      representedByAr = creatorOrg?.nameAr || creatorOrg?.name || creatorUser?.fullName;
+    }
+
     return {
       id: proj.id,
       name: proj.name,
       nameAr: proj.nameAr || proj.name,
       developer: developerName,
       developerAr: developerNameAr,
+      isPlatformDeveloper: proj.isPlatformDeveloper,
+      representedBy,
+      representedByAr,
       location: `${proj.district}, ${proj.city}`,
       locationAr: `${proj.district}، ${proj.city}`,
       price: "Contact for Pricing",
@@ -133,6 +154,18 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
                 <p className="text-xs text-ink-muted line-clamp-3 mt-1 leading-relaxed">
                   {isRtl ? proj.descriptionAr : proj.description}
                 </p>
+                {/* Off-platform developer: this project has no real developer account of its
+                    own, so full responsibility for it sits with the agent/agency who entered
+                    it - shown transparently rather than implying a verified developer account. */}
+                {!proj.isPlatformDeveloper && (proj.representedBy || proj.representedByAr) && (
+                  <div className="flex items-center gap-1.5 text-[10px] text-ink-muted pt-1">
+                    <UserCheck size={12} className="text-gold shrink-0" />
+                    <span>
+                      {isRtl ? "بواسطة: " : "Represented by: "}
+                      <strong className="text-ink">{isRtl ? (proj.representedByAr || proj.representedBy) : (proj.representedBy || proj.representedByAr)}</strong>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -166,6 +199,15 @@ export default function ProjectsView({ isRtl, organizations }: ProjectsViewProps
                 <h3 className="font-serif text-lg font-bold text-ink">
                   {isRtl ? selectedProject.nameAr : selectedProject.name}
                 </h3>
+                {!selectedProject.isPlatformDeveloper && (selectedProject.representedBy || selectedProject.representedByAr) && (
+                  <div className="flex items-center gap-1.5 text-[10px] text-ink-muted pt-1">
+                    <UserCheck size={12} className="text-gold shrink-0" />
+                    <span>
+                      {isRtl ? "بواسطة: " : "Represented by: "}
+                      <strong className="text-ink">{isRtl ? (selectedProject.representedByAr || selectedProject.representedBy) : (selectedProject.representedBy || selectedProject.representedByAr)}</strong>
+                    </span>
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => setSelectedProject(null)}
