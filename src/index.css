@@ -14,8 +14,16 @@
    from it automatically pick up the new values with no rebuild.
    ========================================================================== */
 @theme {
-  --font-serif: "Playfair Display", "Amiri", ui-serif, Georgia, serif;
-  --font-sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Fraunces (Latin display) / El Messiri (Arabic display) - a warmer, more characterful
+     serif pairing than the previous Playfair+Amiri combination, chosen specifically to move
+     away from the extremely common "AI-template" serif-headline signature. Falls back
+     per-character: Latin text renders in Fraunces, Arabic text automatically falls through to
+     El Messiri since Fraunces has no Arabic glyphs - same mechanism the old stack relied on. */
+  --font-serif: "Fraunces", "El Messiri", ui-serif, Georgia, serif;
+  /* Manrope (Latin UI) / Tajawal (Arabic UI) - replaces Inter, one of the most recognizable
+     "default SaaS" sans faces, with a pairing that reads as deliberately chosen rather than
+     templated, while keeping Manrope's excellent legibility at small UI sizes. */
+  --font-sans: "Manrope", "Tajawal", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* Surfaces */
   --color-canvas: var(--canvas);       /* page background */
