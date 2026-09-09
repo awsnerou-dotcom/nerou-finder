@@ -21,6 +21,7 @@ import {
   ListingStatus,
   LeadStatus,
   TransactionType,
+  PropertyType,
   Lead,
   Property,
   Project,
@@ -48,6 +49,7 @@ import {
   DEFAULT_BOOST_CAP_FALLBACK,
   JobApplication,
   Invitation,
+  FeedSource,
   Organization,
   OrganizationType,
   AgentType,
@@ -3295,6 +3297,54 @@ app.patch("/api/organizations/:id", authMiddleware, (req, res) => {
 // ORGANIZATION TEAM INVITATIONS & LEAD ROUTING POLICY
 // -----------------------------------------------------------------------------
 
+// Creates (or reuses an existing PENDING) team invitation for `email` under `orgId`, and sends
+// the invite email - the single source of truth for this logic, shared by the manual
+// POST /api/organizations/:id/invite endpoint below and the Partner Feed Import agent
+// auto-invitation flow (see syncFeedSource) so a newly-discovered feed agent always goes
+// through the exact same real accept-a-real-invitation path as any other invited agent,
+// never a parallel account-creation shortcut. Callers are responsible for writeDb()/logAudit()
+// themselves afterward.
+function createOrgInvitation(db: DatabaseState, orgId: string, email: string, invitedRole: UserRole, appUrl: string): Invitation {
+  if (!db.invitations) db.invitations = [];
+  const org = db.organizations.find(o => o.id === orgId);
+  const token = crypto.randomBytes(24).toString("hex");
+  const now = new Date();
+  const expiresDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  // Reuse an existing pending invite for the same email+org rather than duplicating rows
+  let invitation = db.invitations.find(inv => inv.email === email && inv.orgId === orgId && inv.status === "PENDING");
+  if (invitation) {
+    invitation.token = token;
+    invitation.expiresDate = expiresDate;
+    invitation.createdDate = now.toISOString();
+  } else {
+    invitation = {
+      id: `inv-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      email,
+      orgId,
+      invitedRole,
+      token,
+      status: "PENDING",
+      createdDate: now.toISOString(),
+      expiresDate
+    };
+    db.invitations.push(invitation);
+  }
+
+  const orgName = org?.name || "your organization";
+  const inviteLink = `${appUrl}/?token=${token}`;
+  const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1a1918;">You're invited to join ${orgName} on Nerou Finder</h2>
+    <p>Click the link below to create your account and join the team:</p>
+    <p><a href="${inviteLink}" style="color: #bf9b30;">${inviteLink}</a></p>
+    <p>This invitation expires in 7 days.</p>
+  </div>`;
+  sendMockEmail(email, `[Nerou Finder] You're invited to join ${orgName}`, html, "org_invitation");
+
+  return invitation;
+}
+
 // Public: look up an invitation by its token (used by the signup page before the user has an account)
 app.get("/api/invitations/:token", (req, res) => {
   const { token } = req.params;
@@ -3350,44 +3400,11 @@ app.post("/api/organizations/:id/invite", authMiddleware, (req, res) => {
     return res.status(400).json({ error: "A user with this email already exists." });
   }
 
-  if (!db.invitations) db.invitations = [];
-  const token = crypto.randomBytes(24).toString("hex");
-  const now = new Date();
-  const expiresDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-  // Reuse an existing pending invite for the same email+org rather than duplicating rows
-  let invitation = db.invitations.find(inv => inv.email === email && inv.orgId === id && inv.status === "PENDING");
-  if (invitation) {
-    invitation.token = token;
-    invitation.expiresDate = expiresDate;
-    invitation.createdDate = now.toISOString();
-  } else {
-    invitation = {
-      id: `inv-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-      email,
-      orgId: id,
-      invitedRole: invitedRole || UserRole.AGENT,
-      token,
-      status: "PENDING",
-      createdDate: now.toISOString(),
-      expiresDate
-    };
-    db.invitations.push(invitation);
-  }
+  const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+  const invitation = createOrgInvitation(db, id, email, invitedRole || UserRole.AGENT, appUrl);
 
   writeDb(db);
   logAudit(actor.id, actor.fullName, actor.role, "SEND_INVITATION", invitation.id, "Invitation", { email, orgId: id });
-
-  const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
-  const inviteLink = `${appUrl}/?token=${token}`;
-  const html = `
-  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-    <h2 style="color: #1a1918;">You're invited to join ${org.name} on Nerou Finder</h2>
-    <p>Click the link below to create your account and join the team:</p>
-    <p><a href="${inviteLink}" style="color: #bf9b30;">${inviteLink}</a></p>
-    <p>This invitation expires in 7 days.</p>
-  </div>`;
-  sendMockEmail(email, `[Nerou Finder] You're invited to join ${org.name}`, html, "org_invitation");
 
   res.json({ success: true, invitation });
 });
@@ -4086,6 +4103,431 @@ export function checkPropertyStalenessAndReminders() {
 
   if (changed) writeDb(db);
 }
+
+// -----------------------------------------------------------------------------
+// PARTNER FEED IMPORT
+// -----------------------------------------------------------------------------
+// Bulk-listing ingestion from real-estate companies that have already agreed (off-platform)
+// to share a live inventory feed with Nerou Finder. A FeedSource always belongs to one
+// already-onboarded, consenting Organization - a platform admin sets it up on that
+// company's behalf after a real agreement, never automatically, and this code never fetches
+// any URL except a feedUrl a platform admin explicitly configured for that org. See
+// PARTNER_FEED_FORMAT.md at the repo root for the exact JSON shape feedUrl must return.
+const FEED_SYNC_MAX_ENTRIES = 500;
+
+interface PartnerFeedEntry {
+  externalId?: string;
+  title?: string;
+  titleAr?: string;
+  description?: string;
+  descriptionAr?: string;
+  propertyType?: string;
+  transactionType?: string;
+  price?: number;
+  currency?: string;
+  area?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  city?: string;
+  district?: string;
+  images?: string[];
+  agentName?: string;
+  agentEmail?: string;
+  agentPhone?: string;
+}
+
+// Validates one raw feed entry against PARTNER_FEED_FORMAT.md. Returns null when valid, or a
+// human-readable reason it was skipped - never throws, so one malformed entry can never abort
+// the whole sync.
+function validatePartnerFeedEntry(entry: any): string | null {
+  if (!entry || typeof entry !== "object") return "Entry is not an object.";
+  const requiredStrings: (keyof PartnerFeedEntry)[] = ["externalId", "title", "description", "city", "district"];
+  for (const field of requiredStrings) {
+    if (!entry[field] || typeof entry[field] !== "string" || !entry[field].trim()) {
+      return `Missing required field: ${field}`;
+    }
+  }
+  if (!Object.values(PropertyType).includes(entry.propertyType)) {
+    return `Unrecognized propertyType: ${entry.propertyType}`;
+  }
+  if (!Object.values(TransactionType).includes(entry.transactionType)) {
+    return `Unrecognized transactionType: ${entry.transactionType}`;
+  }
+  if (entry.price === undefined || Number.isNaN(Number(entry.price)) || Number(entry.price) < 0) {
+    return "Missing or invalid price.";
+  }
+  if (entry.area === undefined || Number.isNaN(Number(entry.area)) || Number(entry.area) < 0) {
+    return "Missing or invalid area.";
+  }
+  if (entry.bedrooms === undefined || Number.isNaN(Number(entry.bedrooms))) {
+    return "Missing or invalid bedrooms.";
+  }
+  if (entry.bathrooms === undefined || Number.isNaN(Number(entry.bathrooms))) {
+    return "Missing or invalid bathrooms.";
+  }
+  return null;
+}
+
+// Builds a fully-valid new Property from one validated feed entry, mirroring the exact same
+// field construction POST /api/properties's create branch uses above (listingId generation,
+// verificationStatus/listingStatus, qualityScore, priceHistory seed, availability baseline)
+// rather than a shortcut that skips fields every other listing on the platform always carries.
+function buildPropertyFromFeedEntry(entry: PartnerFeedEntry, feedSource: FeedSource, agentId: string): Property {
+  const nowIso = new Date().toISOString();
+  const price = Number(entry.price);
+  let qualityScore = 70; // Base score, same formula as POST /api/properties
+  if (entry.description && entry.description.length > 100) qualityScore += 10;
+  if (entry.images && entry.images.length >= 3) qualityScore += 10;
+
+  return {
+    id: `prop-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+    listingId: `N-${Math.floor(10000 + Math.random() * 90000)}`,
+    title: entry.title!,
+    titleAr: entry.titleAr || entry.title,
+    description: entry.description!,
+    descriptionAr: (entry.descriptionAr && entry.descriptionAr.trim()) ? entry.descriptionAr : entry.description,
+    propertyType: entry.propertyType as PropertyType,
+    transactionType: entry.transactionType as TransactionType,
+    price,
+    currency: entry.currency || "QAR",
+    area: Number(entry.area),
+    sizeUnit: "SQM",
+    city: entry.city!,
+    district: entry.district!,
+    latitude: 25.3,
+    longitude: 51.5,
+    bedrooms: Number(entry.bedrooms),
+    bathrooms: Number(entry.bathrooms),
+    furnished: "NO",
+    parking: false,
+    amenities: [],
+    images: entry.images && entry.images.length > 0 ? entry.images : [
+      "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80"
+    ],
+    agentId,
+    orgId: feedSource.orgId,
+    // A partner feed only ever exists for a listing set the consenting company already stands
+    // behind - published immediately, same as POST /api/properties does for any other
+    // account-gate-cleared listing-creator role.
+    verificationStatus: VerificationStatus.APPROVED,
+    listingStatus: ListingStatus.PUBLISHED,
+    statusChangedDate: nowIso,
+    qualityScore,
+    createdDate: nowIso,
+    updatedDate: nowIso,
+    lastConfirmedAvailableDate: nowIso,
+    priceHistory: [{ price, date: nowIso.split("T")[0] }],
+    sourceFeedId: feedSource.id,
+    externalListingId: entry.externalId!,
+    isFeedImported: true
+  };
+}
+
+// Partner Feed Import: resolves a feed entry's agentEmail to a real, immediately usable
+// platform User - creating one if this email hasn't been seen before, or reusing the existing
+// user's id otherwise. This is deliberately NOT gated behind an invitation-acceptance step
+// (unlike POST /api/organizations/:id/invite, used when an org admin invites someone who
+// hasn't agreed to anything): a feed entry's agentEmail belongs to a member of staff at an
+// org that has ALREADY consented to this entire integration, so the org itself is vouching
+// for its own roster - the same trust boundary any team-based SaaS relies on when an org
+// admin bulk-provisions employee accounts (Slack/HubSpot-style), not a stranger being signed
+// up without their knowledge. Setting orgId here makes getEffectiveAgentType() resolve them
+// as AGENCY_AGENT automatically, exactly like any other agency-invited agent, so their
+// listings are attributed to them directly from the very first sync - matching their
+// attribution on the source platform - rather than sitting under the org admin until a
+// separate acceptance step completes.
+function provisionOrFindFeedAgent(
+  db: DatabaseState,
+  feedSource: FeedSource,
+  agentEmail: string,
+  agentName: string | undefined,
+  agentPhone: string | undefined
+): string {
+  const existing = db.users.find(u => u.email === agentEmail);
+  if (existing) return existing.id;
+
+  const tempPassword = crypto.randomBytes(9).toString("base64url");
+  const userId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+  const newAgent = {
+    id: userId,
+    email: agentEmail,
+    fullName: agentName && agentName.trim() ? agentName.trim() : agentEmail.split("@")[0],
+    phone: agentPhone && agentPhone.trim() ? agentPhone.trim() : "Not specified",
+    role: UserRole.AGENT,
+    agentType: AgentType.AGENCY_AGENT,
+    orgId: feedSource.orgId,
+    // Vouched for by the org that owns this already-consenting feed integration - approved
+    // immediately, same trust level as any other AGENCY_AGENT (never individually gated by
+    // the onboarding pipeline - ApplicationStatus/getEffectiveAgentType() only ever gate
+    // INDEPENDENT_AGENT/AGENCY_ADMIN/DEVELOPER_ADMIN, never AGENCY_AGENT).
+    verificationStatus: VerificationStatus.APPROVED,
+    createdDate: new Date().toISOString(),
+    password: bcrypt.hashSync(tempPassword, 10),
+    referralCode: generateUniqueReferralCode(db)
+  };
+  db.users.push(newAgent);
+
+  const org = db.organizations.find(o => o.id === feedSource.orgId);
+  const orgName = org?.name || "your agency";
+  const html = `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #1a1918;">Your Nerou Finder account is ready</h2>
+    <p>${orgName} has added you as an agent on Nerou Finder as part of their automated listing sync. An account has been created for you so your listings are attributed to you directly:</p>
+    <p><strong>Email:</strong> ${agentEmail}<br/><strong>Temporary password:</strong> ${tempPassword}</p>
+    <p>Log in and change your password from your profile as soon as possible.</p>
+  </div>`;
+  sendMockEmail(agentEmail, `[Nerou Finder] Your agent account with ${orgName} is ready`, html, "feed_agent_provisioned");
+
+  return userId;
+}
+
+// Runs one sync pass for a single FeedSource: fetches feedUrl, validates it's a JSON array,
+// upserts Property records matched by (sourceFeedId, externalListingId), and auto-invites any
+// newly-seen agentEmail through the exact same invitation flow real admins use (see
+// createOrgInvitation) - never creates a User directly. Never throws: any failure (network,
+// parse, missing org admin) is captured onto the FeedSource itself (status: ERROR + lastError)
+// so the scheduled sweep below can isolate it per-source and keep going for every other feed.
+// `actor` attributes the audit log entry - the triggering platform admin for a manual
+// sync-now call, or left undefined (logged as "system") for the scheduled sweep.
+export async function syncFeedSource(
+  feedSourceId: string,
+  appUrl: string,
+  actor?: { id: string; name: string; role: UserRole }
+): Promise<{ feedSource: FeedSource; log: string[] }> {
+  const db = readDb();
+  if (!db.feedSources) db.feedSources = [];
+  const feedSource = db.feedSources.find(f => f.id === feedSourceId);
+  if (!feedSource) throw new Error("Feed source not found.");
+
+  const auditActorId = actor?.id || "system";
+  const auditActorName = actor?.name || "System";
+  const auditActorRole = actor?.role || UserRole.PLATFORM_ADMIN;
+
+  const log: string[] = [];
+  const stats = { imported: 0, updated: 0, skipped: 0, errors: 0 };
+
+  let entries: any[];
+  try {
+    const response = await fetch(feedSource.feedUrl, { signal: AbortSignal.timeout(15000) });
+    if (!response.ok) throw new Error(`Feed responded with HTTP ${response.status}`);
+    const parsed = await response.json();
+    if (!Array.isArray(parsed)) throw new Error("Feed did not return a JSON array.");
+    entries = parsed;
+  } catch (err: any) {
+    feedSource.status = "ERROR";
+    feedSource.lastError = `Failed to fetch/parse feed: ${err?.message || String(err)}`;
+    feedSource.lastSyncDate = new Date().toISOString();
+    writeDb(db);
+    logAudit(auditActorId, auditActorName, auditActorRole, "FEED_SOURCE_SYNC_FAILED", feedSource.id, "FeedSource", { error: feedSource.lastError });
+    return { feedSource, log: [feedSource.lastError] };
+  }
+
+  let truncated = false;
+  if (entries.length > FEED_SYNC_MAX_ENTRIES) {
+    truncated = true;
+    log.push(`Feed returned ${entries.length} entries - truncated to the first ${FEED_SYNC_MAX_ENTRIES} (safety cap).`);
+    entries = entries.slice(0, FEED_SYNC_MAX_ENTRIES);
+  }
+
+  // Every imported listing is attributed to the feed's owning org's own admin account - a feed
+  // entry never carries a real platform user id, only free-text agent contact info (handled
+  // separately below via invitation, never a direct account creation).
+  const orgAdmin = db.users.find(
+    u => u.orgId === feedSource.orgId && (u.role === UserRole.AGENCY_ADMIN || u.role === UserRole.DEVELOPER_ADMIN)
+  );
+  if (!orgAdmin) {
+    feedSource.status = "ERROR";
+    feedSource.lastError = "No AGENCY_ADMIN/DEVELOPER_ADMIN user found for this feed's organization - cannot attribute imported listings.";
+    feedSource.lastSyncDate = new Date().toISOString();
+    writeDb(db);
+    logAudit(auditActorId, auditActorName, auditActorRole, "FEED_SOURCE_SYNC_FAILED", feedSource.id, "FeedSource", { error: feedSource.lastError });
+    return { feedSource, log: [feedSource.lastError] };
+  }
+
+  for (const rawEntry of entries) {
+    const validationError = validatePartnerFeedEntry(rawEntry);
+    if (validationError) {
+      stats.errors++;
+      log.push(`Skipped entry (externalId: ${rawEntry?.externalId ?? "unknown"}): ${validationError}`);
+      continue;
+    }
+    const entry = rawEntry as PartnerFeedEntry;
+
+    // Resolve (or provision) the listing's real agent BEFORE building/updating the property,
+    // so it's attributed to the correct individual agent from the very first sync - matching
+    // their attribution on the source platform - rather than defaulting to the org admin.
+    // Falls back to the org admin only when the entry carries no agent contact info at all.
+    const entryAgentId =
+      entry.agentEmail && typeof entry.agentEmail === "string" && entry.agentEmail.trim()
+        ? provisionOrFindFeedAgent(db, feedSource, entry.agentEmail.trim(), entry.agentName, entry.agentPhone)
+        : orgAdmin.id;
+
+    const existingIdx = db.properties.findIndex(
+      p => p.sourceFeedId === feedSource.id && p.externalListingId === entry.externalId
+    );
+
+    if (existingIdx !== -1) {
+      // Update in place. agentId IS allowed to move here (unlike POST /api/properties's own
+      // edit branch, where ownership is immutable) because the source of truth for who
+      // represents this listing is the feed itself, not a manual dashboard edit - if the
+      // partner's system reassigns a listing to a different agent, the next sync should
+      // reflect that. orgId never changes (a feed is permanently scoped to one org).
+      const existing = db.properties[existingIdx];
+      const price = Number(entry.price);
+      const priceHistory = [...existing.priceHistory];
+      if (existing.price !== price) {
+        priceHistory.push({ price, date: new Date().toISOString().split("T")[0] });
+      }
+      db.properties[existingIdx] = {
+        ...existing,
+        title: entry.title!,
+        titleAr: entry.titleAr || entry.title,
+        description: entry.description!,
+        descriptionAr: (entry.descriptionAr && entry.descriptionAr.trim()) ? entry.descriptionAr : entry.description,
+        propertyType: entry.propertyType as PropertyType,
+        transactionType: entry.transactionType as TransactionType,
+        price,
+        currency: entry.currency || existing.currency,
+        area: Number(entry.area),
+        city: entry.city!,
+        district: entry.district!,
+        bedrooms: Number(entry.bedrooms),
+        bathrooms: Number(entry.bathrooms),
+        images: entry.images && entry.images.length > 0 ? entry.images : existing.images,
+        agentId: entryAgentId,
+        priceHistory,
+        updatedDate: new Date().toISOString()
+      };
+      stats.updated++;
+    } else {
+      const newProp = buildPropertyFromFeedEntry(entry, feedSource, entryAgentId);
+      db.properties.unshift(newProp);
+      stats.imported++;
+    }
+  }
+
+  feedSource.status = "ACTIVE";
+  feedSource.lastError = undefined;
+  feedSource.lastSyncDate = new Date().toISOString();
+  feedSource.lastSyncStats = stats;
+  writeDb(db);
+
+  logAudit(auditActorId, auditActorName, auditActorRole, "FEED_SOURCE_SYNC", feedSource.id, "FeedSource", { ...stats, truncated, feedUrl: feedSource.feedUrl });
+
+  return { feedSource, log };
+}
+
+// Scheduled sweep: syncs every ACTIVE FeedSource sequentially, isolating failures per-source
+// (via syncFeedSource's own internal try/catch) so one bad feed never blocks the rest or
+// crashes the whole sweep. Mirrors the interval-job pattern of
+// checkDocumentExpiryAndReminders/checkPropertyStalenessAndReminders above.
+export async function runFeedSourceSyncSweep(): Promise<void> {
+  const db = readDb();
+  if (!db.feedSources || db.feedSources.length === 0) return;
+  const appUrl = process.env.APP_URL || "http://localhost:3000";
+  const activeSources = db.feedSources.filter(f => f.status === "ACTIVE");
+  for (const fs of activeSources) {
+    try {
+      await syncFeedSource(fs.id, appUrl);
+    } catch (err: any) {
+      console.error(`Feed source sync sweep: unexpected error syncing ${fs.id}:`, err);
+    }
+  }
+}
+
+// Create a new partner feed source (platform admin only, gated by the /api/admin
+// authMiddleware/requireRole([PLATFORM_ADMIN]) applied above - never re-checked here).
+app.post("/api/admin/feed-sources", (req, res) => {
+  const { orgId, name, feedUrl } = req.body;
+  if (!orgId || !name || !feedUrl) {
+    return res.status(400).json({ error: "orgId, name, and feedUrl are required." });
+  }
+  if (typeof feedUrl !== "string" || !/^https?:\/\//i.test(feedUrl)) {
+    return res.status(400).json({ error: "feedUrl must be a valid http(s) URL." });
+  }
+
+  const db = readDb();
+  const org = db.organizations.find(o => o.id === orgId);
+  if (!org) return res.status(400).json({ error: "orgId does not reference a real organization." });
+  // A FeedSource may only belong to a real, already-onboarded org - Organization.type only
+  // ever takes AGENCY or DEVELOPER, so this simply confirms the org actually exists (mirrors
+  // the org-existence/org-type checks used elsewhere in this file, e.g. the
+  // OrganizationType.DEVELOPER project-authorization checks above).
+  if (org.type !== OrganizationType.AGENCY && org.type !== OrganizationType.DEVELOPER) {
+    return res.status(400).json({ error: "orgId must reference an AGENCY or DEVELOPER organization." });
+  }
+
+  const actor = getAuditActor(req);
+  if (!db.feedSources) db.feedSources = [];
+  const feedSource: FeedSource = {
+    id: `feed-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+    orgId,
+    name,
+    feedUrl,
+    status: "ACTIVE",
+    createdByUserId: actor.id,
+    createdDate: new Date().toISOString()
+  };
+  db.feedSources.push(feedSource);
+  writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "CREATE_FEED_SOURCE", feedSource.id, "FeedSource", { orgId, name, feedUrl });
+
+  res.json({ success: true, feedSource });
+});
+
+// List all partner feed sources, each carrying its own latest lastSyncStats.
+app.get("/api/admin/feed-sources", (req, res) => {
+  const db = readDb();
+  res.json(db.feedSources || []);
+});
+
+// Pause/resume a feed, or edit its name/feedUrl.
+app.patch("/api/admin/feed-sources/:id", (req, res) => {
+  const { id } = req.params;
+  const { status, name, feedUrl } = req.body;
+  const db = readDb();
+  if (!db.feedSources) db.feedSources = [];
+  const feedSource = db.feedSources.find(f => f.id === id);
+  if (!feedSource) return res.status(404).json({ error: "Feed source not found." });
+
+  if (status !== undefined) {
+    if (status !== "ACTIVE" && status !== "PAUSED" && status !== "ERROR") {
+      return res.status(400).json({ error: "Invalid status." });
+    }
+    feedSource.status = status;
+  }
+  if (name !== undefined) feedSource.name = name;
+  if (feedUrl !== undefined) {
+    if (typeof feedUrl !== "string" || !/^https?:\/\//i.test(feedUrl)) {
+      return res.status(400).json({ error: "feedUrl must be a valid http(s) URL." });
+    }
+    feedSource.feedUrl = feedUrl;
+  }
+
+  writeDb(db);
+  const actor = getAuditActor(req);
+  logAudit(actor.id, actor.name, actor.role, "UPDATE_FEED_SOURCE", feedSource.id, "FeedSource", { status, name, feedUrl });
+
+  res.json({ success: true, feedSource });
+});
+
+// Manually trigger an immediate synchronous sync (the admin UI's "Sync Now" button) and
+// return the resulting stats/errors.
+app.post("/api/admin/feed-sources/:id/sync-now", async (req, res) => {
+  const { id } = req.params;
+  const db = readDb();
+  if (!db.feedSources || !db.feedSources.some(f => f.id === id)) {
+    return res.status(404).json({ error: "Feed source not found." });
+  }
+  const actor = getAuditActor(req);
+  const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+  try {
+    const { feedSource, log } = await syncFeedSource(id, appUrl, actor);
+    res.json({ success: true, feedSource, log });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || "Failed to sync feed source." });
+  }
+});
 
 // Ad Campaigns (Monetization)
 app.get("/api/campaigns", (req, res) => {
@@ -6530,6 +6972,11 @@ async function startServer() {
   // auto-pause. Same interval/pattern as the verification document expiry sweep above.
   checkPropertyStalenessAndReminders();
   setInterval(checkPropertyStalenessAndReminders, 24 * 60 * 60 * 1000);
+
+  // Partner Feed Import sweep: syncs every ACTIVE FeedSource every 6 hours. Same
+  // interval-job pattern as the two sweeps above.
+  runFeedSourceSyncSweep();
+  setInterval(runFeedSourceSyncSweep, 6 * 60 * 60 * 1000);
 
   // Dynamic SEO meta tags for properties
   app.get("/properties/:id", (req, res, next) => {

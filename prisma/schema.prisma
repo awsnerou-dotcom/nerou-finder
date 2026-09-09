@@ -183,3 +183,13 @@ model AdCharge {
   @@map("ad_charges")
 }
 
+model FeedSource {
+  id     String @id
+  orgId  String
+  status String
+  data   String
+
+  @@index([orgId])
+  @@index([status])
+}
+

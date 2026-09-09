@@ -357,6 +357,16 @@ export interface Property {
   uniqueViews?: number;
   viewsByDay?: Record<string, number>;
   recentViewers?: { fingerprint: string; ts: number }[];
+  // ---------------------------------------------------------------------------
+  // Partner Feed Import
+  // ---------------------------------------------------------------------------
+  // Set only when this listing originated from an automated FeedSource sync (see FeedSource
+  // below) rather than being manually created through the listing wizard. sourceFeedId +
+  // externalListingId together are the re-sync match key: the same feedUrl entry always
+  // updates this same Property in place instead of creating a duplicate.
+  sourceFeedId?: string;
+  externalListingId?: string;
+  isFeedImported?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -675,6 +685,27 @@ export interface Invitation {
   status: "PENDING" | "ACCEPTED" | "EXPIRED";
   createdDate: string;
   expiresDate: string;
+}
+
+// ---------------------------------------------------------------------------
+// Partner Feed Import
+// ---------------------------------------------------------------------------
+// A recurring bulk-listing import configured by a platform admin on behalf of one already-
+// consenting, already-onboarded Organization (see PARTNER_FEED_FORMAT.md at the repo root
+// for the exact JSON shape feedUrl must return). Never created automatically and never
+// pointed at a third-party platform the org hasn't agreed to share data with - see the
+// business context on the syncFeedSource() implementation in server.ts.
+export interface FeedSource {
+  id: string;
+  orgId: string; // the consenting AGENCY/DEVELOPER Organization this feed belongs to
+  name: string; // display label, e.g. "Al Fardan Properties - Live Feed"
+  feedUrl: string; // the org's own hosted JSON feed URL
+  status: "ACTIVE" | "PAUSED" | "ERROR";
+  createdByUserId: string; // platform admin who set it up
+  createdDate: string;
+  lastSyncDate?: string;
+  lastSyncStats?: { imported: number; updated: number; skipped: number; errors: number };
+  lastError?: string;
 }
 
 export interface JobApplication {

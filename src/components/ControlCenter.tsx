@@ -29,7 +29,8 @@ import {
   ListingStatus,
   LeadStatus,
   ViewingRequest,
-  Review
+  Review,
+  FeedSource
 } from "../types.js";
 import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import {
@@ -106,6 +107,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     | "listings"
     | "users"
     | "viewing_requests"
+    | "partner_feeds"
   >("overview");
 
   // Collapsible sidebar navigation: which grouped sections are expanded
@@ -135,6 +137,16 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   const [reviews, setReviews] = useState<any[]>([]);
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [verificationDocs, setVerificationDocs] = useState<any[]>([]);
+  // Partner Feed Import
+  const [feedSources, setFeedSources] = useState<FeedSource[]>([]);
+  const [feedSourcesLoading, setFeedSourcesLoading] = useState<boolean>(false);
+  const [isAddingFeedSource, setIsAddingFeedSource] = useState<boolean>(false);
+  const [newFeedOrgId, setNewFeedOrgId] = useState<string>("");
+  const [newFeedName, setNewFeedName] = useState<string>("");
+  const [newFeedUrl, setNewFeedUrl] = useState<string>("");
+  const [savingFeedSource, setSavingFeedSource] = useState<boolean>(false);
+  const [syncingFeedId, setSyncingFeedId] = useState<string>("");
+  const [lastSyncLog, setLastSyncLog] = useState<{ feedId: string; log: string[] } | null>(null);
   const [rejectingDocId, setRejectingDocId] = useState<string>("");
   const [rejectionReasonDraft, setRejectionReasonDraft] = useState<string>("");
   const [adCharges, setAdCharges] = useState<any[]>([]);
@@ -329,6 +341,119 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       fetchEmailLogs();
     }
   }, [activeSubTab]);
+
+  const fetchFeedSources = async () => {
+    setFeedSourcesLoading(true);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const authHeader = token ? { "Authorization": `Bearer ${token}` } : {};
+      const res = await fetch("/api/admin/feed-sources", { headers: authHeader });
+      if (res.ok) {
+        const data = await res.json();
+        setFeedSources(data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching partner feed sources:", err);
+    } finally {
+      setFeedSourcesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === "partner_feeds") {
+      fetchFeedSources();
+    }
+  }, [activeSubTab]);
+
+  const handleAddFeedSource = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFeedOrgId || !newFeedName.trim() || !newFeedUrl.trim()) {
+      showToast(isRtl ? "يرجى تعبئة كل الحقول المطلوبة." : "Please fill in all required fields.");
+      return;
+    }
+    setSavingFeedSource(true);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch("/api/admin/feed-sources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ orgId: newFeedOrgId, name: newFeedName.trim(), feedUrl: newFeedUrl.trim() })
+      });
+      if (res.ok) {
+        showToast(isRtl ? "تم إنشاء مصدر الموجز بنجاح!" : "Partner feed source created successfully!");
+        setIsAddingFeedSource(false);
+        setNewFeedOrgId("");
+        setNewFeedName("");
+        setNewFeedUrl("");
+        fetchFeedSources();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        showToast(d.error || (isRtl ? "فشل إنشاء مصدر الموجز." : "Failed to create feed source."));
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(isRtl ? "خطأ في الاتصال بالسيرفر." : "Connection error with server.");
+    } finally {
+      setSavingFeedSource(false);
+    }
+  };
+
+  const handleToggleFeedStatus = async (feed: FeedSource) => {
+    const nextStatus = feed.status === "ACTIVE" ? "PAUSED" : "ACTIVE";
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch(`/api/admin/feed-sources/${feed.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      if (res.ok) {
+        setFeedSources(prev => prev.map(f => (f.id === feed.id ? { ...f, status: nextStatus } : f)));
+        showToast(
+          nextStatus === "ACTIVE"
+            ? (isRtl ? "تم استئناف مصدر الموجز." : "Feed source resumed.")
+            : (isRtl ? "تم إيقاف مصدر الموجز مؤقتًا." : "Feed source paused.")
+        );
+      } else {
+        showToast(isRtl ? "فشل تحديث حالة مصدر الموجز." : "Failed to update feed source status.");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(isRtl ? "خطأ في الاتصال بالسيرفر." : "Connection error with server.");
+    }
+  };
+
+  const handleSyncFeedNow = async (feedId: string) => {
+    setSyncingFeedId(feedId);
+    setLastSyncLog(null);
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch(`/api/admin/feed-sources/${feedId}/sync-now`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.feedSource) {
+        setFeedSources(prev => prev.map(f => (f.id === feedId ? data.feedSource : f)));
+        setLastSyncLog({ feedId, log: data.log || [] });
+        const stats = data.feedSource.lastSyncStats;
+        showToast(
+          stats
+            ? (isRtl
+                ? `اكتملت المزامنة: ${stats.imported} مستورد، ${stats.updated} محدث، ${stats.errors} أخطاء.`
+                : `Sync complete: ${stats.imported} imported, ${stats.updated} updated, ${stats.errors} errors.`)
+            : (isRtl ? "اكتملت المزامنة." : "Sync complete.")
+        );
+      } else {
+        showToast(data.error || (isRtl ? "فشلت مزامنة الموجز." : "Feed sync failed."));
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(isRtl ? "خطأ في الاتصال بالسيرفر." : "Connection error with server.");
+    } finally {
+      setSyncingFeedId("");
+    }
+  };
 
   const handleSaveAiConfig = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1461,6 +1586,12 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       label: { en: "Users", ar: "المستخدمون" },
       icon: Users,
       tabs: [{ id: "users", label: { en: "All Users", ar: "كل المستخدمين" } }]
+    },
+    {
+      id: "integrations_group",
+      label: { en: "Integrations", ar: "التكاملات" },
+      icon: Zap,
+      tabs: [{ id: "partner_feeds", label: { en: "Partner Feeds", ar: "موجزات الشركاء" } }]
     },
     {
       id: "leads_group",
@@ -5326,6 +5457,190 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     );
                   })}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeSubTab === "partner_feeds" && (
+            <div className="bg-surface p-5 md:p-6 rounded-xl border border-border space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-ink flex items-center gap-2">
+                    <Zap size={18} className="text-gold" />
+                    {isRtl ? "استيراد موجزات العقارات من الشركاء" : "Partner Feed Import"}
+                  </h3>
+                  <p className="text-xs text-ink-muted mt-0.5 max-w-2xl">
+                    {isRtl
+                      ? "لكل شركة عقارية أو مطور وافق مسبقًا على مشاركة بيانات إعلاناته. تتم مزامنة كل مصدر تلقائيًا كل 6 ساعات، أو يمكن تشغيلها يدويًا الآن."
+                      : "For real-estate companies/developers that have already agreed to share a listings feed. Each source syncs automatically every 6 hours, or can be run manually right now."}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsAddingFeedSource(!isAddingFeedSource)}
+                  className="px-4 py-2 bg-gold hover:bg-[#a88524] text-black rounded-lg text-xs font-semibold cursor-pointer transition-colors flex items-center gap-2 self-start md:self-auto"
+                >
+                  <Plus size={14} />
+                  {isRtl ? "إضافة مصدر موجز جديد" : "Add Feed Source"}
+                </button>
+              </div>
+
+              {isAddingFeedSource && (
+                <form onSubmit={handleAddFeedSource} className="bg-canvas p-5 rounded-xl border border-border space-y-4 animate-in fade-in slide-in-from-top duration-200">
+                  <h4 className="font-serif text-sm font-bold text-ink">
+                    {isRtl ? "مصدر موجز جديد" : "New Feed Source"}
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-ink-muted mb-1">{isRtl ? "المؤسسة *" : "Organization *"}</label>
+                      <select
+                        required
+                        value={newFeedOrgId}
+                        onChange={(e) => setNewFeedOrgId(e.target.value)}
+                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-surface"
+                      >
+                        <option value="">-- {isRtl ? "اختر المؤسسة" : "Select Organization"} --</option>
+                        {organizations.map(org => (
+                          <option key={org.id} value={org.id}>
+                            {org.name} ({org.type})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-ink-muted mb-1">{isRtl ? "اسم العرض *" : "Display Name *"}</label>
+                      <input
+                        type="text"
+                        required
+                        value={newFeedName}
+                        onChange={(e) => setNewFeedName(e.target.value)}
+                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-surface"
+                        placeholder="e.g. Al Fardan Properties - Live Feed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-ink-muted mb-1">{isRtl ? "رابط الموجز (JSON) *" : "Feed URL (JSON) *"}</label>
+                      <input
+                        type="url"
+                        required
+                        value={newFeedUrl}
+                        onChange={(e) => setNewFeedUrl(e.target.value)}
+                        className="w-full text-xs px-3 py-2 border border-[#cbd5e1] rounded-lg bg-surface"
+                        placeholder="https://partner.example.com/nerou-feed.json"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingFeedSource(false)}
+                      className="px-3 py-1.5 border border-[#cbd5e1] text-ink hover:bg-gray-100 rounded-lg text-xs font-medium cursor-pointer"
+                    >
+                      {isRtl ? "إلغاء" : "Cancel"}
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingFeedSource}
+                      className="px-4 py-1.5 bg-black hover:bg-[#2c2b29] text-white rounded-lg text-xs font-semibold cursor-pointer disabled:opacity-50"
+                    >
+                      {savingFeedSource ? (isRtl ? "جارٍ الحفظ..." : "Saving...") : (isRtl ? "حفظ المصدر" : "Save Feed Source")}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              <div className="border border-border rounded-xl overflow-hidden">
+                <div className="bg-canvas p-4 border-b border-border flex justify-between text-xs font-semibold text-ink">
+                  <span>{isRtl ? "مصادر الموجزات المسجلة" : "Registered Feed Sources"}</span>
+                  <span className="text-gold">{feedSources.length} {isRtl ? "مصدر" : "sources"}</span>
+                </div>
+
+                {feedSourcesLoading ? (
+                  <div className="p-6 text-center text-xs text-ink-muted">{isRtl ? "جارٍ التحميل..." : "Loading..."}</div>
+                ) : feedSources.length === 0 ? (
+                  <EmptyState
+                    title={isRtl ? "لا توجد مصادر موجزات بعد" : "No feed sources yet"}
+                    description={isRtl ? "أضف مصدرًا جديدًا لبدء استيراد إعلانات شريك موافق." : "Add a new source to start importing a consenting partner's listings."}
+                  />
+                ) : (
+                  <div className="divide-y divide-border">
+                    {feedSources.map(feed => {
+                      const org = organizations.find(o => o.id === feed.orgId);
+                      const stats = feed.lastSyncStats;
+                      const statusColors: Record<string, string> = {
+                        ACTIVE: "bg-emerald-50 text-emerald-700 border-emerald-100",
+                        PAUSED: "bg-gray-100 text-gray-600 border-gray-200",
+                        ERROR: "bg-red-50 text-red-700 border-red-100"
+                      };
+                      return (
+                        <div key={feed.id} className="p-4 space-y-2.5">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-serif text-sm font-bold text-ink">{feed.name}</span>
+                                <span className={`px-2 py-0.5 text-[10px] font-bold rounded border ${statusColors[feed.status] || statusColors.PAUSED}`}>
+                                  {feed.status}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-ink-muted mt-0.5">
+                                {org ? `${org.name} (${org.type})` : feed.orgId}
+                              </div>
+                              <div className="text-[11px] text-ink-muted truncate max-w-md" title={feed.feedUrl}>
+                                {feed.feedUrl}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button
+                                onClick={() => handleToggleFeedStatus(feed)}
+                                className="px-3 py-1.5 border border-[#cbd5e1] text-ink hover:bg-gray-100 rounded-lg text-[11px] font-semibold cursor-pointer"
+                              >
+                                {feed.status === "ACTIVE" ? (isRtl ? "إيقاف مؤقت" : "Pause") : (isRtl ? "استئناف" : "Resume")}
+                              </button>
+                              <button
+                                onClick={() => handleSyncFeedNow(feed.id)}
+                                disabled={syncingFeedId === feed.id}
+                                className="px-3 py-1.5 bg-gold hover:bg-[#a88524] text-black rounded-lg text-[11px] font-semibold cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                              >
+                                <RefreshCw size={11} className={syncingFeedId === feed.id ? "animate-spin" : ""} />
+                                {syncingFeedId === feed.id ? (isRtl ? "جارٍ المزامنة..." : "Syncing...") : (isRtl ? "مزامنة الآن" : "Sync Now")}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3 text-[11px] text-ink-muted">
+                            <span>
+                              {isRtl ? "آخر مزامنة: " : "Last sync: "}
+                              {feed.lastSyncDate ? new Date(feed.lastSyncDate).toLocaleString() : (isRtl ? "لم تتم بعد" : "Never")}
+                            </span>
+                            {stats && (
+                              <>
+                                <span className="text-emerald-700">{isRtl ? `مستورد: ${stats.imported}` : `Imported: ${stats.imported}`}</span>
+                                <span className="text-blue-700">{isRtl ? `محدث: ${stats.updated}` : `Updated: ${stats.updated}`}</span>
+                                <span className="text-gray-500">{isRtl ? `متخطى: ${stats.skipped}` : `Skipped: ${stats.skipped}`}</span>
+                                <span className={stats.errors > 0 ? "text-red-600 font-semibold" : "text-gray-500"}>
+                                  {isRtl ? `أخطاء: ${stats.errors}` : `Errors: ${stats.errors}`}
+                                </span>
+                              </>
+                            )}
+                          </div>
+
+                          {feed.lastError && (
+                            <div className="text-[11px] text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5">
+                              {feed.lastError}
+                            </div>
+                          )}
+
+                          {lastSyncLog && lastSyncLog.feedId === feed.id && lastSyncLog.log.length > 0 && (
+                            <div className="text-[11px] text-ink-muted bg-canvas border border-border rounded-lg px-3 py-2 space-y-0.5 max-h-32 overflow-y-auto">
+                              {lastSyncLog.log.map((line, i) => (
+                                <div key={i}>{line}</div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
