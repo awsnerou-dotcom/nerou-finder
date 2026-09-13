@@ -619,9 +619,39 @@ function getAuditActor(req: express.Request): { id: string; name: string; role: 
 // Strips the bcrypt password hash before a user record is ever sent over the wire -
 // used on every response that includes a full user object (login/signup/profile
 // updates/admin lookups), not just the plain GET /api/users list.
-export function sanitizeUser<T extends { password?: string }>(user: T): Omit<T, "password"> {
-  const { password, ...safe } = user;
+export function sanitizeUser<T extends { password?: string; pendingEmailOtpHash?: string }>(
+  user: T
+): Omit<T, "password" | "pendingEmailOtpHash"> {
+  const { password, pendingEmailOtpHash, ...safe } = user;
   return safe;
+}
+
+// Email ownership verification (OTP). A short numeric code is emailed at signup and must be
+// confirmed before the account can log in - see POST /api/auth/signup, /verify-otp, /resend-otp.
+const EMAIL_OTP_TTL_MS = 10 * 60 * 1000;
+const EMAIL_OTP_MAX_ATTEMPTS = 5;
+
+function generateEmailOtpCode(): string {
+  return String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+}
+
+function issueEmailOtp(user: { email: string; fullName: string; pendingEmailOtpHash?: string; pendingEmailOtpExpiresAt?: string; pendingEmailOtpAttempts?: number }): void {
+  const code = generateEmailOtpCode();
+  user.pendingEmailOtpHash = bcrypt.hashSync(code, 10);
+  user.pendingEmailOtpExpiresAt = new Date(Date.now() + EMAIL_OTP_TTL_MS).toISOString();
+  user.pendingEmailOtpAttempts = 0;
+  sendMockEmail(
+    user.email,
+    "[Nerou Finder] Your verification code",
+    generateNotificationEmailHtml(
+      "Verify your email",
+      user.fullName,
+      `<p>Your verification code is:</p>
+       <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 16px 0;">${code}</p>
+       <p>This code expires in 10 minutes. If you didn't request this, you can safely ignore this email.</p>`
+    ),
+    "email_otp"
+  );
 }
 
 // Referral Program: an 8-character, human-shareable code (uppercase alphanumeric, excluding
@@ -739,6 +769,15 @@ app.post("/api/auth/login", authRateLimiter, (req, res) => {
     return res.status(401).json({ error: "Incorrect password. Please try again." });
   }
 
+  // Email OTP verification gate: only ever false for an unfinished self-service signup (see
+  // POST /api/auth/signup) - a fresh code is issued here since whatever was emailed at signup
+  // has likely long expired by the time the user comes back to try logging in.
+  if (user.emailVerified === false) {
+    issueEmailOtp(user);
+    writeDb(db);
+    return res.json({ requiresVerification: true, email: user.email });
+  }
+
   // 2FA check
   if ((user as any).twoFactorEnabled) {
     return res.json({ require2fa: true, userId: user.id });
@@ -752,6 +791,163 @@ app.post("/api/auth/login", authRateLimiter, (req, res) => {
   );
 
   res.json({ user: sanitizeUser(user), token });
+});
+
+// Confirm the code emailed by POST /api/auth/signup (or by /login re-issuing an expired one).
+// Completes signup on success: marks the account verified, sends the welcome email, and
+// issues the JWT that signup itself withheld while the address was unconfirmed.
+app.post("/api/auth/verify-otp", authRateLimiter, (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) {
+    return res.status(400).json({ error: "Email and verification code are required." });
+  }
+  const db = readDb();
+  const idx = db.users.findIndex(u => u.email === email);
+  if (idx === -1) {
+    return res.status(404).json({ error: "User not found." });
+  }
+  const user = db.users[idx];
+
+  if (user.emailVerified !== false) {
+    return res.status(400).json({ error: "This account is already verified. Please sign in." });
+  }
+  if (!user.pendingEmailOtpHash || !user.pendingEmailOtpExpiresAt) {
+    return res.status(400).json({ error: "No pending verification for this account. Please request a new code." });
+  }
+  if (new Date(user.pendingEmailOtpExpiresAt) < new Date()) {
+    return res.status(400).json({ error: "This code has expired. Please request a new one." });
+  }
+  if ((user.pendingEmailOtpAttempts || 0) >= EMAIL_OTP_MAX_ATTEMPTS) {
+    return res.status(429).json({ error: "Too many incorrect attempts. Please request a new code." });
+  }
+
+  if (!bcrypt.compareSync(String(code), user.pendingEmailOtpHash)) {
+    user.pendingEmailOtpAttempts = (user.pendingEmailOtpAttempts || 0) + 1;
+    writeDb(db);
+    return res.status(401).json({ error: "Invalid verification code. Please try again." });
+  }
+
+  user.emailVerified = true;
+  user.pendingEmailOtpHash = undefined;
+  user.pendingEmailOtpExpiresAt = undefined;
+  user.pendingEmailOtpAttempts = undefined;
+  writeDb(db);
+
+  logAudit(user.id, user.fullName, user.role, "VERIFY_EMAIL", user.id, "User", { email: user.email });
+
+  sendMockEmail(
+    user.email,
+    "[Nerou Finder] Welcome to Nerou Finder",
+    generateNotificationEmailHtml(
+      "Welcome to Nerou Finder",
+      user.fullName,
+      `<p>Your account has been created successfully. You can now sign in to your dashboard.</p>`
+    ),
+    "welcome"
+  );
+
+  const token = jwt.sign(
+    { id: user.id, email: user.email, role: user.role, fullName: user.fullName },
+    JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+
+  res.json({ user: sanitizeUser(user), token });
+});
+
+// Issue a fresh code, e.g. after the signup-time one expired or the email never arrived.
+app.post("/api/auth/resend-otp", authRateLimiter, (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email is required." });
+  }
+  const db = readDb();
+  const user = db.users.find(u => u.email === email);
+  if (!user) {
+    return res.status(404).json({ error: "User not found." });
+  }
+  if (user.emailVerified !== false) {
+    return res.status(400).json({ error: "This account is already verified. Please sign in." });
+  }
+
+  issueEmailOtp(user);
+  writeDb(db);
+
+  res.json({ success: true });
+});
+
+// Forgot password: always responds with the same generic success message regardless of
+// whether the address is registered, so this endpoint can't be used to enumerate accounts -
+// unlike the rest of this app's auth errors, which do reveal existence (e.g. signup's "account
+// already exists"), this is the one endpoint where that matters most (an anonymous caller
+// probing arbitrary addresses for a reset email to land).
+app.post("/api/auth/forgot-password", authRateLimiter, (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email is required." });
+  }
+  const db = readDb();
+  const user = db.users.find(u => u.email === email);
+  if (user) {
+    const token = crypto.randomBytes(32).toString("hex");
+    user.passwordResetToken = token;
+    user.passwordResetExpiresAt = new Date(Date.now() + EMAIL_OTP_TTL_MS).toISOString();
+    writeDb(db);
+
+    const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+    sendMockEmail(
+      user.email,
+      "[Nerou Finder] Reset your password",
+      generateNotificationEmailHtml(
+        "Reset Your Password",
+        user.fullName,
+        `<p>We received a request to reset your password. Click below to choose a new one - this link expires in 10 minutes.</p>
+         <p><a href="${appUrl}/?resetToken=${token}" style="display: inline-block; padding: 12px 25px; background-color: #bf9b30; color: #000; font-weight: bold; text-decoration: none; border-radius: 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em;">Reset Password</a></p>
+         <p>If you didn't request this, you can safely ignore this email - your password won't change.</p>`
+      ),
+      "password_reset_requested"
+    );
+  }
+
+  res.json({ success: true });
+});
+
+app.post("/api/auth/reset-password", authRateLimiter, (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: "Token and new password are required." });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters long." });
+  }
+  const db = readDb();
+  const user = db.users.find(u => u.passwordResetToken === token);
+  if (!user || !user.passwordResetExpiresAt) {
+    return res.status(400).json({ error: "This reset link is invalid or has already been used." });
+  }
+  if (new Date(user.passwordResetExpiresAt) < new Date()) {
+    return res.status(400).json({ error: "This reset link has expired. Please request a new one." });
+  }
+
+  user.password = bcrypt.hashSync(newPassword, 10);
+  user.passwordResetToken = undefined;
+  user.passwordResetExpiresAt = undefined;
+  writeDb(db);
+
+  logAudit(user.id, user.fullName, user.role, "RESET_PASSWORD", user.id, "User", { email: user.email });
+
+  sendMockEmail(
+    user.email,
+    "[Nerou Finder] Your password was changed",
+    generateNotificationEmailHtml(
+      "Password Changed",
+      user.fullName,
+      `<p>Your password was just reset. If this wasn't you, contact support immediately.</p>`
+    ),
+    "security_password_changed"
+  );
+
+  res.json({ success: true });
 });
 
 // TOTP 2FA Login Verification
@@ -958,6 +1154,10 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
 
   const userId = `user-${Date.now()}`;
   const hashedPassword = bcrypt.hashSync(password || "nerou123", 10);
+  // Invitation-based signups skip email OTP verification: clicking a link that was only ever
+  // mailed to that exact address already proves inbox ownership, same reasoning as
+  // provisionOrFindFeedAgent()'s auto-activation for org-vouched feed agents.
+  const requiresEmailOtp = !consumedInvitation;
   const newUser = {
     id: userId,
     email,
@@ -976,8 +1176,13 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
     verificationStatus: VerificationStatus.APPROVED,
     createdDate: new Date().toISOString(),
     referralCode: generateUniqueReferralCode(db),
-    referredByCode
+    referredByCode,
+    emailVerified: !requiresEmailOtp
   };
+
+  if (requiresEmailOtp) {
+    issueEmailOtp(newUser);
+  }
 
   db.users.push(newUser);
 
@@ -1001,7 +1206,34 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
 
   writeDb(db);
 
+  // Notify the referrer their code was redeemed - previously credited silently with no email
+  // at all, so a referrer had no way to learn a referral converted short of checking their
+  // own referral-stats page.
+  if (referrer?.email) {
+    const earnedBoost = referrer.bonusBoostCredits !== undefined &&
+      (referrer.role === UserRole.AGENT || referrer.role === UserRole.AGENCY_ADMIN || referrer.role === UserRole.DEVELOPER_ADMIN) &&
+      referrer.successfulReferralsCount! % REFERRALS_PER_BOOST_CREDIT === 0;
+    sendMockEmail(
+      referrer.email,
+      "[Nerou Finder] Your referral just signed up!",
+      generateNotificationEmailHtml(
+        "Referral Signed Up",
+        referrer.fullName,
+        `<p><strong>${fullName}</strong> just joined Nerou Finder using your referral code. You now have <strong>${referrer.successfulReferralsCount}</strong> successful referral(s).</p>${
+          earnedBoost ? `<p>You've earned a free ad-boost credit for reaching ${REFERRALS_PER_BOOST_CREDIT} referrals!</p>` : ""
+        }`
+      ),
+      "referral_converted"
+    );
+  }
+
   logAudit(userId, fullName, effectiveRole, "USER_SIGNUP", userId, "User", { email, viaInvitation: !!consumedInvitation, referredByCode });
+
+  // Unverified accounts get no JWT and no welcome email yet - both happen once
+  // POST /api/auth/verify-otp confirms the code, which is the real completion of signup.
+  if (requiresEmailOtp) {
+    return res.json({ requiresVerification: true, email });
+  }
 
   // FIX 9: welcome email to the new user themself - previously only admins were ever notified
   // (and only for org signups), the new user got nothing.
@@ -1859,6 +2091,19 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       { title: updatedProp.title, price: updatedProp.price }
     );
 
+    // Fire-and-forget: never block the response on this, and notifyFavoritedBuyers already
+    // catches its own errors internally.
+    if (existing.price !== updatedProp.price) {
+      const direction = updatedProp.price < existing.price ? "dropped" : "changed";
+      notifyFavoritedBuyers(
+        updatedProp.id,
+        `[Nerou Finder] Price ${direction} on a property you saved: ${updatedProp.title}`,
+        "Price Update on a Saved Property",
+        `<p>The price for <strong>${updatedProp.title}</strong> has ${direction} from ${existing.price.toLocaleString()} to <strong>${updatedProp.price.toLocaleString()} ${updatedProp.currency}</strong>.</p>`,
+        "saved_property_price_change"
+      );
+    }
+
     return res.json(updatedProp);
   } else {
     // New property listing
@@ -2090,6 +2335,18 @@ app.patch("/api/properties/:id/status", authMiddleware, (req, res) => {
     );
   }
 
+  // Notify buyers who favorited this listing when it changes status - fire-and-forget, errors
+  // are caught internally by notifyFavoritedBuyers.
+  if (previousStatus !== status) {
+    notifyFavoritedBuyers(
+      property.id,
+      `[Nerou Finder] Status update on a property you saved: ${property.title}`,
+      "Status Update on a Saved Property",
+      `<p><strong>${property.title}</strong>, which you saved, is now <strong>${status}</strong>.</p>`,
+      "saved_property_status_change"
+    );
+  }
+
   res.json(property);
 });
 
@@ -2123,6 +2380,25 @@ app.delete("/api/properties/:id", authMiddleware, (req, res) => {
 
   res.json({ success: true });
 });
+
+// Emails every buyer who favorited this property (via SavedProperty) - used for price changes
+// and off-market/status changes, the two events a buyer with a saved property actually cares
+// about. Best-effort: a lookup failure here must never fail the property update itself.
+async function notifyFavoritedBuyers(propertyId: string, subject: string, title: string, bodyHtml: string, type: string) {
+  try {
+    const saves = await prisma.savedProperty.findMany({ where: { propertyId } });
+    if (saves.length === 0) return;
+    const db = readDb();
+    for (const save of saves) {
+      const buyer = db.users.find(u => u.id === save.userId);
+      if (buyer?.email) {
+        sendMockEmail(buyer.email, subject, generateNotificationEmailHtml(title, buyer.fullName, bodyHtml), type);
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to notify favorited buyers for property ${propertyId}:`, err);
+  }
+}
 
 async function checkAndIncrementSavedSearches(property: Property) {
   try {
@@ -2199,6 +2475,23 @@ async function checkAndIncrementSavedSearches(property: Property) {
             }
           }
         });
+
+        // Email the buyer, not just the in-app counter - previously a new match only ever
+        // showed up as a badge they'd have to notice by returning to the app.
+        const db = readDb();
+        const buyer = db.users.find(u => u.id === item.userId);
+        if (buyer?.email) {
+          sendMockEmail(
+            buyer.email,
+            `[Nerou Finder] New match for your saved search: ${property.title}`,
+            generateNotificationEmailHtml(
+              "New Match for Your Saved Search",
+              buyer.fullName,
+              `<p>A new listing matches one of your saved searches: <strong>${property.title}</strong> - ${property.price.toLocaleString()} ${property.currency} in ${property.district}, ${property.city}.</p>`
+            ),
+            "saved_search_match"
+          );
+        }
       }
     }
   } catch (err) {
@@ -2468,6 +2761,24 @@ app.post("/api/leads", publicWriteRateLimiter, (req, res) => {
   );
   sendMockEmail(targetEmail, `[Nerou Finder] New Property Inquiry - ${propTitle}`, inquiryEmailHtml, "inquiry");
 
+  // Confirmation back to the buyer/visitor themself, if they left an email - previously only
+  // the agent/org side was ever told an inquiry (or viewing request) happened; the person who
+  // submitted it had no record it was received at all until someone got back to them.
+  if (visitorEmail) {
+    sendMockEmail(
+      visitorEmail,
+      viewingRequested ? "[Nerou Finder] Viewing Request Received" : "[Nerou Finder] Inquiry Received",
+      generateNotificationEmailHtml(
+        viewingRequested ? "Viewing Request Received" : "Inquiry Received",
+        visitorName,
+        viewingRequested
+          ? `<p>We've received your viewing request for <strong>${propTitle}</strong> on <strong>${req.body.preferredDate}</strong> at <strong>${req.body.preferredTimeSlot}</strong>. The listing agent will confirm shortly.</p>`
+          : `<p>We've received your inquiry about <strong>${propTitle}</strong>. The listing agent will get back to you shortly.</p>`
+      ),
+      viewingRequested ? "viewing_request_confirmation" : "inquiry_confirmation"
+    );
+  }
+
   res.json({ success: true, lead: newLead });
 });
 
@@ -2572,6 +2883,22 @@ app.post("/api/leads/status", authMiddleware, (req, res) => {
         `<p>The lead <strong>${lead.visitorName}</strong> changed status from <strong>${previousStatus}</strong> to <strong>${status}</strong>.</p>`
       ),
       "lead_status_changed"
+    );
+  }
+
+  // Tell the buyer/visitor once an agent has actually reached out - the single status change
+  // that matters most to the person who submitted the inquiry in the first place. Other
+  // internal-workflow statuses (ASSIGNED, NEGOTIATION, etc.) stay agent/org-facing only.
+  if (lead.visitorEmail && previousStatus !== status && status === LeadStatus.CONTACTED) {
+    sendMockEmail(
+      lead.visitorEmail,
+      "[Nerou Finder] An agent has contacted you",
+      generateNotificationEmailHtml(
+        "Your Inquiry Was Answered",
+        lead.visitorName,
+        `<p>Good news - the listing agent has reached out regarding your inquiry. If you haven't heard from them yet, they'll be in touch shortly at ${lead.visitorPhone || "the contact details you provided"}.</p>`
+      ),
+      "inquiry_contacted"
     );
   }
 
@@ -5706,6 +6033,31 @@ app.post("/api/support/tickets", publicWriteRateLimiter, (req, res) => {
     { category, priority, subject }
   );
 
+  // Confirm receipt to whoever filed it, and flag it to platform admins - previously a ticket
+  // could sit unnoticed with no email to either side.
+  if (userEmail) {
+    sendMockEmail(
+      userEmail,
+      `[Nerou Finder] Support Ticket Received: ${newTicket.subject}`,
+      generateNotificationEmailHtml(
+        "Support Ticket Received",
+        userName || "there",
+        `<p>We've received your support ticket "<strong>${newTicket.subject}</strong>" and will respond as soon as possible.</p>`
+      ),
+      "support_ticket_created"
+    );
+  }
+  sendMockEmail(
+    ADMIN_NOTIFICATION_EMAIL,
+    `[Nerou Finder] New Support Ticket: ${newTicket.subject}`,
+    generateNotificationEmailHtml(
+      "New Support Ticket",
+      "Admin",
+      `<p>A new ${newTicket.priority} priority ${newTicket.category} ticket was filed by ${newTicket.userName} (${newTicket.userEmail}): "${newTicket.subject}"</p>`
+    ),
+    "support_ticket_created_admin"
+  );
+
   res.json({ success: true, ticket: newTicket });
 });
 
@@ -5752,6 +6104,36 @@ app.post("/api/support/tickets/:id/reply", authMiddleware, (req, res) => {
   }
 
   writeDb(db);
+
+  // Notify whichever side didn't just reply - previously a reply only ever changed the
+  // ticket's status with no email, so the other party had no way to know without reopening
+  // the app themselves.
+  if (isPlatformAdmin) {
+    if (ticket.userEmail) {
+      sendMockEmail(
+        ticket.userEmail,
+        `[Nerou Finder] Support replied: ${ticket.subject}`,
+        generateNotificationEmailHtml(
+          "Support Team Replied",
+          ticket.userName || "there",
+          `<p>Our support team replied to your ticket "<strong>${ticket.subject}</strong>":</p><p>${reply.message}</p>`
+        ),
+        "support_ticket_replied"
+      );
+    }
+  } else {
+    sendMockEmail(
+      ADMIN_NOTIFICATION_EMAIL,
+      `[Nerou Finder] Ticket reply: ${ticket.subject}`,
+      generateNotificationEmailHtml(
+        "Support Ticket Reply",
+        "Admin",
+        `<p>${ticket.userName} replied to ticket "<strong>${ticket.subject}</strong>":</p><p>${reply.message}</p>`
+      ),
+      "support_ticket_replied_admin"
+    );
+  }
+
   res.json({ success: true, ticket: db.supportTickets[idx] });
 });
 
@@ -6746,6 +7128,21 @@ app.post("/api/reviews", authMiddleware, publicWriteRateLimiter, (req, res) => {
     );
   }
 
+  // Thank the reviewer themself for submitting it - previously only the reviewed agent/agency
+  // was ever emailed; the buyer who wrote the review got no acknowledgment at all.
+  if (user.email) {
+    sendMockEmail(
+      user.email,
+      "[Nerou Finder] Thanks for your review",
+      generateNotificationEmailHtml(
+        "Review Received",
+        user.fullName,
+        `<p>Thanks for sharing your experience! Your ${score}-star review is now pending moderation and will appear publicly once approved.</p>`
+      ),
+      "review_submitted"
+    );
+  }
+
   res.status(201).json({ success: true, message: "Review submitted for admin moderation.", review: newReview });
 });
 
@@ -6869,6 +7266,25 @@ app.put("/api/admin/reviews/:id", authMiddleware, requireRole([UserRole.PLATFORM
   
   db.reviews[idx].status = status;
   writeDb(db);
+
+  // Tell the reviewer their review was moderated - it previously changed status with no
+  // notification at all, so a reviewer would only ever find out by checking the app again.
+  const reviewer = db.users.find(u => u.id === db.reviews[idx].reviewerId);
+  if (reviewer?.email) {
+    const isApproved = status === "APPROVED";
+    sendMockEmail(
+      reviewer.email,
+      isApproved ? "[Nerou Finder] Your review is now live" : "[Nerou Finder] Your review was not approved",
+      generateNotificationEmailHtml(
+        isApproved ? "Review Published" : "Review Not Approved",
+        reviewer.fullName,
+        isApproved
+          ? `<p>Your review has been approved and is now visible publicly.</p>`
+          : `<p>Your review didn't meet our moderation guidelines and was not published. Contact support if you believe this was a mistake.</p>`
+      ),
+      "review_moderated"
+    );
+  }
 
   res.json({ success: true, review: db.reviews[idx] });
 });

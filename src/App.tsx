@@ -114,6 +114,21 @@ export default function App() {
   const [twoFactorUserId, setTwoFactorUserId] = useState<string>("");
   const [twoFactorCode, setTwoFactorCode] = useState<string>("");
 
+  // Email OTP verification (signup/login) - a self-service signup withholds full access until
+  // this code is confirmed (see POST /api/auth/signup's requiresVerification response).
+  const [requiresEmailVerification, setRequiresEmailVerification] = useState<boolean>(false);
+  const [otpVerifyEmail, setOtpVerifyEmail] = useState<string>("");
+  const [otpCode, setOtpCode] = useState<string>("");
+  const [otpResendStatus, setOtpResendStatus] = useState<"" | "sending" | "sent">("");
+
+  // Forgot / reset password
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState<boolean>(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState<string>("");
+  const [forgotPasswordSent, setForgotPasswordSent] = useState<boolean>(false);
+  const [resetPasswordToken, setResetPasswordToken] = useState<string>("");
+  const [resetPasswordValue, setResetPasswordValue] = useState<string>("");
+  const [resetPasswordDone, setResetPasswordDone] = useState<boolean>(false);
+
   // Sign up form states
   const [signupName, setSignupName] = useState<string>("");
   const [signupEmail, setSignupEmail] = useState<string>("");
@@ -144,6 +159,19 @@ export default function App() {
         .catch(err => {
           console.error("Invitation lookup failed:", err);
         });
+    }
+  }, []);
+
+  // Load password-reset token from URL on mount (the link mailed by POST /api/auth/forgot-password)
+  // - cleared from the visible URL the same way as the campaignId/ref captures below.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("resetToken");
+    if (token) {
+      setResetPasswordToken(token);
+      params.delete("resetToken");
+      const newSearch = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (newSearch ? `?${newSearch}` : ""));
     }
   }, []);
 
@@ -283,6 +311,10 @@ export default function App() {
         const data = await res.json();
         if (!res.ok) {
           setAuthError(data.error || "Failed to log in.");
+        } else if (data.requiresVerification) {
+          setIsLoginOpen(false);
+          setOtpVerifyEmail(data.email);
+          setRequiresEmailVerification(true);
         } else if (data.require2fa) {
           setRequire2fa(true);
           setTwoFactorUserId(data.userId);
@@ -292,6 +324,104 @@ export default function App() {
           setLoginEmail("");
           setLoginPassword("");
         }
+      }
+    } catch (err) {
+      setAuthError("Failed to connect to authentication services.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleVerifyOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: otpVerifyEmail, code: otpCode })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || "Failed to verify code.");
+      } else {
+        handleSetUser(data.user, data.token);
+        setRequiresEmailVerification(false);
+        setOtpVerifyEmail("");
+        setOtpCode("");
+        setSignupSuccess(false);
+        setSignupName("");
+        setSignupEmail("");
+        setSignupPassword("");
+        setSignupPhone("");
+        setSignupOrgName("");
+      }
+    } catch (err) {
+      setAuthError("Failed to connect to authentication services.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setOtpResendStatus("sending");
+    setAuthError("");
+    try {
+      const res = await fetch("/api/auth/resend-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: otpVerifyEmail })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || "Failed to resend code.");
+        setOtpResendStatus("");
+      } else {
+        setOtpResendStatus("sent");
+        setTimeout(() => setOtpResendStatus(""), 15000);
+      }
+    } catch (err) {
+      setAuthError("Failed to connect to authentication services.");
+      setOtpResendStatus("");
+    }
+  };
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotPasswordEmail })
+      });
+      // Always show the same generic confirmation regardless of whether the address is
+      // registered - the endpoint itself never reveals account existence either.
+      setForgotPasswordSent(true);
+    } catch (err) {
+      setAuthError("Failed to connect to authentication services.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetPasswordToken, newPassword: resetPasswordValue })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || "Failed to reset password.");
+      } else {
+        setResetPasswordDone(true);
       }
     } catch (err) {
       setAuthError("Failed to connect to authentication services.");
@@ -331,18 +461,26 @@ export default function App() {
         sessionStorage.removeItem("presetPlanId");
         sessionStorage.removeItem("inviteToken");
         sessionStorage.removeItem("referralCode");
-        setSignupSuccess(true);
         trackEvent("subscription_plan_requested", "saas", signupPlanId);
-        setTimeout(() => {
-          handleSetUser(data.user, data.token);
+        if (data.requiresVerification) {
+          // Invitation-based signups skip this and go straight through the else branch below -
+          // only a self-service signup needs to confirm the code just emailed to it.
           setIsSignupOpen(false);
-          setSignupSuccess(false);
-          setSignupName("");
-          setSignupEmail("");
-          setSignupPassword("");
-          setSignupPhone("");
-          setSignupOrgName("");
-        }, 1500);
+          setOtpVerifyEmail(data.email);
+          setRequiresEmailVerification(true);
+        } else {
+          setSignupSuccess(true);
+          setTimeout(() => {
+            handleSetUser(data.user, data.token);
+            setIsSignupOpen(false);
+            setSignupSuccess(false);
+            setSignupName("");
+            setSignupEmail("");
+            setSignupPassword("");
+            setSignupPhone("");
+            setSignupOrgName("");
+          }, 1500);
+        }
       }
     } catch (err) {
       setAuthError("Failed to register new account.");
@@ -955,6 +1093,15 @@ export default function App() {
                         placeholder="••••••••"
                         className="w-full px-3.5 py-2.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-sm"
                       />
+                      <div className="text-right mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => { setIsLoginOpen(false); setAuthError(""); setForgotPasswordEmail(loginEmail); setForgotPasswordSent(false); setIsForgotPasswordOpen(true); }}
+                          className="text-[11px] text-ink-muted hover:text-gold hover:underline cursor-pointer"
+                        >
+                          {isRtl ? "نسيت كلمة المرور؟" : "Forgot password?"}
+                        </button>
+                      </div>
                     </div>
                   </>
                 )}
@@ -984,6 +1131,204 @@ export default function App() {
                 </button>
               </div>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EMAIL OTP VERIFICATION MODAL - shown when signup/login returns requiresVerification */}
+      {requiresEmailVerification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-surface rounded-xl border border-border w-full max-w-md overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => { setRequiresEmailVerification(false); setOtpVerifyEmail(""); setOtpCode(""); setAuthError(""); }}
+              className="absolute top-4 right-4 p-1.5 bg-ink-faint hover:bg-border text-ink rounded-full transition-colors cursor-pointer z-10"
+            >
+              <X size={15} />
+            </button>
+            <div className="p-6 md:p-8 space-y-5">
+              <div className="text-center space-y-1.5">
+                <h3 className="font-serif text-lg font-bold text-ink">
+                  {isRtl ? "تحقق من بريدك الإلكتروني" : "Verify your email"}
+                </h3>
+                <p className="text-xs text-ink-muted">
+                  {isRtl
+                    ? `أرسلنا رمزاً مكوناً من 6 أرقام إلى ${otpVerifyEmail}`
+                    : `We sent a 6-digit code to ${otpVerifyEmail}`}
+                </p>
+              </div>
+
+              {authError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-lg">
+                  {authError}
+                </div>
+              )}
+
+              <form onSubmit={handleVerifyOtpSubmit} className="space-y-4">
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  pattern="[0-9]{6}"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="000000"
+                  className="w-full px-3.5 py-2.5 bg-surface border-2 border-gold focus:outline-none rounded-lg text-center text-lg font-bold tracking-widest text-ink"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={authLoading || otpCode.length !== 6}
+                  className="w-full py-3 bg-chrome hover:bg-chrome-hover disabled:bg-ink-faint text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {authLoading ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <span>{isRtl ? "تأكيد" : "Verify"}</span>
+                  )}
+                </button>
+              </form>
+
+              <div className="text-center">
+                <button
+                  onClick={handleResendOtp}
+                  disabled={otpResendStatus === "sending" || otpResendStatus === "sent"}
+                  className="text-xs text-gold hover:underline cursor-pointer disabled:opacity-50 disabled:no-underline"
+                >
+                  {otpResendStatus === "sent"
+                    ? (isRtl ? "تم إرسال رمز جديد" : "New code sent")
+                    : (isRtl ? "لم يصلك الرمز؟ إعادة الإرسال" : "Didn't get a code? Resend")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FORGOT PASSWORD MODAL - request a reset link */}
+      {isForgotPasswordOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-surface rounded-xl border border-border w-full max-w-md overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => { setIsForgotPasswordOpen(false); setForgotPasswordSent(false); setAuthError(""); }}
+              className="absolute top-4 right-4 p-1.5 bg-ink-faint hover:bg-border text-ink rounded-full transition-colors cursor-pointer z-10"
+            >
+              <X size={15} />
+            </button>
+            <div className="p-6 md:p-8 space-y-5">
+              <div className="text-center space-y-1.5">
+                <h3 className="font-serif text-lg font-bold text-ink">
+                  {isRtl ? "استعادة كلمة المرور" : "Reset your password"}
+                </h3>
+                {!forgotPasswordSent && (
+                  <p className="text-xs text-ink-muted">
+                    {isRtl
+                      ? "أدخل بريدك الإلكتروني وسنرسل لك رابط إعادة تعيين كلمة المرور."
+                      : "Enter your email and we'll send you a link to reset your password."}
+                  </p>
+                )}
+              </div>
+
+              {authError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-lg">
+                  {authError}
+                </div>
+              )}
+
+              {forgotPasswordSent ? (
+                <div className="p-4 bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg text-center">
+                  {isRtl
+                    ? "إذا كان هذا البريد مسجلاً لدينا، فستصلك رسالة تحتوي على رابط إعادة التعيين خلال دقائق."
+                    : "If that email is registered, a reset link will arrive shortly."}
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+                  <input
+                    type="email"
+                    required
+                    value={forgotPasswordEmail}
+                    onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    placeholder="you@company.com"
+                    className="w-full px-3.5 py-2.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-sm"
+                  />
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full py-3 bg-chrome hover:bg-chrome-hover disabled:bg-ink-faint text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {authLoading ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <span>{isRtl ? "إرسال رابط الاستعادة" : "Send reset link"}</span>
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* RESET PASSWORD MODAL - opened via ?resetToken= from the emailed link */}
+      {resetPasswordToken && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="bg-surface rounded-xl border border-border w-full max-w-md overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => { setResetPasswordToken(""); setResetPasswordDone(false); setAuthError(""); }}
+              className="absolute top-4 right-4 p-1.5 bg-ink-faint hover:bg-border text-ink rounded-full transition-colors cursor-pointer z-10"
+            >
+              <X size={15} />
+            </button>
+            <div className="p-6 md:p-8 space-y-5">
+              <div className="text-center space-y-1.5">
+                <h3 className="font-serif text-lg font-bold text-ink">
+                  {isRtl ? "تعيين كلمة مرور جديدة" : "Set a new password"}
+                </h3>
+              </div>
+
+              {authError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs rounded-lg">
+                  {authError}
+                </div>
+              )}
+
+              {resetPasswordDone ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-green-50 border border-green-200 text-green-800 text-xs rounded-lg text-center">
+                    {isRtl ? "تم تحديث كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول." : "Your password has been updated. You can now log in."}
+                  </div>
+                  <button
+                    onClick={() => { setResetPasswordToken(""); setResetPasswordDone(false); setResetPasswordValue(""); setIsLoginOpen(true); }}
+                    className="w-full py-3 bg-chrome hover:bg-chrome-hover text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors cursor-pointer"
+                  >
+                    {isRtl ? "دخول البوابة" : "Log In"}
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                  <input
+                    type="password"
+                    required
+                    minLength={8}
+                    value={resetPasswordValue}
+                    onChange={(e) => setResetPasswordValue(e.target.value)}
+                    placeholder={isRtl ? "كلمة المرور الجديدة" : "New password"}
+                    className="w-full px-3.5 py-2.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-sm"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="w-full py-3 bg-chrome hover:bg-chrome-hover disabled:bg-ink-faint text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {authLoading ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <span>{isRtl ? "تحديث كلمة المرور" : "Update password"}</span>
+                    )}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>

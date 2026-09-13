@@ -160,6 +160,30 @@ export interface User {
   // AGENT_REFERRALS_PER_BOOST_CREDIT below) - consumed one at a time by POST /api/ad-charges
   // instead of charging AD_CHARGE_PRICES when available.
   bonusBoostCredits?: number;
+  // ---------------------------------------------------------------------------
+  // Email ownership verification (OTP sent at signup, see POST /api/auth/signup
+  // and /verify-otp/resend-otp in server.ts)
+  // ---------------------------------------------------------------------------
+  // Undefined/true for every account created before this feature existed (grandfathered -
+  // never forced to retroactively re-verify) and for invitation-based signups (clicking a
+  // link mailed to that exact address already proves inbox ownership). Explicitly false only
+  // for a brand-new self-service signup until they confirm the code emailed to them; login is
+  // blocked while this is false.
+  emailVerified?: boolean;
+  // bcrypt hash of the current pending 6-digit code - never the plaintext code itself, and
+  // never sent to the client (stripped by sanitizeUser). Cleared once verified or superseded.
+  pendingEmailOtpHash?: string;
+  pendingEmailOtpExpiresAt?: string;
+  // Wrong-code attempts against the current pendingEmailOtpHash - resets to 0 on every resend.
+  pendingEmailOtpAttempts?: number;
+  // ---------------------------------------------------------------------------
+  // Forgot-password flow (see POST /api/auth/forgot-password and /reset-password)
+  // ---------------------------------------------------------------------------
+  // Single-use token, stored the same plaintext-but-random way as Invitation.token - it's a
+  // high-entropy 32-byte value, not a low-entropy code like the email OTP above, so unlike the
+  // OTP hash it doesn't need bcrypt. Cleared once used or superseded by a newer request.
+  passwordResetToken?: string;
+  passwordResetExpiresAt?: string;
 }
 
 // Referral reward ladder: every this-many successful referrals grants the referring
