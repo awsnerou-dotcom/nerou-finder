@@ -5065,7 +5065,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             </span>
                           </div>
                           <p className="text-ink">
-                            <strong>From:</strong> <span className="text-ink-muted">noreply@nerou.io (Mock Outbound SMTP Engine)</span>
+                            <strong>From:</strong> <span className="text-ink-muted">notifications@neroufinder.com (via Resend)</span>
                           </p>
                           <p className="text-ink">
                             <strong>To:</strong> <span className="text-ink-muted">{selectedEmail.to}</span>

@@ -433,7 +433,10 @@ export default function PropertyDetailView({
         25,
         footerY + 23
       );
-      doc.text(`Contact: ${brochurePhone} | Email: licensing@nerou.io`, 25, footerY + 29);
+      // Only the phone is real/dynamic data here (agentInfo doesn't currently carry an email) -
+      // a fabricated "licensing@..." address previously shown here would have misled a real
+      // client trying to reach the agent, so this only ever shows contact info we actually have.
+      doc.text(`Contact: ${brochurePhone}`, 25, footerY + 29);
       doc.text(
         (agentInfo?.isVerifiedAgent && agentInfo.verifiedBadgeLabel) || "Nerou Finder Certified Partner Network",
         25,

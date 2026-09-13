@@ -218,6 +218,13 @@ const EMAILS_FILE = path.join(process.cwd(), "emails.json");
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null;
 const EMAIL_FROM = process.env.EMAIL_FROM || "Nerou Finder <onboarding@resend.dev>";
+// Platform-admin-facing notifications (new SaaS subscription requests, career applications,
+// and the "no matched agent/org" lead fallback) previously hardcoded three addresses at
+// "nerou.io" - a domain nobody here owns or verified, unrelated to the real neroufinder.com
+// domain, so these silently went nowhere. Routed to the real, monitored platform admin
+// address by default; override via env var once a dedicated admin@/careers@ mailbox exists
+// at the real domain.
+const ADMIN_NOTIFICATION_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || "yousifsaifeldeen1997@gmail.com";
 
 // Escapes user-supplied text before it's interpolated into an HTML email template. Lead
 // names/messages and signup fields are attacker-controlled and otherwise flow straight
@@ -288,7 +295,7 @@ export function generateInquiryEmailHtml(leadName: string, leadPhone: string, le
 
   <div style="text-align: center; font-size: 11px; color: #8c847a; border-top: 1px solid #333; padding-top: 15px; margin-top: 25px;">
     <p>This is an automated notification of Nerou Technology Services. All lead distributions are idempotent and logged under GDPR guidelines.</p>
-    <p style="color: #bf9b30;">Nerou Finder • Doha, Qatar • nerou.io</p>
+    <p style="color: #bf9b30;">Nerou Finder • Doha, Qatar • neroufinder.com</p>
   </div>
 </div>
 `;
@@ -405,7 +412,7 @@ export function generateSubscriptionApprovedEmailHtml(orgName: string, planName:
 
   <div style="text-align: center; margin-bottom: 25px;">
     <p style="font-size: 13px; color: #e6e2de; margin-bottom: 15px;">You may now log in to your premium dashboard and begin listing properties, building campaigns, and receiving AI lead insights instantly.</p>
-    <a href="https://nerou.io/login" style="display: inline-block; padding: 12px 25px; background-color: #bf9b30; color: #000; font-weight: bold; text-decoration: none; border-radius: 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em;">Access Partner Portal</a>
+    <a href="${process.env.APP_URL || "https://neroufinder.com"}" style="display: inline-block; padding: 12px 25px; background-color: #bf9b30; color: #000; font-weight: bold; text-decoration: none; border-radius: 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em;">Access Partner Portal</a>
   </div>
 
   <div style="text-align: center; font-size: 11px; color: #8c847a; border-top: 1px solid #333; padding-top: 15px; margin-top: 25px;">
@@ -915,7 +922,7 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
       matchedPlan.name,
       matchedPlan.priceMonthly
     );
-    sendMockEmail("admin@nerou.io", `[Nerou Finder] New SaaS Subscription Request: ${newOrg.name}`, reqEmailHtml, "subscription_request");
+    sendMockEmail(ADMIN_NOTIFICATION_EMAIL, `[Nerou Finder] New SaaS Subscription Request: ${newOrg.name}`, reqEmailHtml, "subscription_request");
   }
   // Agents signing up without an invitation remain unaffiliated (orgId undefined) until they
   // either receive/accept an agency invite or an agency admin links them manually.
@@ -2437,7 +2444,7 @@ app.post("/api/leads", publicWriteRateLimiter, (req, res) => {
       "viewing_requested"
     );
   }
-  const targetEmail = agentObj?.email || orgObj?.email || "agent@nerou.io";
+  const targetEmail = agentObj?.email || orgObj?.email || ADMIN_NOTIFICATION_EMAIL;
   const propObj = db.properties.find(p => p.id === propertyId);
   const propTitle = propObj ? propObj.title : "Exclusive Property Asset";
   const propPrice = propObj ? propObj.price : 0;
@@ -5892,7 +5899,7 @@ app.post("/api/careers/apply", publicWriteRateLimiter, (req, res, next) => {
     ${cvUrl ? `<p><strong>Resume:</strong> <a href="${escapeHtml(cvUrl)}">${escapeHtml(cvUrl)}</a></p>` : ""}
     ${coverLetter ? `<p><strong>Cover Letter:</strong></p><p>${escapeHtml(coverLetter)}</p>` : ""}
   </div>`;
-  sendMockEmail("careers@nerou.io", `[Nerou Finder] New Application: ${job.title}`, notifyHtml, "job_application");
+  sendMockEmail(ADMIN_NOTIFICATION_EMAIL, `[Nerou Finder] New Application: ${job.title}`, notifyHtml, "job_application");
 
   res.json({ success: true, application });
 });
@@ -7001,7 +7008,7 @@ async function startServer() {
           ? property.images[0]
           : "https://images.unsplash.com/photo-1578894381163-e72c17f2d45f?auto=format&fit=crop&w=1200&h=630&q=80";
 
-        const host = req.get("host") || "nerou.io";
+        const host = req.get("host") || "neroufinder.com";
         const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
         const absoluteCoverImage = coverImage.startsWith("http")
           ? coverImage
@@ -7092,7 +7099,7 @@ async function startServer() {
         html = html.replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/g, `<meta name="twitter:title" content="${title}" />`);
         html = html.replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/g, `<meta name="twitter:description" content="${desc}" />`);
 
-        const host = req.get("host") || "nerou.io";
+        const host = req.get("host") || "neroufinder.com";
         const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
         const permalink = `${protocol}://${host}/areas/${guide.slug}`;
         const structuredData = {
