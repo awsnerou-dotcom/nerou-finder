@@ -458,11 +458,20 @@ ${html.replace(/<[^>]*>/g, " ").trim().substring(0, 400)}...
 \x1b[33m+=============================================================================+\x1b[0m
   `);
 
-  // Real delivery (fire-and-forget so callers never have to await email sending)
+  // Real delivery (fire-and-forget so callers never have to await email sending).
+  // The Resend SDK resolves normally (does not reject) on an API-level error such as an
+  // invalid key - it reports failure via the `error` field on the resolved value instead of
+  // throwing, so both paths must be logged or a bad key/request fails completely silently.
   if (resendClient) {
-    resendClient.emails.send({ from: EMAIL_FROM, to, subject, html }).catch(err => {
-      console.error(`Failed to deliver email via Resend (to: ${to}, type: ${type}):`, err?.message || err);
-    });
+    resendClient.emails.send({ from: EMAIL_FROM, to, subject, html })
+      .then(result => {
+        if (result?.error) {
+          console.error(`Resend rejected email (to: ${to}, type: ${type}):`, result.error);
+        }
+      })
+      .catch(err => {
+        console.error(`Failed to deliver email via Resend (to: ${to}, type: ${type}):`, err?.message || err);
+      });
   }
 }
 
