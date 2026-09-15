@@ -19,6 +19,7 @@ import {
 } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
 import { trackEvent, trackPageView } from "../lib/analytics.js";
+import { getThumbnailUrl } from "../lib/image.js";
 import DirectorySearch from "./DirectorySearch.js";
 import {
   Search,
@@ -1389,7 +1390,8 @@ export default function VisitorExperience({
                 className="flex items-center gap-2.5 shrink-0 w-64 p-2 bg-surface border border-border rounded-lg hover:border-gold transition-colors text-left rtl:text-right cursor-pointer"
               >
                 <img
-                  src={rv.images && rv.images[0]}
+                  src={rv.images && getThumbnailUrl(rv.images[0])}
+                  onError={(e) => { if (rv.images?.[0] && e.currentTarget.src !== rv.images[0]) e.currentTarget.src = rv.images[0]; }}
                   alt=""
                   className="w-12 h-12 rounded-md object-cover shrink-0 bg-canvas"
                 />
@@ -1533,7 +1535,8 @@ export default function VisitorExperience({
                 <div>
                   <div className="relative h-52 overflow-hidden bg-gray-100">
                     <img
-                      src={property.images[0]}
+                      src={getThumbnailUrl(property.images[0])}
+                      onError={(e) => { if (e.currentTarget.src !== property.images[0]) e.currentTarget.src = property.images[0]; }}
                       alt={property.title}
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -1998,7 +2001,12 @@ export default function VisitorExperience({
                           className="p-2 bg-surface hover:bg-gold/5 border border-border hover:border-gold/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
                         >
                           <div className="flex items-center gap-2 overflow-hidden">
-                            <img src={prop.images[0]} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                            <img
+                              src={getThumbnailUrl(prop.images[0])}
+                              onError={(e) => { if (e.currentTarget.src !== prop.images[0]) e.currentTarget.src = prop.images[0]; }}
+                              alt=""
+                              className="w-8 h-8 rounded object-cover flex-shrink-0"
+                            />
                             <span className="font-medium text-ink truncate">{isRtl ? prop.titleAr : prop.title}</span>
                           </div>
                           <span className="font-bold text-gold flex-shrink-0">{formatPrice(prop.price, isRtl)}</span>
@@ -2123,7 +2131,12 @@ export default function VisitorExperience({
                           className="p-2 bg-surface hover:bg-gold/5 border border-border hover:border-gold/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
                         >
                           <div className="flex items-center gap-2 overflow-hidden">
-                            <img src={prop.images[0]} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                            <img
+                              src={getThumbnailUrl(prop.images[0])}
+                              onError={(e) => { if (e.currentTarget.src !== prop.images[0]) e.currentTarget.src = prop.images[0]; }}
+                              alt=""
+                              className="w-8 h-8 rounded object-cover flex-shrink-0"
+                            />
                             <span className="font-medium text-ink truncate">{isRtl ? prop.titleAr : prop.title}</span>
                           </div>
                           <span className="font-bold text-gold flex-shrink-0">{formatPrice(prop.price, isRtl)}</span>

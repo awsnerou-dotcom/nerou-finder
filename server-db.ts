@@ -39,6 +39,7 @@ import {
   VerificationDocument,
   AdCharge,
   FeedSource,
+  Notification,
   DEFAULT_MONTHLY_BOOST_CAPS
 } from "./src/types.js";
 
@@ -67,6 +68,7 @@ export interface DatabaseState {
   verificationDocuments?: VerificationDocument[];
   adCharges?: AdCharge[];
   feedSources?: FeedSource[];
+  notifications?: Notification[];
   aiConfig?: {
     whatsappDefaultNumber?: string;
     watermarkText?: string;
@@ -1022,6 +1024,7 @@ export function getDefaults(): DatabaseState {
     verificationDocuments: [],
     adCharges: [],
     feedSources: [],
+    notifications: [],
     aiConfig: DEFAULT_AI_CONFIG
   };
 }
@@ -1062,6 +1065,7 @@ export function ensureStateDefaults(db: DatabaseState): void {
   if (!db.verificationDocuments) db.verificationDocuments = [];
   if (!db.adCharges) db.adCharges = [];
   if (!db.feedSources) db.feedSources = [];
+  if (!db.notifications) db.notifications = [];
   if (!db.aiConfig) db.aiConfig = DEFAULT_AI_CONFIG;
 
   // Backfill Project.developerName/isPlatformDeveloper/createdByUserId for any project record
@@ -1114,7 +1118,8 @@ async function loadStateFromDb(): Promise<DatabaseState> {
     jobApplications,
     verificationDocuments,
     adCharges,
-    feedSources
+    feedSources,
+    notifications
   ] = await Promise.all([
     prisma.user.findMany(),
     prisma.organization.findMany(),
@@ -1140,7 +1145,8 @@ async function loadStateFromDb(): Promise<DatabaseState> {
     prisma.jobApplication.findMany(),
     prisma.verificationDocument.findMany(),
     prisma.adCharge.findMany(),
-    prisma.feedSource.findMany()
+    prisma.feedSource.findMany(),
+    prisma.notification.findMany()
   ]);
 
   return {
@@ -1168,6 +1174,7 @@ async function loadStateFromDb(): Promise<DatabaseState> {
     verificationDocuments: verificationDocuments.map(v => JSON.parse(v.data)),
     adCharges: adCharges.map(a => JSON.parse(a.data)),
     feedSources: feedSources.map(f => JSON.parse(f.data)),
+    notifications: notifications.map(n => JSON.parse(n.data)),
     aiConfig: aiConfigRows[0] ? JSON.parse(aiConfigRows[0].data) : DEFAULT_AI_CONFIG
   };
 }
@@ -1192,6 +1199,7 @@ interface SyncSnapshots {
   jobListings: RowSnapshot; pressReleases: RowSnapshot; partnershipRequests: RowSnapshot;
   reviews: RowSnapshot; invitations: RowSnapshot; jobApplications: RowSnapshot;
   verificationDocuments: RowSnapshot; adCharges: RowSnapshot; feedSources: RowSnapshot;
+  notifications: RowSnapshot;
   systemHealth: string | null; aiConfig: string | null;
 }
 
@@ -1203,6 +1211,7 @@ let snapshots: SyncSnapshots = {
   jobListings: new Map(), pressReleases: new Map(), partnershipRequests: new Map(),
   reviews: new Map(), invitations: new Map(), jobApplications: new Map(),
   verificationDocuments: new Map(), adCharges: new Map(), feedSources: new Map(),
+  notifications: new Map(),
   systemHealth: null, aiConfig: null,
 };
 
@@ -1235,6 +1244,7 @@ function initSyncSnapshots(state?: DatabaseState): void {
     verificationDocuments: new Map((state?.verificationDocuments ?? []).map(v => [v.id, JSON.stringify(v)])),
     adCharges: new Map((state?.adCharges ?? []).map(a => [a.id, JSON.stringify(a)])),
     feedSources: new Map((state?.feedSources ?? []).map(f => [f.id, JSON.stringify(f)])),
+    notifications: new Map((state?.notifications ?? []).map(n => [n.id, JSON.stringify(n)])),
     systemHealth: null,
     aiConfig: null,
   };
@@ -1410,6 +1420,13 @@ async function syncStateToDb(state: DatabaseState): Promise<void> {
         return prisma.feedSource.upsert({ where: { id: f.id }, create: { id: f.id, ...row }, update: row });
       },
       ids => prisma.feedSource.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.notifications, state.notifications ?? [],
+      n => {
+        const row = { userId: n.userId, read: n.read, data: JSON.stringify(n) };
+        return prisma.notification.upsert({ where: { id: n.id }, create: { id: n.id, ...row }, update: row });
+      },
+      ids => prisma.notification.deleteMany({ where: { id: { in: ids } } }));
 
     // Singleton rows - only upsert when the serialized value actually changed.
     const healthJson = JSON.stringify(state.systemHealth);

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import { app } from "../../server.js";
 import { initDb } from "../../server-db.js";
-import { uniqueEmail, uniqueIp } from "../helpers.js";
+import { uniqueEmail, uniqueIp, signupAndVerify } from "../helpers.js";
 
 let dbReady = false;
 
@@ -18,7 +18,7 @@ beforeAll(async () => {
 async function signupAgent(label: string) {
   const ip = uniqueIp();
   const email = uniqueEmail(label);
-  const res = await request(app).post("/api/auth/signup").set("X-Forwarded-For", ip).send({
+  const res = await signupAndVerify(app, ip, {
     email,
     password: "correct-horse-battery-staple",
     fullName: `Test Agent ${label}`,
@@ -54,7 +54,7 @@ describe("property IDOR protections (POST /api/properties)", () => {
 
     const ip = uniqueIp();
     const email = uniqueEmail("registered-creator");
-    const signupRes = await request(app).post("/api/auth/signup").set("X-Forwarded-For", ip).send({
+    const signupRes = await signupAndVerify(app, ip, {
       email,
       password: "correct-horse-battery-staple",
       fullName: "Test Registered User",

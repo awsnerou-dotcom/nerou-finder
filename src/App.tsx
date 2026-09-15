@@ -8,6 +8,7 @@ import VisitorExperience from "./components/VisitorExperience.js";
 import CinematicSkyline from "./components/CinematicSkyline.js";
 import CookieConsent from "./components/CookieConsent.js";
 import HelpAssistantWidget from "./components/HelpAssistantWidget.js";
+import NotificationBell from "./components/NotificationBell.js";
 import { trackEvent } from "./lib/analytics.js";
 import { User, UserRole, Organization, OrganizationType, VerificationStatus, TransactionType, ApplicationStatus, AgentType, getEffectiveAgentType } from "./types.js";
 import { useCurrency, CURRENCIES, CurrencyCode } from "./currencyContext.js";
@@ -726,6 +727,7 @@ export default function App() {
               </div>
             ) : (
               <div className={`flex items-center gap-3 border-l pl-3 transition-colors duration-300 ${heroTransparent ? "border-white/30" : "border-border"}`}>
+                <NotificationBell isRtl={isRtl} />
                 <div className="hidden md:flex flex-col text-right leading-tight">
                   <span className={`text-xs font-bold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-ink"}`}>{currentUser.fullName}</span>
                   <span className="text-[10px] font-semibold text-gold uppercase tracking-wider">

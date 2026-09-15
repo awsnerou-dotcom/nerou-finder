@@ -391,6 +391,11 @@ export interface Property {
   sourceFeedId?: string;
   externalListingId?: string;
   isFeedImported?: boolean;
+  // The raw external image URLs last seen from the partner's feed entry (before being
+  // downloaded and watermarked into local /assets/uploads/ copies for `images` above) - kept
+  // only so a re-sync can tell whether the partner actually changed their photos, and skip
+  // re-downloading/re-watermarking identical images on every 6-hour sweep. Never shown to users.
+  sourceFeedImageUrls?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -730,6 +735,22 @@ export interface FeedSource {
   lastSyncDate?: string;
   lastSyncStats?: { imported: number; updated: number; skipped: number; errors: number };
   lastError?: string;
+}
+
+// In-app notification: persisted so a user has a real history to browse, and pushed live over
+// the WebSocket connection in server.ts's `notifyUser()` when the recipient is online - a
+// disconnected/offline user simply sees it the next time GET /api/notifications loads. `link`
+// is a client-side route/tab hint (e.g. a lead id, a property id) the frontend already knows
+// how to resolve per notification `type`, kept generic here rather than a full URL.
+export interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  link?: string;
+  read: boolean;
+  createdDate: string;
 }
 
 export interface JobApplication {

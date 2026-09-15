@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import request from "supertest";
 import { app } from "../../server.js";
 import { initDb } from "../../server-db.js";
-import { uniqueEmail, uniqueIp } from "../helpers.js";
+import { uniqueEmail, uniqueIp, signupAndVerify } from "../helpers.js";
 
 let dbReady = false;
 
@@ -51,7 +51,7 @@ describe("support ticket replies require auth and ticket ownership", () => {
     const ticketId = createRes.body.ticket.id;
 
     const ip = uniqueIp();
-    const signupRes = await request(app).post("/api/auth/signup").set("X-Forwarded-For", ip).send({
+    const signupRes = await signupAndVerify(app, ip, {
       email: uniqueEmail("unrelated-user"),
       password: "correct-horse-battery-staple",
       fullName: "Unrelated User",
@@ -73,7 +73,7 @@ describe("org subscription upgrade requires org-admin/platform-admin", () => {
     if (!dbReady) return ctx.skip();
 
     const ip = uniqueIp();
-    const signupRes = await request(app).post("/api/auth/signup").set("X-Forwarded-For", ip).send({
+    const signupRes = await signupAndVerify(app, ip, {
       email: uniqueEmail("upgrade-attacker"),
       password: "correct-horse-battery-staple",
       fullName: "Upgrade Attacker",

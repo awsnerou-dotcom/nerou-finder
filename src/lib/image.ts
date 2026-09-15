@@ -68,3 +68,16 @@ export const compressImage = (file: File): Promise<File> => {
     reader.onerror = () => resolve(file);
   });
 };
+
+// Derives the small (480px-wide) grid/card variant server.ts generates alongside every
+// watermarked upload (see generateThumbnail() in server.ts) from the full-size URL, so card
+// grids don't have to load full-resolution originals just to show them at a fraction of their
+// size. Only rewrites our own /assets/uploads/ paths - anything else (external fallback stock
+// photos, avatar/logo uploads, which skip thumbnail generation entirely) is returned unchanged.
+// A caller should still set an onError handler falling back to the original URL, since an
+// older image uploaded before this feature existed has no thumb-* file on disk.
+export function getThumbnailUrl(url: string): string {
+  const match = url.match(/^(.*\/assets\/uploads\/)([^/]+)$/);
+  if (!match || match[2].startsWith("original-") || match[2].startsWith("thumb-")) return url;
+  return `${match[1]}thumb-${match[2]}`;
+}

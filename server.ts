@@ -65,8 +65,23 @@ import {
 import { AREA_GUIDES, getAreaGuideBySlug } from "./src/data/areaGuides.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
+import * as Sentry from "@sentry/node";
+import { WebSocketServer, WebSocket } from "ws";
+import { Notification } from "./src/types.js";
 
 dotenv.config();
+
+// Error monitoring: dormant unless SENTRY_DSN is set (same "activates automatically once the
+// env var exists" pattern as RESEND_API_KEY/EMAIL_FROM) - no Sentry account is required to run
+// this app, but every unhandled exception and every 5xx error is silently invisible without
+// it, discoverable only by someone happening to grep Render's console logs after the fact.
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || "production",
+    tracesSampleRate: 0.1
+  });
+}
 
 export const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -467,10 +482,17 @@ ${html.replace(/<[^>]*>/g, " ").trim().substring(0, 400)}...
       .then(result => {
         if (result?.error) {
           console.error(`Resend rejected email (to: ${to}, type: ${type}):`, result.error);
+          // A misconfigured key/domain silently breaks every outbound email in the product
+          // (this exact failure mode - RESEND_API_KEY holding a non-key string - went
+          // undetected for a long stretch of this platform's life) - worth a dedicated
+          // capture beyond the generic Express error handler, which never sees this at all
+          // since it's a fire-and-forget call outside any request's error flow.
+          Sentry.captureMessage(`Resend rejected email (type: ${type})`, { level: "error", extra: { to, type, error: result.error } });
         }
       })
       .catch(err => {
         console.error(`Failed to deliver email via Resend (to: ${to}, type: ${type}):`, err?.message || err);
+        Sentry.captureException(err, { extra: { to, type } });
       });
   }
 }
@@ -616,6 +638,67 @@ function getAuditActor(req: express.Request): { id: string; name: string; role: 
   };
 }
 
+// -----------------------------------------------------------------------------
+// REAL-TIME IN-APP NOTIFICATIONS (WebSocket)
+// -----------------------------------------------------------------------------
+// Every prior "notification" in this app was either an email or a polled REST count (see
+// NotificationBell.tsx's 25s interval) - nothing pushed live. One userId can have more than
+// one live connection (multiple tabs/devices), hence a Set per user rather than a single socket.
+const wsConnections = new Map<string, Set<WebSocket>>();
+
+const MAX_NOTIFICATIONS_PER_USER = 100;
+
+// Persists a Notification row (so GET /api/notifications has real history, not just whatever
+// happened to be connected at the moment) and pushes it live to any open WebSocket connections
+// for that user. Mutates `db.notifications` in place like every other collection helper in this
+// file - the caller is responsible for the single writeDb(db) at the end of its own handler,
+// same convention as logAudit/checkAndIncrementSavedSearches etc. Never throws: a bad payload
+// or a dead socket must never fail the business action a notification is just a side effect of.
+function notifyUser(
+  db: DatabaseState,
+  userId: string,
+  notif: { type: string; title: string; body: string; link?: string }
+): void {
+  try {
+    if (!db.notifications) db.notifications = [];
+    const notification: Notification = {
+      id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      userId,
+      type: notif.type,
+      title: notif.title,
+      body: notif.body,
+      link: notif.link,
+      read: false,
+      createdDate: new Date().toISOString()
+    };
+    db.notifications.push(notification);
+
+    // Cap per-user growth (this collection is loaded into memory in full at boot, same as
+    // auditLogs - unlike the mock email log's file-based 200-row cap, there's no separate
+    // cleanup job for this yet, so bound it here instead of letting it grow forever).
+    const forUser = db.notifications.filter(n => n.userId === userId);
+    if (forUser.length > MAX_NOTIFICATIONS_PER_USER) {
+      const toDrop = new Set(
+        forUser
+          .sort((a, b) => new Date(a.createdDate).getTime() - new Date(b.createdDate).getTime())
+          .slice(0, forUser.length - MAX_NOTIFICATIONS_PER_USER)
+          .map(n => n.id)
+      );
+      db.notifications = db.notifications.filter(n => !toDrop.has(n.id));
+    }
+
+    const sockets = wsConnections.get(userId);
+    if (sockets && sockets.size > 0) {
+      const payload = JSON.stringify({ type: "notification", notification });
+      for (const ws of sockets) {
+        if (ws.readyState === WebSocket.OPEN) ws.send(payload);
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to create/push notification for user ${userId}:`, err);
+  }
+}
+
 // Strips the bcrypt password hash before a user record is ever sent over the wire -
 // used on every response that includes a full user object (login/signup/profile
 // updates/admin lookups), not just the plain GET /api/users list.
@@ -635,8 +718,16 @@ function generateEmailOtpCode(): string {
   return String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
+// Test-only hook: the plaintext code only ever exists here and in the (bcrypt-hashed
+// everywhere else) email body - there is no HTTP-reachable way to recover it, by design. The
+// integration test suite runs in-process (imports `app` directly, see tests/integration/*),
+// so it can read this map to complete the OTP flow without a network hop or any
+// production-code branch keyed on NODE_ENV. Never read by any request handler.
+export const __testOtpCodesByEmail = new Map<string, string>();
+
 function issueEmailOtp(user: { email: string; fullName: string; pendingEmailOtpHash?: string; pendingEmailOtpExpiresAt?: string; pendingEmailOtpAttempts?: number }): void {
   const code = generateEmailOtpCode();
+  __testOtpCodesByEmail.set(user.email, code);
   user.pendingEmailOtpHash = bcrypt.hashSync(code, 10);
   user.pendingEmailOtpExpiresAt = new Date(Date.now() + EMAIL_OTP_TTL_MS).toISOString();
   user.pendingEmailOtpAttempts = 0;
@@ -1225,6 +1316,12 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
       ),
       "referral_converted"
     );
+    notifyUser(db, referrer.id, {
+      type: "referral_converted",
+      title: "Referral Signed Up",
+      body: `${fullName} just joined Nerou Finder using your referral code.`
+    });
+    writeDb(db);
   }
 
   logAudit(userId, fullName, effectiveRole, "USER_SIGNUP", userId, "User", { email, viaInvitation: !!consumedInvitation, referredByCode });
@@ -2100,6 +2197,7 @@ app.post("/api/properties", authMiddleware, (req, res) => {
         `[Nerou Finder] Price ${direction} on a property you saved: ${updatedProp.title}`,
         "Price Update on a Saved Property",
         `<p>The price for <strong>${updatedProp.title}</strong> has ${direction} from ${existing.price.toLocaleString()} to <strong>${updatedProp.price.toLocaleString()} ${updatedProp.currency}</strong>.</p>`,
+        `The price for "${updatedProp.title}" has ${direction} to ${updatedProp.price.toLocaleString()} ${updatedProp.currency}.`,
         "saved_property_price_change"
       );
     }
@@ -2343,6 +2441,7 @@ app.patch("/api/properties/:id/status", authMiddleware, (req, res) => {
       `[Nerou Finder] Status update on a property you saved: ${property.title}`,
       "Status Update on a Saved Property",
       `<p><strong>${property.title}</strong>, which you saved, is now <strong>${status}</strong>.</p>`,
+      `"${property.title}" is now ${status}.`,
       "saved_property_status_change"
     );
   }
@@ -2381,20 +2480,28 @@ app.delete("/api/properties/:id", authMiddleware, (req, res) => {
   res.json({ success: true });
 });
 
-// Emails every buyer who favorited this property (via SavedProperty) - used for price changes
-// and off-market/status changes, the two events a buyer with a saved property actually cares
-// about. Best-effort: a lookup failure here must never fail the property update itself.
-async function notifyFavoritedBuyers(propertyId: string, subject: string, title: string, bodyHtml: string, type: string) {
+// Emails AND live-notifies every buyer who favorited this property (via SavedProperty) - used
+// for price changes and off-market/status changes, the two events a buyer with a saved
+// property actually cares about. Best-effort: a lookup failure here must never fail the
+// property update itself. `plainBody` is a short plain-text summary for the in-app
+// notification, separate from `bodyHtml`'s richer formatted email content.
+async function notifyFavoritedBuyers(propertyId: string, subject: string, title: string, bodyHtml: string, plainBody: string, type: string) {
   try {
     const saves = await prisma.savedProperty.findMany({ where: { propertyId } });
     if (saves.length === 0) return;
     const db = readDb();
+    let changed = false;
     for (const save of saves) {
       const buyer = db.users.find(u => u.id === save.userId);
       if (buyer?.email) {
         sendMockEmail(buyer.email, subject, generateNotificationEmailHtml(title, buyer.fullName, bodyHtml), type);
       }
+      if (buyer) {
+        notifyUser(db, buyer.id, { type, title, body: plainBody, link: propertyId });
+        changed = true;
+      }
     }
+    if (changed) writeDb(db);
   } catch (err) {
     console.error(`Failed to notify favorited buyers for property ${propertyId}:`, err);
   }
@@ -2491,6 +2598,15 @@ async function checkAndIncrementSavedSearches(property: Property) {
             ),
             "saved_search_match"
           );
+        }
+        if (buyer) {
+          notifyUser(db, buyer.id, {
+            type: "saved_search_match",
+            title: "New Match for Your Saved Search",
+            body: `A new listing matches your saved search: "${property.title}".`,
+            link: property.id
+          });
+          writeDb(db);
         }
       }
     }
@@ -2779,6 +2895,16 @@ app.post("/api/leads", publicWriteRateLimiter, (req, res) => {
     );
   }
 
+  if (agentObj) {
+    notifyUser(db, agentObj.id, {
+      type: viewingRequested ? "viewing_requested" : "inquiry",
+      title: viewingRequested ? "New Viewing Request" : "New Property Inquiry",
+      body: `${visitorName} ${viewingRequested ? "requested a viewing for" : "inquired about"} ${propTitle}.`,
+      link: newLead.id
+    });
+    writeDb(db);
+  }
+
   res.json({ success: true, lead: newLead });
 });
 
@@ -2842,6 +2968,50 @@ app.get("/api/leads/unread-count", authMiddleware, (req, res) => {
   res.json({ count });
 });
 
+// -----------------------------------------------------------------------------
+// GENERIC IN-APP NOTIFICATIONS (real-time, see notifyUser() and the WebSocket setup above)
+// -----------------------------------------------------------------------------
+// Distinct from GET /api/leads/unread-count above - this covers every notification type
+// notifyUser() is called for (reviews, saved searches/properties, referrals, support tickets),
+// not just leads, and is what powers a live-updating bell for any user, agent or buyer alike.
+app.get("/api/notifications", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const mine = (db.notifications || [])
+    .filter(n => n.userId === authReq.user!.id)
+    .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime())
+    .slice(0, 50);
+  res.json(mine);
+});
+
+app.get("/api/notifications/unread-count", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const count = (db.notifications || []).filter(n => n.userId === authReq.user!.id && !n.read).length;
+  res.json({ count });
+});
+
+app.post("/api/notifications/:id/read", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const notif = (db.notifications || []).find(n => n.id === req.params.id);
+  if (!notif) return res.status(404).json({ error: "Notification not found." });
+  if (notif.userId !== authReq.user!.id) return res.status(403).json({ error: "Not authorized to modify this notification." });
+  notif.read = true;
+  writeDb(db);
+  res.json({ success: true });
+});
+
+app.post("/api/notifications/read-all", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  for (const n of db.notifications || []) {
+    if (n.userId === authReq.user!.id) n.read = true;
+  }
+  writeDb(db);
+  res.json({ success: true });
+});
+
 // Update Lead Status
 app.post("/api/leads/status", authMiddleware, (req, res) => {
   const { leadId, status } = req.body;
@@ -2885,6 +3055,14 @@ app.post("/api/leads/status", authMiddleware, (req, res) => {
       "lead_status_changed"
     );
   }
+  if (owningAgent && owningAgent.id !== actorId && previousStatus !== status) {
+    notifyUser(db, owningAgent.id, {
+      type: "lead_status_changed",
+      title: "Lead Status Changed",
+      body: `${lead.visitorName} is now ${status}.`,
+      link: lead.id
+    });
+  }
 
   // Tell the buyer/visitor once an agent has actually reached out - the single status change
   // that matters most to the person who submitted the inquiry in the first place. Other
@@ -2900,8 +3078,20 @@ app.post("/api/leads/status", authMiddleware, (req, res) => {
       ),
       "inquiry_contacted"
     );
+    // The visitor may also happen to be a logged-in REGISTERED buyer (visitorEmail matching a
+    // real account) - if so, push it live too, not just by email.
+    const buyerAccount = db.users.find(u => u.email.toLowerCase() === lead.visitorEmail!.toLowerCase());
+    if (buyerAccount) {
+      notifyUser(db, buyerAccount.id, {
+        type: "inquiry_contacted",
+        title: "Your Inquiry Was Answered",
+        body: "The listing agent has reached out regarding your inquiry.",
+        link: lead.id
+      });
+    }
   }
 
+  writeDb(db);
   res.json({ success: true, lead: db.leads[idx] });
 });
 
@@ -3048,6 +3238,13 @@ app.patch("/api/leads/:id/assign", authMiddleware, requireRole([UserRole.AGENCY_
       "lead_assigned"
     );
   }
+  notifyUser(db, targetAgent.id, {
+    type: "lead_assigned",
+    title: "New Lead Assigned To You",
+    body: `A lead, ${lead.visitorName}, has been assigned to you.`,
+    link: lead.id
+  });
+  writeDb(db);
 
   res.json({ success: true, lead: db.leads[leadIdx] });
 });
@@ -3429,6 +3626,16 @@ app.post("/api/viewings/status", authMiddleware, (req, res) => {
       ),
       "viewing_status_changed"
     );
+    const buyerAccount = db.users.find(u => u.email.toLowerCase() === relatedLead.visitorEmail!.toLowerCase());
+    if (buyerAccount) {
+      notifyUser(db, buyerAccount.id, {
+        type: "viewing_status_changed",
+        title: "Viewing Request Update",
+        body: `Your viewing request is now ${status}.`,
+        link: viewing.propertyId
+      });
+      writeDb(db);
+    }
   }
 
   res.json({ success: true, viewing: db.viewings[idx] });
@@ -4515,7 +4722,7 @@ function validatePartnerFeedEntry(entry: any): string | null {
 // field construction POST /api/properties's create branch uses above (listingId generation,
 // verificationStatus/listingStatus, qualityScore, priceHistory seed, availability baseline)
 // rather than a shortcut that skips fields every other listing on the platform always carries.
-function buildPropertyFromFeedEntry(entry: PartnerFeedEntry, feedSource: FeedSource, agentId: string): Property {
+function buildPropertyFromFeedEntry(entry: PartnerFeedEntry, feedSource: FeedSource, agentId: string, watermarkedImages?: string[]): Property {
   const nowIso = new Date().toISOString();
   const price = Number(entry.price);
   let qualityScore = 70; // Base score, same formula as POST /api/properties
@@ -4544,7 +4751,7 @@ function buildPropertyFromFeedEntry(entry: PartnerFeedEntry, feedSource: FeedSou
     furnished: "NO",
     parking: false,
     amenities: [],
-    images: entry.images && entry.images.length > 0 ? entry.images : [
+    images: watermarkedImages && watermarkedImages.length > 0 ? watermarkedImages : [
       "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80"
     ],
     agentId,
@@ -4562,7 +4769,8 @@ function buildPropertyFromFeedEntry(entry: PartnerFeedEntry, feedSource: FeedSou
     priceHistory: [{ price, date: nowIso.split("T")[0] }],
     sourceFeedId: feedSource.id,
     externalListingId: entry.externalId!,
-    isFeedImported: true
+    isFeedImported: true,
+    sourceFeedImageUrls: entry.images
   };
 }
 
@@ -4624,11 +4832,50 @@ function provisionOrFindFeedAgent(
   return userId;
 }
 
+// Downloads each external feed image and runs it through the exact same applyWatermark() a
+// manually-uploaded property photo gets, returning internal /assets/uploads/ URLs in their
+// place. Without this, every Partner Feed Import listing would carry someone else's
+// unprotected hotlinked photos while every other listing on the platform is watermarked -
+// defeating the whole point of the watermark system for an entire class of listings.
+// Best-effort per image: an unreachable URL, a non-2xx response, or a non-image content-type
+// falls back to the original external URL rather than failing the whole entry.
+async function watermarkFeedImages(urls: string[]): Promise<string[]> {
+  const results: string[] = [];
+  for (const url of urls) {
+    try {
+      if (!/^https?:\/\//i.test(url)) {
+        results.push(url);
+        continue;
+      }
+      const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      const contentType = response.headers.get("content-type") || "";
+      if (!response.ok || !contentType.startsWith("image/")) {
+        results.push(url);
+        continue;
+      }
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const ext = contentType.includes("png") ? "png" : contentType.includes("webp") ? "webp" : "jpg";
+      const filename = `feed-${Date.now()}-${Math.random().toString(36).substr(2, 8)}.${ext}`;
+      const originalPath = path.join(uploadsDir, "original-" + filename);
+      const uploadedPath = path.join(uploadsDir, filename);
+      fs.writeFileSync(originalPath, buffer);
+      await applyWatermark(originalPath, uploadedPath);
+      await generateThumbnail(uploadedPath, path.join(uploadsDir, "thumb-" + filename));
+      results.push(`/assets/uploads/${filename}`);
+    } catch (err) {
+      console.error(`Failed to fetch/watermark feed image ${url}:`, err);
+      results.push(url);
+    }
+  }
+  return results;
+}
+
 // Runs one sync pass for a single FeedSource: fetches feedUrl, validates it's a JSON array,
-// upserts Property records matched by (sourceFeedId, externalListingId), and auto-invites any
-// newly-seen agentEmail through the exact same invitation flow real admins use (see
-// createOrgInvitation) - never creates a User directly. Never throws: any failure (network,
-// parse, missing org admin) is captured onto the FeedSource itself (status: ERROR + lastError)
+// upserts Property records matched by (sourceFeedId, externalListingId), and resolves any
+// newly-seen agentEmail to a real, immediately-active agent account via
+// provisionOrFindFeedAgent() (see its own comment for why this bypasses the normal invitation
+// flow). Never throws: any failure (network, parse, missing org admin) is captured onto the
+// FeedSource itself (status: ERROR + lastError)
 // so the scheduled sweep below can isolate it per-source and keep going for every other feed.
 // `actor` attributes the audit log entry - the triggering platform admin for a manual
 // sync-now call, or left undefined (logged as "system") for the scheduled sweep.
@@ -4721,6 +4968,14 @@ export async function syncFeedSource(
       if (existing.price !== price) {
         priceHistory.push({ price, date: new Date().toISOString().split("T")[0] });
       }
+
+      // Only re-download/re-watermark images when the partner's feed actually changed them
+      // since the last sync - comparing against sourceFeedImageUrls (the raw URLs last seen),
+      // not `images` itself (which already holds our own local watermarked copies).
+      const imagesChanged = entry.images && entry.images.length > 0 &&
+        JSON.stringify(entry.images) !== JSON.stringify(existing.sourceFeedImageUrls);
+      const resolvedImages = imagesChanged ? await watermarkFeedImages(entry.images!) : undefined;
+
       db.properties[existingIdx] = {
         ...existing,
         title: entry.title!,
@@ -4736,14 +4991,18 @@ export async function syncFeedSource(
         district: entry.district!,
         bedrooms: Number(entry.bedrooms),
         bathrooms: Number(entry.bathrooms),
-        images: entry.images && entry.images.length > 0 ? entry.images : existing.images,
+        images: resolvedImages || existing.images,
+        sourceFeedImageUrls: imagesChanged ? entry.images : existing.sourceFeedImageUrls,
         agentId: entryAgentId,
         priceHistory,
         updatedDate: new Date().toISOString()
       };
       stats.updated++;
     } else {
-      const newProp = buildPropertyFromFeedEntry(entry, feedSource, entryAgentId);
+      const watermarkedImages = entry.images && entry.images.length > 0
+        ? await watermarkFeedImages(entry.images)
+        : undefined;
+      const newProp = buildPropertyFromFeedEntry(entry, feedSource, entryAgentId, watermarkedImages);
       db.properties.unshift(newProp);
       stats.imported++;
     }
@@ -6121,6 +6380,17 @@ app.post("/api/support/tickets/:id/reply", authMiddleware, (req, res) => {
         "support_ticket_replied"
       );
     }
+    // Only a real registered account (not an anonymous "guest" submission) can receive an
+    // in-app/live push - there's no session to push to otherwise.
+    if (ticket.userId && ticket.userId !== "guest") {
+      notifyUser(db, ticket.userId, {
+        type: "support_ticket_replied",
+        title: "Support Team Replied",
+        body: `Support replied to your ticket "${ticket.subject}".`,
+        link: ticket.id
+      });
+      writeDb(db);
+    }
   } else {
     sendMockEmail(
       ADMIN_NOTIFICATION_EMAIL,
@@ -6753,6 +7023,20 @@ async function applyWatermark(inputPath: string, outputPath: string) {
   }
 }
 
+// Generates a small (480px-wide) JPEG copy of an already-watermarked image, for grid/card
+// views that render many properties at once - without this, a listing grid loads every
+// card's full-resolution original just to show it at a fraction of its size. Best-effort:
+// a thumbnail failure must never fail the upload/sync it's part of, so callers don't need to
+// check its result - a missing thumb file just means the frontend's <img onError> fallback to
+// the full image kicks in (see getThumbnailUrl() in src/lib/images.ts).
+async function generateThumbnail(inputPath: string, outputPath: string): Promise<void> {
+  try {
+    await sharp(inputPath).resize({ width: 480, withoutEnlargement: true }).jpeg({ quality: 72 }).toFile(outputPath);
+  } catch (err) {
+    console.error(`Failed to generate thumbnail for ${inputPath}:`, err);
+  }
+}
+
 app.post("/api/media/upload", authMiddleware, uploadRateLimiter, (req, res, next) => {
   upload.array("files")(req, res, (err: any) => {
     if (err) {
@@ -6808,6 +7092,10 @@ app.post("/api/media/upload", authMiddleware, uploadRateLimiter, (req, res, next
 
       // 2. Apply watermark on originalPath and write back to uploadedPath
       await applyWatermark(originalPath, uploadedPath);
+
+      // 3. Small grid/card-sized copy, generated from the already-watermarked file so the
+      // watermark is never lost on the lighter-weight variant.
+      await generateThumbnail(uploadedPath, path.join(uploadsDir, "thumb-" + filename));
     } catch (err) {
       console.error("Failed to copy or watermark image file:", err);
     }
@@ -7209,6 +7497,14 @@ app.patch("/api/reviews/:id/reply", authMiddleware, (req, res) => {
       "review_reply"
     );
   }
+  if (reviewer) {
+    notifyUser(db, reviewer.id, {
+      type: "review_reply",
+      title: "Reply to Your Review",
+      body: `${actor.fullName} replied to your review.`
+    });
+  }
+  writeDb(db);
 
   res.json({ success: true, review });
 });
@@ -7284,6 +7580,15 @@ app.put("/api/admin/reviews/:id", authMiddleware, requireRole([UserRole.PLATFORM
       ),
       "review_moderated"
     );
+  }
+  if (reviewer) {
+    const isApproved = status === "APPROVED";
+    notifyUser(db, reviewer.id, {
+      type: "review_moderated",
+      title: isApproved ? "Review Published" : "Review Not Approved",
+      body: isApproved ? "Your review has been approved and is now visible publicly." : "Your review was not approved."
+    });
+    writeDb(db);
   }
 
   res.json({ success: true, review: db.reviews[idx] });
@@ -7580,8 +7885,38 @@ async function startServer() {
     });
   }
 
+  // Must be registered after every route/middleware above (so it actually sees their errors)
+  // and is itself a no-op when SENTRY_DSN isn't set, matching Sentry.init()'s own dormant gate.
+  if (process.env.SENTRY_DSN) {
+    Sentry.setupExpressErrorHandler(app);
+  }
+
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
+  });
+
+  // Real-time notification push, sharing the same HTTP server/port as the REST API (no
+  // separate port to open on Render). Auth happens on the handshake itself via a `?token=`
+  // query param carrying the same JWT as every other authenticated request - a WebSocket
+  // connection from the browser can't attach a custom Authorization header the way fetch() can.
+  const wss = new WebSocketServer({ server, path: "/ws" });
+  wss.on("connection", (ws, req) => {
+    let userId: string | undefined;
+    try {
+      const token = new URL(req.url || "", "http://localhost").searchParams.get("token");
+      if (!token) throw new Error("Missing token");
+      userId = (jwt.verify(token, JWT_SECRET) as any).id;
+    } catch {
+      ws.close(4001, "Invalid or missing token");
+      return;
+    }
+    if (!wsConnections.has(userId!)) wsConnections.set(userId!, new Set());
+    wsConnections.get(userId!)!.add(ws);
+    ws.on("close", () => {
+      const set = wsConnections.get(userId!);
+      set?.delete(ws);
+      if (set && set.size === 0) wsConnections.delete(userId!);
+    });
   });
 
   // On a redeploy/restart (e.g. Render sends SIGTERM), stop accepting new connections and

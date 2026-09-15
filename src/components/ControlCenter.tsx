@@ -1537,6 +1537,39 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   // platform-wide `leads` list - no new server aggregation endpoint needed.
   const leadsPerDaySeries = buildDailyCountSeries(leads.map(l => l.createdDate), 30, isRtl);
 
+  // 9b. Lead status funnel (all-time, every LeadStatus - not just this month's conversion
+  // rate above), top districts by published listing count, and a top-agents leaderboard -
+  // same "compute client-side from data already fetched" convention as everything above,
+  // no dedicated backend aggregation endpoint needed for this data volume.
+  const leadFunnel = Object.values(LeadStatus).map(status => ({
+    status,
+    count: leads.filter(l => l.status === status).length
+  }));
+
+  const publishedProperties = properties.filter(p => p.listingStatus === ListingStatus.PUBLISHED);
+  const areaCounts = new Map<string, number>();
+  publishedProperties.forEach(p => areaCounts.set(p.district, (areaCounts.get(p.district) || 0) + 1));
+  const topAreas = [...areaCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  const agentListingCounts = new Map<string, number>();
+  publishedProperties.forEach(p => agentListingCounts.set(p.agentId, (agentListingCounts.get(p.agentId) || 0) + 1));
+  const agentLeadCounts = new Map<string, number>();
+  leads.forEach(l => { if (l.agentId) agentLeadCounts.set(l.agentId, (agentLeadCounts.get(l.agentId) || 0) + 1); });
+  const topAgents = [...agentListingCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([agentId, listingCount]) => ({
+      agentId,
+      name: users.find(u => u.id === agentId)?.fullName || (isRtl ? "وكيل غير معروف" : "Unknown Agent"),
+      listingCount,
+      leadCount: agentLeadCounts.get(agentId) || 0
+    }));
+
+  const approvedReviews = reviews.filter((r: any) => r.status === "APPROVED");
+  const platformReviewAverage = approvedReviews.length > 0
+    ? Math.round((approvedReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / approvedReviews.length) * 10) / 10
+    : 0;
+
   // 10. Quick-action shortcut counts - all backed by queues that already exist elsewhere in
   // Control Center; these are just navigation shortcuts into them.
   const pendingReviewsCount = reviews.filter((r: any) => r.status === "PENDING").length;
@@ -1982,6 +2015,92 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <p className="text-[11px] text-emerald-700 font-bold">{currentPeriodAdSettled.toLocaleString()} QAR {isRtl ? "مسواة" : "settled"}</p>
                       <p className="text-[11px] text-amber-700 font-bold">{currentPeriodAdUnsettled.toLocaleString()} QAR {isRtl ? "غير مسواة" : "unsettled"}</p>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lead status funnel + platform review rating */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
+                <div className="bg-surface rounded-xl border border-border overflow-hidden">
+                  <div className="p-4 bg-ink-inverse border-b border-border">
+                    <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                      <TrendingUp size={14} className="text-gold" />
+                      <span>{isRtl ? "قمع حالة العملاء المحتملين (كل الأوقات)" : "Lead Status Funnel (All-Time)"}</span>
+                    </h4>
+                  </div>
+                  <div className="divide-y divide-surface-2">
+                    {leadFunnel.map(row => (
+                      <div key={row.status} className="p-3 flex items-center justify-between">
+                        <span className="text-ink-muted">{row.status.replace(/_/g, " ")}</span>
+                        <span className="font-bold text-ink">{row.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-surface rounded-xl border border-border p-4 space-y-2">
+                  <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                    <Star size={14} className="text-gold" />
+                    <span>{isRtl ? "متوسط تقييم المنصة" : "Platform-Wide Review Rating"}</span>
+                  </h4>
+                  <div className="flex items-center gap-6 pt-1">
+                    <div>
+                      <p className="text-2xl font-serif font-bold text-gold">{platformReviewAverage || "-"}</p>
+                      <p className="text-[10px] text-ink-muted">{isRtl ? "متوسط النجوم (المعتمدة)" : "average stars (approved)"}</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-serif font-bold text-ink">{approvedReviews.length}</p>
+                      <p className="text-[10px] text-ink-muted">{isRtl ? "تقييم منشور" : "published reviews"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Top districts by published listings + top agents leaderboard */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 text-xs">
+                <div className="bg-surface rounded-xl border border-border overflow-hidden">
+                  <div className="p-4 bg-ink-inverse border-b border-border">
+                    <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                      <MapPin size={14} className="text-gold" />
+                      <span>{isRtl ? "أفضل 5 مناطق حسب عدد الإعلانات" : "Top 5 Districts by Published Listings"}</span>
+                    </h4>
+                  </div>
+                  <div className="divide-y divide-surface-2">
+                    {topAreas.length === 0 ? (
+                      <p className="p-4 text-center text-ink-muted">{isRtl ? "لا توجد بيانات كافية بعد." : "Not enough data yet."}</p>
+                    ) : (
+                      topAreas.map(([district, count]) => (
+                        <div key={district} className="p-3 flex items-center justify-between">
+                          <span className="text-ink-muted">{district}</span>
+                          <span className="font-bold text-ink">{count}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-surface rounded-xl border border-border overflow-hidden">
+                  <div className="p-4 bg-ink-inverse border-b border-border">
+                    <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
+                      <Award size={14} className="text-gold" />
+                      <span>{isRtl ? "أفضل 5 وكلاء (الإعلانات والعملاء المحتملون)" : "Top 5 Agents (Listings & Leads)"}</span>
+                    </h4>
+                  </div>
+                  <div className="divide-y divide-surface-2">
+                    {topAgents.length === 0 ? (
+                      <p className="p-4 text-center text-ink-muted">{isRtl ? "لا توجد بيانات كافية بعد." : "Not enough data yet."}</p>
+                    ) : (
+                      topAgents.map(row => (
+                        <div key={row.agentId} className="p-3 flex items-center justify-between">
+                          <span className="text-ink-muted truncate">{row.name}</span>
+                          <span className="shrink-0 text-[10px]">
+                            <span className="font-bold text-ink">{row.listingCount}</span> {isRtl ? "إعلان" : "listings"}
+                            {" · "}
+                            <span className="font-bold text-ink">{row.leadCount}</span> {isRtl ? "عميل" : "leads"}
+                          </span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
