@@ -21,6 +21,7 @@ import { useCurrency } from "../currencyContext.js";
 import { trackEvent, trackPageView } from "../lib/analytics.js";
 import { getThumbnailUrl } from "../lib/image.js";
 import DirectorySearch from "./DirectorySearch.js";
+import FeaturedAgencies from "./FeaturedAgencies.js";
 import {
   Search,
   Sparkles,
@@ -1371,6 +1372,18 @@ export default function VisitorExperience({
           alongside the filters rather than gated on aiSearchActive, since it's market context
           independent of whichever search mode produced the current results. */}
       <MarketPriceIndex isRtl={isRtl} selectedDistrict={selectedDistrictName} />
+
+      {/* Featured Agencies - real agencies with live listings, same visibility gate as the
+          Recently Viewed strip below (plain properties view only). */}
+      {!aiSearchActive && searchMode === "PROPERTIES" && (
+        <FeaturedAgencies
+          isRtl={isRtl}
+          onSelectAgency={(agencyId) => {
+            const org = organizations.find(o => o.id === agencyId);
+            if (org) setSelectedOrgProfile(org);
+          }}
+        />
+      )}
 
       {/* Recently Viewed strip - localStorage-only, no account needed. Only shown on the plain
           properties list (not mid-AI-search or on the agent/agency/developer directory tabs)
