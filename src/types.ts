@@ -556,6 +556,10 @@ export interface SubscriptionPlan {
   name: string;
   priceMonthly: number;
   priceYearly: number;
+  // These four limits are informational only - shown to admins/users as the plan's advertised
+  // capacity, but nothing in server.ts actually enforces a hard cap against any of them. -1 is
+  // the "unlimited" sentinel (see plan-trial in server-db.ts's DEFAULT_SUB_PLANS) - every place
+  // that displays one of these renders -1 as "Unlimited" rather than the raw number.
   propertyLimit: number;
   agentLimit: number;
   aiLimit: number; // search / descriptions count per month

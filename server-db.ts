@@ -127,6 +127,22 @@ const DEFAULT_SUB_PLANS: SubscriptionPlan[] = [
     aiLimit: 2000,
     analyticsAccess: true,
     featuredListingsLimit: 50
+  },
+  {
+    id: "plan-trial",
+    name: "60-Day Free Trial",
+    priceMonthly: 0,
+    priceYearly: 0,
+    // -1 is this schema's "unlimited" sentinel (these limits are informational only - see the
+    // comment on SubscriptionPlan in src/types.ts - nothing in server.ts actually enforces a
+    // hard cap against them), rendered as "Unlimited" everywhere a plan's limits are displayed
+    // (ControlCenter.tsx's plan management card, PlansPricingView.tsx's tier card and
+    // comparison table) rather than the raw -1.
+    propertyLimit: -1,
+    agentLimit: -1,
+    aiLimit: -1,
+    analyticsAccess: true,
+    featuredListingsLimit: -1
   }
 ];
 
@@ -1054,7 +1070,19 @@ export function ensureStateDefaults(db: DatabaseState): void {
     }
   }
   if (!db.helpArticles || db.helpArticles.length === 0) db.helpArticles = DEFAULT_HELP_ARTICLES;
-  if (!db.subscriptionPlans || db.subscriptionPlans.length === 0) db.subscriptionPlans = DEFAULT_SUB_PLANS;
+  if (!db.subscriptionPlans || db.subscriptionPlans.length === 0) {
+    db.subscriptionPlans = DEFAULT_SUB_PLANS;
+  } else {
+    // Merge in any default plan missing by id (e.g. a newly added plan-trial) rather than only
+    // seeding when the whole collection is empty - same reasoning as locations/legalDocuments
+    // above: a plan an admin already edited must never be silently reset on restart, but a
+    // brand-new default plan should still show up without needing a manual one-off insert.
+    for (const plan of DEFAULT_SUB_PLANS) {
+      if (!db.subscriptionPlans.some(existing => existing.id === plan.id)) {
+        db.subscriptionPlans.push(plan);
+      }
+    }
+  }
   if (!db.supportTickets) db.supportTickets = [];
   if (!db.jobListings || db.jobListings.length === 0) db.jobListings = DEFAULT_JOB_LISTINGS;
   if (!db.pressReleases || db.pressReleases.length === 0) db.pressReleases = DEFAULT_PRESS_RELEASES;

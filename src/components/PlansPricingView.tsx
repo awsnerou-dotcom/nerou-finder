@@ -58,6 +58,26 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
       popular: false,
       color: "border-ink",
       badge: isRtl ? "شريك استراتيجي" : "Enterprise Elite"
+    },
+    {
+      id: "plan-trial",
+      name: isRtl ? "تجربة مجانية 60 يوماً" : "60-Day Free Trial",
+      subtitle: isRtl ? "وصول كامل غير محدود لتجربة المنصة قبل الاشتراك" : "Full unlimited access to try the platform before you commit",
+      priceMonthly: 0,
+      priceYearly: 0,
+      // -1 is the shared "unlimited" sentinel (see SubscriptionPlan in src/types.ts) - the
+      // card/table rendering below special-cases it to show "Unlimited" instead of "-1".
+      properties: -1,
+      agents: -1,
+      aiQuota: -1,
+      analytics: true,
+      featuredListings: -1,
+      popular: false,
+      color: "border-emerald-500",
+      badge: isRtl ? "جرّبها مجاناً" : "Try It Free",
+      // Flat 60-day duration rather than a recurring monthly/yearly cycle - the price/billing-
+      // cycle toggle above doesn't apply to this tier, so its card ignores billingCycle entirely.
+      durationLabel: isRtl ? "لمدة 60 يوماً" : "for 60 days"
     }
   ];
 
@@ -139,9 +159,10 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
         </div>
       </div>
 
-      {/* 2. Three Column Tier Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      {/* 2. Tier Grid (now four columns, including the free trial) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
         {localPlans.map((tier) => {
+          const isFree = tier.priceMonthly === 0 && tier.priceYearly === 0;
           const displayPrice = billingCycle === "monthly" ? tier.priceMonthly : Math.round(tier.priceYearly / 12);
           const totalYearlyPrice = tier.priceYearly;
 
@@ -170,15 +191,26 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
                   <p className="text-xs text-ink-muted leading-relaxed min-h-[32px]">{tier.subtitle}</p>
                 </div>
 
-                {/* Price */}
+                {/* Price - the trial tier is a flat one-time duration, not a recurring
+                    monthly/yearly cycle, so it ignores billingCycle entirely. */}
                 <div className="py-4 border-y border-surface-2 space-y-1">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl sm:text-4xl font-mono font-bold text-ink">
-                      {displayPrice.toLocaleString()}
-                    </span>
-                    <span className="text-xs text-ink-muted font-medium">{t.qar} {t.perMonth}</span>
-                  </div>
-                  {billingCycle === "yearly" ? (
+                  {isFree ? (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-3xl sm:text-4xl font-mono font-bold text-emerald-600">
+                        {isRtl ? "مجاني" : "Free"}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-3xl sm:text-4xl font-mono font-bold text-ink">
+                        {displayPrice.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-ink-muted font-medium">{t.qar} {t.perMonth}</span>
+                    </div>
+                  )}
+                  {tier.durationLabel ? (
+                    <p className="text-[10px] text-emerald-600 font-bold uppercase">{tier.durationLabel}</p>
+                  ) : billingCycle === "yearly" ? (
                     <p className="text-[10px] text-emerald-600 font-bold uppercase">
                       {isRtl ? `فوترة سنوية بقيمة ${totalYearlyPrice.toLocaleString()} رق` : `Billed ${totalYearlyPrice.toLocaleString()} QAR annually`}
                     </p>
@@ -189,30 +221,38 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
                   )}
                 </div>
 
-                {/* Key Features Bullet List */}
+                {/* Key Features Bullet List - -1 is the shared "unlimited" sentinel */}
                 <ul className="space-y-3.5 text-xs text-ink-muted">
                   <li className="flex items-center gap-2.5">
                     <CheckCircle2 size={15} className="text-gold shrink-0" />
                     <span>
-                      {isRtl ? `حتى ${tier.properties} عقار نشط` : `Up to ${tier.properties} active properties`}
+                      {tier.properties === -1
+                        ? (isRtl ? "عقارات نشطة غير محدودة" : "Unlimited active properties")
+                        : (isRtl ? `حتى ${tier.properties} عقار نشط` : `Up to ${tier.properties} active properties`)}
                     </span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <CheckCircle2 size={15} className="text-gold shrink-0" />
                     <span>
-                      {isRtl ? `${tier.agents} حساب وكيل مستقل` : `${tier.agents} dedicated agent seat${tier.agents > 1 ? "s" : ""}`}
+                      {tier.agents === -1
+                        ? (isRtl ? "حسابات وكلاء غير محدودة" : "Unlimited agent seats")
+                        : (isRtl ? `${tier.agents} حساب وكيل مستقل` : `${tier.agents} dedicated agent seat${tier.agents > 1 ? "s" : ""}`)}
                     </span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <CheckCircle2 size={15} className="text-gold shrink-0" />
                     <span>
-                      {isRtl ? `${tier.aiQuota} استعلام ذكاء اصطناعي` : `${tier.aiQuota} AI search inquiries / mo`}
+                      {tier.aiQuota === -1
+                        ? (isRtl ? "استعلامات ذكاء اصطناعي غير محدودة" : "Unlimited AI search inquiries")
+                        : (isRtl ? `${tier.aiQuota} استعلام ذكاء اصطناعي` : `${tier.aiQuota} AI search inquiries / mo`)}
                     </span>
                   </li>
                   <li className="flex items-center gap-2.5">
                     <CheckCircle2 size={15} className="text-gold shrink-0" />
                     <span>
-                      {isRtl ? `${tier.featuredListings} فتحات ترويج مميزة` : `${tier.featuredListings} featured slot campaigns`}
+                      {tier.featuredListings === -1
+                        ? (isRtl ? "ترويج مميز غير محدود" : "Unlimited featured slot campaigns")
+                        : (isRtl ? `${tier.featuredListings} فتحات ترويج مميزة` : `${tier.featuredListings} featured slot campaigns`)}
                     </span>
                   </li>
                   <li className="flex items-center gap-2.5">
@@ -264,6 +304,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
                 <th className="p-4 text-center font-bold">{isRtl ? "الوسيط المعياري" : "Standard Broker"}</th>
                 <th className="p-4 text-center font-bold text-gold">{isRtl ? "المكتب المتكامل" : "Enterprise Agency"}</th>
                 <th className="p-4 text-center font-bold">{isRtl ? "المطور العقاري" : "Master Developer"}</th>
+                <th className="p-4 text-center font-bold text-emerald-600">{isRtl ? "تجربة مجانية 60 يوماً" : "60-Day Free Trial"}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-2 text-ink-muted">
@@ -272,24 +313,28 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
                 <td className="p-4 text-center font-semibold">15</td>
                 <td className="p-4 text-center font-bold text-gold">100</td>
                 <td className="p-4 text-center font-semibold">500</td>
+                <td className="p-4 text-center font-bold text-emerald-600">{isRtl ? "غير محدود" : "Unlimited"}</td>
               </tr>
               <tr>
                 <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.agentSeats}</td>
                 <td className="p-4 text-center font-semibold">1</td>
                 <td className="p-4 text-center font-bold text-gold">10</td>
                 <td className="p-4 text-center font-semibold">50</td>
+                <td className="p-4 text-center font-bold text-emerald-600">{isRtl ? "غير محدود" : "Unlimited"}</td>
               </tr>
               <tr>
                 <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.aiQuotaLabel}</td>
                 <td className="p-4 text-center">50</td>
                 <td className="p-4 text-center font-bold text-gold">500</td>
                 <td className="p-4 text-center">2,000</td>
+                <td className="p-4 text-center font-bold text-emerald-600">{isRtl ? "غير محدود" : "Unlimited"}</td>
               </tr>
               <tr>
                 <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.featuredSlots}</td>
                 <td className="p-4 text-center">2</td>
                 <td className="p-4 text-center font-bold text-gold">15</td>
                 <td className="p-4 text-center">50</td>
+                <td className="p-4 text-center font-bold text-emerald-600">{isRtl ? "غير محدود" : "Unlimited"}</td>
               </tr>
               <tr>
                 <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.analyticsAccessLabel}</td>
@@ -302,12 +347,16 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
                 <td className="p-4 text-center text-emerald-600">
                   <Check size={16} className="mx-auto" />
                 </td>
+                <td className="p-4 text-center text-emerald-600">
+                  <Check size={16} className="mx-auto" />
+                </td>
               </tr>
               <tr>
                 <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.certifiedSupport}</td>
                 <td className="p-4 text-center">Standard Support</td>
                 <td className="p-4 text-center text-gold font-bold">Priority SLA (12h)</td>
                 <td className="p-4 text-center font-semibold">Dedicated AM & Elite SLA (2h)</td>
+                <td className="p-4 text-center font-semibold text-emerald-600">Standard Support</td>
               </tr>
             </tbody>
           </table>

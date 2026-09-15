@@ -2068,7 +2068,17 @@ export default function VisitorExperience({
                     {selectedOrgProfile.type}
                   </span>
                   <div className="text-xs text-gold font-semibold">
-                    {selectedOrgProfile.subscriptionPlanId === "plan-premium" ? "Enterprise SaaS Tier" : "Master Developer SaaS Tier"}
+                    {
+                      // Was a plan-premium/else binary that mislabeled every other plan
+                      // (including plan-basic) as "Master Developer SaaS Tier" - covers all
+                      // real plan ids now, with a generic fallback for any future/unknown one.
+                      {
+                        "plan-basic": "Standard SaaS Tier",
+                        "plan-premium": "Enterprise SaaS Tier",
+                        "plan-developer": "Master Developer SaaS Tier",
+                        "plan-trial": "Free Trial Tier"
+                      }[selectedOrgProfile.subscriptionPlanId] || "SaaS Tier"
+                    }
                   </div>
                 </div>
               </div>

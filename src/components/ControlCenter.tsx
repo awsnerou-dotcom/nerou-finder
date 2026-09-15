@@ -3699,10 +3699,10 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               </span>
                             </div>
                             <div className="text-[11px] text-ink-muted mt-1 space-y-1">
-                              <p>💰 {plan.priceMonthly} QAR/mo | {plan.priceYearly} QAR/yr</p>
-                              <p>🏨 Max properties limit: <strong className="text-ink">{plan.propertyLimit}</strong></p>
-                              <p>👥 Max agents allowed: <strong className="text-ink">{plan.agentLimit}</strong></p>
-                              <p>🤖 Monthly AI requests: <strong className="text-ink">{plan.aiLimit}</strong></p>
+                              <p>💰 {plan.priceMonthly === 0 ? "Free" : `${plan.priceMonthly} QAR/mo`} | {plan.priceYearly} QAR/yr</p>
+                              <p>🏨 Max properties limit: <strong className="text-ink">{plan.propertyLimit === -1 ? "Unlimited" : plan.propertyLimit}</strong></p>
+                              <p>👥 Max agents allowed: <strong className="text-ink">{plan.agentLimit === -1 ? "Unlimited" : plan.agentLimit}</strong></p>
+                              <p>🤖 Monthly AI requests: <strong className="text-ink">{plan.aiLimit === -1 ? "Unlimited" : plan.aiLimit}</strong></p>
                             </div>
                           </div>
                           <div className="flex justify-end pt-2 border-t border-surface-2">

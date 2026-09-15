@@ -3993,8 +3993,17 @@ app.get("/api/plans", (req, res) => {
 // CREATE or UPDATE subscription plan
 app.post("/api/admin/plans", (req, res) => {
   const { id, name, priceMonthly, priceYearly, propertyLimit, agentLimit, aiLimit, analyticsAccess, featuredListingsLimit } = req.body;
-  const NUMERIC_PLAN_FIELDS: Record<string, unknown> = { priceMonthly, priceYearly, propertyLimit, agentLimit, aiLimit, featuredListingsLimit };
-  for (const [field, value] of Object.entries(NUMERIC_PLAN_FIELDS)) {
+  // -1 is the shared "unlimited" sentinel for the four capacity limits (see plan-trial in
+  // DEFAULT_SUB_PLANS and the comment on SubscriptionPlan in src/types.ts) - price fields have
+  // no such meaning for a negative value, so they're still held to a strict non-negative floor.
+  const LIMIT_FIELDS: Record<string, unknown> = { propertyLimit, agentLimit, aiLimit, featuredListingsLimit };
+  const PRICE_FIELDS: Record<string, unknown> = { priceMonthly, priceYearly };
+  for (const [field, value] of Object.entries(LIMIT_FIELDS)) {
+    if (value !== undefined && (Number.isNaN(Number(value)) || Number(value) < -1)) {
+      return res.status(400).json({ error: `${field} must be a non-negative number, or -1 for unlimited.` });
+    }
+  }
+  for (const [field, value] of Object.entries(PRICE_FIELDS)) {
     if (value !== undefined && (Number.isNaN(Number(value)) || Number(value) < 0)) {
       return res.status(400).json({ error: `${field} must be a non-negative number.` });
     }
