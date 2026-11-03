@@ -30,5 +30,16 @@ export default tseslint.config(
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-empty': ['warn', { allowEmptyCatch: true }],
     },
+  },
+  {
+    // public/sw.js is a service worker, not app code: it runs in ServiceWorkerGlobalScope,
+    // where self/caches/clients/fetch/URL are ambient. The globals block above is scoped to
+    // **/*.{ts,tsx}, so this file was linted with no environment at all and every one of
+    // those references raised no-undef - 13 errors, which is what failed CI's Lint step
+    // (and had been failing it on master since September).
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: { ...globals.serviceworker, ...globals.browser },
+    },
   }
 );
