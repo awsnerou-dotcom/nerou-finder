@@ -5,36 +5,67 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Core SEO Meta Tags -->
-    <title>Nerou Finder | Doha Luxury Real Estate & Interactive AI Portal</title>
-    <meta name="description" content="Discover exclusive off-market properties, penthouses, and developments in Doha with our real-time interactive AI guidance engine." />
-    <meta name="keywords" content="Nerou Finder, Qatar Real Estate, Luxury Penthouses Doha, The Pearl Qatar, Lusail City, Real Estate AI Search, Doha Off-Plan Property" />
+    <!-- Positioning unified on what the product actually enforces (agent licence verification
+         + availability confirmation). The previous copy sold "exclusive off-market properties,
+         penthouses" and a "Luxury ... AI Portal" - three claims nothing in this codebase backs:
+         there is no off-market inventory concept, nothing restricts listings to luxury, and
+         "AI portal" describes one search mode, not the product. Unsubstantiated claims on a
+         property marketplace are both a credibility and a compliance problem. -->
+    <title>Nerou Finder | Verified Property Listings in Qatar</title>
+    <meta name="description" content="Properties in Qatar from licence-verified agents, with availability confirmed before publishing. One unit, one listing. Published pricing for agents." />
+    <!-- <meta name="keywords"> removed: ignored by every major engine since 2009, and it was
+         reinforcing the luxury positioning above. -->
     <meta name="author" content="Nerou Technology Services" />
     <meta name="geo.region" content="QA" />
     <meta name="geo.placename" content="Doha" />
     <meta name="geo.position" content="25.2854;51.5310" />
     <meta name="ICBM" content="25.2854, 51.5310" />
 
+    <!-- Self-referencing canonical. Rewritten per-route by the prerender handlers in
+         server.ts, same as the og/twitter tags below. Nothing emitted one before, so every
+         URL variant (trailing slash, query strings, www vs apex) looked like separate content. -->
+    <link rel="canonical" href="https://www.neroufinder.com/" />
+
     <!-- Open Graph / Facebook Social Sharing -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://nerou.io/" />
-    <meta property="og:title" content="Nerou Finder | Doha Luxury Real Estate & Interactive AI Portal" />
-    <meta property="og:description" content="Discover exclusive off-market properties, penthouses, and developments in Doha with our real-time interactive AI guidance engine." />
-    <meta property="og:image" content="https://images.unsplash.com/photo-1578894381163-e72c17f2d45f?auto=format&fit=crop&w=1200&h=630&q=80" />
+    <!-- og:url / twitter:url were hardcoded to https://nerou.io/ on EVERY page - a different
+         domain, and (per the ADMIN_NOTIFICATION_EMAIL comment in server.ts) one nobody here
+         owns. Every WhatsApp/X/LinkedIn share of a listing resolved to the wrong site. These
+         are now rewritten per-route by server.ts; this value is the homepage fallback. -->
+    <meta property="og:url" content="https://www.neroufinder.com/" />
+    <meta property="og:title" content="Nerou Finder | Verified Property Listings in Qatar" />
+    <meta property="og:description" content="Properties in Qatar from licence-verified agents, with availability confirmed before publishing. One unit, one listing." />
+    <!-- Was a hotlinked Unsplash stock photo: an external dependency we don't control, on a
+         page whose whole promise is that what you see is real. Now the self-hosted hero image.
+         TODO: replace with a purpose-made 1200x630 branded OG card; this one is 1915x821
+         (2.33:1), so social crops it slightly. -->
+    <meta property="og:image" content="https://www.neroufinder.com/assets/images/hero-doha-skyline.jpg" />
+    <meta property="og:image:width" content="1915" />
+    <meta property="og:image:height" content="821" />
+    <meta property="og:image:alt" content="Nerou Finder - verified property listings in Qatar" />
     <meta property="og:locale" content="en_US" />
+    <!-- Accurate: the UI is fully bilingual via the isRtl toggle. Not paired with hreflang
+         because Arabic is a client-side toggle, not a distinct URL - add hreflang only once
+         /ar/ routes exist, or it would point crawlers at URLs that don't serve Arabic. -->
     <meta property="og:locale:alternate" content="ar_QA" />
     <meta property="og:site_name" content="Nerou Finder" />
 
     <!-- Twitter Social Sharing -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:url" content="https://nerou.io/" />
-    <meta name="twitter:title" content="Nerou Finder | Doha Luxury Real Estate & Interactive AI Portal" />
-    <meta name="twitter:description" content="Discover exclusive off-market properties, penthouses, and developments in Doha with our real-time interactive AI guidance engine." />
-    <meta name="twitter:image" content="https://images.unsplash.com/photo-1578894381163-e72c17f2d45f?auto=format&fit=crop&w=1200&h=630&q=80" />
+    <meta name="twitter:url" content="https://www.neroufinder.com/" />
+    <meta name="twitter:title" content="Nerou Finder | Verified Property Listings in Qatar" />
+    <meta name="twitter:description" content="Properties in Qatar from licence-verified agents, with availability confirmed before publishing. One unit, one listing." />
+    <meta name="twitter:image" content="https://www.neroufinder.com/assets/images/hero-doha-skyline.jpg" />
 
-    <!-- Luxury Typography -->
+    <!-- Typography: 22 weights reduced to 15, keeping only what the UI actually uses.
+         A grep of src/ finds font-normal (400), font-medium (500), font-semibold (600) and
+         font-bold (700) and nothing else - so 300/800/900 were pure download weight. The
+         Fraunces italic axis is dropped too: every `italic` usage in src/ is on body text,
+         which resolves to --font-sans (Manrope/Tajawal), never the serif stack. Tajawal has
+         no 600 face, hence 400;500;700 there. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=El+Messiri:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=El+Messiri:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" />
 
     <!-- Favicon and Theme Colors -->
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png" />
@@ -48,9 +79,79 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Nerou Finder" />
+
+    <!-- Organization + WebSite structured data. Neither existed: the property and area-guide
+         routes in server.ts inject per-page JSON-LD, but nothing told search engines who runs
+         the site. SearchAction is what makes a sitelinks search box possible in results. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://www.neroufinder.com/#organization",
+          "name": "Nerou Finder",
+          "legalName": "Nerou Technology Services",
+          "url": "https://www.neroufinder.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://www.neroufinder.com/assets/icons/icon-512.png",
+            "width": 512,
+            "height": 512
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Doha",
+            "addressCountry": "QA"
+          },
+          "areaServed": { "@type": "Country", "name": "Qatar" }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://www.neroufinder.com/#website",
+          "url": "https://www.neroufinder.com/",
+          "name": "Nerou Finder",
+          "publisher": { "@id": "https://www.neroufinder.com/#organization" },
+          "inLanguage": ["en", "ar"],
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://www.neroufinder.com/?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body class="bg-canvas text-ink antialiased">
     <div id="root"></div>
+    <!-- Crawler / no-JS fallback. This app renders entirely client-side, so the HTML a crawler
+         receives is otherwise an empty #root: no heading, no text, and - critically - zero
+         internal <a href> links, leaving the area guides (the site's strongest organic asset)
+         reachable only from the sitemap. Not a substitute for SSR; a floor until it lands. -->
+    <noscript>
+      <h1>Verified property listings in Qatar</h1>
+      <p>
+        Nerou Finder lists properties for rent, for sale and off-plan across Qatar.
+        Every agent's licence is verified, and a listing's availability is confirmed
+        before it is published.
+      </p>
+      <h2>Area guides</h2>
+      <ul>
+        <li><a href="/areas/west-bay">West Bay</a></li>
+        <li><a href="/areas/the-pearl">The Pearl-Qatar</a></li>
+        <li><a href="/areas/lusail-city">Lusail City</a></li>
+        <li><a href="/areas/al-sadd">Al Sadd</a></li>
+        <li><a href="/areas/al-waab">Al Waab</a></li>
+        <li><a href="/areas/old-airport">Old Airport</a></li>
+        <li><a href="/areas/msheireb">Msheireb</a></li>
+        <li><a href="/areas/bin-mahmoud">Bin Mahmoud</a></li>
+      </ul>
+      <p>JavaScript is required for property search.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

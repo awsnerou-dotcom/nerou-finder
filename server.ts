@@ -254,6 +254,84 @@ export function escapeHtml(value: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
+// ── Prerender meta helpers (shared by GET /properties/:id and GET /areas/:slug) ──────────
+//
+// Both handlers rewrite <title> and the og/twitter title+description+image tags, but neither
+// touched og:url, twitter:url, <link rel="canonical"> or <meta name="description">. The
+// consequences were all visible in production:
+//   - og:url/twitter:url stayed at index.html's hardcoded https://nerou.io/ on every page,
+//     so every social share of a listing pointed at a different (unowned) domain;
+//   - no canonical anywhere, so trailing-slash/query/www variants read as duplicate content;
+//   - <meta name="description"> kept the generic homepage copy on every listing, even though
+//     og:description was correctly replaced - search snippets and social cards disagreed.
+export function applyCanonicalUrls(html: string, absoluteUrl: string): string {
+  const u = escapeHtml(absoluteUrl);
+  return html
+    .replace(/<link rel="canonical" href="[^"]*"\s*\/?>/, `<link rel="canonical" href="${u}" />`)
+    .replace(/<meta property="og:url" content="[^"]*"\s*\/?>/g, `<meta property="og:url" content="${u}" />`)
+    .replace(/<meta name="twitter:url" content="[^"]*"\s*\/?>/g, `<meta name="twitter:url" content="${u}" />`);
+}
+
+export function applyMetaDescription(html: string, description: string): string {
+  return html.replace(
+    /<meta name="description" content="[^"]*"\s*\/?>/,
+    `<meta name="description" content="${escapeHtml(description)}" />`
+  );
+}
+
+// Absolute origin of the current request, honouring Render's x-forwarded-proto.
+// Typed structurally rather than as express.Request so it stays unit-testable without
+// constructing a real request object.
+export function requestOrigin(req: {
+  get(name: string): string | undefined;
+  secure?: boolean;
+  headers: Record<string, unknown>;
+}): string {
+  const host = req.get("host") || "www.neroufinder.com";
+  const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+  return `${protocol}://${host}`;
+}
+
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  APARTMENT: "Apartment", VILLA: "Villa", TOWNHOUSE: "Townhouse", PENTHOUSE: "Penthouse",
+  COMPOUND: "Compound", STUDIO: "Studio", ROOM: "Room", OFFICE: "Office", RETAIL: "Retail",
+  SHOP: "Shop", WAREHOUSE: "Warehouse", BUILDING: "Building", LAND: "Land",
+  HOTEL_APARTMENT: "Hotel apartment", COMMERCIAL: "Commercial", RESIDENTIAL: "Residential",
+  FARM: "Farm", CHALET: "Chalet", OTHER: "Property"
+};
+
+const TRANSACTION_LABELS: Record<string, string> = {
+  FOR_SALE: "for sale", FOR_RENT: "for rent", OFF_PLAN: "off-plan",
+  COMMERCIAL_SALE: "for sale", COMMERCIAL_LEASE: "for lease", LAND_SALE: "for sale"
+};
+
+// Builds a listing's <meta name="description"> from structured fields rather than the agent's
+// free text. The raw description is unusable as a meta tag: agents paste multi-line adverts
+// with emoji and their own phone number (the one live listing's copy ends in
+// "📞 Contact us today ... +974 XXXX XXXX"), which previously flowed straight into
+// og:description - bypassing the platform's own contact flow and wrecking the snippet.
+export function buildListingMetaDescription(property: {
+  propertyType?: string; transactionType?: string; district?: string; city?: string;
+  area?: number; sizeUnit?: string; price?: number; currency?: string;
+}): string {
+  const isRent = property.transactionType === "FOR_RENT" || property.transactionType === "COMMERCIAL_LEASE";
+  const place = [property.district, property.city].filter(Boolean).join(", ");
+  const parts = [
+    [
+      PROPERTY_TYPE_LABELS[property.propertyType || ""] || "Property",
+      TRANSACTION_LABELS[property.transactionType || ""] || "",
+      place ? `in ${place}` : ""
+    ].filter(Boolean).join(" "),
+    property.area ? `${property.area} ${property.sizeUnit === "SQFT" ? "sqft" : "sqm"}` : "",
+    property.price
+      ? `${property.currency || "QAR"} ${property.price.toLocaleString("en-US")}${isRent ? "/month" : ""}`
+      : "",
+    "From a licence-verified agent on Nerou Finder."
+  ].filter(Boolean);
+  const out = parts.join(" · ");
+  return out.length > 160 ? out.slice(0, 157).trimEnd() + "…" : out;
+}
+
 export function generateInquiryEmailHtml(leadName: string, leadPhone: string, leadEmail: string, propTitle: string, propPrice: number, propId: string) {
   leadName = escapeHtml(leadName);
   leadPhone = escapeHtml(leadPhone);
@@ -7741,25 +7819,42 @@ async function startServer() {
     if (fs.existsSync(indexPath)) {
       try {
         let html = fs.readFileSync(indexPath, "utf-8");
-        const title = `${property.title} | Nerou Finder`;
-        const desc = property.description || "Discover exclusive luxury real estate in Doha.";
+        // escapeHtml on both: property.title and property.description are agent-supplied and
+        // were interpolated raw into <title> and into content="..." attributes. The area-guide
+        // handler below already escapes (its content is curated, so the risk is lower there) -
+        // this one handled the attacker-controlled strings and didn't. A title containing
+        // "> closed the attribute and injected markup into every crawler and social preview.
+        // .trim() because titles arrive with leading whitespace (the one live listing renders
+        // as "<title> Office For Rent In Qatar | Nerou Finder").
+        const rawTitle = (property.title || "Property").trim();
+        const title = escapeHtml(`${rawTitle} | Nerou Finder`);
+        // Social cards can carry the agent's own prose; search snippets get the structured
+        // line (see buildListingMetaDescription). Both are escaped.
+        const socialDesc = escapeHtml(
+          (property.description || "").replace(/\s+/g, " ").trim().slice(0, 300) ||
+            "Verified property listing in Qatar on Nerou Finder."
+        );
+        const metaDesc = buildListingMetaDescription(property);
         const coverImage = property.images && property.images.length > 0
           ? property.images[0]
-          : "https://images.unsplash.com/photo-1578894381163-e72c17f2d45f?auto=format&fit=crop&w=1200&h=630&q=80";
+          : "/assets/images/hero-doha-skyline.jpg";
 
-        const host = req.get("host") || "neroufinder.com";
-        const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+        const origin = requestOrigin(req);
         const absoluteCoverImage = coverImage.startsWith("http")
           ? coverImage
-          : `${protocol}://${host}${coverImage}`;
+          : `${origin}${coverImage}`;
 
         html = html.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
         html = html.replace(/<meta property="og:title" content="[^"]*"\s*\/?>/g, `<meta property="og:title" content="${title}" />`);
-        html = html.replace(/<meta property="og:description" content="[^"]*"\s*\/?>/g, `<meta property="og:description" content="${desc}" />`);
+        html = html.replace(/<meta property="og:description" content="[^"]*"\s*\/?>/g, `<meta property="og:description" content="${socialDesc}" />`);
         html = html.replace(/<meta property="og:image" content="[^"]*"\s*\/?>/g, `<meta property="og:image" content="${absoluteCoverImage}" />`);
         html = html.replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/g, `<meta name="twitter:title" content="${title}" />`);
-        html = html.replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/g, `<meta name="twitter:description" content="${desc}" />`);
+        html = html.replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/g, `<meta name="twitter:description" content="${socialDesc}" />`);
         html = html.replace(/<meta name="twitter:image" content="[^"]*"\s*\/?>/g, `<meta name="twitter:image" content="${absoluteCoverImage}" />`);
+        // The listing's own image dimensions are unknown here, so drop the homepage's
+        // hardcoded og:image:width/height rather than assert wrong ones.
+        html = html.replace(/\s*<meta property="og:image:(?:width|height)" content="[^"]*"\s*\/?>/g, "");
+        html = applyMetaDescription(html, metaDesc);
 
         // Structured data (schema.org RealEstateListing) so search engines can render this
         // listing as a rich result (price, address, photo) instead of a plain blue link - the
@@ -7767,15 +7862,16 @@ async function startServer() {
         // advertise every one of these URLs and this route already computes everything the
         // JSON-LD block needs. Injected server-side (not just client-side) so it's present in
         // the very first response a crawler sees, with no JS execution required.
-        const permalink = `${protocol}://${host}/properties/${property.id}`;
+        const permalink = `${origin}/properties/${property.id}`;
+        html = applyCanonicalUrls(html, permalink);
         const structuredData = {
           "@context": "https://schema.org",
           "@type": "RealEstateListing",
-          name: property.title,
-          description: desc,
+          name: rawTitle,
+          description: (property.description || "").trim() || metaDesc,
           url: permalink,
           image: (property.images && property.images.length > 0 ? property.images : [absoluteCoverImage])
-            .map(img => (img.startsWith("http") ? img : `${protocol}://${host}${img}`)),
+            .map(img => (img.startsWith("http") ? img : `${origin}${img}`)),
           datePosted: property.createdDate,
           address: {
             "@type": "PostalAddress",
@@ -7830,17 +7926,20 @@ async function startServer() {
       try {
         let html = fs.readFileSync(indexPath, "utf-8");
         const title = escapeHtml(`${guide.title} | Nerou Finder`);
-        const desc = escapeHtml(guide.overview.slice(0, 200).trim() + (guide.overview.length > 200 ? "…" : ""));
+        // Kept unescaped alongside the escaped copy: applyMetaDescription escapes its own
+        // input, so passing the pre-escaped string would double-encode (& -> &amp;amp;).
+        const rawDesc = guide.overview.slice(0, 200).trim() + (guide.overview.length > 200 ? "…" : "");
+        const desc = escapeHtml(rawDesc);
 
         html = html.replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
         html = html.replace(/<meta property="og:title" content="[^"]*"\s*\/?>/g, `<meta property="og:title" content="${title}" />`);
         html = html.replace(/<meta property="og:description" content="[^"]*"\s*\/?>/g, `<meta property="og:description" content="${desc}" />`);
         html = html.replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/g, `<meta name="twitter:title" content="${title}" />`);
         html = html.replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/g, `<meta name="twitter:description" content="${desc}" />`);
+        html = applyMetaDescription(html, rawDesc);
 
-        const host = req.get("host") || "neroufinder.com";
-        const protocol = req.secure || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
-        const permalink = `${protocol}://${host}/areas/${guide.slug}`;
+        const permalink = `${requestOrigin(req)}/areas/${guide.slug}`;
+        html = applyCanonicalUrls(html, permalink);
         const structuredData = {
           "@context": "https://schema.org",
           "@type": "Place",
