@@ -139,7 +139,7 @@ export default function InteractiveMap({ properties, onPropertyClick, isRtl }: I
             <span class="text-xs font-semibold text-gold">${formattedPrice} QAR</span>
             <span class="text-[9px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-600 font-bold uppercase">${escapeHtml(prop.propertyType)}</span>
           </div>
-          <button onclick="window.viewMapPropertyDetails('${escapeHtml(prop.id)}')" class="mt-2.5 w-full text-center bg-gold hover:bg-gold-hover text-white font-bold py-1 px-2 rounded text-[10px] cursor-pointer transition-colors border-none">
+          <button onclick="window.viewMapPropertyDetails('${escapeHtml(prop.id)}')" class="mt-2.5 w-full text-center bg-gold hover:bg-gold-hover text-gold-ink font-bold py-1 px-2 rounded text-[10px] cursor-pointer transition-colors border-none">
             ${isRtl ? "عرض التفاصيل" : "View Details"}
           </button>
         </div>

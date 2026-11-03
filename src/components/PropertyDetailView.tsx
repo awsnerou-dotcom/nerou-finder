@@ -10,7 +10,9 @@ import {
   TransactionType,
   PropertyType,
   getAvailabilityStaleDays,
-  AVAILABILITY_UNCONFIRMED_DAYS
+  AVAILABILITY_UNCONFIRMED_DAYS,
+  isAvailabilityConfirmed,
+  formatConfirmedDate
 } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
 import { getNearbyPlaces, LandmarkType } from "../lib/nearbyPlaces.js";
@@ -801,15 +803,25 @@ export default function PropertyDetailView({
               {property.verificationStatus === VerificationStatus.APPROVED && (
                 <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold flex items-center gap-1 rounded-sm">
                   <Shield size={10} fill="currentColor" />
-                  {isRtl ? "مؤكد ومعتمد" : "Verified Portal Listing"}
+                  {/* Was "مؤكد ومعتمد" in Arabic - "confirmed and approved", which reads as a
+                      statement about availability and so collided with the availability badge
+                      beside it. The English already named its subject; now both do. */}
+                  {isRtl ? "قائمة موثّقة على المنصة" : "Verified Portal Listing"}
                 </span>
               )}
-              {isAvailabilityUnconfirmed && (
+              {/* Availability stated in both directions, matching the listing cards. */}
+              {isAvailabilityConfirmed(property.lastConfirmedAvailableDate) ? (
+                <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold flex items-center gap-1 rounded-sm">
+                  <CheckCircle size={10} />
+                  {isRtl ? "مؤكّد متاح" : "Available"} ·{" "}
+                  {formatConfirmedDate(property.lastConfirmedAvailableDate, isRtl)}
+                </span>
+              ) : isAvailabilityUnconfirmed ? (
                 <span className="px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold flex items-center gap-1 rounded-sm">
                   <Clock size={10} />
-                  {isRtl ? "التوفر غير مؤكد مؤخراً" : "Availability Unconfirmed"}
+                  {isRtl ? "بانتظار تأكيد التوفّر" : "Awaiting availability check"}
                 </span>
-              )}
+              ) : null}
               <span className="text-[10px] font-mono text-ink-muted ml-auto">
                 Ref: {property.listingId || `N-${property.id.substr(-5)}`}
               </span>
@@ -849,7 +861,7 @@ export default function PropertyDetailView({
                       }}
                       className={`px-3 py-1 text-[10px] font-bold rounded-full cursor-pointer transition-all ${
                         activeCategory === cat && !view360
-                          ? "bg-gold text-white shadow-md"
+                          ? "bg-gold text-gold-ink shadow-md"
                           : "bg-white/90 backdrop-blur-xs text-ink border border-border hover:bg-surface"
                       }`}
                     >
@@ -863,7 +875,7 @@ export default function PropertyDetailView({
                     onClick={() => setView360(true)}
                     className={`px-3 py-1 text-[10px] font-bold rounded-full cursor-pointer transition-all flex items-center gap-1 ${
                       view360
-                        ? "bg-gold text-white shadow-md"
+                        ? "bg-gold text-gold-ink shadow-md"
                         : "bg-white/90 backdrop-blur-xs text-ink border border-border hover:bg-surface"
                     }`}
                   >
@@ -1728,7 +1740,7 @@ export default function PropertyDetailView({
                     </button>
                     <a
                       href={`tel:+${agentInfo?.phone || "97433334444"}`}
-                      className="px-3 py-2 bg-chrome hover:bg-gold text-white rounded-lg font-bold flex items-center justify-center gap-1 transition-colors"
+                      className="px-3 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded-lg font-bold flex items-center justify-center gap-1 transition-colors"
                     >
                       <Phone size={14} />
                       <span>{isRtl ? "اتصال" : "Call"}</span>
@@ -1816,7 +1828,7 @@ export default function PropertyDetailView({
                         <div className="flex items-end">
                           <button
                             type="submit"
-                            className="w-full py-2 bg-chrome hover:bg-gold text-white rounded-lg font-bold transition-colors cursor-pointer"
+                            className="w-full py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded-lg font-bold transition-colors cursor-pointer"
                           >
                             {isRtl ? "إرسال حجز" : "Book Now"}
                           </button>
@@ -1851,7 +1863,7 @@ export default function PropertyDetailView({
             </button>
             <a
               href={`tel:+${agentInfo?.phone || "97433334444"}`}
-              className="px-4 py-2.5 bg-chrome text-white font-bold rounded-lg hover:bg-gold flex items-center gap-1"
+              className="px-4 py-2.5 bg-chrome text-white font-bold rounded-lg hover:bg-gold hover:text-gold-ink flex items-center gap-1"
             >
               <Phone size={14} />
               <span>{isRtl ? "اتصال" : "Call Agent"}</span>

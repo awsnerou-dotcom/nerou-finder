@@ -112,7 +112,7 @@ export default function BoostRecommendations({ properties, agentId, orgId, isRtl
                     <p className="text-[10px] text-ink-muted">
                       {property.district}, {property.city} • {property.price.toLocaleString()} {property.currency}
                     </p>
-                    <p className="text-[9px] text-ink-faint">
+                    <p className="text-[9px] text-ink-muted">
                       {isRtl
                         ? `${rec.viewsPerDay}/يوم مشاهدات • ${rec.leadsCount} عميل محتمل • ${rec.ageDays} يوم منذ الإدراج`
                         : `${rec.viewsPerDay}/day views • ${rec.leadsCount} leads • ${rec.ageDays}d since listed`}

@@ -966,7 +966,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                             {isRtl ? "عرض الوحدة المرتبطة" : "View related unit"}
                           </button>
                         )}
-                        <span className="text-[9px] text-ink-faint block">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
+                        <span className="text-[9px] text-ink-muted block">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap shrink-0">
@@ -1037,7 +1037,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                 )}
                 <label
                   htmlFor="developer-logo-upload"
-                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-chrome hover:bg-gold text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
+                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
                   title={isRtl ? "تغيير الشعار" : "Change logo"}
                 >
                   {logoUploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
@@ -1107,7 +1107,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
               <button
                 type="submit"
                 disabled={savingOrgProfile}
-                className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+                className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
               >
                 {savingOrgProfile ? (isRtl ? "جارٍ الحفظ..." : "Saving...") : (isRtl ? "حفظ ملف الشركة" : "Save Company Profile")}
               </button>
@@ -1159,7 +1159,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
               <button
                 type="submit"
                 disabled={passwordChanging}
-                className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+                className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
               >
                 {passwordChanging ? (isRtl ? "جارٍ التحديث..." : "Updating...") : (isRtl ? "تغيير كلمة المرور" : "Change Password")}
               </button>
@@ -1178,7 +1178,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
             </h4>
             <button
               onClick={() => setIsAddingProject(!isAddingProject)}
-              className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
               <span>{isRtl ? "إضافة مشروع جديد" : "Create Project"}</span>
@@ -1358,7 +1358,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg"
+                  className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg"
                 >
                   Create Master Catalog
                 </button>
@@ -1468,7 +1468,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                       {isRtl ? "عرض ملف البروشور" : "View PDF Brochure"}
                     </a>
                   ) : (
-                    <span className="italic text-ink-faint">{isRtl ? "لم يتم رفع بروشور بعد" : "No brochure uploaded yet"}</span>
+                    <span className="italic text-ink-muted">{isRtl ? "لم يتم رفع بروشور بعد" : "No brochure uploaded yet"}</span>
                   )}
                 </div>
               </div>
@@ -1520,7 +1520,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                 setEditingUnitId(null);
                 setIsAddingUnit(!isAddingUnit);
               }}
-              className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
               <span>{isRtl ? "إضافة وحدة" : "Add Unit"}</span>
@@ -1604,7 +1604,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                 <button type="button" onClick={() => { setIsAddingUnit(false); setEditingUnitId(null); }} className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold">
                   {isRtl ? "إلغاء" : "Cancel"}
                 </button>
-                <button type="submit" disabled={creatingUnit || projects.length === 0} className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg disabled:opacity-50">
+                <button type="submit" disabled={creatingUnit || projects.length === 0} className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg disabled:opacity-50">
                   {creatingUnit
                     ? (isRtl ? "جارٍ الحفظ..." : "Saving...")
                     : editingUnitId

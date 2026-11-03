@@ -208,7 +208,7 @@ export default function NotificationBell({ isRtl, onClick }: NotificationBellPro
                 <div className={`min-w-0 ${n.read ? "ps-3.5" : ""}`}>
                   <p className="text-xs font-bold text-ink truncate">{n.title}</p>
                   <p className="text-[11px] text-ink-muted line-clamp-2">{n.body}</p>
-                  <p className="text-[10px] text-ink-faint mt-0.5">{timeAgo(n.createdDate, isRtl)}</p>
+                  <p className="text-[10px] text-ink-muted mt-0.5">{timeAgo(n.createdDate, isRtl)}</p>
                 </div>
               </button>
             ))

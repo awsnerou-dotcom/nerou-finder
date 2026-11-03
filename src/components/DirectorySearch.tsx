@@ -108,7 +108,7 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
             placeholder={placeholderText}
             className="w-full pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2.5 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:border-gold text-ink"
           />
-          <Search size={16} className={`absolute ${isRtl ? "right-3" : "left-3"} top-3 text-ink-faint`} />
+          <Search size={16} className={`absolute ${isRtl ? "right-3" : "left-3"} top-3 text-ink-muted`} />
         </div>
         <select
           value={minRating}
@@ -158,7 +158,7 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
                   <span className="flex items-center gap-1">
                     <Star size={11} className="text-gold fill-gold" />
                     {item.averageRating > 0 ? item.averageRating.toFixed(1) : (isRtl ? "جديد" : "New")}
-                    {item.reviewCount > 0 && <span className="text-ink-faint">({item.reviewCount})</span>}
+                    {item.reviewCount > 0 && <span className="text-ink-muted">({item.reviewCount})</span>}
                   </span>
                   <span className="flex items-center gap-1">
                     <StatIcon size={11} />
@@ -168,7 +168,7 @@ export default function DirectorySearch({ type, isRtl, onSelect, pageSize = 12 }
                   </span>
                 </div>
                 {item.cities.length > 0 && (
-                  <p className="text-[10px] text-ink-faint flex items-center gap-1 truncate">
+                  <p className="text-[10px] text-ink-muted flex items-center gap-1 truncate">
                     <MapPin size={10} className="shrink-0" />
                     <span className="truncate capitalize">{item.cities.slice(0, 3).join(", ")}</span>
                   </p>

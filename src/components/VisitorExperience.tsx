@@ -15,7 +15,9 @@ import {
   Organization,
   getAvailabilityStaleDays,
   AVAILABILITY_UNCONFIRMED_DAYS,
-  getVerifiedBadgeLabel
+  getVerifiedBadgeLabel,
+  isAvailabilityConfirmed,
+  formatConfirmedDate
 } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
 import { trackEvent, trackPageView } from "../lib/analytics.js";
@@ -890,7 +892,15 @@ export default function VisitorExperience({
     aiPlaceholder: isRtl ? "مثال: شقة غرفتين في لوسيل بإطلالة بحرية بأقل من ١٢,٠٠٠ ريال قطري..." : "e.g. Find me a 2-bedroom in Lusail with a sea view under 12,000 QAR...",
     allProperties: isRtl ? "العقارات المتاحة" : "Available Properties",
     noProperties: isRtl ? "لم يتم العثور على عقارات مطابقة للبحث." : "No properties found matching your search.",
-    verified: isRtl ? "موثق" : "Verified",
+    // Says what was verified. A bare "Verified" next to "Availability Unconfirmed" on the
+    // same card read as a direct contradiction, which is corrosive on a product whose whole
+    // pitch is verification: the two badges describe different things (this listing passed
+    // review / its availability hasn't been reconfirmed lately), and the label has to say so.
+    // Note this field is the LISTING's verificationStatus, not the agent's - the agent badge
+    // is a separate label (see getAgentVerificationLabel in types.ts).
+    verified: isRtl ? "قائمة موثّقة" : "Verified listing",
+    availabilityConfirmed: isRtl ? "مؤكّد متاح" : "Available",
+    availabilityPending: isRtl ? "بانتظار تأكيد التوفّر" : "Awaiting availability check",
     viewDetails: isRtl ? "عرض التفاصيل" : "View Details",
     whatsappCTA: isRtl ? "واتساب" : "WhatsApp",
     callCTA: isRtl ? "اتصال" : "Call",
@@ -1238,7 +1248,7 @@ export default function VisitorExperience({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-3 rtl:pl-3 rtl:pr-9 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink"
                 />
-                <Search size={16} className={`absolute ${isRtl ? "right-3" : "left-3"} top-2.5 text-ink-faint`} />
+                <Search size={16} className={`absolute ${isRtl ? "right-3" : "left-3"} top-2.5 text-ink-muted`} />
               </div>
             </div>
 
@@ -1588,7 +1598,7 @@ export default function VisitorExperience({
                           }}
                           className={`p-2 rounded-full shadow-sm hover:scale-110 transition-transform cursor-pointer ${
                             comparedPropertyIds.includes(property.id)
-                              ? "bg-gold text-white"
+                              ? "bg-gold text-gold-ink"
                               : "bg-surface text-ink-muted"
                           }`}
                           title={isRtl ? "مقارنة العقار" : "Compare Side-by-Side"}
@@ -1616,15 +1626,27 @@ export default function VisitorExperience({
                             <span>{t.verified}</span>
                           </div>
                         )}
-                        {/* Honest, non-alarming freshness signal: shown once a listing has
-                            gone 21+ days without its availability being reconfirmed (see
-                            getAvailabilityStaleDays()/AVAILABILITY_UNCONFIRMED_DAYS). */}
-                        {getAvailabilityStaleDays(property.lastConfirmedAvailableDate || property.createdDate) >= AVAILABILITY_UNCONFIRMED_DAYS && (
+                        {/* Availability, stated in both directions. Only the negative half was
+                            ever shown, so the platform's actual differentiator - that a listing
+                            was confirmed still available, and when - was invisible unless you
+                            found the "Recently Confirmed Available" sort option. Wording is
+                            deliberately non-negating: "Awaiting availability check" describes a
+                            step that hasn't happened yet, where "Availability Unconfirmed" read
+                            as a verdict against a listing sitting next to a badge calling it
+                            verified. */}
+                        {isAvailabilityConfirmed(property.lastConfirmedAvailableDate) ? (
+                          <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-emerald-700 flex items-center gap-1 shadow-xs border border-emerald-300">
+                            <CheckCircle size={12} />
+                            <span>
+                              {t.availabilityConfirmed} · {formatConfirmedDate(property.lastConfirmedAvailableDate, isRtl)}
+                            </span>
+                          </div>
+                        ) : getAvailabilityStaleDays(property.lastConfirmedAvailableDate || property.createdDate) >= AVAILABILITY_UNCONFIRMED_DAYS ? (
                           <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-amber-700 flex items-center gap-1 shadow-xs border border-amber-300">
                             <Clock size={12} />
-                            <span>{isRtl ? "التوفر غير مؤكد" : "Availability Unconfirmed"}</span>
+                            <span>{t.availabilityPending}</span>
                           </div>
-                        )}
+                        ) : null}
                       </div>
 
                       {feat && (

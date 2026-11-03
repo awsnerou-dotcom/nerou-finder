@@ -2124,7 +2124,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           <p className="font-bold text-ink">{log.action.replace(/_/g, " ")}</p>
                           <p className="text-[10px] text-ink-muted">{isRtl ? "منفذ العملية:" : "Actor:"} {log.actorName} ({log.actorRole})</p>
                         </div>
-                        <span className="text-[10px] text-ink-faint shrink-0">{new Date(log.timestamp).toLocaleString()}</span>
+                        <span className="text-[10px] text-ink-muted shrink-0">{new Date(log.timestamp).toLocaleString()}</span>
                       </div>
                     ))
                   )}
@@ -2312,7 +2312,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         showToast(err.message || "An error occurred during database export");
                       }
                     }}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gold hover:bg-gold-hover text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-gold hover:bg-gold-hover text-gold-ink text-xs font-bold rounded-lg transition-colors cursor-pointer"
                   >
                     <FileText size={14} />
                     <span>{isRtl ? "تحميل نسخة JSON الاحتياطية" : "Download JSON Database Export"}</span>
@@ -2335,7 +2335,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           <p className="font-bold text-ink">{log.action}</p>
                           <p className="text-[10px] text-ink-muted">{isRtl ? "منفذ العملية:" : "Actor:"} {log.actorName} ({log.actorRole}) • Target: {log.targetType} ({log.targetId})</p>
                         </div>
-                        <span className="text-[10px] text-ink-faint shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        <span className="text-[10px] text-ink-muted shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
                       </div>
                     ))}
                   </div>
@@ -2586,7 +2586,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             {app.applicationStatus === ApplicationStatus.PENDING_APPROVAL && (
                               <button
                                 onClick={() => handleMoveToAwaitingPayment(app.id)}
-                                className="px-3 py-1.5 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer"
+                                className="px-3 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg cursor-pointer"
                               >
                                 {isRtl ? "نقل إلى انتظار الدفع" : "Move to Awaiting Payment"}
                               </button>
@@ -2666,7 +2666,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             <div className="md:col-span-2 flex justify-end">
                               <button
                                 onClick={() => handleConfirmApplicationPayment(app)}
-                                className="px-4 py-2 bg-chrome hover:bg-gold text-white font-bold rounded-lg cursor-pointer"
+                                className="px-4 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-bold rounded-lg cursor-pointer"
                               >
                                 {isRtl ? "تأكيد وتفعيل الاشتراك" : "Confirm & Activate Subscription"}
                               </button>
@@ -2697,7 +2697,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           <p className="text-ink-muted">{isRtl ? "السبب: " : "Reason: "}{prop.flagReason} — {prop.flaggedDate && new Date(prop.flaggedDate).toLocaleDateString()}</p>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => handleFlagProperty(prop.id, undefined)} className="px-3 py-1.5 bg-chrome hover:bg-gold text-white rounded font-semibold cursor-pointer">
+                          <button onClick={() => handleFlagProperty(prop.id, undefined)} className="px-3 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded font-semibold cursor-pointer">
                             {isRtl ? "إلغاء العلامة" : "Clear Flag"}
                           </button>
                           <button onClick={() => handleVerifyProperty(prop.id, VerificationStatus.REJECTED)} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded font-semibold cursor-pointer">
@@ -2768,7 +2768,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               </button>
                             </>
                           ) : (
-                            <button onClick={() => handleFlagProperty(prop.id, undefined)} className="px-2.5 py-1.5 bg-chrome hover:bg-gold text-white rounded font-semibold cursor-pointer">
+                            <button onClick={() => handleFlagProperty(prop.id, undefined)} className="px-2.5 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded font-semibold cursor-pointer">
                               {isRtl ? "إلغاء العلامة" : "Clear Flag"}
                             </button>
                           )}
@@ -2909,7 +2909,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           <p className="text-ink-muted">
                             {isRtl ? "الموعد المفضل: " : "Preferred: "}{v.preferredDate} {v.preferredTimeSlot} {v.notes ? `• "${v.notes}"` : ""}
                           </p>
-                          <p className="text-[10px] text-ink-faint">{isRtl ? "أُرسل في " : "Submitted "}{new Date(v.createdDate).toLocaleString()}</p>
+                          <p className="text-[10px] text-ink-muted">{isRtl ? "أُرسل في " : "Submitted "}{new Date(v.createdDate).toLocaleString()}</p>
                         </div>
                         <select
                           value={v.status}
@@ -3041,7 +3041,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         />
                         <button
                           onClick={() => handleSaveBoostCap(plan.id)}
-                          className="px-3 py-1 bg-chrome hover:bg-gold text-white rounded font-semibold cursor-pointer"
+                          className="px-3 py-1 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded font-semibold cursor-pointer"
                         >
                           {isRtl ? "حفظ" : "Save"}
                         </button>
@@ -3124,7 +3124,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               ) : (
                                 <button
                                   onClick={() => handleSettleBillingPeriod(group.orgId, group.billingPeriod)}
-                                  className="px-3 py-1.5 bg-chrome hover:bg-gold text-white rounded font-semibold cursor-pointer"
+                                  className="px-3 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded font-semibold cursor-pointer"
                                 >
                                   {isRtl ? "وضع علامة كمسواة" : "Mark as Settled"}
                                 </button>
@@ -3146,7 +3146,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                                     <div className="min-w-0">
                                       <p className="font-semibold text-ink truncate">
                                         {prop ? (isRtl ? prop.titleAr || prop.title : prop.title) : c.propertyId}
-                                        <span className="text-ink-faint font-normal"> • {c.type} • {c.amount.toLocaleString()} QAR</span>
+                                        <span className="text-ink-muted font-normal"> • {c.type} • {c.amount.toLocaleString()} QAR</span>
                                       </p>
                                       <p className="text-ink-muted">
                                         {isRtl
@@ -3360,7 +3360,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <button
                         type="submit"
                         disabled={isSavingAiConfig}
-                        className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg disabled:bg-gray-400 flex items-center gap-1.5 cursor-pointer"
+                        className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg disabled:bg-gray-400 flex items-center gap-1.5 cursor-pointer"
                       >
                         {isSavingAiConfig ? (
                           <>
@@ -3655,7 +3655,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         <button
                           type="submit"
                           disabled={!selectedOrgId}
-                          className="px-6 py-2 bg-chrome hover:bg-gold text-white font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-40"
+                          className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-40"
                         >
                           {isRtl ? "تحديث وحفظ اشتراك المنشأة" : "Apply Manual Subscription Plan"}
                         </button>
@@ -3682,7 +3682,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           setPlanFeaturedListingsLimit("");
                           setIsAddingPlan(true);
                         }}
-                        className="px-2.5 py-1 bg-chrome hover:bg-gold text-white text-[10px] font-bold rounded cursor-pointer"
+                        className="px-2.5 py-1 bg-chrome hover:bg-gold hover:text-gold-ink text-white text-[10px] font-bold rounded cursor-pointer"
                       >
                         + Create Package
                       </button>
@@ -4352,7 +4352,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           </span>
                         </div>
                         <p className="text-ink-muted line-clamp-2">{log.metadata?.answer}</p>
-                        <div className="flex items-center gap-3 text-[10px] text-ink-faint">
+                        <div className="flex items-center gap-3 text-[10px] text-ink-muted">
                           <span>{log.actorRole}</span>
                           <span>{new Date(log.timestamp).toLocaleString()}</span>
                           {Array.isArray(log.metadata?.matchedArticleIds) && log.metadata.matchedArticleIds.length > 0 && (

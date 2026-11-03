@@ -215,7 +215,7 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
                       {isRtl ? `فوترة سنوية بقيمة ${totalYearlyPrice.toLocaleString()} رق` : `Billed ${totalYearlyPrice.toLocaleString()} QAR annually`}
                     </p>
                   ) : (
-                    <p className="text-[10px] text-ink-faint">
+                    <p className="text-[10px] text-ink-muted">
                       {isRtl ? "تجديد شهري مرن" : "Flexible monthly licensing"}
                     </p>
                   )}

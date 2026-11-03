@@ -157,7 +157,7 @@ export default function ProfileReviewsSection({
                           onClick={() => handleReport(rev.id)}
                           disabled={reportedIds.includes(rev.id)}
                           title={isRtl ? "الإبلاغ عن هذا التقييم" : "Report this review"}
-                          className="text-ink-faint hover:text-rose-600 disabled:text-rose-600 disabled:cursor-default cursor-pointer"
+                          className="text-ink-muted hover:text-rose-600 disabled:text-rose-600 disabled:cursor-default cursor-pointer"
                         >
                           <Flag size={11} />
                         </button>

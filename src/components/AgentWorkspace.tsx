@@ -1526,7 +1526,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   <div key={prop.id} className="border border-border rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <Badge tone={listingStatusTone(prop.listingStatus)}>{prop.listingStatus.replace(/_/g, " ")}</Badge>
-                      <span className="text-[9px] text-ink-faint flex items-center gap-1">
+                      <span className="text-[9px] text-ink-muted flex items-center gap-1">
                         <Eye size={10} /> {prop.views || 0}
                       </span>
                     </div>
@@ -1733,18 +1733,18 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     placeholder={isRtl ? "أضف ملاحظة..." : "Add a note..."}
                     className="flex-1 px-2 py-1.5 bg-ink-inverse border border-border rounded-lg"
                   />
-                  <button type="button" onClick={() => handleAddLeadNote(lead.id)} disabled={!leadNoteDraft.trim()} className="px-3 py-1.5 bg-chrome hover:bg-gold disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer">
+                  <button type="button" onClick={() => handleAddLeadNote(lead.id)} disabled={!leadNoteDraft.trim()} className="px-3 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer">
                     {isRtl ? "إضافة" : "Add"}
                   </button>
                 </div>
                 <div className="space-y-1.5 max-h-40 overflow-y-auto">
                   {(lead.notes || []).length === 0 ? (
-                    <p className="text-ink-faint italic">{isRtl ? "لا توجد ملاحظات بعد." : "No notes yet."}</p>
+                    <p className="text-ink-muted italic">{isRtl ? "لا توجد ملاحظات بعد." : "No notes yet."}</p>
                   ) : (
                     (lead.notes || []).map(n => (
                       <div key={n.id} className="bg-canvas border border-surface-2 rounded-lg p-2">
                         <p className="text-ink">{n.text}</p>
-                        <p className="text-[9px] text-ink-faint mt-0.5">{n.authorName} • {new Date(n.createdDate).toLocaleString()}</p>
+                        <p className="text-[9px] text-ink-muted mt-0.5">{n.authorName} • {new Date(n.createdDate).toLocaleString()}</p>
                       </div>
                     ))
                   )}
@@ -1800,7 +1800,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                 setEditingPropertyId(null);
                 setIsAddingListing(!isAddingListing);
               }}
-              className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
               <span>{isRtl ? "إضافة عقار جديد" : "New Property"}</span>
@@ -1895,11 +1895,13 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           className={`flex items-center gap-1.5 px-2 py-1 rounded-lg shrink-0 text-[10px] sm:text-xs font-semibold transition-colors ${
                             isActive ? "bg-chrome text-white" :
                             isDone ? "bg-surface-2 text-ink cursor-pointer hover:bg-border" :
-                            "text-ink-faint cursor-not-allowed"
+                            "text-ink-muted cursor-not-allowed"
                           }`}
                         >
                           <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] shrink-0 ${
-                            isActive ? "bg-gold text-white" : isDone ? "bg-gold/70 text-white" : "bg-border text-ink-muted"
+                            // bg-gold/70 over a light surface is lighter than solid gold, so
+                            // white text is worse there than on bg-gold (already 2.64:1).
+                            isActive ? "bg-gold text-gold-ink" : isDone ? "bg-gold/70 text-gold-ink" : "bg-border text-ink-muted"
                           }`}>
                             {isDone ? <Check size={10} /> : s.step}
                           </span>
@@ -2533,7 +2535,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <button
                       type="button"
                       onClick={handleWizardNext}
-                      className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
+                      className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg flex items-center gap-1.5 cursor-pointer"
                     >
                       {isRtl ? "التالي" : "Next"}
                       <ArrowRight size={14} />
@@ -2541,7 +2543,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   ) : (
                     <button
                       type="submit"
-                      className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer"
+                      className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg cursor-pointer"
                     >
                       {editingPropertyId
                         ? (isRtl ? "حفظ التغييرات" : "Save Changes")
@@ -2608,7 +2610,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     <p className="text-[10px] text-ink-muted">{prop.district}, {prop.city}</p>
                     <p className="text-xs font-bold text-gold">{prop.price.toLocaleString()} QAR</p>
                     {/* FIX 8: real view counts (total / unique) for this listing */}
-                    <p className="text-[9px] text-ink-faint flex items-center gap-1">
+                    <p className="text-[9px] text-ink-muted flex items-center gap-1">
                       <Eye size={10} /> {prop.views || 0} {isRtl ? "مشاهدة" : "views"} • {prop.uniqueViews || 0} {isRtl ? "فريدة" : "unique"}
                     </p>
 
@@ -2629,7 +2631,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       </select>
                       {updatingStatusId === prop.id && <Loader2 size={10} className="animate-spin text-ink-muted" />}
                       {prop.statusChangedDate && (
-                        <span className="text-[9px] text-ink-faint">
+                        <span className="text-[9px] text-ink-muted">
                           {isRtl ? "منذ " : "since "}{new Date(prop.statusChangedDate).toLocaleDateString()}
                         </span>
                       )}
@@ -2659,7 +2661,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         <span>{isRtl ? "تأكيد أن العقار لا يزال متاحاً" : "Confirm Still Available"}</span>
                       </button>
                       {prop.lastConfirmedAvailableDate && (
-                        <p className="text-[9px] text-ink-faint mt-0.5">
+                        <p className="text-[9px] text-ink-muted mt-0.5">
                           {isRtl
                             ? staleDays <= 0 ? "آخر تأكيد: اليوم" : `آخر تأكيد: منذ ${staleDays} يوم`
                             : `Confirmed ${staleDays <= 0 ? "today" : `${staleDays}d ago`}`}
@@ -2791,7 +2793,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           type="button"
                           onClick={() => handleReplyToReview(rev.id)}
                           disabled={!replyDrafts[rev.id]?.trim()}
-                          className="px-3 py-1.5 bg-chrome hover:bg-gold disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer"
+                          className="px-3 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink disabled:opacity-40 text-white rounded-lg font-semibold cursor-pointer"
                         >
                           {isRtl ? "رد" : "Reply"}
                         </button>
@@ -2819,7 +2821,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               )}
               <label
                 htmlFor="agent-avatar-upload"
-                className="absolute -bottom-1 -right-1 w-6 h-6 bg-chrome hover:bg-gold text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
+                className="absolute -bottom-1 -right-1 w-6 h-6 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
                 title={isRtl ? "تغيير الصورة الشخصية" : "Change profile picture"}
               >
                 {avatarUploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
@@ -2909,7 +2911,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           <div className="flex justify-end pt-2 border-t border-surface-2">
             <button
               type="submit"
-              className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer"
+              className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg cursor-pointer"
             >
               Save Profile Changes
             </button>
@@ -2963,7 +2965,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             <button
               type="submit"
               disabled={passwordChanging}
-              className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+              className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
             >
               {passwordChanging ? (isRtl ? "جارٍ التحديث..." : "Updating...") : (isRtl ? "تغيير كلمة المرور" : "Change Password")}
             </button>

@@ -99,7 +99,7 @@ export function ToastProvider({ children, isRtl = false }: { children: React.Rea
                     type="button"
                     onClick={() => dismiss(t.id)}
                     aria-label={isRtl ? "إغلاق الإشعار" : "Dismiss notification"}
-                    className="shrink-0 text-ink-faint hover:text-ink cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold rounded"
+                    className="shrink-0 text-ink-muted hover:text-ink cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold rounded"
                   >
                     <X size={15} />
                   </button>

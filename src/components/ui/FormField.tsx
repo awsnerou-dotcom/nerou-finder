@@ -7,7 +7,7 @@ import React from "react";
 
 const CONTROL_BASE = `
   w-full bg-surface border rounded-lg px-3 py-2.5 text-sm text-ink
-  placeholder:text-ink-faint
+  placeholder:text-ink-muted
   transition-colors duration-150
   focus:outline-none focus:ring-2 focus:ring-gold/40 focus:border-gold
   disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-surface-2
@@ -42,7 +42,7 @@ export function FormField({ label, htmlFor, error, hint, required, children, cla
       {error ? (
         <p className="text-xs text-danger" role="alert">{error}</p>
       ) : hint ? (
-        <p className="text-xs text-ink-faint">{hint}</p>
+        <p className="text-xs text-ink-muted">{hint}</p>
       ) : null}
     </div>
   );
