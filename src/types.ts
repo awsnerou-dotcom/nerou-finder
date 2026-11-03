@@ -415,6 +415,25 @@ export const AVAILABILITY_AUTO_PAUSE_DAYS = 30;
 // Whole days elapsed since a listing's availability was last confirmed. Falls back to
 // undefined/missing dates as "0 days" (fresh) rather than throwing, since older records
 // created before this feature existed may not have the field populated yet in every path.
+// True when a listing's availability was reconfirmed recently enough to say so out loud.
+// Requires an actual confirmation date: getAvailabilityStaleDays() treats a missing date as
+// 0 days (fresh) so old records don't get flagged, but "never confirmed" is not the same
+// claim as "confirmed this week" and must not borrow the positive badge.
+export function isAvailabilityConfirmed(lastConfirmedAvailableDate?: string): boolean {
+  if (!lastConfirmedAvailableDate) return false;
+  if (isNaN(Date.parse(lastConfirmedAvailableDate))) return false;
+  return getAvailabilityStaleDays(lastConfirmedAvailableDate) < AVAILABILITY_UNCONFIRMED_DAYS;
+}
+
+// Short day+month for the availability badge ("2 Nov" / "٢ نوفمبر"). Deliberately omits the
+// year: the badge only ever renders inside the 21-day confirmation window.
+export function formatConfirmedDate(dateIso: string | undefined, isRtl: boolean): string {
+  if (!dateIso) return "";
+  const d = new Date(dateIso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(isRtl ? "ar" : "en-GB", { day: "numeric", month: "short" });
+}
+
 export function getAvailabilityStaleDays(lastConfirmedAvailableDate?: string): number {
   if (!lastConfirmedAvailableDate) return 0;
   const then = Date.parse(lastConfirmedAvailableDate);

@@ -113,7 +113,7 @@ export default function OnboardingTour({ steps, isRtl, onFinish }: OnboardingTou
             type="button"
             onClick={onFinish}
             aria-label={isRtl ? "تخطي الجولة" : "Skip tour"}
-            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-ink-faint hover:text-ink hover:bg-surface-2 cursor-pointer"
+            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-surface-2 cursor-pointer"
           >
             <X size={14} />
           </button>

@@ -88,7 +88,7 @@ export default function AreaGuidesView({ isRtl, onSelectGuide }: AreaGuidesViewP
                 </div>
                 <ChevronRight
                   size={16}
-                  className={`shrink-0 text-ink-faint group-hover:text-gold transition-colors mt-1 ${isRtl ? "rotate-180" : ""}`}
+                  className={`shrink-0 text-ink-muted group-hover:text-gold transition-colors mt-1 ${isRtl ? "rotate-180" : ""}`}
                 />
               </div>
             </button>

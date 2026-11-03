@@ -224,7 +224,7 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
             className="px-2 py-1.5 bg-ink-inverse border border-border rounded-lg text-[10px] text-ink-muted"
             title={isRtl ? "تاريخ انتهاء الصلاحية (اختياري)" : "Expiry date (optional)"}
           />
-          <label className={`relative px-3 py-1.5 rounded-lg text-[10px] font-semibold cursor-pointer border transition-colors ${isUploading ? "bg-gray-100 text-gray-400 border-gray-200" : "bg-chrome hover:bg-gold text-white border-transparent"}`}>
+          <label className={`relative px-3 py-1.5 rounded-lg text-[10px] font-semibold cursor-pointer border transition-colors ${isUploading ? "bg-gray-100 text-gray-400 border-gray-200" : "bg-chrome hover:bg-gold hover:text-gold-ink text-white border-transparent"}`}>
             {isUploading ? (
               <span className="flex items-center gap-1">
                 <Loader2 className="animate-spin" size={12} />
@@ -264,7 +264,7 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
               type="button"
               onClick={handleSaveAgencyName}
               disabled={savingAgencyName || agencyNameDraft === (agent.affiliatedAgencyName || "")}
-              className="px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-chrome hover:bg-gold text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-3 py-1.5 rounded-lg text-[10px] font-semibold bg-chrome hover:bg-gold hover:text-gold-ink text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {savingAgencyName ? (isRtl ? "جارٍ الحفظ..." : "Saving...") : (isRtl ? "حفظ" : "Save")}
             </button>

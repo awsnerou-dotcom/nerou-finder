@@ -108,7 +108,7 @@ export function Modal({ open, onClose, title, size = "md", children, footer, isR
               type="button"
               onClick={onClose}
               aria-label={closeLabel || (isRtl ? "إغلاق" : "Close")}
-              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-ink-faint hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
+              className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-surface-2 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
             >
               <X size={18} />
             </button>

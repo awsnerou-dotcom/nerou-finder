@@ -1107,7 +1107,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                 )}
                 <label
                   htmlFor="agency-logo-upload"
-                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-chrome hover:bg-gold text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
+                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
                   title={isRtl ? "تغيير الشعار" : "Change logo"}
                 >
                   {logoUploading ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
@@ -1177,7 +1177,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
               <button
                 type="submit"
                 disabled={savingOrgProfile}
-                className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+                className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
               >
                 {savingOrgProfile ? (isRtl ? "جارٍ الحفظ..." : "Saving...") : (isRtl ? "حفظ ملف المكتب" : "Save Agency Profile")}
               </button>
@@ -1229,7 +1229,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
               <button
                 type="submit"
                 disabled={passwordChanging}
-                className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
+                className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg cursor-pointer disabled:opacity-60"
               >
                 {passwordChanging ? (isRtl ? "جارٍ التحديث..." : "Updating...") : (isRtl ? "تغيير كلمة المرور" : "Change Password")}
               </button>
@@ -1377,7 +1377,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                         <button type="button" onClick={cancelEditListing} className="px-4 py-2 bg-surface hover:bg-surface-2 border border-border rounded-lg font-semibold cursor-pointer">
                           {isRtl ? "إلغاء" : "Cancel"}
                         </button>
-                        <button type="submit" disabled={savingListing} className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg disabled:opacity-50 cursor-pointer">
+                        <button type="submit" disabled={savingListing} className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg disabled:opacity-50 cursor-pointer">
                           {savingListing ? (isRtl ? "جارٍ الحفظ..." : "Saving...") : (isRtl ? "حفظ التغييرات" : "Save Changes")}
                         </button>
                       </div>
@@ -1531,7 +1531,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
 
               <button
                 type="submit"
-                className="w-full py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg text-xs transition-colors cursor-pointer"
+                className="w-full py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg text-xs transition-colors cursor-pointer"
               >
                 {isRtl ? "إرسال دعوة انضمام" : "Send Invitation"}
               </button>
@@ -1596,7 +1596,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
 
           <button
             onClick={handleSaveRouting}
-            className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg cursor-pointer"
+            className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg cursor-pointer"
           >
             {isRtl ? "حفظ سياسة التوجيه" : "Save Routing Setup"}
           </button>
@@ -1638,7 +1638,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
             <h4 className="font-serif text-sm font-semibold text-ink">{isRtl ? "إعلانات العقارات المميزة والمدعومة" : "Promoted Listings Marketing campaigns"}</h4>
             <button
               onClick={() => setIsCreatingCampaign(!isCreatingCampaign)}
-              className="px-3 py-1.5 bg-chrome hover:bg-gold text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
+              className="px-3 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
             >
               <Plus size={14} />
               <span>{isRtl ? "بدء حملة إعلانية" : "Launch Promotion"}</span>
@@ -1700,7 +1700,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-chrome hover:bg-gold text-white font-semibold rounded-lg"
+                  className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg"
                 >
                   Schedule and Submit
                 </button>
@@ -1866,7 +1866,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                             <p className="font-semibold text-xs text-gold">{isRtl ? "استفسار عام" : "General Inquiry"}</p>
                           )}
                           <p className="text-ink-muted mt-1 line-clamp-2 leading-relaxed">{lead.message}</p>
-                          <span className="text-[9px] text-ink-faint block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
+                          <span className="text-[9px] text-ink-muted block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
                         </td>
                         <td className="p-4 font-medium text-ink">
                           {agents.find((a) => a.id === lead.agentId)?.fullName || (
@@ -1934,7 +1934,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                         <p className="font-semibold text-xs text-gold">{isRtl ? "استفسار عام" : "General Inquiry"}</p>
                       )}
                       <p className="text-ink-muted mt-1 line-clamp-2 leading-relaxed">{lead.message}</p>
-                      <span className="text-[9px] text-ink-faint block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
+                      <span className="text-[9px] text-ink-muted block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
                     </div>
 
                     <div className="flex items-center justify-between gap-2 text-xs">
@@ -2062,7 +2062,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                 <button
                   onClick={() => handleUpgradeSubscription(enterprisePlan?.id || "plan-premium")}
                   disabled={paymentProcessing}
-                  className="px-5 py-2 bg-chrome hover:bg-gold disabled:bg-gray-400 text-white font-bold rounded-lg text-xs uppercase tracking-wider cursor-pointer"
+                  className="px-5 py-2 bg-chrome hover:bg-gold hover:text-gold-ink disabled:bg-gray-400 text-white font-bold rounded-lg text-xs uppercase tracking-wider cursor-pointer"
                 >
                   {paymentProcessing ? "Processing safe capture..." : (isRtl ? "الترقية والدفع الآمن" : "Secure Payment Upgrade")}
                 </button>

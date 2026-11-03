@@ -90,7 +90,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
         </div>
         <button
           onClick={handleDismiss}
-          className="text-ink-faint hover:text-white transition-colors"
+          className="text-ink-muted hover:text-white transition-colors"
           title={isRtl ? "إغلاق مؤقت (لن يتم حفظ أي خيار)" : "Dismiss for now (no choice will be saved)"}
         >
           <X size={16} />
@@ -104,7 +104,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               <p className="text-[10px] font-bold text-gold">
                 {isRtl ? "ملفات التعريف الأساسية (إجباري)" : "Essential Cookies (Required)"}
               </p>
-              <p className="text-[9px] text-ink-faint">
+              <p className="text-[9px] text-ink-muted">
                 {isRtl ? "ضرورية لعمليات المصادقة وجلسات الأمان." : "Necessary for account sign-in and session security."}
               </p>
             </div>
@@ -118,7 +118,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               <p className="text-[10px] font-bold text-white">
                 {isRtl ? "ملفات التفضيلات الوظيفية" : "Functional Preferences"}
               </p>
-              <p className="text-[9px] text-ink-faint">
+              <p className="text-[9px] text-ink-muted">
                 {isRtl ? "تذكر تفضيلات اللغة والوضع وعمليات البحث." : "Remember language, view options, and recent searches."}
               </p>
             </div>
@@ -135,7 +135,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               <p className="text-[10px] font-bold text-white">
                 {isRtl ? "التحليلات والمراقبة (GA4)" : "Performance & Analytics (GA4)"}
               </p>
-              <p className="text-[9px] text-ink-faint">
+              <p className="text-[9px] text-ink-muted">
                 {isRtl ? "تساعدنا على فهم كيفية استخدام الزوار لمنصتنا." : "Anonymized usage analytics via Google Analytics."}
               </p>
             </div>
@@ -179,7 +179,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
           </button>
           <button
             onClick={handleDeclineAll}
-            className="px-3 py-2.5 md:py-1.5 bg-transparent border border-ink-faint/30 hover:bg-[#2c2924] text-xs md:text-[10px] text-ink-faint hover:text-white uppercase tracking-wider rounded-md transition-all cursor-pointer"
+            className="px-3 py-2.5 md:py-1.5 bg-transparent border border-ink-faint/30 hover:bg-[#2c2924] text-xs md:text-[10px] text-ink-muted hover:text-white uppercase tracking-wider rounded-md transition-all cursor-pointer"
           >
             {isRtl ? "رفض الكل" : "Decline All"}
           </button>
