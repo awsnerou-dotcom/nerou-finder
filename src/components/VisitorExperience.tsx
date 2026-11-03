@@ -600,7 +600,8 @@ export default function VisitorExperience({
   };
 
   const getAutoSearchName = () => {
-    let parts = [];
+    // Only ever mutated via .push(), never reassigned.
+    const parts: string[] = [];
     if (beds) parts.push(`${beds} Bed`);
     if (propType) parts.push(propType);
     else parts.push(isRtl ? "عقار" : "Property");
