@@ -5,48 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
     <!-- Core SEO Meta Tags -->
-    <!-- Positioning unified on what the product actually enforces (agent licence verification
-         + availability confirmation). The previous copy sold "exclusive off-market properties,
-         penthouses" and a "Luxury ... AI Portal" - three claims nothing in this codebase backs:
-         there is no off-market inventory concept, nothing restricts listings to luxury, and
-         "AI portal" describes one search mode, not the product. Unsubstantiated claims on a
-         property marketplace are both a credibility and a compliance problem. -->
+    <!-- Positioning: verification, not luxury/AI. See commit history. -->
     <title>Nerou Finder | Verified Property Listings in Qatar</title>
     <meta name="description" content="Properties in Qatar from licence-verified agents, with availability confirmed before publishing. One unit, one listing. Published pricing for agents." />
-    <!-- <meta name="keywords"> removed: ignored by every major engine since 2009, and it was
-         reinforcing the luxury positioning above. -->
+    <!-- meta keywords intentionally absent. -->
     <meta name="author" content="Nerou Technology Services" />
     <meta name="geo.region" content="QA" />
     <meta name="geo.placename" content="Doha" />
     <meta name="geo.position" content="25.2854;51.5310" />
     <meta name="ICBM" content="25.2854, 51.5310" />
 
-    <!-- Self-referencing canonical. Rewritten per-route by the prerender handlers in
-         server.ts, same as the og/twitter tags below. Nothing emitted one before, so every
-         URL variant (trailing slash, query strings, www vs apex) looked like separate content. -->
+    <!-- Canonical + og/twitter urls are rewritten per-route by server.ts. -->
     <link rel="canonical" href="https://www.neroufinder.com/" />
 
     <!-- Open Graph / Facebook Social Sharing -->
     <meta property="og:type" content="website" />
-    <!-- og:url / twitter:url were hardcoded to https://nerou.io/ on EVERY page - a different
-         domain, and (per the ADMIN_NOTIFICATION_EMAIL comment in server.ts) one nobody here
-         owns. Every WhatsApp/X/LinkedIn share of a listing resolved to the wrong site. These
-         are now rewritten per-route by server.ts; this value is the homepage fallback. -->
+    
     <meta property="og:url" content="https://www.neroufinder.com/" />
     <meta property="og:title" content="Nerou Finder | Verified Property Listings in Qatar" />
     <meta property="og:description" content="Properties in Qatar from licence-verified agents, with availability confirmed before publishing. One unit, one listing." />
-    <!-- Was a hotlinked Unsplash stock photo: an external dependency we don't control, on a
-         page whose whole promise is that what you see is real. Now the self-hosted hero image.
-         TODO: replace with a purpose-made 1200x630 branded OG card; this one is 1915x821
-         (2.33:1), so social crops it slightly. -->
+    <!-- TODO: replace with a purpose-made 1200x630 OG card; this one is 2.33:1. -->
     <meta property="og:image" content="https://www.neroufinder.com/assets/images/hero-doha-skyline.jpg" />
     <meta property="og:image:width" content="1915" />
     <meta property="og:image:height" content="821" />
     <meta property="og:image:alt" content="Nerou Finder - verified property listings in Qatar" />
     <meta property="og:locale" content="en_US" />
-    <!-- Accurate: the UI is fully bilingual via the isRtl toggle. Not paired with hreflang
-         because Arabic is a client-side toggle, not a distinct URL - add hreflang only once
-         /ar/ routes exist, or it would point crawlers at URLs that don't serve Arabic. -->
+    <!-- Arabic is a client-side toggle, not a distinct URL: no hreflang until /ar/ exists. -->
     <meta property="og:locale:alternate" content="ar_QA" />
     <meta property="og:site_name" content="Nerou Finder" />
 
@@ -57,12 +41,7 @@
     <meta name="twitter:description" content="Properties in Qatar from licence-verified agents, with availability confirmed before publishing. One unit, one listing." />
     <meta name="twitter:image" content="https://www.neroufinder.com/assets/images/hero-doha-skyline.jpg" />
 
-    <!-- Typography: 22 weights reduced to 15, keeping only what the UI actually uses.
-         A grep of src/ finds font-normal (400), font-medium (500), font-semibold (600) and
-         font-bold (700) and nothing else - so 300/800/900 were pure download weight. The
-         Fraunces italic axis is dropped too: every `italic` usage in src/ is on body text,
-         which resolves to --font-sans (Manrope/Tajawal), never the serif stack. Tajawal has
-         no 600 face, hence 400;500;700 there. -->
+    <!-- Only the four weights src/ actually uses. Tajawal has no 600. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=El+Messiri:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -80,9 +59,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Nerou Finder" />
 
-    <!-- Organization + WebSite structured data. Neither existed: the property and area-guide
-         routes in server.ts inject per-page JSON-LD, but nothing told search engines who runs
-         the site. SearchAction is what makes a sitelinks search box possible in results. -->
+    <!-- Site-level schema; per-page schema is injected by server.ts. -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -128,10 +105,7 @@
   </head>
   <body class="bg-canvas text-ink antialiased">
     <div id="root"></div>
-    <!-- Crawler / no-JS fallback. This app renders entirely client-side, so the HTML a crawler
-         receives is otherwise an empty #root: no heading, no text, and - critically - zero
-         internal <a href> links, leaving the area guides (the site's strongest organic asset)
-         reachable only from the sitemap. Not a substitute for SSR; a floor until it lands. -->
+    <!-- Crawler / no-JS fallback: the shell is otherwise an empty #root with no links. -->
     <noscript>
       <h1>Verified property listings in Qatar</h1>
       <p>
