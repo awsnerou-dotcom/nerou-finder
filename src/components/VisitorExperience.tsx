@@ -71,6 +71,7 @@ import PressView from "./PressView.js";
 import PartnershipsView from "./PartnershipsView.js";
 import PlansPricingView from "./PlansPricingView.js";
 import PhotoHero from "./PhotoHero.js";
+import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 
 interface VisitorExperienceProps {
   isRtl: boolean;
@@ -123,18 +124,7 @@ export default function VisitorExperience({
   const [searchMode, setSearchMode] = useState<"PROPERTIES" | "AGENT" | "AGENCY" | "DEVELOPER">("PROPERTIES");
 
   // Public Sub-Pages Tab state
-  const [currentTab, setCurrentTab] = useState<
-    | "MARKETPLACE"
-    | "PROJECTS"
-    | "HELP_CENTER"
-    | "CAREERS"
-    | "PRESS"
-    | "PARTNERSHIPS"
-    | "SUPPORT_TICKETS"
-    | "LEGAL"
-    | "PLANS"
-    | "AREA_GUIDES"
-  >("MARKETPLACE");
+  const [currentTab, setCurrentTab] = useState<VisitorTab>("MARKETPLACE");
 
   // Consume one-shot navigation requests coming from outside this component (the App.tsx footer).
   useEffect(() => {
@@ -305,6 +295,17 @@ export default function VisitorExperience({
     if (match) setSelectedAreaGuideSlug(match[1]);
   }, []);
 
+  // Same deep-link pattern for the static full-page tabs (see STATIC_TAB_PATHS). Without
+  // this, a direct hit on /plans-pricing rendered the marketplace and the sync effect below
+  // then rewrote the address bar to "/", so the URL couldn't be refreshed or shared.
+  const staticTabDeepLinkConsumedRef = React.useRef(false);
+  useEffect(() => {
+    if (staticTabDeepLinkConsumedRef.current) return;
+    staticTabDeepLinkConsumedRef.current = true;
+    const tab = staticTabForPath(window.location.pathname);
+    if (tab) setCurrentTab(tab);
+  }, []);
+
   // Keep the address bar in sync with whichever full-page overlay is open (property detail or
   // area guide - mutually exclusive in practice): push a real /properties/:id or /areas/:slug
   // URL while one is open (so the browser's own "copy link" / "share" and the Share button
@@ -313,22 +314,26 @@ export default function VisitorExperience({
   // doesn't push a redundant duplicate history entry. A single shared ref (rather than one per
   // overlay type) avoids the two ever fighting over the URL or double-pushing the same path.
   const lastSyncedPathRef = React.useRef<string | null>(
-    window.location.pathname.match(/^\/properties\/[^/]+\/?$/) || window.location.pathname.match(/^\/areas\/[^/]+\/?$/)
+    window.location.pathname.match(/^\/properties\/[^/]+\/?$/) ||
+    window.location.pathname.match(/^\/areas\/[^/]+\/?$/) ||
+    staticTabForPath(window.location.pathname)
       ? window.location.pathname
       : null
   );
   useEffect(() => {
+    // Overlays win over the tab underneath them: opening a listing from /plans-pricing
+    // should show /properties/:id, and closing it returns to /plans-pricing rather than "/".
     const targetPath = selectedProperty
       ? `/properties/${selectedProperty.id}`
       : selectedAreaGuideSlug
       ? `/areas/${selectedAreaGuideSlug}`
-      : "/";
+      : STATIC_TAB_PATHS[currentTab] ?? "/";
     if (lastSyncedPathRef.current === targetPath) return;
     lastSyncedPathRef.current = targetPath;
     if (window.location.pathname !== targetPath) {
       window.history.pushState(null, "", targetPath);
     }
-  }, [selectedProperty, selectedAreaGuideSlug]);
+  }, [selectedProperty, selectedAreaGuideSlug, currentTab]);
 
   // Back/forward support for the above: e.g. Property A -> Property B -> Back should reopen A,
   // Area Guide X -> Property A -> Back should reopen Area Guide X, and either -> Back from the
@@ -355,9 +360,13 @@ export default function VisitorExperience({
         setSelectedProperty(null);
         setSelectedAreaGuideSlug(areaMatch[1]);
       } else {
-        lastSyncedPathRef.current = "/";
+        // Also restores the static tabs (see STATIC_TAB_PATHS): Back out of a listing opened
+        // from /plans-pricing returns to the plans page, not the marketplace.
+        const staticTab = staticTabForPath(window.location.pathname);
+        lastSyncedPathRef.current = staticTab ? window.location.pathname : "/";
         setSelectedProperty(null);
         setSelectedAreaGuideSlug(null);
+        setCurrentTab(staticTab ?? "MARKETPLACE");
       }
     };
     window.addEventListener("popstate", onPopState);

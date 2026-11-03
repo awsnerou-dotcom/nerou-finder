@@ -63,6 +63,7 @@ import {
   REFERRALS_PER_BOOST_CREDIT
 } from "./src/types.js";
 import { AREA_GUIDES, getAreaGuideBySlug } from "./src/data/areaGuides.js";
+import { SPA_PATHS, normalizePath } from "./src/routes.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
 import * as Sentry from "@sentry/node";
@@ -7339,6 +7340,11 @@ Sitemap: ${req.protocol}://${req.get("host")}/sitemap.xml
 `);
 });
 
+// /plans is the obvious shorthand someone types or links by hand for the pricing page, and
+// since the catch-all now returns a real 404 it would otherwise dead-end. 301 so any link
+// that already exists in the wild transfers to the canonical path.
+app.get("/plans", (req, res) => res.redirect(301, "/plans-pricing"));
+
 app.get("/sitemap.xml", (req, res) => {
   const db = readDb();
   const host = `${req.protocol}://${req.get("host")}`;
@@ -7988,8 +7994,30 @@ async function startServer() {
       }
     }));
 
+    // Every unmatched path used to fall through here and return 200 with the SPA shell, so
+    // any string at all was a valid page: GET /nonexistent-page-xyz answered 200 OK. Soft
+    // 404s let crawlers mint unlimited duplicate URLs off typos and stale links, burning
+    // crawl budget on a site whose sitemap is small enough to matter.
+    //
+    // Known SPA paths still get the shell (React routes them client-side - see
+    // STATIC_TAB_PATHS in VisitorExperience.tsx); /properties/:id and /areas/:slug reach
+    // this point only when their handlers above called next(), i.e. the id or slug does not
+    // exist, which is a genuine 404. Anything else is a 404 too.
     app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      if (SPA_PATHS.has(normalizePath(req.path))) {
+        return res.sendFile(path.join(distPath, "index.html"));
+      }
+      // Genuine 404: correct status, plus noindex so a crawler that followed a stale link
+      // never files the SPA shell under that URL.
+      try {
+        const shell = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
+        return res
+          .status(404)
+          .type("html")
+          .send(shell.replace("</head>", `<meta name="robots" content="noindex" /></head>`));
+      } catch {
+        return res.status(404).sendFile(path.join(distPath, "index.html"));
+      }
     });
   }
 
