@@ -120,10 +120,17 @@ describe("verification document accuracy declaration", () => {
   it("accepts a properly declared upload and records who attested, when, and against which version", async (ctx) => {
     if (!dbReady) return ctx.skip();
     const { token, userId } = await signupAgent("decl-ok");
+    // The file must first go through the private upload endpoint (1x1 PNG signature is enough
+    // for the server's content sniffing).
+    const up = await request(app)
+      .post("/api/verification-documents/upload")
+      .set("Authorization", `Bearer ${token}`)
+      .attach("file", Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]), { filename: "id.png", contentType: "image/png" });
+    expect(up.status).toBe(200);
     const res = await request(app)
       .post("/api/verification-documents")
       .set("Authorization", `Bearer ${token}`)
-      .send(validBody({ declarationAccepted: true, declarationVersion: DOCUMENT_DECLARATION.version }));
+      .send(validBody({ fileUrl: up.body.fileRef, declarationAccepted: true, declarationVersion: DOCUMENT_DECLARATION.version }));
     expect(res.status).toBe(200);
     expect(res.body.document.declarationVersion).toBe(DOCUMENT_DECLARATION.version);
     expect(res.body.document.declarationAcceptedBy).toBe(userId);

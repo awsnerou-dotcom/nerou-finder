@@ -77,6 +77,7 @@ import DashboardChart from "./DashboardChart.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Button } from "./ui/Button.js";
 import { buildDailyCountSeries, isThisMonth } from "../lib/dashboardMetrics.js";
+import { openVerificationDocument } from "../lib/documents.js";
 
 interface ControlCenterProps {
   onRefreshAll: () => void;
@@ -2464,9 +2465,16 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               <div className="flex items-center justify-between gap-3 flex-wrap">
                                 <div>
                                   <p className="font-semibold text-ink">{doc.documentType.replace(/_/g, " ")}</p>
-                                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-gold underline">
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const r = await openVerificationDocument(doc.id);
+                                      if (!r.ok) showToast(r.error || (isRtl ? "تعذر فتح المستند." : "Could not open the document."));
+                                    }}
+                                    className="text-[10px] text-gold underline"
+                                  >
                                     {isRtl ? "عرض المستند" : "View document"}
-                                  </a>
+                                  </button>
                                   {doc.expiryDate && (
                                     <span className="text-[10px] text-ink-muted ml-2">
                                       {isRtl ? "ينتهي في: " : "Expires: "}{new Date(doc.expiryDate).toLocaleDateString()}

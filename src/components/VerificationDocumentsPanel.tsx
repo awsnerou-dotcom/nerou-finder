@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from "react";
 import { VerificationDocument, User, DOCUMENT_DECLARATION } from "../types.js";
+import { openVerificationDocument } from "../lib/documents.js";
 import { UploadCloud, CheckCircle2, XCircle, Clock, AlertTriangle, Loader2, FileText, Building2, ShieldCheck } from "lucide-react";
 
 interface VerificationDocumentsPanelProps {
@@ -128,11 +129,16 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
     setUploadingType(documentType);
     try {
       const formData = new FormData();
-      formData.append("files", file);
-      const uploadRes = await fetch("/api/media/upload", { method: "POST", headers: authHeaders(), body: formData });
-      if (!uploadRes.ok) throw new Error("upload_failed");
+      formData.append("file", file);
+      // Private endpoint: stored outside the public uploads folder, no watermark, no thumbnail.
+      const uploadRes = await fetch("/api/verification-documents/upload", { method: "POST", headers: authHeaders(), body: formData });
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}));
+        showToast(err.error || (isRtl ? "فشل رفع المستند." : "Failed to upload document."));
+        return;
+      }
       const uploadData = await uploadRes.json();
-      const fileUrl = (uploadData.fileUrls || uploadData.urls || [])[0];
+      const fileUrl = uploadData.fileRef;
       if (!fileUrl) throw new Error("no_url");
 
       const submitRes = await fetch("/api/verification-documents", {
@@ -211,9 +217,16 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
           <div>
             <p className="text-xs font-bold text-ink">{label}</p>
             {doc?.fileUrl && (
-              <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-gold underline">
+              <button
+                type="button"
+                onClick={async () => {
+                  const r = await openVerificationDocument(doc.id);
+                  if (!r.ok) showToast(r.error || (isRtl ? "تعذر فتح المستند." : "Could not open the document."));
+                }}
+                className="text-[10px] text-gold underline"
+              >
                 {isRtl ? "عرض الملف الحالي" : "View current file"}
-              </a>
+              </button>
             )}
           </div>
           {statusBadge(doc?.status, isRtl)}
