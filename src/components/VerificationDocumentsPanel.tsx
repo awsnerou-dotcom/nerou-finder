@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { VerificationDocument, User } from "../types.js";
-import { UploadCloud, CheckCircle2, XCircle, Clock, AlertTriangle, Loader2, FileText, Building2 } from "lucide-react";
+import { VerificationDocument, User, DOCUMENT_DECLARATION } from "../types.js";
+import { UploadCloud, CheckCircle2, XCircle, Clock, AlertTriangle, Loader2, FileText, Building2, ShieldCheck } from "lucide-react";
 
 interface VerificationDocumentsPanelProps {
   isRtl: boolean;
@@ -62,6 +62,10 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
   const [dragOverType, setDragOverType] = useState<string | null>(null);
   const [agencyNameDraft, setAgencyNameDraft] = useState(agent?.affiliatedAgencyName || "");
   const [savingAgencyName, setSavingAgencyName] = useState(false);
+  // Uploads stay locked until the person ticks the accuracy declaration (the server enforces
+  // the same rule, so this is a UX gate, not the only one). Deliberately starts unticked on
+  // every visit - an attestation made last week isn't a fresh one for today's files.
+  const [declarationAccepted, setDeclarationAccepted] = useState(false);
 
   useEffect(() => {
     setAgencyNameDraft(agent?.affiliatedAgencyName || "");
@@ -117,6 +121,10 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
   };
 
   const handleUpload = async (documentType: string, file: File) => {
+    if (!declarationAccepted) {
+      showToast(isRtl ? "يجب الموافقة على الإقرار أولاً قبل رفع المستندات." : "Please accept the declaration before uploading documents.");
+      return;
+    }
     setUploadingType(documentType);
     try {
       const formData = new FormData();
@@ -130,11 +138,20 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
       const submitRes = await fetch("/api/verification-documents", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ documentType, fileUrl, expiryDate: expiryDrafts[documentType] || undefined })
+        body: JSON.stringify({
+          documentType,
+          fileUrl,
+          expiryDate: expiryDrafts[documentType] || undefined,
+          declarationAccepted: true,
+          declarationVersion: DOCUMENT_DECLARATION.version
+        })
       });
       if (submitRes.ok) {
         showToast(isRtl ? "تم رفع المستند بنجاح!" : "Document uploaded successfully!");
         fetchChecklist();
+        // Submitting the last required document moves the onboarding step forward server-side;
+        // ask App.tsx to refetch the account so the progress tracker updates immediately.
+        window.dispatchEvent(new Event("nerou:refresh-account"));
       } else {
         const err = await submitRes.json();
         showToast(err.error || (isRtl ? "فشل رفع المستند." : "Failed to submit document."));
@@ -224,7 +241,8 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
             className="px-2 py-1.5 bg-ink-inverse border border-border rounded-lg text-[10px] text-ink-muted"
             title={isRtl ? "تاريخ انتهاء الصلاحية (اختياري)" : "Expiry date (optional)"}
           />
-          <label className={`relative px-3 py-1.5 rounded-lg text-[10px] font-semibold cursor-pointer border transition-colors ${isUploading ? "bg-gray-100 text-gray-400 border-gray-200" : "bg-chrome hover:bg-gold hover:text-gold-ink text-white border-transparent"}`}>
+          <label className={`relative px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${isUploading || !declarationAccepted ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : "bg-chrome hover:bg-gold hover:text-gold-ink text-white border-transparent cursor-pointer"}`}
+            title={!declarationAccepted ? (isRtl ? "وافق على الإقرار أعلاه أولاً" : "Accept the declaration above first") : undefined}>
             {isUploading ? (
               <span className="flex items-center gap-1">
                 <Loader2 className="animate-spin" size={12} />
@@ -239,7 +257,7 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
             <input
               type="file"
               accept="image/*,application/pdf"
-              disabled={isUploading}
+              disabled={isUploading || !declarationAccepted}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleUpload(type, file);
@@ -288,6 +306,36 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
           </p>
         </div>
         {statusBadge(verificationStatus === "APPROVED" ? "APPROVED" : "PENDING", isRtl)}
+      </div>
+
+      {/* Accuracy declaration - must be ticked before any file can be uploaded. Wording lives in
+          DOCUMENT_DECLARATION (types.ts) so the server records exactly which version was accepted. */}
+      <div className={`p-4 rounded-xl border space-y-3 transition-colors ${declarationAccepted ? "bg-emerald-50 border-emerald-200" : "bg-surface border-border"}`}>
+        <div className="flex items-center gap-2">
+          <ShieldCheck size={16} className="text-gold shrink-0" />
+          <p className="text-xs font-bold text-ink">{isRtl ? DOCUMENT_DECLARATION.titleAr : DOCUMENT_DECLARATION.titleEn}</p>
+        </div>
+        <ol className="list-decimal ps-5 space-y-1.5 text-[11px] leading-relaxed text-ink-muted">
+          {(isRtl ? DOCUMENT_DECLARATION.ar : DOCUMENT_DECLARATION.en).map((clause, i) => (
+            <li key={i}>{clause}</li>
+          ))}
+        </ol>
+        <label className="flex items-start gap-2.5 cursor-pointer select-none pt-1">
+          <input
+            type="checkbox"
+            checked={declarationAccepted}
+            onChange={(e) => setDeclarationAccepted(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-gold cursor-pointer shrink-0"
+          />
+          <span className="text-xs font-semibold text-ink">
+            {isRtl ? DOCUMENT_DECLARATION.checkboxAr : DOCUMENT_DECLARATION.checkboxEn}
+          </span>
+        </label>
+        {!declarationAccepted && (
+          <p className="text-[10px] text-amber-700">
+            {isRtl ? "ضع علامة على الإقرار لتفعيل رفع المستندات." : "Tick the declaration to enable document uploads."}
+          </p>
+        )}
       </div>
 
       {required.filter((t) => t !== "PASSPORT").map((type) => renderRow(type))}

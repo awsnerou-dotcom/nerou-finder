@@ -92,6 +92,11 @@ export default function NotificationBell({ isRtl, onClick }: NotificationBellPro
           const payload = JSON.parse(event.data);
           if (payload?.type === "notification" && payload.notification) {
             setNotifications(prev => [payload.notification, ...prev].slice(0, 50));
+            // An admin just changed this person's account (approval, subscription, document
+            // verdict) - tell App.tsx to refetch it now rather than waiting for its poll timer.
+            if (payload.notification.type === "account_updated") {
+              window.dispatchEvent(new Event("nerou:refresh-account"));
+            }
           }
         } catch (err) {
           console.error("Failed to parse notification push:", err);

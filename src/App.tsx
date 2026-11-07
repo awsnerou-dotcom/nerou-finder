@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, Suspense, lazy } from "react";
+import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
 import VisitorExperience from "./components/VisitorExperience.js";
 import CinematicSkyline from "./components/CinematicSkyline.js";
 import CookieConsent from "./components/CookieConsent.js";
 import HelpAssistantWidget from "./components/HelpAssistantWidget.js";
 import NotificationBell from "./components/NotificationBell.js";
+import PasswordInput from "./components/ui/PasswordInput.js";
 import { trackEvent } from "./lib/analytics.js";
 import { User, UserRole, Organization, OrganizationType, VerificationStatus, TransactionType, ApplicationStatus, AgentType, getEffectiveAgentType } from "./types.js";
 import { useCurrency, CURRENCIES, CurrencyCode } from "./currencyContext.js";
@@ -128,12 +129,14 @@ export default function App() {
   const [forgotPasswordSent, setForgotPasswordSent] = useState<boolean>(false);
   const [resetPasswordToken, setResetPasswordToken] = useState<string>("");
   const [resetPasswordValue, setResetPasswordValue] = useState<string>("");
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState<string>("");
   const [resetPasswordDone, setResetPasswordDone] = useState<boolean>(false);
 
   // Sign up form states
   const [signupName, setSignupName] = useState<string>("");
   const [signupEmail, setSignupEmail] = useState<string>("");
   const [signupPassword, setSignupPassword] = useState<string>("");
+  const [signupPasswordConfirm, setSignupPasswordConfirm] = useState<string>("");
   const [signupPhone, setSignupPhone] = useState<string>("");
   const [signupRole, setSignupRole] = useState<UserRole>(UserRole.AGENT);
   const [signupOrgName, setSignupOrgName] = useState<string>("");
@@ -279,6 +282,65 @@ export default function App() {
     }
   };
 
+  // Account sync. currentUser used to be a snapshot taken at login and never refreshed, so when
+  // an admin approved a step of someone's onboarding (payment confirmed, documents verified,
+  // account activated) they saw nothing change until they signed out and back in. This refetches
+  // the real state from GET /api/auth/me on page load, on tab focus, on a timer, and instantly
+  // when the server pushes an account_updated notification over the WebSocket.
+  // Deliberately does NOT go through handleSetUser, which also forces the dashboard view open.
+  const currentUserRef = useRef<User | null>(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  const refreshAccount = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token || !currentUserRef.current) return;
+    try {
+      const res = await fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } });
+      // The token is dead or the account no longer exists - the session can't be valid.
+      if (res.status === 401 || res.status === 404) {
+        handleSetUser(null);
+        return;
+      }
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data?.user) return;
+      if (JSON.stringify(currentUserRef.current) !== JSON.stringify(data.user)) {
+        localStorage.setItem("nerou_user", JSON.stringify(data.user));
+        setCurrentUser(data.user);
+      }
+      setCurrentOrg(prev => (JSON.stringify(prev) === JSON.stringify(data.organization) ? prev : data.organization));
+    } catch (err) {
+      console.error("Account sync failed:", err);
+    }
+  }, []);
+
+  const isAwaitingApproval =
+    !!currentUser &&
+    ((!!currentUser.applicationStatus && currentUser.applicationStatus !== ApplicationStatus.ACTIVE) ||
+      currentUser.verificationStatus !== VerificationStatus.APPROVED);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    refreshAccount();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshAccount();
+    };
+    window.addEventListener("focus", onVisible);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("nerou:refresh-account", refreshAccount);
+    // Poll faster while the person is waiting on an approval; the WebSocket push normally beats
+    // this, the timer is the safety net for when the socket is blocked or has dropped.
+    const interval = setInterval(onVisible, isAwaitingApproval ? 20000 : 120000);
+    return () => {
+      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("nerou:refresh-account", refreshAccount);
+      clearInterval(interval);
+    };
+  }, [currentUser?.id, isAwaitingApproval, refreshAccount]);
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthLoading(true);
@@ -354,7 +416,7 @@ export default function App() {
         setSignupSuccess(false);
         setSignupName("");
         setSignupEmail("");
-        setSignupPassword("");
+        setSignupPassword(""); setSignupPasswordConfirm("");
         setSignupPhone("");
         setSignupOrgName("");
       }
@@ -410,6 +472,10 @@ export default function App() {
 
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (resetPasswordValue !== resetPasswordConfirm) {
+      setAuthError(isRtl ? "كلمتا المرور غير متطابقتين." : "The passwords do not match.");
+      return;
+    }
     setAuthLoading(true);
     setAuthError("");
     try {
@@ -434,6 +500,10 @@ export default function App() {
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signupEmail || !signupName || !signupPassword) return;
+    if (signupPassword !== signupPasswordConfirm) {
+      setAuthError(isRtl ? "كلمتا المرور غير متطابقتين." : "The passwords do not match.");
+      return;
+    }
     setAuthLoading(true);
     setAuthError("");
     try {
@@ -477,7 +547,7 @@ export default function App() {
             setSignupSuccess(false);
             setSignupName("");
             setSignupEmail("");
-            setSignupPassword("");
+            setSignupPassword(""); setSignupPasswordConfirm("");
             setSignupPhone("");
             setSignupOrgName("");
           }, 1500);
@@ -1088,10 +1158,11 @@ export default function App() {
                       <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">
                         {isRtl ? "كلمة المرور" : "Password"}
                       </label>
-                      <input
-                        type="password"
+                      <PasswordInput
+                        isRtl={isRtl}
+                        autoComplete="current-password"
                         value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
+                        onChange={setLoginPassword}
                         placeholder="••••••••"
                         className="w-full px-3.5 py-2.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-sm"
                       />
@@ -1300,7 +1371,7 @@ export default function App() {
                     {isRtl ? "تم تحديث كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول." : "Your password has been updated. You can now log in."}
                   </div>
                   <button
-                    onClick={() => { setResetPasswordToken(""); setResetPasswordDone(false); setResetPasswordValue(""); setIsLoginOpen(true); }}
+                    onClick={() => { setResetPasswordToken(""); setResetPasswordDone(false); setResetPasswordValue(""); setResetPasswordConfirm(""); setIsLoginOpen(true); }}
                     className="w-full py-3 bg-chrome hover:bg-chrome-hover text-white font-bold rounded-lg text-xs uppercase tracking-wider transition-colors cursor-pointer"
                   >
                     {isRtl ? "دخول البوابة" : "Log In"}
@@ -1308,16 +1379,35 @@ export default function App() {
                 </div>
               ) : (
                 <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
-                  <input
-                    type="password"
+                  <PasswordInput
                     required
                     minLength={8}
+                    isRtl={isRtl}
+                    autoComplete="new-password"
                     value={resetPasswordValue}
-                    onChange={(e) => setResetPasswordValue(e.target.value)}
-                    placeholder={isRtl ? "كلمة المرور الجديدة" : "New password"}
+                    onChange={setResetPasswordValue}
+                    placeholder={isRtl ? "كلمة المرور الجديدة (٨ أحرف على الأقل)" : "New password (min. 8 characters)"}
                     className="w-full px-3.5 py-2.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-sm"
                     autoFocus
                   />
+                  <div>
+                    <PasswordInput
+                      required
+                      minLength={8}
+                      isRtl={isRtl}
+                      autoComplete="new-password"
+                      value={resetPasswordConfirm}
+                      onChange={setResetPasswordConfirm}
+                      placeholder={isRtl ? "أعد كتابة كلمة المرور الجديدة" : "Confirm new password"}
+                      hasError={resetPasswordConfirm.length > 0 && resetPasswordConfirm !== resetPasswordValue}
+                      className="w-full px-3.5 py-2.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-sm"
+                    />
+                    {resetPasswordConfirm.length > 0 && resetPasswordConfirm !== resetPasswordValue && (
+                      <p className="mt-1 text-[11px] text-danger" role="alert">
+                        {isRtl ? "كلمتا المرور غير متطابقتين." : "The passwords do not match."}
+                      </p>
+                    )}
+                  </div>
                   <button
                     type="submit"
                     disabled={authLoading}
@@ -1503,15 +1593,38 @@ export default function App() {
                       <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">
                         {isRtl ? "كلمة المرور (٨ أحرف على الأقل)" : "Create Password (min. 8 characters)"} *
                       </label>
-                      <input
-                        type="password"
+                      <PasswordInput
                         required
                         minLength={8}
+                        isRtl={isRtl}
+                        autoComplete="new-password"
                         value={signupPassword}
-                        onChange={(e) => setSignupPassword(e.target.value)}
+                        onChange={setSignupPassword}
                         placeholder="••••••••"
                         className="w-full px-3 py-1.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-xs"
                       />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-ink-muted uppercase mb-1">
+                        {isRtl ? "أعد كتابة كلمة المرور" : "Confirm Password"} *
+                      </label>
+                      <PasswordInput
+                        required
+                        minLength={8}
+                        isRtl={isRtl}
+                        autoComplete="new-password"
+                        value={signupPasswordConfirm}
+                        onChange={setSignupPasswordConfirm}
+                        placeholder="••••••••"
+                        hasError={signupPasswordConfirm.length > 0 && signupPasswordConfirm !== signupPassword}
+                        className="w-full px-3 py-1.5 bg-ink-inverse border border-border focus:border-gold focus:outline-none rounded-lg text-base md:text-xs"
+                      />
+                      {signupPasswordConfirm.length > 0 && signupPasswordConfirm !== signupPassword && (
+                        <p className="mt-1 text-[11px] text-danger" role="alert">
+                          {isRtl ? "كلمتا المرور غير متطابقتين." : "The passwords do not match."}
+                        </p>
+                      )}
                     </div>
 
                     {/* Sticky footer so the submit button stays reachable on short viewports

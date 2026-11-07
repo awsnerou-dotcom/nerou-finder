@@ -5,7 +5,10 @@ import globals from 'globals';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'node_modules/**', 'build/**', 'coverage/**', 'prisma/migrations/**'],
+    // android/ and ios/ are the generated Capacitor native projects - each holds a minified copy
+    // of the built website, which is not our source and produced ~10,600 false errors the moment
+    // `cap sync` had been run on a machine.
+    ignores: ['dist/**', 'node_modules/**', 'build/**', 'coverage/**', 'prisma/migrations/**', 'android/**', 'ios/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

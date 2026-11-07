@@ -833,7 +833,37 @@ export interface VerificationDocument {
   reviewedBy?: string;
   reminder30SentDate?: string;
   reminder7SentDate?: string;
+  // Proof the submitter ticked the accuracy declaration (DOCUMENT_DECLARATION below) when they
+  // uploaded this exact file - kept on the document itself so a later dispute over a forged or
+  // outdated paper can show who attested, when, and against which wording.
+  declarationAcceptedAt?: string;
+  declarationVersion?: string;
+  declarationAcceptedBy?: string;
 }
+
+// The accuracy declaration every verification-document upload must be accompanied by. Lives
+// here (not in the component) so the server can reject an upload made against a stale wording
+// and so the exact text a user agreed to can always be recovered from `version`. Bump `version`
+// whenever the wording changes - old documents keep the version they were attested under.
+export const DOCUMENT_DECLARATION = {
+  version: "2026-11-v1",
+  titleEn: "Declaration of accuracy",
+  titleAr: "إقرار بصحة المعلومات والمستندات",
+  checkboxEn: "I have read and agree to the declaration above.",
+  checkboxAr: "لقد قرأتُ الإقرار أعلاه وأوافق عليه.",
+  en: [
+    "I declare that every document I upload is authentic, complete, a true copy of the original, and currently valid, and that all information in it is accurate.",
+    "I am the rightful holder of these documents, or I am duly authorised to submit them on behalf of the person or company they belong to.",
+    "I accept full legal responsibility for any false, forged, misleading or expired information, and I understand that Nerou Finder may verify these documents with the competent authorities, reject the application, suspend or terminate the account, and report any violation as the law requires, without liability to the platform.",
+    "I consent to my documents being processed for verification purposes only, in accordance with the Privacy Policy and Qatar Law No. 13 of 2016 on Personal Data Privacy Protection."
+  ],
+  ar: [
+    "أقرّ بأن جميع المستندات التي أرفعها أصلية وكاملة وصورة طبق الأصل من النسخة الأصلية وسارية المفعول، وأن جميع البيانات الواردة فيها صحيحة.",
+    "وأقرّ بأنني الحائز الشرعي لهذه المستندات، أو أنني مفوَّض نظاماً بتقديمها نيابةً عن الشخص أو الشركة صاحبة الشأن.",
+    "وأتحمّل المسؤولية القانونية الكاملة عن أي معلومات غير صحيحة أو مزوّرة أو مضلِّلة أو منتهية الصلاحية، وأدرك أن لمنصة نيرو فايندر الحق في التحقق من هذه المستندات لدى الجهات المختصة، ورفض الطلب، وتعليق الحساب أو إنهائه، والإبلاغ عن أي مخالفة وفق ما يقتضيه القانون، دون أي مسؤولية على المنصة.",
+    "وأوافق على معالجة مستنداتي لأغراض التحقق فقط، وفقاً لسياسة الخصوصية والقانون القطري رقم (13) لسنة 2016 بشأن حماية خصوصية البيانات الشخصية."
+  ]
+} as const;
 
 // Required document checklist per verification context. AGENT's PASSPORT
 // requirement is conditional on User.isExpat and is handled separately by

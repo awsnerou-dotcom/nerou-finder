@@ -60,7 +60,8 @@ import {
   AVAILABILITY_CONFIRM_DUE_DAYS,
   AVAILABILITY_UNCONFIRMED_DAYS,
   AVAILABILITY_AUTO_PAUSE_DAYS,
-  REFERRALS_PER_BOOST_CREDIT
+  REFERRALS_PER_BOOST_CREDIT,
+  DOCUMENT_DECLARATION
 } from "./src/types.js";
 import { AREA_GUIDES, getAreaGuideBySlug } from "./src/data/areaGuides.js";
 import { SPA_PATHS, normalizePath } from "./src/routes.js";
@@ -778,6 +779,22 @@ function notifyUser(
   }
 }
 
+// Live "your account just changed" push. The frontend (App.tsx's account sync) treats a
+// notification of type "account_updated" as a cue to refetch GET /api/auth/me immediately, so an
+// admin approval shows up on the applicant's screen at once instead of only after they sign
+// out and back in (the logged-in user object used to be a login-time snapshot in localStorage).
+function notifyAccountUpdated(db: DatabaseState, userIds: string[], title: string, body: string): void {
+  for (const id of new Set(userIds)) {
+    notifyUser(db, id, { type: "account_updated", title, body });
+  }
+}
+
+function orgAdminUserIds(db: DatabaseState, orgId: string): string[] {
+  return db.users
+    .filter(u => u.orgId === orgId && (u.role === UserRole.AGENCY_ADMIN || u.role === UserRole.DEVELOPER_ADMIN))
+    .map(u => u.id);
+}
+
 // Strips the bcrypt password hash before a user record is ever sent over the wire -
 // used on every response that includes a full user object (login/signup/profile
 // updates/admin lookups), not just the plain GET /api/users list.
@@ -961,6 +978,20 @@ app.post("/api/auth/login", authRateLimiter, (req, res) => {
   );
 
   res.json({ user: sanitizeUser(user), token });
+});
+
+// The caller's current account state, read fresh from the database. The client used to treat
+// the user object returned at login/signup as the source of truth for the whole session, so any
+// change an admin made afterwards (onboarding approval, subscription activation, document
+// verification) was invisible until the person signed out and back in. Also returns the user's
+// organization, since the onboarding screens read subscription state from it.
+app.get("/api/auth/me", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const user = db.users.find(u => u.id === authReq.user?.id);
+  if (!user) return res.status(404).json({ error: "User not found." });
+  const organization = user.orgId ? db.organizations.find(o => o.id === user.orgId) : undefined;
+  res.json({ user: sanitizeUser(user), organization: organization || null });
 });
 
 // Confirm the code emailed by POST /api/auth/signup (or by /login re-issuing an expired one).
@@ -4157,6 +4188,14 @@ app.post("/api/admin/organizations/subscription", (req, res) => {
     }
   }
 
+  notifyAccountUpdated(
+    db,
+    orgAdminUserIds(db, orgId),
+    status === "ACTIVE" ? "Subscription activated" : "Subscription updated",
+    status === "ACTIVE"
+      ? "Your subscription is active - you can continue to the next onboarding step."
+      : `Your subscription status is now ${String(status).replace(/_/g, " ")}.`
+  );
   writeDb(db);
 
   // Trigger outbound mock email log if subscription is approved and active
@@ -4212,6 +4251,14 @@ app.post("/api/admin/users/:id/subscription", (req, res) => {
     user.applicationStatus = ApplicationStatus.AWAITING_DOCUMENTS;
   }
 
+  notifyAccountUpdated(
+    db,
+    [user.id],
+    status === "ACTIVE" ? "Subscription activated" : "Subscription updated",
+    status === "ACTIVE"
+      ? "Your subscription is active - you can continue to the next onboarding step."
+      : `Your subscription status is now ${String(status).replace(/_/g, " ")}.`
+  );
   writeDb(db);
 
   logAudit(
@@ -4245,6 +4292,7 @@ app.patch("/api/admin/users/:id/application-status", (req, res) => {
   if (idx === -1) return res.status(404).json({ error: "User not found" });
 
   db.users[idx].applicationStatus = status;
+  notifyAccountUpdated(db, [id], "Application status updated", `Your application is now: ${String(status).replace(/_/g, " ")}.`);
   writeDb(db);
 
   logAudit(
@@ -4269,6 +4317,7 @@ app.post("/api/admin/verify-org", (req, res) => {
   if (idx === -1) return res.status(404).json({ error: "Organization not found" });
 
   db.organizations[idx].verificationStatus = status;
+  notifyAccountUpdated(db, orgAdminUserIds(db, orgId), "Verification updated", `Your organization's verification status is now ${String(status)}.`);
   writeDb(db);
 
   logAudit(
@@ -4292,6 +4341,7 @@ app.post("/api/admin/verify-user", (req, res) => {
   if (idx === -1) return res.status(404).json({ error: "User not found" });
 
   db.users[idx].verificationStatus = status;
+  notifyAccountUpdated(db, [userId], "Verification updated", `Your account verification status is now ${String(status)}.`);
   writeDb(db);
 
   logAudit(
@@ -4415,10 +4465,18 @@ app.post("/api/verification-documents", authMiddleware, (req, res) => {
   const context = getVerificationContextForUser(actor);
   if (!context) return res.status(403).json({ error: "Your account type does not require document verification." });
 
-  const { documentType, fileUrl, expiryDate } = req.body;
+  const { documentType, fileUrl, expiryDate, declarationAccepted, declarationVersion } = req.body;
   if (!documentType || !fileUrl) return res.status(400).json({ error: "documentType and fileUrl are required." });
   if (!ALL_DOCUMENT_TYPES_BY_CONTEXT[context].includes(documentType)) {
     return res.status(400).json({ error: `${documentType} is not a valid document type for ${context}.` });
+  }
+  // Every upload must carry an explicit tick on the accuracy declaration - enforced here, not
+  // just by disabling the button in the UI, so it can't be skipped by calling the API directly.
+  if (declarationAccepted !== true) {
+    return res.status(400).json({ error: "You must accept the declaration that the information in your documents is accurate before submitting." });
+  }
+  if (declarationVersion !== DOCUMENT_DECLARATION.version) {
+    return res.status(400).json({ error: "The declaration wording has been updated. Please reload the page and review it before submitting." });
   }
 
   if (!db.verificationDocuments) db.verificationDocuments = [];
@@ -4443,6 +4501,9 @@ app.post("/api/verification-documents", authMiddleware, (req, res) => {
     doc.reviewedBy = undefined;
     doc.reminder30SentDate = undefined;
     doc.reminder7SentDate = undefined;
+    doc.declarationAcceptedAt = now;
+    doc.declarationVersion = DOCUMENT_DECLARATION.version;
+    doc.declarationAcceptedBy = actor.id;
   } else {
     doc = {
       id: `docv-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -4453,7 +4514,10 @@ app.post("/api/verification-documents", authMiddleware, (req, res) => {
       fileUrl,
       status: DocumentStatus.PENDING,
       expiryDate: expiryDate || undefined,
-      submittedDate: now
+      submittedDate: now,
+      declarationAcceptedAt: now,
+      declarationVersion: DOCUMENT_DECLARATION.version,
+      declarationAcceptedBy: actor.id
     };
     db.verificationDocuments.push(doc);
   }
@@ -4477,7 +4541,7 @@ app.post("/api/verification-documents", authMiddleware, (req, res) => {
   }
 
   writeDb(db);
-  logAudit(actor.id, actor.fullName, actor.role, "SUBMIT_VERIFICATION_DOCUMENT", doc.id, "VerificationDocument", { documentType, context });
+  logAudit(actor.id, actor.fullName, actor.role, "SUBMIT_VERIFICATION_DOCUMENT", doc.id, "VerificationDocument", { documentType, context, declarationVersion: DOCUMENT_DECLARATION.version });
 
   // FIX 9: confirm receipt of the submission - previously only the eventual approve/reject
   // decision emailed anything, submission itself was silent.
@@ -4574,6 +4638,15 @@ app.post("/api/admin/verification-documents/review", (req, res) => {
   doc.reviewedBy = actor.id;
 
   recomputeAccountVerification(db, doc.context, doc.userId, doc.orgId);
+  const docOwnerIds = doc.context === "AGENT"
+    ? (doc.userId ? [doc.userId] : [])
+    : (doc.orgId ? orgAdminUserIds(db, doc.orgId) : []);
+  notifyAccountUpdated(
+    db,
+    docOwnerIds,
+    status === DocumentStatus.APPROVED ? "Document approved" : "Document rejected",
+    `${doc.documentType.replace(/_/g, " ")} was ${status === DocumentStatus.APPROVED ? "approved" : "rejected - open your documents to see the reason"}.`
+  );
   writeDb(db);
 
   logAudit(
