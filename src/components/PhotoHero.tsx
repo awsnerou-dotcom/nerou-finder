@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Home-page hero: three Qatar photos that dissolve into each other in slow motion.
+// Home-page hero: four photos that dissolve into each other in slow motion.
 // The photos are shown at their true size and sharpness - no zoom, no re-compression, and the
 // hero is tall enough (see VisitorExperience) to show most of each photo instead of a thin crop.
 // Pure CSS - no timers or re-renders - and it stays on a still first photo for visitors who ask
-// their device to reduce motion. The timing lives in src/index.css (.hero-slide / hero-fade-3),
-// which is written for exactly three photos - change both together if you add or remove one.
+// their device to reduce motion. The timing lives in src/index.css (.hero-slide / hero-fade-4),
+// which is written for exactly four photos - change both together if you add or remove one.
 
 const SLIDES = [
   {
@@ -22,13 +22,12 @@ const SLIDES = [
     focus: "50% 8%" // keeps the whole minaret, crest included, in frame
   },
   {
-    src: "/assets/images/hero-qatar-skyline-villa.jpg",
-    focus: "50% 50%",
-    // This file is two pictures stacked (skyline above, villa below), so cropping it to the hero
-    // strip would slice through the dividing line. It is shown whole, uncropped, as large as fits
-    // without ever being enlarged past its real 1672px width, on a blurred, dimmed copy of itself
-    // that fills the rest of the hero.
-    nativeWidth: 1672
+    src: "/assets/images/hero-pearl-marina.jpg",
+    focus: "50% 64%" // the apartment towers and the yachts in front of them
+  },
+  {
+    src: "/assets/images/hero-city-street.jpg",
+    focus: "50% 55%"
   }
 ];
 const SLIDE_SECONDS = 12; // time between one photo taking over and the next doing so
@@ -37,49 +36,24 @@ export default function PhotoHero() {
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#0d1b2a] isolate" aria-hidden="true">
       {SLIDES.map((slide, i) => (
-        // Each slide is one animated layer (the fade/stacking animation runs on this wrapper) so
-        // that a slide made of several images (blurred backdrop + the photo itself) fades as one.
+        // Each slide is one animated layer: the fade/stacking animation runs on this wrapper.
         <div
           key={slide.src}
           className="hero-slide absolute inset-0"
-          // photo k starts its loop (SLIDES.length - k) steps ahead so the three take turns
+          // photo k starts its loop (SLIDES.length - k) steps ahead so they take turns
           style={i === 0 ? undefined : { animationDelay: `-${SLIDE_SECONDS * (SLIDES.length - i)}s` }}
         >
-          {slide.nativeWidth ? (
-            <>
-              <img
-                src={slide.src}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 brightness-75"
-                draggable={false}
-              />
-              <img
-                src={slide.src}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="absolute top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2 rtl:translate-x-1/2 w-auto h-auto rounded-lg shadow-2xl ring-1 ring-white/15"
-                // As large as fits inside the hero (92% of its width and height) without being
-                // cropped or enlarged past the file's real width; the aspect ratio is kept.
-                style={{ maxWidth: `min(92%, ${slide.nativeWidth}px)`, maxHeight: "92%" }}
-                draggable={false}
-              />
-            </>
-          ) : (
-            <img
-              src={slide.src}
-              alt=""
-              // The first photo is the page's LCP image; the others only have to be ready before
-              // their turn, so they must not compete with it.
-              fetchPriority={i === 0 ? "high" : "low"}
-              decoding="async"
-              className="absolute inset-0 w-full h-full object-cover"
-              style={{ objectPosition: slide.focus }}
-              draggable={false}
-            />
-          )}
+          <img
+            src={slide.src}
+            alt=""
+            // The first photo is the page's LCP image; the others only have to be ready before
+            // their turn, so they must not compete with it.
+            fetchPriority={i === 0 ? "high" : "low"}
+            decoding="async"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: slide.focus }}
+            draggable={false}
+          />
         </div>
       ))}
 

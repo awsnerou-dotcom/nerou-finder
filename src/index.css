@@ -265,28 +265,30 @@ body {
   }
 }
 
-/* Home hero slideshow (src/components/PhotoHero.tsx): THREE photos, one 36s loop, a new photo
+/* Home hero slideshow (src/components/PhotoHero.tsx): FOUR photos, one 48s loop, a new photo
    taking over every 12s. The incoming photo fades in over 3.6s ON TOP of the outgoing one, which
    stays fully opaque underneath until the fade is complete - so there is no mid-dissolve dip
    towards the dark background (a plain "A fades out while B fades in" dips to ~75% brightness).
    To keep the incoming photo on top, z-index is animated too:
-     90%-100%      fading in      z 3   (above everything)
-     0%-33%        fully visible  z 2
-     33%-33.3%     handing over   z 1   (below the next photo, which is now fully in)
-     33.3%-90%     hidden         opacity 0
-   Photo k runs the same loop (3 - k) x 12s ahead via a negative animation-delay (set inline).
+     92.5%-100%    fading in      z 3   (above everything)
+     0%-25%        fully visible  z 2
+     25%-25.2%     handing over   z 1   (below the next photo, which is now fully in)
+     25.25%-92.5%  hidden         opacity 0
+   Photo k runs the same loop (4 - k) x 12s ahead via a negative animation-delay (set inline).
+   For another number of photos N: loop = N x 12s, the 25% marks become 100/N %, and the fade-in
+   starts at (loop - 3.6s) / loop.
    Deliberately no zoom or pan: the photos are shown at their true scale. */
-@keyframes hero-fade-3 {
-  0%, 32.9% { opacity: 1; z-index: 2; }
-  33%, 33.3% { opacity: 1; z-index: 1; }
-  33.34%, 89.9% { opacity: 0; z-index: 0; }
-  90% { opacity: 0; z-index: 3; }
+@keyframes hero-fade-4 {
+  0%, 24.9% { opacity: 1; z-index: 2; }
+  25%, 25.2% { opacity: 1; z-index: 1; }
+  25.25%, 92.4% { opacity: 0; z-index: 0; }
+  92.5% { opacity: 0; z-index: 3; }
   100% { opacity: 1; z-index: 3; }
 }
 .hero-slide {
   opacity: 1;
   will-change: opacity;
-  animation: hero-fade-3 36s ease-in-out infinite;
+  animation: hero-fade-4 48s ease-in-out infinite;
 }
 /* Reduced motion: no animation at all - the first photo stays, the others stay hidden. */
 @media (prefers-reduced-motion: reduce) {
