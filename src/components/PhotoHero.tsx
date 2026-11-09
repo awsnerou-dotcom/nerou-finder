@@ -22,12 +22,13 @@ const SLIDES = [
     focus: "50% 8%" // keeps the whole minaret, crest included, in frame
   },
   {
-    src: "/assets/images/hero-qatar-pearl.jpg",
+    src: "/assets/images/hero-qatar-skyline-villa.jpg",
     focus: "50% 50%",
-    // This file is only 736x411. Stretched across the full-width hero it was twice its real size
-    // and visibly soft, so it is shown at its true pixel size (never larger), uncropped, on a
-    // blurred, dimmed copy of itself that fills the rest of the hero.
-    nativeWidth: 736
+    // This file is two pictures stacked (skyline above, villa below), so cropping it to the hero
+    // strip would slice through the dividing line. It is shown whole, uncropped, as large as fits
+    // without ever being enlarged past its real 1672px width, on a blurred, dimmed copy of itself
+    // that fills the rest of the hero.
+    nativeWidth: 1672
   }
 ];
 const SLIDE_SECONDS = 12; // time between one photo taking over and the next doing so
@@ -59,9 +60,10 @@ export default function PhotoHero() {
                 alt=""
                 loading="lazy"
                 decoding="async"
-                className="absolute top-1/2 -translate-y-1/2 start-1/2 -translate-x-1/2 rtl:translate-x-1/2 lg:start-auto lg:end-[5%] lg:translate-x-0 lg:rtl:translate-x-0 h-auto rounded-lg shadow-2xl ring-1 ring-white/15"
-                // never wider than the file really is, and never wider than the screen
-                style={{ width: slide.nativeWidth, maxWidth: "92%" }}
+                className="absolute top-1/2 start-1/2 -translate-x-1/2 -translate-y-1/2 rtl:translate-x-1/2 w-auto h-auto rounded-lg shadow-2xl ring-1 ring-white/15"
+                // As large as fits inside the hero (92% of its width and height) without being
+                // cropped or enlarged past the file's real width; the aspect ratio is kept.
+                style={{ maxWidth: `min(92%, ${slide.nativeWidth}px)`, maxHeight: "92%" }}
                 draggable={false}
               />
             </>
