@@ -12,7 +12,7 @@
 // floating on top of the picture (which disappeared on bright photos).
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, X, Images, Compass, ImageOff } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Images, Play, ImageOff } from "lucide-react";
 import { getThumbnailUrl } from "../lib/image.js";
 
 export interface GalleryGroup {
@@ -25,15 +25,16 @@ interface PropertyGalleryProps {
   title: string;
   isRtl: boolean;
   groups: GalleryGroup[]; // first group is "all photos"
+  /** Embeddable YouTube/Vimeo player address (see getVideoEmbedUrl). Omit when the listing has no video. */
+  videoEmbedUrl?: string | null;
 }
 
-export default function PropertyGallery({ title, isRtl, groups }: PropertyGalleryProps) {
+export default function PropertyGallery({ title, isRtl, groups, videoEmbedUrl }: PropertyGalleryProps) {
   const [failed, setFailed] = useState<Set<string>>(new Set());
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [mode, setMode] = useState<"photos" | "tour">("photos");
+  const [mode, setMode] = useState<"photos" | "video">("photos");
   const [groupKey, setGroupKey] = useState(groups[0]?.key || "ALL");
   const [index, setIndex] = useState(0);
-  const [pitch, setPitch] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
@@ -55,7 +56,7 @@ export default function PropertyGallery({ title, isRtl, groups }: PropertyGaller
   const list = activeGroup?.images || [];
   const safeIndex = index >= list.length ? 0 : index;
 
-  const openViewer = (startUrl?: string, nextMode: "photos" | "tour" = "photos") => {
+  const openViewer = (startUrl?: string, nextMode: "photos" | "video" = "photos") => {
     setMode(nextMode);
     setGroupKey(visibleGroups[0]?.key || "ALL");
     const at = startUrl ? all.indexOf(startUrl) : 0;
@@ -190,14 +191,16 @@ export default function PropertyGallery({ title, isRtl, groups }: PropertyGaller
             {g.label} ({g.images.length})
           </button>
         ))}
-        <button
-          type="button"
-          onClick={() => openViewer(undefined, "tour")}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3.5 py-2 text-xs font-semibold text-ink-muted hover:border-gold hover:text-gold transition-colors cursor-pointer"
-        >
-          <Compass size={15} />
-          {isRtl ? "جولة ٣٦٠°" : "360° tour"}
-        </button>
+        {videoEmbedUrl && (
+          <button
+            type="button"
+            onClick={() => openViewer(undefined, "video")}
+            className="inline-flex items-center gap-2 rounded-lg bg-gold px-3.5 py-2 text-xs font-bold text-gold-ink hover:bg-gold-hover transition-colors cursor-pointer"
+          >
+            <Play size={15} fill="currentColor" />
+            {isRtl ? "فيديو العقار" : "Video tour"}
+          </button>
+        )}
       </div>
 
       {/* FULL-SCREEN VIEWER */}
@@ -228,16 +231,18 @@ export default function PropertyGallery({ title, isRtl, groups }: PropertyGaller
                   {g.label} <span className="opacity-70">({g.images.length})</span>
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={() => setMode("tour")}
-                className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-                  mode === "tour" ? "bg-white text-black" : "bg-white/15 text-white hover:bg-white/25"
-                }`}
-              >
-                <Compass size={13} />
-                {isRtl ? "جولة ٣٦٠°" : "360° tour"}
-              </button>
+              {videoEmbedUrl && (
+                <button
+                  type="button"
+                  onClick={() => setMode("video")}
+                  className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                    mode === "video" ? "bg-white text-black" : "bg-white/15 text-white hover:bg-white/25"
+                  }`}
+                >
+                  <Play size={12} fill="currentColor" />
+                  {isRtl ? "فيديو" : "Video"}
+                </button>
+              )}
             </div>
             <div className="flex items-center gap-3 shrink-0">
               {mode === "photos" && (
@@ -285,26 +290,15 @@ export default function PropertyGallery({ title, isRtl, groups }: PropertyGaller
                     className="relative z-10 w-full h-full object-contain select-none animate-in fade-in duration-200"
                   />
                 ) : (
-                  <div className="relative z-10 w-full h-full overflow-hidden flex items-center justify-center">
-                    <img
-                      src={list[safeIndex]}
-                      alt="360"
-                      className="w-full h-full object-cover opacity-60 select-none pointer-events-none transition-transform duration-200"
-                      style={{ transform: `scale(1.15) translateX(${pitch}px)` }}
+                  <div className="relative z-10 w-full h-full flex items-center justify-center p-3 sm:p-8">
+                    <iframe
+                      src={videoEmbedUrl || undefined}
+                      title={`${title} - ${isRtl ? "فيديو" : "video tour"}`}
+                      className="w-full max-w-5xl aspect-video max-h-full rounded-xl bg-black shadow-2xl"
+                      allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+                      allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
                     />
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-white">
-                      <Compass size={34} className="text-gold" />
-                      <p className="text-sm font-bold">{isRtl ? "معاينة بانورامية تفاعلية" : "Interactive panorama preview"}</p>
-                      <input
-                        type="range"
-                        min="-200"
-                        max="200"
-                        value={pitch}
-                        onChange={e => setPitch(Number(e.target.value))}
-                        className="w-64 accent-gold cursor-ew-resize"
-                        aria-label={isRtl ? "تدوير المنظور" : "Rotate view"}
-                      />
-                    </div>
                   </div>
                 )}
               </>

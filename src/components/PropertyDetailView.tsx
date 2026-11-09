@@ -17,6 +17,7 @@ import {
 import { useCurrency } from "../currencyContext.js";
 import { getNearbyPlaces, LandmarkType } from "../lib/nearbyPlaces.js";
 import PropertyGallery, { GalleryGroup } from "./PropertyGallery.js";
+import { getVideoEmbedUrl } from "../lib/video.js";
 import {
   MapPin,
   Calendar,
@@ -858,7 +859,7 @@ export default function PropertyDetailView({
 
           {/* PHOTO GALLERY - full width, above the details (large hero + full-screen viewer) */}
           <div className="px-4 sm:px-6 pt-4 sm:pt-6">
-            <PropertyGallery key={property.id} title={isRtl ? property.titleAr || property.title : property.title} isRtl={isRtl} groups={galleryGroups} />
+            <PropertyGallery key={property.id} title={isRtl ? property.titleAr || property.title : property.title} isRtl={isRtl} groups={galleryGroups} videoEmbedUrl={getVideoEmbedUrl(property.videoUrl)} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 sm:p-6">

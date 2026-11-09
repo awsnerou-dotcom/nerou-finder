@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { getVideoEmbedUrl } from "../lib/video.js";
 import React, { useState, useEffect } from "react";
 import {
   Property,
@@ -323,6 +324,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [listingImages, setListingImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState<boolean>(false);
   const [listingAmenities, setListingAmenities] = useState<string>("Pool, Gym, Parking");
+  const [listingVideoUrl, setListingVideoUrl] = useState<string>("");
 
   // Non-blocking duplicate-listing warning surfaced after a successful create (Part 2 of the
   // availability refresh cycle work) - the listing is already created by the time this shows,
@@ -378,6 +380,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       setListingDescAr(draft.listingDescAr || "");
       setListingImages(draft.listingImages || []);
       setListingAmenities(draft.listingAmenities || "Pool, Gym, Parking");
+      setListingVideoUrl(draft.listingVideoUrl || "");
       setIsAddingListing(true);
       setToastMessage(isRtl ? "تم استرجاع مسودة الإعلان المحفوظة." : "Restored your saved listing draft.");
       setTimeout(() => setToastMessage(""), 4000);
@@ -397,7 +400,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
         listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
         listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
-        selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities
+        selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingVideoUrl
       };
       localStorage.setItem(listingDraftKey, JSON.stringify(draft));
     } catch (e) {
@@ -407,7 +410,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     isAddingListing, editingPropertyId, wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
     listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
     listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
-    selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingDraftKey
+    selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingVideoUrl, listingDraftKey
   ]);
 
   useEffect(() => {
@@ -973,6 +976,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           descriptionAr: listingDescAr,
           images: listingImages,
           amenities: listingAmenities.split(",").map(a => a.trim()),
+          // "" on purpose when blank: on an edit it clears a previously saved video link.
+          videoUrl: listingVideoUrl.trim(),
           agentId: agent.id,
           orgId: agent.orgId,
           projectId: resolvedProjectId,
@@ -1003,6 +1008,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         setListingDesc("");
         setListingDescAr("");
         setListingImages([]);
+        setListingVideoUrl("");
         setSelectedArea("");
         setListingCompletionYear("");
         setListingFurnishingStatus("");
@@ -1125,6 +1131,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     setListingDescAr(prop.descriptionAr && prop.descriptionAr !== prop.description ? prop.descriptionAr : "");
     setListingImages(prop.images || []);
     setListingAmenities((prop.amenities || []).join(", "));
+    setListingVideoUrl(prop.videoUrl || "");
     setWizardStep(1);
     setIsAddingListing(true);
     setPossibleDuplicates([]);
@@ -1795,6 +1802,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   setSelectedMunicipality("");
                   setSelectedArea("");
                   setListingAmenities("Pool, Gym, Parking");
+                  setListingVideoUrl("");
                   setWizardStep(1);
                 }
                 setEditingPropertyId(null);
@@ -2206,6 +2214,26 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       placeholder="e.g. Pool, Gym, Parking, Balcony"
                       className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-ink-muted mb-1">
+                      {isRtl ? "رابط فيديو العقار (اختياري - YouTube أو Vimeo)" : "Property video link (optional - YouTube or Vimeo)"}
+                    </label>
+                    <input
+                      type="url"
+                      value={listingVideoUrl}
+                      onChange={(e) => setListingVideoUrl(e.target.value)}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      className={`w-full px-3 py-2 bg-ink-inverse border rounded-lg ${
+                        listingVideoUrl.trim() && !getVideoEmbedUrl(listingVideoUrl) ? "border-red-400" : "border-border"
+                      }`}
+                    />
+                    <p className={`text-[10px] mt-1 ${listingVideoUrl.trim() && !getVideoEmbedUrl(listingVideoUrl) ? "text-red-500" : "text-ink-muted"}`}>
+                      {listingVideoUrl.trim() && !getVideoEmbedUrl(listingVideoUrl)
+                        ? (isRtl ? "الرابط غير صالح - استخدم رابط YouTube أو Vimeo يبدأ بـ https" : "Not a valid link - use a YouTube or Vimeo link starting with https")
+                        : (isRtl ? "فيديو جولة داخل العقار يظهر للباحثين بجانب الصور ويزيد الاستفسارات." : "A walkthrough video appears beside the photos and gets buyers to enquire.")}
+                    </p>
                   </div>
                 </div>
               )}

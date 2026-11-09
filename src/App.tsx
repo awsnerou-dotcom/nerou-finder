@@ -3,11 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { COMPANY } from "./companyInfo.js";
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
 import VisitorExperience from "./components/VisitorExperience.js";
 import CinematicSkyline from "./components/CinematicSkyline.js";
 import CookieConsent from "./components/CookieConsent.js";
-import HelpAssistantWidget from "./components/HelpAssistantWidget.js";
 import NotificationBell from "./components/NotificationBell.js";
 import PasswordInput from "./components/ui/PasswordInput.js";
 import { trackEvent } from "./lib/analytics.js";
@@ -999,6 +999,15 @@ export default function App() {
                 ? "منصة اكتشاف العقارات الفاخرة الأولى في قطر، مدعومة بالذكاء الاصطناعي."
                 : "Qatar's premier AI-powered luxury real estate discovery platform."}
             </p>
+            <div className="text-[11px] text-gray-400 leading-relaxed space-y-1 pt-1">
+              <p className="font-semibold text-gray-300">{isRtl ? COMPANY.nameAr : COMPANY.nameEn}</p>
+              <p>{isRtl ? COMPANY.addressAr : COMPANY.addressEn}</p>
+              <p>
+                <a href={`mailto:${COMPANY.email}`} dir="ltr" className="hover:text-white transition-colors underline-offset-2 hover:underline">
+                  {COMPANY.email}
+                </a>
+              </p>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -1073,7 +1082,7 @@ export default function App() {
 
         <div className="border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] text-gray-500">
-            <p>© 2026 Nerou Finder. {isRtl ? "جميع الحقوق محفوظة." : "All rights reserved."} Powered by Nerou Technology Services.</p>
+            <p>© 2026 Nerou Finder. {isRtl ? `جميع الحقوق محفوظة. تشغّلها ${COMPANY.nameAr}.` : `All rights reserved. Operated by ${COMPANY.nameEn}.`}</p>
             <p>{isRtl ? "الدوحة، لوسيل، اللؤلؤة قطر، الخليج الغربي" : "Doha • Lusail • Pearl Qatar • West Bay"}</p>
           </div>
         </div>
@@ -1664,7 +1673,6 @@ export default function App() {
       )}
 
       <CookieConsent isRtl={isRtl} />
-      <HelpAssistantWidget isRtl={isRtl} currentUser={currentUser} />
     </div>
   );
 }

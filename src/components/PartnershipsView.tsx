@@ -1,3 +1,4 @@
+import { COMPANY } from "../companyInfo.js";
 import React, { useState } from "react";
 import { Award, ShieldCheck, ArrowRight, CheckCircle2, User, Building, Mail, Phone, MessageSquare } from "lucide-react";
 
@@ -103,9 +104,9 @@ export default function PartnershipsView({ isRtl }: PartnershipsViewProps) {
 
           <div className="border border-border rounded-xl p-5 space-y-2 bg-ink-inverse">
             <span className="font-serif font-bold text-sm text-ink block">{isRtl ? "عناوين التواصل الرسمية" : "Corporate Desk"}</span>
-            <p className="text-gray-600">🏢 Lusail Marina Twins, West Bay, Doha, Qatar</p>
-            <p className="text-gray-600">✉️ partners@nerou.qa</p>
-            <p className="text-gray-600">📞 +974 4444 8888</p>
+            <p className="font-semibold text-ink">{isRtl ? COMPANY.nameAr : COMPANY.nameEn}</p>
+            <p className="text-gray-600">🏢 {isRtl ? COMPANY.addressAr : COMPANY.addressEn}</p>
+            <p className="text-gray-600">✉️ <a href={`mailto:${COMPANY.email}`} dir="ltr" className="hover:text-gold underline-offset-2 hover:underline">{COMPANY.email}</a></p>
           </div>
         </div>
 

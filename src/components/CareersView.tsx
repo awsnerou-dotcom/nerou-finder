@@ -1,3 +1,4 @@
+import { COMPANY } from "../companyInfo.js";
 import React, { useState, useEffect } from "react";
 import { Briefcase, MapPin, Clock, ArrowRight, CheckCircle2, User, Mail, Phone, Upload, X } from "lucide-react";
 
@@ -121,8 +122,8 @@ export default function CareersView({ isRtl }: CareersViewProps) {
         </h2>
         <p className="text-xs text-ink-muted mt-1">
           {isRtl
-            ? "انضم إلى فريق خدمات نيرو التقنية وساعدنا في ريادة منصة نيرو فايندر لتكنولوجيا العقارات."
-            : "Join Nerou Technology Services and build the state-of-the-art real estate discovery marketplace Nerou Finder."}
+            ? `انضم إلى فريق ${COMPANY.nameAr} وساعدنا في ريادة منصة نيرو فايندر لتكنولوجيا العقارات.`
+            : `Join ${COMPANY.nameEn} and build the state-of-the-art real estate discovery marketplace Nerou Finder.`}
         </p>
       </div>
 
@@ -131,7 +132,7 @@ export default function CareersView({ isRtl }: CareersViewProps) {
       ) : jobs.length === 0 ? (
         <div className="py-12 text-center text-xs text-ink-muted border border-dashed border-border rounded-xl bg-surface p-8">
           <p className="font-semibold text-sm mb-1">{isRtl ? "لا توجد وظائف شاغرة حاليًا" : "No open positions right now"}</p>
-          <p className="text-[11px] text-gray-400">{isRtl ? "يرجى التحقق لاحقًا لمعرفة المزيد من الشواغر." : "Please check back later or send an email to careers@nerou.qa"}</p>
+          <p className="text-[11px] text-gray-400">{isRtl ? `يرجى التحقق لاحقًا أو مراسلتنا على ${COMPANY.email}` : `Please check back later or send an email to ${COMPANY.email}`}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
