@@ -943,7 +943,7 @@ export default function VisitorExperience({
           no sense once it's flush against the browser window edge; the inner content below is
           re-wrapped in the original max-w-7xl container so the foreground (nav/search) still
           lines up with the rest of the page. */}
-      <div className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+      <div className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-[clamp(440px,42vw,640px)]">
         <PhotoHero />
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <Sparkles size={160} />

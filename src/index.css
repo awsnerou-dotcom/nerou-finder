@@ -265,45 +265,23 @@ body {
   }
 }
 
-/* Home hero slideshow (src/components/PhotoHero.tsx): two photos, one 24s loop.
-   Each photo is on screen for ~15.6s of the loop: it fades IN over 3.6s (85%-100%), holds
-   (0%-35%) and fades OUT over 3.6s (35%-50%) while the other photo fades in underneath, so the
-   two always overlap and the background is never empty. The second photo runs the same loop
-   half a cycle (12s) behind via a negative delay.
-   The zoom/drift is on the same clock: scale 1 -> 1.14 and a slow pan from the moment a photo
-   starts fading in until it has finished fading out; the reset to 1 happens at 50%-85% while
-   it is fully transparent, so the jump is never seen. */
+/* Home hero slideshow (src/components/PhotoHero.tsx): two photos, one 24s loop of slow
+   cross-dissolves. Each photo fades IN over 3.6s (85%-100%), holds (0%-35%) and fades OUT over
+   3.6s (35%-50%) while the other fades in underneath, so the two always overlap and the
+   background is never empty. The second photo runs the same loop half a cycle (12s) behind via
+   a negative delay. Deliberately no zoom or pan: the photos are shown at their true scale. */
 @keyframes hero-fade {
   0%, 35% { opacity: 1; }
   50%, 85% { opacity: 0; }
   100% { opacity: 1; }
 }
-@keyframes hero-kenburns {
-  0%, 100% { transform: scale(1.032) translate3d(calc(var(--px) * 0.23), calc(var(--py) * 0.23), 0); }
-  50% { transform: scale(1.14) translate3d(var(--px), var(--py), 0); }
-  85% { transform: scale(1) translate3d(0, 0, 0); }
-}
 .hero-slide {
   opacity: 1;
-  transform-origin: 50% 55%;
-  will-change: opacity, transform;
-  animation:
-    hero-fade 24s ease-in-out infinite,
-    hero-kenburns 24s linear infinite;
+  will-change: opacity;
+  animation: hero-fade 24s ease-in-out infinite;
 }
 .hero-slide-b {
-  animation-delay: -12s, -12s;
-}
-/* Phones: same slow dissolve, smaller zoom (less work for weaker GPUs, less cropping). */
-@media (max-width: 767px) {
-  @keyframes hero-kenburns-mobile {
-    0%, 100% { transform: scale(1.016) translate3d(calc(var(--px) * 0.1), calc(var(--py) * 0.1), 0); }
-    50% { transform: scale(1.07) translate3d(calc(var(--px) * 0.5), calc(var(--py) * 0.5), 0); }
-    85% { transform: scale(1) translate3d(0, 0, 0); }
-  }
-  .hero-slide {
-    animation-name: hero-fade, hero-kenburns-mobile;
-  }
+  animation-delay: -12s;
 }
 /* Reduced motion: no animation at all - the first photo stays, the second stays hidden. */
 @media (prefers-reduced-motion: reduce) {

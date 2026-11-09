@@ -3,26 +3,21 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Home-page hero: two Qatar skyline photos that dissolve into each other in slow motion, each
-// with a gentle zoom-and-drift (a "Ken Burns" move) that keeps going straight through the
-// cross-fade, so the picture never stops or snaps. Pure CSS - no timers or re-renders - and it
-// settles on a still first photo for visitors who ask their device to reduce motion.
-// The timing lives in src/index.css (.hero-slide / hero-fade / hero-kenburns).
+// Home-page hero: two Qatar skyline photos that dissolve into each other in slow motion.
+// The photos are shown at their true size and sharpness - no zoom, no re-compression, and the
+// hero is tall enough (see VisitorExperience) to show most of each photo instead of a thin crop.
+// Pure CSS - no timers or re-renders - and it stays on a still first photo for visitors who ask
+// their device to reduce motion. The timing lives in src/index.css (.hero-slide / hero-fade).
 
 const SLIDES = [
   {
     src: "/assets/images/hero-lusail-towers.jpg",
-    small: "/assets/images/hero-lusail-towers-900.jpg",
-    // pan direction (percent of the photo) - opposite for each slide so the motion alternates
-    pan: { x: "-1.6%", y: "-1%" },
     // the hero is a wide, short strip, so only the middle band of each photo shows: aim it at the
     // towers' crowns (this one) / the downtown cluster (the other) instead of the sky or the sea
     focus: "50% 66%"
   },
   {
     src: "/assets/images/hero-doha-aerial.jpg",
-    small: "/assets/images/hero-doha-aerial-900.jpg",
-    pan: { x: "1.6%", y: "-0.6%" },
     focus: "50% 58%"
   }
 ];
@@ -34,15 +29,13 @@ export default function PhotoHero() {
         <img
           key={slide.src}
           src={slide.src}
-          srcSet={`${slide.small} 900w, ${slide.src} 1600w`}
-          sizes="100vw"
           alt=""
           // The first photo is the page's LCP image; the second only has to be ready before the
           // first cross-fade, so it must not compete with it.
           fetchPriority={i === 0 ? "high" : "low"}
           decoding="async"
           className={`hero-slide ${i === 1 ? "hero-slide-b" : ""} absolute inset-0 w-full h-full object-cover`}
-          style={{ ["--px" as string]: slide.pan.x, ["--py" as string]: slide.pan.y, objectPosition: slide.focus }}
+          style={{ objectPosition: slide.focus }}
           draggable={false}
         />
       ))}
@@ -54,9 +47,11 @@ export default function PhotoHero() {
         style={{ background: "linear-gradient(180deg, rgba(10,8,6,0.5) 0%, rgba(10,8,6,0) 100%)" }}
       />
 
-      {/* Base darkening so the gold/white nav text and search UI stay readable across the
-          whole photo, not just the top strip. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/35 to-black/60 pointer-events-none" />
+      {/* Legibility scrim for the white headline and search UI. Kept light so the photos keep their
+          colour and contrast: a soft darkening on the text side (start edge) fading to almost
+          nothing on the far side, plus a gentle top/bottom vignette. */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/35 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-black/35 via-black/10 to-transparent pointer-events-none" />
     </div>
   );
 }
