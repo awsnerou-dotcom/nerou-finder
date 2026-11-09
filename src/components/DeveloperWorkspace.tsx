@@ -50,6 +50,7 @@ import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone }
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 import ListingPerformanceModal from "./ListingPerformanceModal.js";
 import NotificationBell from "./NotificationBell.js";
+import SalesDesk from "./SalesDesk.js";
 import ReferralPanel from "./ReferralPanel.js";
 
 interface DeveloperWorkspaceProps {
@@ -69,7 +70,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
   const [decidingRequestId, setDecidingRequestId] = useState<string | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [adCharges, setAdCharges] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "projects" | "inventory" | "leads" | "verification" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "projects" | "inventory" | "leads" | "salesdesk" | "verification" | "profile">("dashboard");
 
   // Minimal "Add Unit" quick form (Dashboard/Inventory quick action) - units are tied to a
   // master project so city/district are derived from the selected project rather than asking
@@ -764,6 +765,13 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
             {isRtl ? "العملاء المحتملون" : "Leads"}
           </button>
           <button
+            data-tour="developer-salesdesk-tab"
+            onClick={() => setActiveTab("salesdesk")}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "salesdesk" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+          >
+            {isRtl ? "مكتب المبيعات" : "Sales Desk"}
+          </button>
+          <button
             data-tour="developer-verification-tab"
             onClick={() => setActiveTab("verification")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
@@ -911,6 +919,8 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
       {/* LEADS TAB (FIX 4) - reuses GET /api/leads, which already self-scopes to this
           developer org's leads server-side; follows the same status-badge / contact-info
           visual pattern as AgentWorkspace's and AgencyWorkspace's own leads tabs. */}
+      {activeTab === "salesdesk" && <SalesDesk isRtl={isRtl} />}
+
       {activeTab === "leads" && (
         <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
           <div className="p-4 bg-ink-inverse border-b border-border flex justify-between items-center">

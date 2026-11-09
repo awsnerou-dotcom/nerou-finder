@@ -76,6 +76,7 @@ import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone }
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 import ListingPerformanceModal from "./ListingPerformanceModal.js";
 import NotificationBell from "./NotificationBell.js";
+import SalesDesk from "./SalesDesk.js";
 import ReferralPanel from "./ReferralPanel.js";
 
 interface AgentWorkspaceProps {
@@ -151,7 +152,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [showArchivedLeads, setShowArchivedLeads] = useState<boolean>(false);
   const [leadPropertyPreview, setLeadPropertyPreview] = useState<Property | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "properties" | "verification" | "subscription" | "profile" | "reviews">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "salesdesk" | "properties" | "verification" | "subscription" | "profile" | "reviews">("dashboard");
 
   // FIX1: derive the agent's effective type defensively - existing accounts created before
   // AgentType existed have agentType === undefined, so fall back to orgId-based inference
@@ -1287,6 +1288,13 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             {isRtl ? "العملاء المحتملون" : "Leads Panel"}
           </button>
           <button
+            data-tour="agent-salesdesk-tab"
+            onClick={() => setActiveTab("salesdesk")}
+            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "salesdesk" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+          >
+            {isRtl ? "مكتب المبيعات" : "Sales Desk"}
+          </button>
+          <button
             data-tour="agent-properties-tab"
             onClick={() => setActiveTab("properties")}
             className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "properties" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
@@ -1592,6 +1600,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       )}
 
       {/* LEADS TAB */}
+      {activeTab === "salesdesk" && <SalesDesk isRtl={isRtl} />}
+
       {activeTab === "leads" && (
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
           <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">

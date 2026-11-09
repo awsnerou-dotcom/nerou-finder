@@ -51,6 +51,7 @@ import { buildDailySumSeries, datesToDayRecord, isThisMonth, listingStatusTone }
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
 import ListingPerformanceModal from "./ListingPerformanceModal.js";
 import NotificationBell from "./NotificationBell.js";
+import SalesDesk from "./SalesDesk.js";
 import ReferralPanel from "./ReferralPanel.js";
 
 interface AgencyWorkspaceProps {
@@ -64,7 +65,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   const [agents, setAgents] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "team" | "listings" | "routing" | "campaigns" | "subscription" | "leads" | "verification" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "team" | "listings" | "routing" | "campaigns" | "subscription" | "leads" | "salesdesk" | "verification" | "profile">("dashboard");
   // Listings tab (FIX 3): edit-in-place form state, submitted back to POST /api/properties
   // with the listing's own id so it updates rather than creates a new one.
   const [editingListingId, setEditingListingId] = useState<string | null>(null);
@@ -864,6 +865,12 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
             className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "leads" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "إدارة العملاء" : "Leads Panel"}
+          </button>
+          <button
+            onClick={() => setActiveTab("salesdesk")}
+            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "salesdesk" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+          >
+            {isRtl ? "مكتب المبيعات" : "Sales Desk"}
           </button>
           <button
             onClick={() => setActiveTab("routing")}
@@ -1795,6 +1802,8 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
           </div>
         </div>
       )}
+
+      {activeTab === "salesdesk" && <SalesDesk isRtl={isRtl} />}
 
       {/* LEADS PANEL TAB */}
       {activeTab === "leads" && (

@@ -32,6 +32,8 @@ import {
   SubscriptionPlan,
   LegalDocument,
   HelpArticle,
+  Deal,
+  ViewingRequest,
   SupportTicket,
   JobListing,
   PressRelease,
@@ -66,6 +68,19 @@ import {
 import { AREA_GUIDES, getAreaGuideBySlug } from "./src/data/areaGuides.js";
 import { SPA_PATHS, normalizePath } from "./src/routes.js";
 import { getVideoEmbedUrl } from "./src/lib/video.js";
+import {
+  computeCommission,
+  monthlySummary,
+  toCsv,
+  qatarDate,
+  isQuietHourInQatar,
+  isClosedStatus,
+  leadsDueForReminder,
+  viewingsDueForReminder,
+  viewingReminderKey,
+  DueLead,
+  ReminderReason
+} from "./src/lib/crm.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
 import * as Sentry from "@sentry/node";
@@ -3234,10 +3249,11 @@ app.post("/api/notifications/read-all", authMiddleware, (req, res) => {
 
 // Update Lead Status
 app.post("/api/leads/status", authMiddleware, (req, res) => {
-  const { leadId, status } = req.body;
+  const { leadId, status, lostReason } = req.body;
   const db = readDb();
   const idx = db.leads.findIndex(l => l.id === leadId);
   if (idx === -1) return res.status(404).json({ error: "Lead not found" });
+  if (!Object.values(LeadStatus).includes(status)) return res.status(400).json({ error: "Unknown lead status." });
 
   const authReq = req as AuthenticatedRequest;
   const actorId = authReq.user?.id || "unknown";
@@ -3245,9 +3261,13 @@ app.post("/api/leads/status", authMiddleware, (req, res) => {
   const actorRole = authReq.user?.role || UserRole.AGENT;
 
   const lead = db.leads[idx];
+  // Until now any signed-in user could move any lead by guessing its id. Only the lead's own
+  // agent, the admin of its organisation, or a platform admin may.
+  if (!canManageLead(db, { id: actorId, role: actorRole }, lead)) {
+    return res.status(403).json({ error: "You are not authorized to change this lead." });
+  }
   const previousStatus = lead.status;
-  lead.status = status;
-  lead.updatedDate = new Date().toISOString();
+  applyLeadStatus(lead, status, actorName, lostReason);
   writeDb(db);
 
   logAudit(
@@ -3344,6 +3364,7 @@ app.post("/api/leads/:id/notes", authMiddleware, (req, res) => {
     createdDate: new Date().toISOString()
   };
   lead.notes.unshift(note);
+  lead.updatedDate = new Date().toISOString(); // a note is activity: it resets the "untouched" reminder clock
   writeDb(db);
 
   logAudit(actor.id, actor.fullName, actor.role, "ADD_LEAD_NOTE", id, "Lead", { text: note.text });
@@ -3798,12 +3819,8 @@ app.get("/api/viewings", authMiddleware, (req, res) => {
   const isAdmin = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
 
   const { agentId } = req.query;
-  let viewings = db.viewings;
-  if (isAdmin) {
-    if (agentId) viewings = viewings.filter(v => v.agentId === agentId);
-  } else {
-    viewings = viewings.filter(v => v.agentId === actor.id);
-  }
+  let viewings = scopedViewings(db, actor);
+  if (isAdmin && agentId) viewings = viewings.filter(v => v.agentId === agentId);
   res.json(viewings);
 });
 
@@ -3812,6 +3829,7 @@ app.post("/api/viewings/status", authMiddleware, (req, res) => {
   const db = readDb();
   const idx = db.viewings.findIndex(v => v.id === viewingId);
   if (idx === -1) return res.status(404).json({ error: "Viewing not found" });
+  if (!(VIEWING_STATUSES as readonly string[]).includes(status)) return res.status(400).json({ error: "Unknown viewing status." });
 
   const authReq = req as AuthenticatedRequest;
   const actorId = authReq.user?.id || "unknown";
@@ -3819,8 +3837,23 @@ app.post("/api/viewings/status", authMiddleware, (req, res) => {
   const actorRole = authReq.user?.role || UserRole.AGENT;
 
   const viewing = db.viewings[idx];
+  // Same rule as the lead: its own agent, its organisation's admin, or a platform admin.
+  const viewingLead = db.leads.find(l => l.id === viewing.leadId);
+  const mayChange =
+    viewing.agentId === actorId ||
+    isPlatformAdminRole(actorRole) ||
+    (!!viewingLead && canManageLead(db, { id: actorId, role: actorRole }, viewingLead));
+  if (!mayChange) return res.status(403).json({ error: "You are not authorized to change this viewing." });
   const previousStatus = viewing.status;
   viewing.status = status;
+  // Confirming a viewing moves an early-stage lead to "viewing scheduled" by itself.
+  if (
+    viewingLead &&
+    status === "CONFIRMED" &&
+    [LeadStatus.NEW, LeadStatus.ASSIGNED, LeadStatus.CONTACTED, LeadStatus.VIEWING_REQUESTED].includes(viewingLead.status)
+  ) {
+    applyLeadStatus(viewingLead, LeadStatus.VIEWING_SCHEDULED, actorName);
+  }
   writeDb(db);
 
   logAudit(
@@ -3860,6 +3893,618 @@ app.post("/api/viewings/status", authMiddleware, (req, res) => {
 
   res.json({ success: true, viewing: db.viewings[idx] });
 });
+
+// =============================================================================
+// SALES DESK (CRM): follow-ups, viewing schedule, deals & commissions, reports, reminders
+// =============================================================================
+// The lead inbox and pipeline stages already existed (POST /api/leads/status, notes, archive,
+// assign). This adds the working layer on top: a follow-up date per client, a calendar of
+// viewings the agent can schedule, a ledger of closed deals with the agent's own commission,
+// CSV reports of all of it, and automatic reminder emails.
+
+type CrmDb = ReturnType<typeof readDb>;
+type CrmActor = { id: string; role: string };
+
+function isPlatformAdminRole(role: string): boolean {
+  return role === UserRole.PLATFORM_ADMIN || role === UserRole.SUPER_ADMIN;
+}
+
+/** The organisation an agency/developer admin runs (undefined for everyone else). */
+function adminOrgIdOf(db: CrmDb, actor: CrmActor): string | undefined {
+  if (actor.role !== UserRole.AGENCY_ADMIN && actor.role !== UserRole.DEVELOPER_ADMIN) return undefined;
+  return db.users.find(u => u.id === actor.id)?.orgId;
+}
+
+/** May this person work (move, schedule, follow up) this lead? Its own agent, the admin of the
+ *  organisation it belongs to, or a platform admin. */
+function canManageLead(db: CrmDb, actor: CrmActor, lead: Lead): boolean {
+  if (isPlatformAdminRole(actor.role)) return true;
+  if (lead.agentId && lead.agentId === actor.id) return true;
+  const orgId = adminOrgIdOf(db, actor);
+  return !!orgId && lead.orgId === orgId;
+}
+
+/** Same visibility rule as GET /api/leads: own leads for an agent, the whole organisation for
+ *  its admin, everything for a platform admin. */
+function scopedLeads(db: CrmDb, actor: CrmActor): Lead[] {
+  if (isPlatformAdminRole(actor.role)) return db.leads;
+  const orgId = adminOrgIdOf(db, actor);
+  return orgId ? db.leads.filter(l => l.orgId === orgId) : db.leads.filter(l => l.agentId === actor.id);
+}
+
+function scopedViewings(db: CrmDb, actor: CrmActor): ViewingRequest[] {
+  if (isPlatformAdminRole(actor.role)) return db.viewings;
+  const orgId = adminOrgIdOf(db, actor);
+  if (!orgId) return db.viewings.filter(v => v.agentId === actor.id);
+  const orgAgentIds = new Set(db.users.filter(u => u.orgId === orgId).map(u => u.id));
+  return db.viewings.filter(v => orgAgentIds.has(v.agentId));
+}
+
+function scopedDeals(db: CrmDb, actor: CrmActor): Deal[] {
+  const deals = db.deals || [];
+  if (isPlatformAdminRole(actor.role)) return deals;
+  const orgId = adminOrgIdOf(db, actor);
+  return orgId ? deals.filter(d => d.orgId === orgId) : deals.filter(d => d.agentId === actor.id);
+}
+
+function canManageDeal(db: CrmDb, actor: CrmActor, deal: Deal): boolean {
+  if (deal.agentId === actor.id) return true;
+  const orgId = adminOrgIdOf(db, actor);
+  return !!orgId && deal.orgId === orgId;
+}
+
+/** Move a lead to a pipeline stage, keeping the timeline. A won/lost lead has no next follow-up. */
+function applyLeadStatus(lead: Lead, status: LeadStatus, byName: string, lostReason?: string) {
+  const now = new Date().toISOString();
+  lead.status = status;
+  lead.updatedDate = now;
+  if (!lead.stageHistory) lead.stageHistory = [];
+  lead.stageHistory.push({ status, date: now, byName });
+  if (isClosedStatus(status)) lead.nextFollowUpDate = undefined;
+  if (status === LeadStatus.LOST) lead.lostReason = lostReason ? lostReason.trim().slice(0, 300) : lead.lostReason;
+  if (status !== LeadStatus.LOST) lead.lostReason = undefined;
+}
+
+/** "YYYY-MM-DD" that is a real calendar date. */
+function isValidDateString(s: unknown): s is string {
+  if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
+function money(n: number): string {
+  return Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+
+// One call gives the Sales Desk screen everything it shows - already limited to what this
+// person may see (own records for an agent, the whole organisation for its admin).
+app.get("/api/crm/overview", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const titleOf = (propertyId?: string) => (propertyId ? db.properties.find(p => p.id === propertyId)?.title : undefined) || "";
+  const agentName = (id?: string) => db.users.find(u => u.id === id)?.fullName || "";
+
+  const leads = scopedLeads(db, actor)
+    .filter(l => !l.isArchived)
+    .map(l => ({ ...l, propertyTitle: titleOf(l.propertyId), agentName: agentName(l.agentId) }));
+  const viewings = scopedViewings(db, actor).map(v => {
+    const lead = db.leads.find(l => l.id === v.leadId);
+    return {
+      ...v,
+      propertyTitle: titleOf(v.propertyId),
+      agentName: agentName(v.agentId),
+      visitorName: lead?.visitorName || "",
+      visitorPhone: lead?.visitorPhone || "",
+      visitorWhatsapp: lead?.visitorWhatsapp || ""
+    };
+  });
+  const me = db.users.find(u => u.id === actor.id);
+  const orgId = adminOrgIdOf(db, actor);
+  const team = orgId
+    ? db.users.filter(u => u.orgId === orgId).map(u => ({ id: u.id, fullName: u.fullName }))
+    : [];
+
+  res.json({
+    leads,
+    viewings,
+    deals: scopedDeals(db, actor).map(d => ({ ...d, agentName: agentName(d.agentId) })),
+    settings: { followUpRemindersEnabled: me?.followUpRemindersEnabled !== false },
+    isOrgAdmin: !!orgId,
+    canEditDeals: actor.role === UserRole.AGENT || !!orgId,
+    team
+  });
+});
+
+app.patch("/api/crm/settings", authMiddleware, (req, res) => {
+  const { followUpRemindersEnabled } = req.body as { followUpRemindersEnabled?: unknown };
+  if (typeof followUpRemindersEnabled !== "boolean") {
+    return res.status(400).json({ error: "followUpRemindersEnabled must be true or false." });
+  }
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const me = db.users.find(u => u.id === actor.id);
+  if (!me) return res.status(404).json({ error: "User not found." });
+  me.followUpRemindersEnabled = followUpRemindersEnabled;
+  writeDb(db);
+  res.json({ success: true, settings: { followUpRemindersEnabled } });
+});
+
+// Set (or clear, with null) when the agent plans to contact this client next. A bare date means
+// 08:00 in Qatar that day.
+app.patch("/api/leads/:id/follow-up", authMiddleware, (req, res) => {
+  const { nextFollowUpDate } = req.body as { nextFollowUpDate?: string | null };
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const lead = db.leads.find(l => l.id === req.params.id);
+  if (!lead) return res.status(404).json({ error: "Lead not found" });
+  if (!canManageLead(db, actor, lead)) return res.status(403).json({ error: "You are not authorized to change this lead." });
+
+  if (nextFollowUpDate === null) {
+    lead.nextFollowUpDate = undefined;
+  } else if (isValidDateString(nextFollowUpDate)) {
+    lead.nextFollowUpDate = `${nextFollowUpDate}T05:00:00.000Z`; // 08:00 Qatar (UTC+3)
+  } else if (typeof nextFollowUpDate === "string" && !Number.isNaN(Date.parse(nextFollowUpDate)) && /^\d{4}-\d{2}-\d{2}T/.test(nextFollowUpDate)) {
+    lead.nextFollowUpDate = new Date(nextFollowUpDate).toISOString();
+  } else {
+    return res.status(400).json({ error: "nextFollowUpDate must be a date (YYYY-MM-DD) or null." });
+  }
+  // A new date re-arms the reminders for this lead.
+  lead.lastReminderAt = undefined;
+  lead.reminderCount = 0;
+  lead.updatedDate = new Date().toISOString();
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "SET_LEAD_FOLLOW_UP", lead.id, "Lead", { nextFollowUpDate: lead.nextFollowUpDate || null });
+  res.json({ success: true, lead });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Viewing schedule
+// ---------------------------------------------------------------------------------------------
+const VIEWING_STATUSES = ["REQUESTED", "CONFIRMED", "RESCHEDULED", "COMPLETED", "CANCELLED"] as const;
+
+function viewingEmailBody(v: { preferredDate: string; preferredTimeSlot: string }, propertyTitle: string, intro: string): string {
+  return `<p>${intro}</p>
+    <p><strong>${escapeHtml(propertyTitle || "Property viewing")}</strong><br/>
+    ${escapeHtml(v.preferredDate)} &middot; ${escapeHtml(v.preferredTimeSlot)}</p>`;
+}
+
+// The agent puts a viewing in their calendar for one of their leads.
+app.post("/api/viewings", authMiddleware, (req, res) => {
+  const { leadId, preferredDate, preferredTimeSlot, notes } = req.body as {
+    leadId?: string; preferredDate?: string; preferredTimeSlot?: string; notes?: string;
+  };
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const lead = db.leads.find(l => l.id === leadId);
+  if (!lead) return res.status(404).json({ error: "Lead not found" });
+  if (!canManageLead(db, actor, lead)) return res.status(403).json({ error: "You are not authorized to schedule a viewing for this lead." });
+  if (!isValidDateString(preferredDate)) return res.status(400).json({ error: "preferredDate must be a date (YYYY-MM-DD)." });
+  if (typeof preferredTimeSlot !== "string" || !preferredTimeSlot.trim() || preferredTimeSlot.length > 40) {
+    return res.status(400).json({ error: "preferredTimeSlot is required (up to 40 characters)." });
+  }
+  if (!lead.agentId) return res.status(400).json({ error: "This lead has no responsible agent yet - assign it first." });
+
+  const viewing: ViewingRequest = {
+    id: `view-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    leadId: lead.id,
+    propertyId: lead.propertyId || "",
+    agentId: lead.agentId,
+    preferredDate,
+    preferredTimeSlot: preferredTimeSlot.trim(),
+    status: "CONFIRMED",
+    notes: typeof notes === "string" && notes.trim() ? notes.trim().slice(0, 500) : undefined,
+    createdDate: new Date().toISOString(),
+    scheduledByAgent: true
+  };
+  db.viewings.unshift(viewing);
+  if (!isClosedStatus(lead.status) && lead.status !== LeadStatus.NEGOTIATION && lead.status !== LeadStatus.VIEWING_SCHEDULED) {
+    applyLeadStatus(lead, LeadStatus.VIEWING_SCHEDULED, (req as AuthenticatedRequest).user!.fullName);
+  }
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "SCHEDULE_VIEWING", viewing.id, "Viewing", { leadId: lead.id, preferredDate, preferredTimeSlot: viewing.preferredTimeSlot });
+
+  if (lead.visitorEmail) {
+    const title = db.properties.find(p => p.id === lead.propertyId)?.title || "";
+    sendMockEmail(
+      lead.visitorEmail,
+      "[Nerou Finder] Your viewing is confirmed",
+      generateNotificationEmailHtml("Viewing Confirmed", lead.visitorName, viewingEmailBody(viewing, title, "Your property viewing has been scheduled:")),
+      "viewing_scheduled"
+    );
+  }
+  res.json({ success: true, viewing, lead });
+});
+
+// Change a viewing's date/time/notes (reschedule). The client is told, and the day-before
+// reminder is re-armed for the new slot.
+app.patch("/api/viewings/:id", authMiddleware, (req, res) => {
+  const { preferredDate, preferredTimeSlot, notes } = req.body as { preferredDate?: string; preferredTimeSlot?: string; notes?: string };
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const viewing = db.viewings.find(v => v.id === req.params.id);
+  if (!viewing) return res.status(404).json({ error: "Viewing not found" });
+  const lead = db.leads.find(l => l.id === viewing.leadId);
+  const owns = viewing.agentId === actor.id || isPlatformAdminRole(actor.role) || (!!lead && canManageLead(db, actor, lead));
+  if (!owns) return res.status(403).json({ error: "You are not authorized to change this viewing." });
+
+  let moved = false;
+  if (preferredDate !== undefined) {
+    if (!isValidDateString(preferredDate)) return res.status(400).json({ error: "preferredDate must be a date (YYYY-MM-DD)." });
+    if (preferredDate !== viewing.preferredDate) moved = true;
+    viewing.preferredDate = preferredDate;
+  }
+  if (preferredTimeSlot !== undefined) {
+    if (typeof preferredTimeSlot !== "string" || !preferredTimeSlot.trim() || preferredTimeSlot.length > 40) {
+      return res.status(400).json({ error: "preferredTimeSlot must be 1-40 characters." });
+    }
+    if (preferredTimeSlot.trim() !== viewing.preferredTimeSlot) moved = true;
+    viewing.preferredTimeSlot = preferredTimeSlot.trim();
+  }
+  if (notes !== undefined) viewing.notes = typeof notes === "string" && notes.trim() ? notes.trim().slice(0, 500) : undefined;
+  if (moved) {
+    viewing.status = "CONFIRMED";
+    viewing.reminderSentFor = undefined;
+  }
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "UPDATE_VIEWING", viewing.id, "Viewing", { preferredDate: viewing.preferredDate, preferredTimeSlot: viewing.preferredTimeSlot });
+
+  if (moved && lead?.visitorEmail) {
+    const title = db.properties.find(p => p.id === viewing.propertyId)?.title || "";
+    sendMockEmail(
+      lead.visitorEmail,
+      "[Nerou Finder] Your viewing was rescheduled",
+      generateNotificationEmailHtml("Viewing Rescheduled", lead.visitorName, viewingEmailBody(viewing, title, "Your viewing has a new date and time:")),
+      "viewing_rescheduled"
+    );
+  }
+  res.json({ success: true, viewing });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Deals & commissions (the agent's own books)
+// ---------------------------------------------------------------------------------------------
+function readMoney(v: unknown, max: number): number | undefined | "invalid" {
+  if (v === undefined || v === null || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) && n >= 0 && n <= max ? n : "invalid";
+}
+
+app.get("/api/deals", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  res.json(scopedDeals(db, actor));
+});
+
+app.post("/api/deals", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const orgId = adminOrgIdOf(db, actor);
+  if (actor.role !== UserRole.AGENT && !orgId) {
+    return res.status(403).json({ error: "Only agents and agency/developer admins can record deals." });
+  }
+  const b = req.body as Record<string, unknown>;
+
+  const dealType = b.dealType;
+  if (dealType !== "SALE" && dealType !== "RENT") return res.status(400).json({ error: "dealType must be SALE or RENT." });
+  const dealValue = readMoney(b.dealValue, 1e11);
+  if (dealValue === undefined || dealValue === "invalid" || dealValue <= 0) {
+    return res.status(400).json({ error: "dealValue must be a positive number." });
+  }
+  const commissionRate = readMoney(b.commissionRate, 100);
+  if (commissionRate === "invalid") return res.status(400).json({ error: "commissionRate must be between 0 and 100." });
+  const commissionAmountIn = readMoney(b.commissionAmount, dealValue);
+  if (commissionAmountIn === "invalid") return res.status(400).json({ error: "commissionAmount must be between 0 and the deal value." });
+  const closedDate = b.closedDate === undefined || b.closedDate === "" ? qatarDate(Date.now()) : b.closedDate;
+  if (!isValidDateString(closedDate)) return res.status(400).json({ error: "closedDate must be a date (YYYY-MM-DD)." });
+
+  // Linked to a lead: fill in client/listing from it, and mark it won.
+  let lead: Lead | undefined;
+  if (b.leadId !== undefined && b.leadId !== null && b.leadId !== "") {
+    lead = db.leads.find(l => l.id === b.leadId);
+    if (!lead) return res.status(404).json({ error: "Lead not found" });
+    if (!canManageLead(db, actor, lead)) return res.status(403).json({ error: "You are not authorized to record a deal for this lead." });
+  }
+
+  // Who earned it: the caller, or (for an organisation admin) one of their own agents.
+  let agentId = actor.id;
+  if (orgId) {
+    const wanted = (typeof b.agentId === "string" && b.agentId) || lead?.agentId || actor.id;
+    const wantedUser = db.users.find(u => u.id === wanted);
+    if (!wantedUser || wantedUser.orgId !== orgId) return res.status(400).json({ error: "agentId must be a member of your organisation." });
+    agentId = wantedUser.id;
+  }
+  const owner = db.users.find(u => u.id === agentId)!;
+
+  const propertyId = (typeof b.propertyId === "string" && b.propertyId) || lead?.propertyId || undefined;
+  const propertyTitle = String(b.propertyTitle || (propertyId ? db.properties.find(p => p.id === propertyId)?.title : "") || "").trim().slice(0, 200);
+  const clientName = String(b.clientName || lead?.visitorName || "").trim().slice(0, 200);
+  if (!propertyTitle) return res.status(400).json({ error: "propertyTitle is required." });
+  if (!clientName) return res.status(400).json({ error: "clientName is required." });
+
+  const commissionAmount = commissionAmountIn !== undefined
+    ? commissionAmountIn
+    : commissionRate !== undefined ? computeCommission(dealValue, commissionRate) : 0;
+  const received = b.commissionStatus === "RECEIVED";
+  const now = new Date().toISOString();
+  const deal: Deal = {
+    id: `deal-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    agentId,
+    orgId: owner.orgId,
+    leadId: lead?.id,
+    propertyId,
+    propertyTitle,
+    clientName,
+    dealType,
+    dealValue,
+    currency: "QAR",
+    commissionRate,
+    commissionAmount,
+    commissionStatus: received ? "RECEIVED" : "EXPECTED",
+    commissionReceivedDate: received ? closedDate : undefined,
+    status: "CLOSED",
+    closedDate,
+    notes: typeof b.notes === "string" && b.notes.trim() ? b.notes.trim().slice(0, 1000) : undefined,
+    createdDate: now,
+    updatedDate: now
+  };
+  if (!db.deals) db.deals = [];
+  db.deals.unshift(deal);
+  if (lead && lead.status !== LeadStatus.CONVERTED) applyLeadStatus(lead, LeadStatus.CONVERTED, "Deal recorded");
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "CREATE_DEAL", deal.id, "Deal", { dealType, dealValue, commissionAmount });
+  res.json({ success: true, deal });
+});
+
+app.patch("/api/deals/:id", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const deal = (db.deals || []).find(d => d.id === req.params.id);
+  if (!deal || !canManageDeal(db, actor, deal)) return res.status(404).json({ error: "Deal not found" }); // 404 for strangers too
+  const b = req.body as Record<string, unknown>;
+
+  if (b.dealType !== undefined) {
+    if (b.dealType !== "SALE" && b.dealType !== "RENT") return res.status(400).json({ error: "dealType must be SALE or RENT." });
+    deal.dealType = b.dealType;
+  }
+  if (b.dealValue !== undefined) {
+    const v = readMoney(b.dealValue, 1e11);
+    if (v === undefined || v === "invalid" || v <= 0) return res.status(400).json({ error: "dealValue must be a positive number." });
+    deal.dealValue = v;
+  }
+  if (b.commissionRate !== undefined) {
+    const r = readMoney(b.commissionRate, 100);
+    if (r === "invalid") return res.status(400).json({ error: "commissionRate must be between 0 and 100." });
+    deal.commissionRate = r;
+  }
+  if (b.commissionAmount !== undefined) {
+    const a = readMoney(b.commissionAmount, deal.dealValue);
+    if (a === "invalid" || a === undefined) return res.status(400).json({ error: "commissionAmount must be between 0 and the deal value." });
+    deal.commissionAmount = a;
+  } else if ((b.dealValue !== undefined || b.commissionRate !== undefined) && deal.commissionRate !== undefined) {
+    deal.commissionAmount = computeCommission(deal.dealValue, deal.commissionRate);
+  }
+  if (b.closedDate !== undefined) {
+    if (!isValidDateString(b.closedDate)) return res.status(400).json({ error: "closedDate must be a date (YYYY-MM-DD)." });
+    deal.closedDate = b.closedDate;
+  }
+  if (b.status !== undefined) {
+    if (b.status !== "CLOSED" && b.status !== "CANCELLED") return res.status(400).json({ error: "status must be CLOSED or CANCELLED." });
+    deal.status = b.status;
+  }
+  if (b.commissionStatus !== undefined) {
+    if (b.commissionStatus !== "EXPECTED" && b.commissionStatus !== "RECEIVED") return res.status(400).json({ error: "commissionStatus must be EXPECTED or RECEIVED." });
+    deal.commissionStatus = b.commissionStatus;
+    deal.commissionReceivedDate = b.commissionStatus === "RECEIVED" ? (deal.commissionReceivedDate || qatarDate(Date.now())) : undefined;
+  }
+  if (b.propertyTitle !== undefined) deal.propertyTitle = String(b.propertyTitle).trim().slice(0, 200) || deal.propertyTitle;
+  if (b.clientName !== undefined) deal.clientName = String(b.clientName).trim().slice(0, 200) || deal.clientName;
+  if (b.notes !== undefined) deal.notes = typeof b.notes === "string" && b.notes.trim() ? b.notes.trim().slice(0, 1000) : undefined;
+  deal.updatedDate = new Date().toISOString();
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "UPDATE_DEAL", deal.id, "Deal", { status: deal.status, commissionStatus: deal.commissionStatus });
+  res.json({ success: true, deal });
+});
+
+app.delete("/api/deals/:id", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const idx = (db.deals || []).findIndex(d => d.id === req.params.id);
+  if (idx === -1 || !canManageDeal(db, actor, db.deals![idx])) return res.status(404).json({ error: "Deal not found" });
+  const [removed] = db.deals!.splice(idx, 1);
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "DELETE_DEAL", removed.id, "Deal", { dealValue: removed.dealValue });
+  res.json({ success: true });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Reports (CSV that opens in Excel, Arabic included)
+// ---------------------------------------------------------------------------------------------
+const STAGE_LABELS: Record<string, string> = {
+  NEW: "New / جديد",
+  ASSIGNED: "Assigned / مُسند",
+  CONTACTED: "Contacted / تم التواصل",
+  VIEWING_REQUESTED: "Viewing requested / طلب معاينة",
+  VIEWING_SCHEDULED: "Viewing scheduled / معاينة محددة",
+  NEGOTIATION: "Negotiation / تفاوض",
+  CONVERTED: "Won / تمت الصفقة",
+  LOST: "Lost / خسارة"
+};
+
+app.get("/api/crm/export", authMiddleware, (req, res) => {
+  const kind = String(req.query.kind || "");
+  const from = req.query.from ? String(req.query.from) : undefined;
+  const to = req.query.to ? String(req.query.to) : undefined;
+  if ((from && !isValidDateString(from)) || (to && !isValidDateString(to))) {
+    return res.status(400).json({ error: "from/to must be dates (YYYY-MM-DD)." });
+  }
+  const inRange = (date: string | undefined) => {
+    const d = (date || "").slice(0, 10);
+    return (!from || d >= from) && (!to || d <= to);
+  };
+
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const titleOf = (propertyId?: string) => (propertyId ? db.properties.find(p => p.id === propertyId)?.title : "") || "";
+  const agentName = (id?: string) => db.users.find(u => u.id === id)?.fullName || "";
+  let headers: string[];
+  let rows: unknown[][];
+
+  if (kind === "leads") {
+    headers = ["Created / التاريخ", "Client / العميل", "Phone / الهاتف", "WhatsApp / واتساب", "Email / البريد", "Property / العقار",
+      "Source / المصدر", "Stage / المرحلة", "Next follow-up / المتابعة القادمة", "Last update / آخر تحديث", "Agent / الوكيل", "Lost reason / سبب الخسارة", "Message / الرسالة"];
+    rows = scopedLeads(db, actor).filter(l => inRange(l.createdDate)).map(l => [
+      l.createdDate.slice(0, 10), l.visitorName, l.visitorPhone, l.visitorWhatsapp, l.visitorEmail, titleOf(l.propertyId),
+      l.attribution?.source || l.contactMethod, STAGE_LABELS[l.status] || l.status, l.nextFollowUpDate ? qatarDate(Date.parse(l.nextFollowUpDate)) : "",
+      l.updatedDate.slice(0, 10), agentName(l.agentId), l.lostReason, l.message
+    ]);
+  } else if (kind === "deals") {
+    headers = ["Closed / تاريخ الإغلاق", "Property / العقار", "Client / العميل", "Type / النوع", "Deal value (QAR) / قيمة الصفقة",
+      "Commission % / نسبة العمولة", "Commission (QAR) / العمولة", "Commission status / حالة العمولة", "Received on / تاريخ الاستلام",
+      "Status / الحالة", "Agent / الوكيل", "Notes / ملاحظات"];
+    rows = scopedDeals(db, actor).filter(d => inRange(d.closedDate)).map(d => [
+      d.closedDate, d.propertyTitle, d.clientName, d.dealType === "SALE" ? "Sale / بيع" : "Rent / إيجار", d.dealValue,
+      d.commissionRate ?? "", d.commissionAmount, d.commissionStatus === "RECEIVED" ? "Received / مستلمة" : "Expected / متوقعة",
+      d.commissionReceivedDate || "", d.status === "CANCELLED" ? "Cancelled / ملغاة" : "Closed / مغلقة", agentName(d.agentId), d.notes
+    ]);
+  } else if (kind === "viewings") {
+    headers = ["Date / التاريخ", "Time / الوقت", "Property / العقار", "Client / العميل", "Phone / الهاتف", "Status / الحالة", "Agent / الوكيل", "Notes / ملاحظات"];
+    rows = scopedViewings(db, actor).filter(v => inRange(v.preferredDate)).map(v => {
+      const lead = db.leads.find(l => l.id === v.leadId);
+      return [v.preferredDate, v.preferredTimeSlot, titleOf(v.propertyId), lead?.visitorName, lead?.visitorPhone, v.status, agentName(v.agentId), v.notes];
+    });
+  } else if (kind === "monthly") {
+    headers = ["Month / الشهر", "Deals closed / الصفقات", "Sales value (QAR) / قيمة المبيعات", "Rentals value (QAR) / قيمة الإيجارات",
+      "Commission total (QAR) / إجمالي العمولة", "Received (QAR) / المستلمة", "Expected (QAR) / المتوقعة"];
+    rows = monthlySummary(scopedDeals(db, actor).filter(d => inRange(d.closedDate))).map(r => [
+      r.month, r.deals, r.saleValue, r.rentValue, r.commissionTotal, r.commissionReceived, r.commissionExpected
+    ]);
+  } else {
+    return res.status(400).json({ error: "kind must be leads, deals, viewings or monthly." });
+  }
+
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "EXPORT_CRM", kind, "Export", { kind, from, to, rows: rows.length });
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="nerou-${kind}-${qatarDate(Date.now())}.csv"`);
+  res.setHeader("Cache-Control", "private, no-store");
+  res.send(toCsv(headers, rows));
+});
+
+// ---------------------------------------------------------------------------------------------
+// Automatic reminders
+// ---------------------------------------------------------------------------------------------
+const REMINDER_REASON_TEXT: Record<ReminderReason, string> = {
+  follow_up_due: "Follow-up due today / موعد المتابعة اليوم",
+  follow_up_overdue: "Follow-up overdue / تأخرت المتابعة",
+  unanswered: "Waiting for a reply for over a day / ينتظر الرد منذ أكثر من يوم",
+  no_activity: "No activity for 3+ days / لا نشاط منذ 3 أيام أو أكثر"
+};
+
+/**
+ * Hourly sweep behind the follow-up and viewing reminder emails. One email per agent listing
+ * everything due (not one per client), at most once per lead per reason (see leadsDueForReminder),
+ * nothing overnight (Qatar time), and nothing to agents who turned reminders off. `now` is a
+ * parameter so tests can run it at any moment, and `onlyAgentIds` limits a run to some agents.
+ */
+export function runCrmReminders(now: number = Date.now(), opts: { ignoreQuietHours?: boolean; onlyAgentIds?: string[] } = {}) {
+  const result = { leads: 0, viewings: 0, emails: 0 };
+  if (!opts.ignoreQuietHours && isQuietHourInQatar(now)) return result;
+  const db = readDb();
+  const nowIso = new Date(now).toISOString();
+  const appUrl = process.env.APP_URL || "https://neroufinder.com";
+  let changed = false;
+
+  // 1) Leads
+  const byAgent = new Map<string, DueLead[]>();
+  const inScope = (agentId?: string) => !!agentId && (!opts.onlyAgentIds || opts.onlyAgentIds.includes(agentId));
+  for (const due of leadsDueForReminder(db.leads, now)) {
+    if (!inScope(due.lead.agentId)) continue;
+    const list = byAgent.get(due.lead.agentId) || [];
+    list.push(due);
+    byAgent.set(due.lead.agentId, list);
+  }
+  for (const [agentId, items] of byAgent) {
+    const agent = db.users.find(u => u.id === agentId);
+    if (!agent) continue;
+    for (const { lead, reason } of items) {
+      lead.lastReminderAt = nowIso;
+      if (reason !== "follow_up_due") lead.reminderCount = (lead.reminderCount ?? 0) + 1;
+      result.leads += 1;
+      changed = true;
+    }
+    notifyUser(db, agent.id, {
+      type: "followup_reminder",
+      title: items.length === 1 ? "A client needs a follow-up" : `${items.length} clients need a follow-up`,
+      body: items.slice(0, 3).map(i => i.lead.visitorName).join(", "),
+      link: items[0].lead.id
+    });
+    if (agent.email && agent.followUpRemindersEnabled !== false) {
+      const rowsHtml = items.map(({ lead, reason }) => {
+        const wa = (lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "");
+        const title = db.properties.find(p => p.id === lead.propertyId)?.title || "";
+        return `<tr>
+          <td style="padding:8px 6px;border-bottom:1px solid #eee;"><strong>${escapeHtml(lead.visitorName)}</strong>${title ? `<br/><span style="color:#666;font-size:12px;">${escapeHtml(title)}</span>` : ""}</td>
+          <td style="padding:8px 6px;border-bottom:1px solid #eee;font-size:12px;">${escapeHtml(REMINDER_REASON_TEXT[reason])}</td>
+          <td style="padding:8px 6px;border-bottom:1px solid #eee;font-size:12px;">${wa ? `<a href="https://wa.me/${wa}">${escapeHtml(lead.visitorPhone || wa)}</a>` : escapeHtml(lead.visitorPhone || "")}</td>
+        </tr>`;
+      }).join("");
+      sendMockEmail(
+        agent.email,
+        `[Nerou Finder] ${items.length} client${items.length === 1 ? "" : "s"} waiting for your follow-up`,
+        generateNotificationEmailHtml(
+          "Follow-up reminder / تذكير بالمتابعة",
+          agent.fullName,
+          `<p>These clients are waiting for you:</p>
+           <table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>
+           <p><a href="${escapeHtml(appUrl)}" style="color:#bf9b30;font-weight:bold;">Open your Sales Desk</a></p>
+           <p style="color:#888;font-size:11px;">You can turn these reminders off in the Sales Desk settings.</p>`
+        ),
+        "crm_followup_reminder"
+      );
+      result.emails += 1;
+    }
+  }
+
+  // 2) Viewings today / tomorrow
+  for (const v of viewingsDueForReminder(db.viewings, now)) {
+    if (!inScope(v.agentId)) continue;
+    const lead = db.leads.find(l => l.id === v.leadId);
+    const agent = db.users.find(u => u.id === v.agentId);
+    const title = db.properties.find(p => p.id === v.propertyId)?.title || "";
+    v.reminderSentFor = viewingReminderKey(v);
+    result.viewings += 1;
+    changed = true;
+    if (agent) {
+      notifyUser(db, agent.id, {
+        type: "viewing_reminder",
+        title: "Viewing coming up",
+        body: `${lead?.visitorName || "Client"} - ${v.preferredDate} ${v.preferredTimeSlot}`,
+        link: v.id
+      });
+      if (agent.email && agent.followUpRemindersEnabled !== false) {
+        sendMockEmail(
+          agent.email,
+          `[Nerou Finder] Viewing reminder: ${lead?.visitorName || "client"} on ${v.preferredDate}`,
+          generateNotificationEmailHtml("Viewing reminder / تذكير بمعاينة", agent.fullName,
+            viewingEmailBody(v, title, `You have a viewing with <strong>${escapeHtml(lead?.visitorName || "your client")}</strong>:`)),
+          "crm_viewing_reminder_agent"
+        );
+        result.emails += 1;
+      }
+    }
+    if (lead?.visitorEmail) {
+      sendMockEmail(
+        lead.visitorEmail,
+        "[Nerou Finder] Reminder: your property viewing",
+        generateNotificationEmailHtml("Viewing Reminder", lead.visitorName, viewingEmailBody(v, title, "A reminder of your upcoming property viewing:")),
+        "crm_viewing_reminder_client"
+      );
+      result.emails += 1;
+    }
+  }
+
+  if (changed) writeDb(db);
+  return result;
+}
 
 // Developer Mock Outbound SMTP Log Queue
 app.get("/api/admin/emails", (req, res) => {
@@ -7893,6 +8538,14 @@ async function startServer() {
   } catch (err) {
     console.error("Verification document privacy migration failed:", err);
   }
+
+  // Sales Desk reminders (follow-ups, viewings): hourly, plus once shortly after boot so a restart
+  // never means a missed morning. Each lead/viewing is flagged when reminded, so repeats are safe.
+  const crmSweep = () => {
+    try { runCrmReminders(); } catch (err) { console.error("CRM reminder sweep failed:", err); }
+  };
+  setTimeout(crmSweep, 2 * 60 * 1000);
+  setInterval(crmSweep, 60 * 60 * 1000);
 
   // Verification document expiry sweep: flags EXPIRED docs and sends 30/7-day reminder emails.
   checkDocumentExpiryAndReminders();

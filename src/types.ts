@@ -131,6 +131,8 @@ export interface User {
   // AGENCY_AUTHORIZATION_LETTER upload, since the letter itself isn't queryable/displayable.
   affiliatedAgencyName?: string;
   applicationStatus?: ApplicationStatus; // Onboarding pipeline state - undefined means grandfathered/active
+  // Automatic follow-up / viewing reminder emails from the sales desk. On unless set to false.
+  followUpRemindersEnabled?: boolean;
   // Independent-agent subscription fields (same shape as Organization's equivalents below).
   // Only meaningful for an AGENT whose effective AgentType is INDEPENDENT_AGENT - an
   // AGENCY_AGENT's access is governed entirely by their agency Organization's subscription.
@@ -536,6 +538,25 @@ export interface Lead {
   // leads don't suddenly all show up as unread noise the first time this ships - see
   // GET /api/leads/unread-count.
   readByRecipient?: boolean;
+
+  // --- Sales desk (CRM) ---------------------------------------------------------------------
+  // When the agent plans to contact this client next (ISO timestamp). Drives the "Follow-ups"
+  // list and the automatic reminder email; cleared by setting it to null.
+  nextFollowUpDate?: string;
+  // Automatic reminder bookkeeping, so the same lead is never nagged twice for the same reason:
+  // when the last reminder email covered it, and how many "no activity" nudges were sent.
+  lastReminderAt?: string;
+  reminderCount?: number;
+  // Why a lead was lost (free text, optional) - shown on the board and in reports.
+  lostReason?: string;
+  // Every pipeline move, oldest first - the lead's timeline.
+  stageHistory?: LeadStageChange[];
+}
+
+export interface LeadStageChange {
+  status: LeadStatus;
+  date: string;
+  byName: string;
 }
 
 export interface LeadNote {
@@ -556,6 +577,39 @@ export interface ViewingRequest {
   status: "REQUESTED" | "CONFIRMED" | "RESCHEDULED" | "COMPLETED" | "CANCELLED";
   notes?: string;
   createdDate: string;
+  // Set when the AGENT put the viewing in their calendar (as opposed to the visitor asking).
+  scheduledByAgent?: boolean;
+  // The day-before reminder emails (to the agent and the client) go out once per date/time:
+  // this holds the "preferredDate|preferredTimeSlot" they were sent for, so rescheduling re-arms it.
+  reminderSentFor?: string;
+}
+
+// A closed transaction in the agent's own books, with the commission they earn on it.
+// This is the AGENT's bookkeeping - Nerou Finder is a discovery platform and neither brokers
+// deals nor collects commissions (see the AI disclaimers), so nothing here is platform revenue.
+export type DealType = "SALE" | "RENT";
+export type DealStatus = "CLOSED" | "CANCELLED";
+export type CommissionStatus = "EXPECTED" | "RECEIVED";
+export interface Deal {
+  id: string;
+  agentId: string; // who earned it
+  orgId?: string;
+  leadId?: string;
+  propertyId?: string;
+  propertyTitle: string; // snapshot, so the record survives the listing being edited or removed
+  clientName: string;
+  dealType: DealType;
+  dealValue: number; // sale price, or total rent for the contract
+  currency: string;
+  commissionRate?: number; // percent, e.g. 2 for 2%
+  commissionAmount: number; // what the agent earns (derived from rate when not entered directly)
+  commissionStatus: CommissionStatus;
+  commissionReceivedDate?: string;
+  status: DealStatus;
+  closedDate: string; // ISO date of the closing
+  notes?: string;
+  createdDate: string;
+  updatedDate: string;
 }
 
 export interface SupportReport {

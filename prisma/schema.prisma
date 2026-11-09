@@ -203,3 +203,13 @@ model Notification {
   @@index([userId, read])
 }
 
+// A closed deal in an agent's own books, with its commission (see Deal in src/types.ts).
+model Deal {
+  id      String  @id
+  agentId String
+  orgId   String?
+  data    String
+
+  @@index([agentId])
+  @@index([orgId])
+}
