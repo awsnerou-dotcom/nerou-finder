@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Home-page hero: four photos that dissolve into each other in slow motion.
+// Home-page hero: three photos that dissolve into each other in slow motion.
 // The photos are shown at their true size and sharpness - no zoom, no re-compression, and the
 // hero is tall enough (see VisitorExperience) to show most of each photo instead of a thin crop.
 // Pure CSS - no timers or re-renders - and it stays on a still first photo for visitors who ask
-// their device to reduce motion. The timing lives in src/index.css (.hero-slide / hero-fade-4),
-// which is written for exactly four photos - change both together if you add or remove one.
+// their device to reduce motion. The timing lives in src/index.css (.hero-slide / hero-fade-3),
+// which is written for exactly three photos - change both together if you add or remove one.
 
 const SLIDES = [
   {
@@ -24,10 +24,6 @@ const SLIDES = [
   {
     src: "/assets/images/hero-pearl-marina.jpg",
     focus: "50% 64%" // the apartment towers and the yachts in front of them
-  },
-  {
-    src: "/assets/images/hero-city-street.jpg",
-    focus: "50% 55%"
   }
 ];
 const SLIDE_SECONDS = 12; // time between one photo taking over and the next doing so
