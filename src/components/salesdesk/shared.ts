@@ -1,7 +1,7 @@
 // Shared types, labels and small helpers for the Sales Desk screens.
 
 import { Deal, Lead, LeadStatus, ViewingRequest } from "../../types.js";
-import { qatarDate } from "../../lib/crm.js";
+import { LEAD_SOURCE_TEXT, qatarDate } from "../../lib/crm.js";
 
 export type DeskLead = Lead & { propertyTitle: string; agentName: string };
 export type DeskViewing = ViewingRequest & {
@@ -21,6 +21,10 @@ export interface DeskOverview {
   isOrgAdmin: boolean;
   canEditDeals: boolean;
   team: { id: string; fullName: string }[];
+  /** The listings a client can be linked to (the agent's own, or the organisation's). */
+  properties: { id: string; title: string }[];
+  /** Where the follow-up and viewing reminders are emailed. */
+  reminderEmail: string;
 }
 
 /** Pick the English or Arabic text. */
@@ -66,11 +70,12 @@ export async function deskApi<R = any>(path: string, init: RequestInit = {}): Pr
   });
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
+    let body: any;
     try {
-      const body = await res.json();
+      body = await res.json();
       if (body?.error) message = body.error;
     } catch {}
-    throw new Error(message);
+    throw Object.assign(new Error(message), { status: res.status, body });
   }
   return (await res.json()) as R;
 }
@@ -144,6 +149,13 @@ export async function downloadCsv(kind: string, from: string, to: string): Promi
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/** "Instagram" / "إنستغرام" for a client's source; platform inquiries are simply "Nerou Finder". */
+export function sourceLabel(lead: Lead, isRtl: boolean): string {
+  if (!lead.addedManually) return "Nerou Finder";
+  const t = LEAD_SOURCE_TEXT[lead.source || "OTHER"];
+  return isRtl ? t.ar : t.en;
 }
 
 export const OPEN_STAGE_VALUES: LeadStatus[] = [

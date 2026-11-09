@@ -79,7 +79,11 @@ import {
   viewingsDueForReminder,
   viewingReminderKey,
   DueLead,
-  ReminderReason
+  ReminderReason,
+  ClientInput,
+  validateClientInput,
+  phoneKey,
+  LEAD_SOURCE_TEXT
 } from "./src/lib/crm.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
@@ -3155,7 +3159,7 @@ app.get("/api/leads", authMiddleware, (req, res) => {
   if (!actor) return res.status(401).json({ error: "Access token missing or invalid." });
 
   const isPlatformAdmin = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
-  let leads = db.leads;
+  let leads = isPlatformAdmin ? db.leads.filter(l => !l.addedManually) : db.leads;
 
   if (isPlatformAdmin) {
     const { agentId, orgId } = req.query;
@@ -3185,7 +3189,7 @@ app.get("/api/leads/unread-count", authMiddleware, (req, res) => {
   if (!actor) return res.status(401).json({ error: "Access token missing or invalid." });
 
   const isPlatformAdmin = actor.role === UserRole.PLATFORM_ADMIN || actor.role === UserRole.SUPER_ADMIN;
-  let leads = db.leads;
+  let leads = isPlatformAdmin ? db.leads.filter(l => !l.addedManually) : db.leads;
 
   if (isPlatformAdmin) {
     const { agentId, orgId } = req.query;
@@ -3307,7 +3311,7 @@ app.post("/api/leads/status", authMiddleware, (req, res) => {
   // Tell the buyer/visitor once an agent has actually reached out - the single status change
   // that matters most to the person who submitted the inquiry in the first place. Other
   // internal-workflow statuses (ASSIGNED, NEGOTIATION, etc.) stay agent/org-facing only.
-  if (lead.visitorEmail && previousStatus !== status && status === LeadStatus.CONTACTED) {
+  if (lead.visitorEmail && !lead.addedManually && previousStatus !== status && status === LeadStatus.CONTACTED) {
     sendMockEmail(
       lead.visitorEmail,
       "[Nerou Finder] An agent has contacted you",
@@ -3350,7 +3354,7 @@ app.post("/api/leads/:id/notes", authMiddleware, (req, res) => {
   if (!actor) return res.status(404).json({ error: "User not found." });
 
   const isOwnAgent = actor.id === lead.agentId;
-  const isOrgAdmin = !!lead.orgId && actor.orgId === lead.orgId && actor.role === UserRole.AGENCY_ADMIN;
+  const isOrgAdmin = !!lead.orgId && actor.orgId === lead.orgId && (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
   if (!isOwnAgent && !isOrgAdmin) {
     return res.status(403).json({ error: "You are not authorized to add notes to this lead." });
   }
@@ -3386,7 +3390,7 @@ app.patch("/api/leads/:id/archive", authMiddleware, (req, res) => {
   if (!actor) return res.status(404).json({ error: "User not found." });
 
   const isOwnAgent = actor.id === lead.agentId;
-  const isOrgAdmin = !!lead.orgId && actor.orgId === lead.orgId && actor.role === UserRole.AGENCY_ADMIN;
+  const isOrgAdmin = !!lead.orgId && actor.orgId === lead.orgId && (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
   if (!isOwnAgent && !isOrgAdmin) {
     return res.status(403).json({ error: "You are not authorized to archive this lead." });
   }
@@ -3841,7 +3845,7 @@ app.post("/api/viewings/status", authMiddleware, (req, res) => {
   const viewingLead = db.leads.find(l => l.id === viewing.leadId);
   const mayChange =
     viewing.agentId === actorId ||
-    isPlatformAdminRole(actorRole) ||
+    (isPlatformAdminRole(actorRole) && !viewingLead?.addedManually) ||
     (!!viewingLead && canManageLead(db, { id: actorId, role: actorRole }, viewingLead));
   if (!mayChange) return res.status(403).json({ error: "You are not authorized to change this viewing." });
   const previousStatus = viewing.status;
@@ -3868,7 +3872,7 @@ app.post("/api/viewings/status", authMiddleware, (req, res) => {
 
   // FIX 9: notify the visitor who requested the viewing, if they left an email.
   const relatedLead = db.leads.find(l => l.id === viewing.leadId);
-  if (relatedLead?.visitorEmail && previousStatus !== status) {
+  if (relatedLead?.visitorEmail && !relatedLead.addedManually && previousStatus !== status) {
     sendMockEmail(
       relatedLead.visitorEmail,
       "[Nerou Finder] Your Viewing Request Status Changed",
@@ -3918,7 +3922,7 @@ function adminOrgIdOf(db: CrmDb, actor: CrmActor): string | undefined {
 /** May this person work (move, schedule, follow up) this lead? Its own agent, the admin of the
  *  organisation it belongs to, or a platform admin. */
 function canManageLead(db: CrmDb, actor: CrmActor, lead: Lead): boolean {
-  if (isPlatformAdminRole(actor.role)) return true;
+  if (isPlatformAdminRole(actor.role)) return !lead.addedManually; // hand-added clients are the broker's private records
   if (lead.agentId && lead.agentId === actor.id) return true;
   const orgId = adminOrgIdOf(db, actor);
   return !!orgId && lead.orgId === orgId;
@@ -3927,13 +3931,16 @@ function canManageLead(db: CrmDb, actor: CrmActor, lead: Lead): boolean {
 /** Same visibility rule as GET /api/leads: own leads for an agent, the whole organisation for
  *  its admin, everything for a platform admin. */
 function scopedLeads(db: CrmDb, actor: CrmActor): Lead[] {
-  if (isPlatformAdminRole(actor.role)) return db.leads;
+  if (isPlatformAdminRole(actor.role)) return db.leads.filter(l => !l.addedManually);
   const orgId = adminOrgIdOf(db, actor);
   return orgId ? db.leads.filter(l => l.orgId === orgId) : db.leads.filter(l => l.agentId === actor.id);
 }
 
 function scopedViewings(db: CrmDb, actor: CrmActor): ViewingRequest[] {
-  if (isPlatformAdminRole(actor.role)) return db.viewings;
+  if (isPlatformAdminRole(actor.role)) {
+    const privateLeadIds = new Set(db.leads.filter(l => l.addedManually).map(l => l.id));
+    return db.viewings.filter(v => !privateLeadIds.has(v.leadId));
+  }
   const orgId = adminOrgIdOf(db, actor);
   if (!orgId) return db.viewings.filter(v => v.agentId === actor.id);
   const orgAgentIds = new Set(db.users.filter(u => u.orgId === orgId).map(u => u.id));
@@ -3942,7 +3949,7 @@ function scopedViewings(db: CrmDb, actor: CrmActor): ViewingRequest[] {
 
 function scopedDeals(db: CrmDb, actor: CrmActor): Deal[] {
   const deals = db.deals || [];
-  if (isPlatformAdminRole(actor.role)) return deals;
+  if (isPlatformAdminRole(actor.role)) return []; // an agent's commission ledger is theirs alone
   const orgId = adminOrgIdOf(db, actor);
   return orgId ? deals.filter(d => d.orgId === orgId) : deals.filter(d => d.agentId === actor.id);
 }
@@ -4004,6 +4011,11 @@ app.get("/api/crm/overview", authMiddleware, (req, res) => {
     ? db.users.filter(u => u.orgId === orgId).map(u => ({ id: u.id, fullName: u.fullName }))
     : [];
 
+  const properties = db.properties
+    .filter(p => (orgId ? p.orgId === orgId : p.agentId === actor.id))
+    .slice(0, 300)
+    .map(p => ({ id: p.id, title: p.title }));
+
   res.json({
     leads,
     viewings,
@@ -4011,7 +4023,9 @@ app.get("/api/crm/overview", authMiddleware, (req, res) => {
     settings: { followUpRemindersEnabled: me?.followUpRemindersEnabled !== false },
     isOrgAdmin: !!orgId,
     canEditDeals: actor.role === UserRole.AGENT || !!orgId,
-    team
+    team,
+    properties,
+    reminderEmail: me?.email || ""
   });
 });
 
@@ -4055,6 +4069,191 @@ app.patch("/api/leads/:id/follow-up", authMiddleware, (req, res) => {
   writeDb(db);
   logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "SET_LEAD_FOLLOW_UP", lead.id, "Lead", { nextFollowUpDate: lead.nextFollowUpDate || null });
   res.json({ success: true, lead });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Clients registered by hand (calls, walk-ins, referrals, social media, an existing client list)
+// ---------------------------------------------------------------------------------------------
+// A broker's clients do not all arrive through the platform. These routes let them put ANY client
+// into the same pipeline, follow-ups, viewings and deals. They are the broker's private records:
+// see Lead.addedManually in src/types.ts for what that means (hidden from platform admins, never
+// counted in platform statistics, never used for review eligibility, never emailed by us).
+const MANUAL_START_STAGES: LeadStatus[] = [LeadStatus.NEW, LeadStatus.CONTACTED, LeadStatus.VIEWING_SCHEDULED, LeadStatus.NEGOTIATION];
+
+/** Who the new client belongs to: the caller (an agent) or, for an organisation admin, a member of
+ *  their organisation (default: themselves). */
+function resolveClientOwner(db: CrmDb, actor: CrmActor, wantedAgentId?: unknown): { agentId: string; orgId?: string } | { error: string; status: number } {
+  const me = db.users.find(u => u.id === actor.id);
+  if (!me) return { error: "User not found.", status: 404 };
+  const orgId = adminOrgIdOf(db, actor);
+  if (actor.role !== UserRole.AGENT && !orgId) return { error: "Only agents and agency/developer admins can add clients.", status: 403 };
+  if (orgId && typeof wantedAgentId === "string" && wantedAgentId && wantedAgentId !== me.id) {
+    const owner = db.users.find(u => u.id === wantedAgentId);
+    if (!owner || owner.orgId !== orgId) return { error: "agentId must be a member of your organisation.", status: 400 };
+    return { agentId: owner.id, orgId: owner.orgId };
+  }
+  return { agentId: me.id, orgId: me.orgId };
+}
+
+function findDuplicateClient(db: CrmDb, agentId: string, input: ClientInput): Lead | undefined {
+  const keys = [phoneKey(input.phone), phoneKey(input.whatsapp)].filter(Boolean);
+  if (keys.length === 0) return undefined;
+  return db.leads.find(l => l.agentId === agentId && [phoneKey(l.visitorPhone), phoneKey(l.visitorWhatsapp)].some(k => k && keys.includes(k)));
+}
+
+function buildManualLead(owner: { agentId: string; orgId?: string }, input: ClientInput, byName: string, extra: { propertyId?: string; status?: LeadStatus } = {}): Lead {
+  const now = new Date().toISOString();
+  const status = extra.status || LeadStatus.NEW;
+  const noteId = `note-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`;
+  return {
+    id: `lead-man-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    propertyId: extra.propertyId,
+    visitorName: input.name,
+    visitorPhone: input.phone || input.whatsapp || "",
+    visitorWhatsapp: input.whatsapp || input.phone,
+    visitorEmail: input.email,
+    message: input.interest || "",
+    contactMethod: input.source === "WHATSAPP" ? "WHATSAPP" : input.source === "PHONE_CALL" ? "CALL" : "INQUIRY",
+    status,
+    agentId: owner.agentId,
+    orgId: owner.orgId,
+    createdDate: now,
+    updatedDate: now,
+    readByRecipient: true,
+    addedManually: true,
+    source: input.source,
+    budget: input.budget,
+    interest: input.interest,
+    notes: input.notes ? [{ id: noteId, text: input.notes, authorId: owner.agentId, authorName: byName, createdDate: now }] : undefined,
+    stageHistory: [{ status, date: now, byName }]
+  };
+}
+
+/** A listing the owner may attach a client to: their own, or their organisation's. */
+function ownerMayUseProperty(db: CrmDb, owner: { agentId: string; orgId?: string }, propertyId: string): boolean {
+  const p = db.properties.find(x => x.id === propertyId);
+  return !!p && (p.agentId === owner.agentId || (!!owner.orgId && p.orgId === owner.orgId));
+}
+
+app.post("/api/crm/clients", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const b = req.body as Record<string, unknown>;
+  const owner = resolveClientOwner(db, actor, b.agentId);
+  if ("error" in owner) return res.status(owner.status).json({ error: owner.error });
+
+  const checked = validateClientInput(b);
+  if (checked.ok === false) return res.status(400).json({ error: checked.error });
+
+  let status = LeadStatus.NEW;
+  if (b.status !== undefined && b.status !== null && b.status !== "") {
+    if (!MANUAL_START_STAGES.includes(b.status as LeadStatus)) return res.status(400).json({ error: "A new client can start as New, Contacted, Viewing or Negotiation." });
+    status = b.status as LeadStatus;
+  }
+  let propertyId: string | undefined;
+  if (typeof b.propertyId === "string" && b.propertyId) {
+    if (!ownerMayUseProperty(db, owner, b.propertyId)) return res.status(400).json({ error: "propertyId must be one of your listings." });
+    propertyId = b.propertyId;
+  }
+  if (b.nextFollowUpDate !== undefined && b.nextFollowUpDate !== null && b.nextFollowUpDate !== "" && !isValidDateString(b.nextFollowUpDate)) {
+    return res.status(400).json({ error: "nextFollowUpDate must be a date (YYYY-MM-DD)." });
+  }
+
+  const dup = findDuplicateClient(db, owner.agentId, checked.value);
+  if (dup && b.allowDuplicate !== true) {
+    return res.status(409).json({ error: `You already have a client with this number: ${dup.visitorName}.`, duplicate: { id: dup.id, name: dup.visitorName } });
+  }
+
+  const lead = buildManualLead(owner, checked.value, (req as AuthenticatedRequest).user!.fullName, { propertyId, status });
+  if (isValidDateString(b.nextFollowUpDate)) lead.nextFollowUpDate = `${b.nextFollowUpDate}T05:00:00.000Z`;
+  db.leads.unshift(lead);
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "ADD_CLIENT", lead.id, "Lead", { source: lead.source });
+  res.json({ success: true, lead });
+});
+
+// Bulk add from a spreadsheet the agent already has. Rows that are invalid or already exist (same
+// phone) are skipped and reported, never silently dropped.
+app.post("/api/crm/clients/import", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const body = req.body as { clients?: unknown; agentId?: unknown };
+  const owner = resolveClientOwner(db, actor, body.agentId);
+  if ("error" in owner) return res.status(owner.status).json({ error: owner.error });
+  if (!Array.isArray(body.clients) || body.clients.length === 0) return res.status(400).json({ error: "clients must be a non-empty list." });
+  if (body.clients.length > 500) return res.status(400).json({ error: "You can import up to 500 clients at a time." });
+
+  const byName = (req as AuthenticatedRequest).user!.fullName;
+  const created: Lead[] = [];
+  const skipped: { row: number; name: string; reason: string }[] = [];
+  const seen = new Set<string>();
+  body.clients.forEach((raw, i) => {
+    const row = i + 2; // the file's row number, counting its header as row 1
+    if (!raw || typeof raw !== "object") return skipped.push({ row, name: "", reason: "Not a client row." });
+    const checked = validateClientInput(raw as Record<string, unknown>);
+    const name = String((raw as any).name ?? "").slice(0, 120);
+    if (checked.ok === false) return skipped.push({ row, name, reason: checked.error });
+    const keys = [phoneKey(checked.value.phone), phoneKey(checked.value.whatsapp)].filter(Boolean);
+    if (keys.some(k => seen.has(k))) return skipped.push({ row, name, reason: "Same number appears earlier in the file." });
+    if (findDuplicateClient(db, owner.agentId, checked.value)) return skipped.push({ row, name, reason: "Already in your clients." });
+    keys.forEach(k => seen.add(k));
+    created.push(buildManualLead(owner, checked.value, byName));
+  });
+  if (created.length > 0) {
+    db.leads.unshift(...created);
+    writeDb(db);
+    logAudit(actor.id, byName, actor.role, "IMPORT_CLIENTS", owner.agentId, "Lead", { created: created.length, skipped: skipped.length });
+  }
+  res.json({ success: true, created: created.length, skipped });
+});
+
+// Edit the details of a client the agent registered. (A platform inquiry's contact details are
+// what the visitor submitted, so those stay as they are.)
+app.patch("/api/crm/clients/:id", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const lead = db.leads.find(l => l.id === req.params.id);
+  if (!lead || !lead.addedManually || !canManageLead(db, actor, lead)) return res.status(404).json({ error: "Client not found" });
+  const b = req.body as Record<string, unknown>;
+
+  const checked = validateClientInput({
+    name: lead.visitorName, phone: lead.visitorPhone, whatsapp: lead.visitorWhatsapp, email: lead.visitorEmail,
+    source: lead.source, interest: lead.interest, budget: lead.budget, ...b
+  });
+  if (checked.ok === false) return res.status(400).json({ error: checked.error });
+  if (b.propertyId !== undefined) {
+    if (b.propertyId === null || b.propertyId === "") lead.propertyId = undefined;
+    else if (typeof b.propertyId === "string" && ownerMayUseProperty(db, { agentId: lead.agentId || "", orgId: lead.orgId }, b.propertyId)) lead.propertyId = b.propertyId;
+    else return res.status(400).json({ error: "propertyId must be one of the listings." });
+  }
+  const v = checked.value;
+  lead.visitorName = v.name;
+  lead.visitorPhone = v.phone || v.whatsapp || "";
+  lead.visitorWhatsapp = v.whatsapp || v.phone;
+  lead.visitorEmail = v.email;
+  lead.source = v.source;
+  lead.interest = v.interest;
+  lead.budget = v.budget;
+  lead.message = v.interest || "";
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "UPDATE_CLIENT", lead.id, "Lead", {});
+  res.json({ success: true, lead });
+});
+
+// Delete a client the agent registered (their own data, so they can erase it): the client, its
+// viewings, and the link from any deal (the deal itself stays in the ledger).
+app.delete("/api/crm/clients/:id", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const idx = db.leads.findIndex(l => l.id === req.params.id);
+  const lead = idx >= 0 ? db.leads[idx] : undefined;
+  if (!lead || !lead.addedManually || !canManageLead(db, actor, lead)) return res.status(404).json({ error: "Client not found" });
+  db.leads.splice(idx, 1);
+  db.viewings = db.viewings.filter(v => v.leadId !== lead.id);
+  for (const d of db.deals || []) if (d.leadId === lead.id) d.leadId = undefined;
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "DELETE_CLIENT", lead.id, "Lead", {});
+  res.json({ success: true });
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -4103,7 +4302,7 @@ app.post("/api/viewings", authMiddleware, (req, res) => {
   writeDb(db);
   logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "SCHEDULE_VIEWING", viewing.id, "Viewing", { leadId: lead.id, preferredDate, preferredTimeSlot: viewing.preferredTimeSlot });
 
-  if (lead.visitorEmail) {
+  if (lead.visitorEmail && !lead.addedManually) {
     const title = db.properties.find(p => p.id === lead.propertyId)?.title || "";
     sendMockEmail(
       lead.visitorEmail,
@@ -4124,7 +4323,7 @@ app.patch("/api/viewings/:id", authMiddleware, (req, res) => {
   const viewing = db.viewings.find(v => v.id === req.params.id);
   if (!viewing) return res.status(404).json({ error: "Viewing not found" });
   const lead = db.leads.find(l => l.id === viewing.leadId);
-  const owns = viewing.agentId === actor.id || isPlatformAdminRole(actor.role) || (!!lead && canManageLead(db, actor, lead));
+  const owns = viewing.agentId === actor.id || (isPlatformAdminRole(actor.role) && !lead?.addedManually) || (!!lead && canManageLead(db, actor, lead));
   if (!owns) return res.status(403).json({ error: "You are not authorized to change this viewing." });
 
   let moved = false;
@@ -4148,7 +4347,7 @@ app.patch("/api/viewings/:id", authMiddleware, (req, res) => {
   writeDb(db);
   logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "UPDATE_VIEWING", viewing.id, "Viewing", { preferredDate: viewing.preferredDate, preferredTimeSlot: viewing.preferredTimeSlot });
 
-  if (moved && lead?.visitorEmail) {
+  if (moved && lead?.visitorEmail && !lead.addedManually) {
     const title = db.properties.find(p => p.id === viewing.propertyId)?.title || "";
     sendMockEmail(
       lead.visitorEmail,
@@ -4351,11 +4550,11 @@ app.get("/api/crm/export", authMiddleware, (req, res) => {
 
   if (kind === "leads") {
     headers = ["Created / التاريخ", "Client / العميل", "Phone / الهاتف", "WhatsApp / واتساب", "Email / البريد", "Property / العقار",
-      "Source / المصدر", "Stage / المرحلة", "Next follow-up / المتابعة القادمة", "Last update / آخر تحديث", "Agent / الوكيل", "Lost reason / سبب الخسارة", "Message / الرسالة"];
+      "Source / المصدر", "Stage / المرحلة", "Next follow-up / المتابعة القادمة", "Last update / آخر تحديث", "Agent / الوكيل", "Lost reason / سبب الخسارة", "Budget (QAR) / الميزانية", "Interest / الاهتمام", "Message / الرسالة"];
     rows = scopedLeads(db, actor).filter(l => inRange(l.createdDate)).map(l => [
       l.createdDate.slice(0, 10), l.visitorName, l.visitorPhone, l.visitorWhatsapp, l.visitorEmail, titleOf(l.propertyId),
-      l.attribution?.source || l.contactMethod, STAGE_LABELS[l.status] || l.status, l.nextFollowUpDate ? qatarDate(Date.parse(l.nextFollowUpDate)) : "",
-      l.updatedDate.slice(0, 10), agentName(l.agentId), l.lostReason, l.message
+      l.addedManually ? `${LEAD_SOURCE_TEXT[l.source || "OTHER"].en} / ${LEAD_SOURCE_TEXT[l.source || "OTHER"].ar}` : "Nerou Finder / المنصة", STAGE_LABELS[l.status] || l.status, l.nextFollowUpDate ? qatarDate(Date.parse(l.nextFollowUpDate)) : "",
+      l.updatedDate.slice(0, 10), agentName(l.agentId), l.lostReason, l.budget ?? "", l.interest, l.message
     ]);
   } else if (kind === "deals") {
     headers = ["Closed / تاريخ الإغلاق", "Property / العقار", "Client / العميل", "Type / النوع", "Deal value (QAR) / قيمة الصفقة",
@@ -4491,7 +4690,7 @@ export function runCrmReminders(now: number = Date.now(), opts: { ignoreQuietHou
         result.emails += 1;
       }
     }
-    if (lead?.visitorEmail) {
+    if (lead?.visitorEmail && !lead.addedManually) {
       sendMockEmail(
         lead.visitorEmail,
         "[Nerou Finder] Reminder: your property viewing",
@@ -6331,6 +6530,7 @@ function computeAdChargeRoi(charge: AdCharge, db: DatabaseState): {
   const viewsDuring = sumViewsInRange(boostStart, boostEnd);
 
   const leadsGenerated = db.leads.filter(l => {
+    if (l.addedManually) return false; // only inquiries the platform actually generated
     if (l.propertyId !== charge.propertyId) return false;
     const created = new Date(l.createdDate);
     if (isNaN(created.getTime())) return false;
@@ -6584,7 +6784,7 @@ app.get("/api/boost-recommendations", authMiddleware, async (req, res) => {
         .filter(c => c.propertyId === property.id)
         .sort((a, b) => Date.parse(b.createdDate) - Date.parse(a.createdDate))[0];
       const daysSinceLastBoost = lastBoost ? daysSinceIso(lastBoost.createdDate) : ageDays;
-      const leadsCount = db.leads.filter(l => l.propertyId === property.id).length;
+      const leadsCount = db.leads.filter(l => l.propertyId === property.id && !l.addedManually).length;
       const viewsPerDay = (property.views || 0) / ageDays;
       const leadsPerDay = leadsCount / ageDays;
       // Simple weighted engagement rate: views count a little, leads count a lot more since
@@ -8192,7 +8392,9 @@ app.post("/api/reviews", authMiddleware, publicWriteRateLimiter, (req, res) => {
   const hasInquiry = db.leads.some(l => {
     const isUserEmail = l.visitorEmail?.toLowerCase() === user.email?.toLowerCase();
     const matchesTarget = targetType === "AGENT" ? (l.agentId === targetId) : (l.orgId === targetId);
-    return isUserEmail && matchesTarget;
+    // Clients an agent registered by hand do not count: otherwise an agent could add a friend's
+    // email as a "client" and let them post a review.
+    return isUserEmail && matchesTarget && !l.addedManually;
   });
   
   if (!hasInquiry) {

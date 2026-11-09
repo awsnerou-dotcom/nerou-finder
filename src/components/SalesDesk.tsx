@@ -12,10 +12,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BellRing, Banknote, CalendarClock, CalendarPlus, Check, Clock, Download, FileDown, LayoutGrid, MessageCircle,
-  Pencil, Phone, Plus, RefreshCw, Trash2, TrendingUp, Users, X
+  Pencil, Phone, Plus, RefreshCw, Search, Trash2, TrendingUp, Upload, UserPlus, Users, X
 } from "lucide-react";
 import { LeadStatus } from "../types.js";
-import { BOARD_COLUMNS, addDaysToDate, columnForStatus, isClosedStatus, isOpenLead, monthlySummary, qatarDate } from "../lib/crm.js";
+import { BOARD_COLUMNS, LEAD_SOURCES, LEAD_SOURCE_TEXT, addDaysToDate, columnForStatus, isClosedStatus, isOpenLead, monthlySummary, phoneKey, qatarDate } from "../lib/crm.js";
 import { Button } from "./ui/Button.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Spinner } from "./ui/Spinner.js";
@@ -23,9 +23,10 @@ import { Input } from "./ui/FormField.js";
 import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import {
   DeskDeal, DeskLead, DeskOverview, DeskViewing, STAGE_ACCENT, STAGE_TEXT, T, VIEWING_STATUS_TEXT,
-  ago, deskApi, downloadCsv, fmtDay, fmtFullDay, fmtMoney, followUpDay, leadPhone, waLink
+  ago, deskApi, downloadCsv, fmtDay, fmtFullDay, fmtMoney, followUpDay, leadPhone, sourceLabel, waLink
 } from "./salesdesk/shared.js";
 import { DealForm, DealModal, FollowUpModal, LostModal, ViewingModal } from "./salesdesk/Modals.js";
+import { ClientDetailModal, ClientForm, ClientModal, ImportModal } from "./salesdesk/ClientModals.js";
 
 type DeskTab = "pipeline" | "followups" | "viewings" | "deals" | "reports";
 
@@ -41,6 +42,13 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
   const [dealCtx, setDealCtx] = useState<{ lead: DeskLead | null; deal: DeskDeal | null; fromWon: boolean } | null>(null);
   const [viewingCtx, setViewingCtx] = useState<{ viewing: DeskViewing | null; presetLeadId?: string } | null>(null);
   const [deleteDeal, setDeleteDeal] = useState<DeskDeal | null>(null);
+  const [clientCtx, setClientCtx] = useState<{ client: DeskLead | null } | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [deleteClient, setDeleteClient] = useState<DeskLead | null>(null);
+  const [dupWarning, setDupWarning] = useState<{ form: ClientForm; name: string } | null>(null);
+  const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState("");
 
   const say = (text: string, bad = false) => {
     setToast({ text, bad });
@@ -96,6 +104,46 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
     say(existing ? t("Deal updated.", "تم تحديث الصفقة.") : t("Deal recorded - congratulations!", "تم تسجيل الصفقة - مبروك!"));
   };
 
+  const sendClient = async (form: ClientForm, existing: DeskLead | null, allowDuplicate = false) => {
+    const body = {
+      name: form.name, phone: form.phone, whatsapp: form.whatsapp, email: form.email, source: form.source,
+      interest: form.interest, budget: form.budget === "" ? undefined : Number(form.budget), propertyId: form.propertyId || undefined
+    };
+    if (existing) {
+      await deskApi(`/api/crm/clients/${existing.id}`, { method: "PATCH", body: JSON.stringify({ ...body, propertyId: form.propertyId || null, budget: form.budget === "" ? null : Number(form.budget) }) });
+    } else {
+      await deskApi("/api/crm/clients", { method: "POST", body: JSON.stringify({
+        ...body, status: form.status, nextFollowUpDate: form.nextFollowUpDate || undefined, notes: form.notes,
+        agentId: form.agentId || undefined, allowDuplicate
+      }) });
+    }
+    setClientCtx(null);
+    setDupWarning(null);
+    await reload();
+    say(existing ? t("Client updated.", "تم تحديث العميل.") : t("Client added.", "تمت إضافة العميل."));
+  };
+
+  // The server refuses a number the agent already has; ask before adding a second copy.
+  const saveClient = async (form: ClientForm, existing: DeskLead | null) => {
+    try {
+      await sendClient(form, existing);
+    } catch (e: any) {
+      if (e?.status === 409 && e.body?.duplicate) {
+        setDupWarning({ form, name: e.body.duplicate.name });
+        return;
+      }
+      throw e;
+    }
+  };
+
+  const importClients = async (clients: Record<string, unknown>[], agentId: string) => {
+    const r = await deskApi<{ created: number; skipped: { row: number; name: string; reason: string }[] }>("/api/crm/clients/import", {
+      method: "POST", body: JSON.stringify({ clients, agentId: agentId || undefined })
+    });
+    await reload();
+    return r;
+  };
+
   if (!data) {
     return error
       ? <EmptyState title={t("Could not load the Sales Desk", "تعذر تحميل مكتب المبيعات")} description={error}
@@ -132,6 +180,11 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
               ? t("Your whole team's clients, viewings and deals in one place.", "عملاء فريقك ومعايناته وصفقاته في مكان واحد.")
               : t("Your clients, viewings and deals in one place.", "عملاؤك ومعايناتك وصفقاتك في مكان واحد.")}
           </p>
+          {data.reminderEmail && (
+            <p className="text-[11px] text-ink-muted mt-0.5">
+              {t("Reminders are emailed to ", "تُرسل التذكيرات بالإيميل إلى ")}<bdi dir="ltr" className="font-semibold text-ink">{data.reminderEmail}</bdi>
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer select-none" title={t("Daily follow-up and viewing reminder emails", "إيميلات تذكير بالمتابعة والمعاينات")}>
@@ -149,6 +202,8 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
             />
           </label>
           <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={13} />} onClick={reload}>{t("Refresh", "تحديث")}</Button>
+          <Button variant="outline" size="sm" leftIcon={<Upload size={13} />} onClick={() => setImportOpen(true)}>{t("Import list", "استيراد قائمة")}</Button>
+          <Button size="sm" leftIcon={<UserPlus size={14} />} onClick={() => setClientCtx({ client: null })}>{t("Add client", "إضافة عميل")}</Button>
         </div>
       </div>
 
@@ -180,6 +235,8 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
 
       {tab === "pipeline" && (
         <PipelineBoard leads={data.leads.filter(l => !l.isArchived)} isRtl={isRtl} t={t} showAgent={data.isOrgAdmin} today={today}
+          search={search} onSearch={setSearch} sourceFilter={sourceFilter} onSourceFilter={setSourceFilter}
+          onAdd={() => setClientCtx({ client: null })} onImport={() => setImportOpen(true)} onOpen={l => setDetailId(l.id)}
           onMove={moveLead} onFollowUp={setFollowUpLead} onSchedule={l => setViewingCtx({ viewing: null, presetLeadId: l.id })} />
       )}
       {tab === "followups" && (
@@ -202,9 +259,48 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
           onCancel={d => act(() => deskApi(`/api/deals/${d.id}`, { method: "PATCH", body: JSON.stringify({ status: d.status === "CANCELLED" ? "CLOSED" : "CANCELLED" }) }), t("Deal updated.", "تم تحديث الصفقة.")).catch(() => {})}
           onDelete={setDeleteDeal} />
       )}
-      {tab === "reports" && <Reports deals={data.deals} isRtl={isRtl} t={t} onError={m => say(m, true)} />}
+      {tab === "reports" && <Reports deals={data.deals} leads={data.leads} isRtl={isRtl} t={t} onError={m => say(m, true)} />}
 
       {/* dialogs */}
+      <ClientDetailModal
+        lead={data.leads.find(l => l.id === detailId) || null}
+        viewings={data.viewings}
+        showAgent={data.isOrgAdmin}
+        isRtl={isRtl}
+        t={t}
+        onClose={() => setDetailId(null)}
+        onMove={moveLead}
+        onAddNote={async (l, text) => { await act(() => deskApi(`/api/leads/${l.id}/notes`, { method: "POST", body: JSON.stringify({ text }) }), t("Note added.", "تمت إضافة الملاحظة.")); }}
+        onFollowUp={setFollowUpLead}
+        onSchedule={l => setViewingCtx({ viewing: null, presetLeadId: l.id })}
+        onEdit={l => setClientCtx({ client: l })}
+        onArchive={l => { setDetailId(null); act(() => deskApi(`/api/leads/${l.id}/archive`, { method: "PATCH", body: JSON.stringify({ isArchived: true }) }), t("Client archived.", "تمت أرشفة العميل.")).catch(() => {}); }}
+        onDelete={setDeleteClient}
+      />
+      <ClientModal open={!!clientCtx} client={clientCtx?.client || null} team={data.team} isOrgAdmin={data.isOrgAdmin}
+        properties={data.properties} isRtl={isRtl} t={t} onClose={() => setClientCtx(null)} onSave={saveClient} />
+      <ImportModal open={importOpen} team={data.team} isOrgAdmin={data.isOrgAdmin} isRtl={isRtl} t={t} onClose={() => setImportOpen(false)} onImport={importClients} />
+      <ConfirmDialog
+        open={!!dupWarning}
+        title={t("You already have this number", "هذا الرقم موجود لديك")}
+        description={t(`${dupWarning?.name} already has this phone number in your clients. Add another record anyway?`, `العميل ${dupWarning?.name} لديه هذا الرقم بالفعل. هل تريد إضافة سجل آخر؟`)}
+        confirmLabel={t("Add anyway", "أضف على أي حال")}
+        cancelLabel={t("Go back", "رجوع")}
+        onCancel={() => setDupWarning(null)}
+        onConfirm={async () => { const w = dupWarning!; try { await sendClient(w.form, null, true); } catch (e: any) { setDupWarning(null); say(e?.message || t("Could not save the client.", "تعذر حفظ العميل."), true); } }}
+        isRtl={isRtl}
+      />
+      <ConfirmDialog
+        open={!!deleteClient}
+        title={t("Delete this client?", "حذف هذا العميل؟")}
+        description={t("The client, their notes and their viewings are removed for good. Deals you recorded stay in your ledger.", "يُحذف العميل وملاحظاته ومعايناته نهائياً. أما الصفقات المسجلة فتبقى في سجلّك.")}
+        confirmLabel={t("Delete", "حذف")}
+        cancelLabel={t("Keep", "إبقاء")}
+        tone="danger"
+        onCancel={() => setDeleteClient(null)}
+        onConfirm={async () => { const c = deleteClient!; setDeleteClient(null); setDetailId(null); await act(() => deskApi(`/api/crm/clients/${c.id}`, { method: "DELETE" }), t("Client deleted.", "تم حذف العميل.")).catch(() => {}); }}
+        isRtl={isRtl}
+      />
       <FollowUpModal lead={followUpLead} isRtl={isRtl} t={t} onClose={() => setFollowUpLead(null)}
         onSave={async date => { const l = followUpLead!; await act(() => deskApi(`/api/leads/${l.id}/follow-up`, { method: "PATCH", body: JSON.stringify({ nextFollowUpDate: date }) }), date ? t("Follow-up saved.", "تم حفظ موعد المتابعة.") : t("Follow-up cleared.", "تمت إزالة موعد المتابعة.")); setFollowUpLead(null); }} />
       <LostModal lead={lostLead} isRtl={isRtl} t={t} onClose={() => setLostLead(null)}
@@ -289,10 +385,27 @@ function FollowUpChip({ lead, today, isRtl, t, onClick }: { lead: DeskLead; toda
 // ---------------------------------------------------------------------------------------------
 // Pipeline
 // ---------------------------------------------------------------------------------------------
-function PipelineBoard({ leads, isRtl, t, showAgent, today, onMove, onFollowUp, onSchedule }: {
+function PipelineBoard({ leads: allLeads, isRtl, t, showAgent, today, search, onSearch, sourceFilter, onSourceFilter, onAdd, onImport, onOpen, onMove, onFollowUp, onSchedule }: {
   leads: DeskLead[]; isRtl: boolean; t: T; showAgent: boolean; today: string;
+  search: string; onSearch: (v: string) => void; sourceFilter: string; onSourceFilter: (v: string) => void;
+  onAdd: () => void; onImport: () => void; onOpen: (l: DeskLead) => void;
   onMove: (l: DeskLead, s: LeadStatus) => void; onFollowUp: (l: DeskLead) => void; onSchedule: (l: DeskLead) => void;
 }) {
+  // search by name, phone (any spelling), email or what they are looking for; filter by where they came from
+  const needle = search.trim().toLowerCase();
+  const needleKey = phoneKey(search);
+  const leads = allLeads.filter(l => {
+    if (sourceFilter === "PLATFORM" && l.addedManually) return false;
+    if (sourceFilter && sourceFilter !== "PLATFORM" && !(l.addedManually && (l.source || "OTHER") === sourceFilter)) return false;
+    if (!needle) return true;
+    return (
+      l.visitorName.toLowerCase().includes(needle) ||
+      (l.visitorEmail || "").toLowerCase().includes(needle) ||
+      (l.interest || "").toLowerCase().includes(needle) ||
+      (!!needleKey && [phoneKey(l.visitorPhone), phoneKey(l.visitorWhatsapp)].includes(needleKey)) ||
+      (l.visitorPhone || "").replace(/\s/g, "").includes(needle.replace(/\s/g, ""))
+    );
+  });
   const [dragId, setDragId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<LeadStatus | null>(null);
   // won/lost columns only keep the last 30 days so the board does not grow forever
@@ -302,13 +415,27 @@ function PipelineBoard({ leads, isRtl, t, showAgent, today, onMove, onFollowUp, 
       .filter(l => columnForStatus(l.status) === col && (!isClosedStatus(col) || Date.parse(l.updatedDate) >= cutoff))
       .sort((a, b) => Date.parse(b.createdDate) - Date.parse(a.createdDate));
 
-  if (leads.length === 0) {
+  if (allLeads.length === 0) {
     return <EmptyState icon={<Users size={20} />} title={t("No clients yet", "لا يوجد عملاء بعد")}
-      description={t("When someone asks about one of your listings they appear here, ready to be worked.", "عندما يستفسر أحدهم عن أحد إعلاناتك سيظهر هنا جاهزاً للمتابعة.")} />;
+      description={t("Clients who ask about your listings appear here by themselves. Add everyone else - calls, walk-ins, referrals, your existing list - so your whole business lives in one place.", "العملاء الذين يستفسرون عن إعلاناتك يظهرون هنا تلقائياً. أضف بقية عملائك - اتصالات، زيارات، توصيات، قائمتك الحالية - ليصبح عملك كله في مكان واحد.")}
+      action={<div className="flex gap-2 flex-wrap justify-center"><Button size="sm" leftIcon={<UserPlus size={14} />} onClick={onAdd}>{t("Add your first client", "أضف أول عميل")}</Button><Button variant="outline" size="sm" leftIcon={<Upload size={14} />} onClick={onImport}>{t("Import a list", "استيراد قائمة")}</Button></div>} />;
   }
 
   return (
     <div>
+      <div className="flex items-center gap-2 flex-wrap mb-3">
+        <div className="relative flex-1 min-w-[12rem] max-w-sm">
+          <Search size={14} className="absolute top-1/2 -translate-y-1/2 start-3 text-ink-muted pointer-events-none" />
+          <Input value={search} onChange={e => onSearch(e.target.value)} placeholder={t("Search name, phone or what they want", "ابحث بالاسم أو الهاتف أو المطلوب")} className="!ps-9 !py-2" aria-label={t("Search clients", "بحث في العملاء")} />
+        </div>
+        <select aria-label={t("Filter by source", "تصفية حسب المصدر")} value={sourceFilter} onChange={e => onSourceFilter(e.target.value)}
+          className="px-2.5 py-2 bg-surface border border-border rounded-lg text-xs font-semibold text-ink cursor-pointer">
+          <option value="">{t("All sources", "كل المصادر")}</option>
+          <option value="PLATFORM">Nerou Finder</option>
+          {LEAD_SOURCES.map(src => <option key={src} value={src}>{isRtl ? LEAD_SOURCE_TEXT[src].ar : LEAD_SOURCE_TEXT[src].en}</option>)}
+        </select>
+        {(search || sourceFilter) && <span className="text-[11px] text-ink-muted">{t(`${leads.length} of ${allLeads.length}`, `${leads.length} من ${allLeads.length}`)}</span>}
+      </div>
       <p className="text-[11px] text-ink-muted mb-2">{t("Drag a card to move a client between stages, or use the stage menu on the card.", "اسحب البطاقة لنقل العميل بين المراحل، أو استخدم قائمة المرحلة في البطاقة.")}</p>
       <div className="flex gap-3 overflow-x-auto pb-3 snap-x">
         {BOARD_COLUMNS.map(col => {
@@ -330,13 +457,18 @@ function PipelineBoard({ leads, isRtl, t, showAgent, today, onMove, onFollowUp, 
                     className={`bg-surface border border-border rounded-lg p-3 space-y-2 cursor-grab active:cursor-grabbing shadow-sm ${dragId === l.id ? "opacity-50" : ""}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p dir="auto" className="text-sm font-bold text-ink truncate">{l.visitorName}</p>
+                        <button type="button" onClick={() => onOpen(l)} dir="auto" className="block max-w-full text-start text-sm font-bold text-ink truncate hover:text-gold cursor-pointer" title={t("Open client", "فتح العميل")}>{l.visitorName}</button>
                         {l.propertyTitle && <p dir="auto" className="text-[11px] text-ink-muted truncate">{l.propertyTitle}</p>}
                       </div>
                       <span className="text-[10px] text-ink-muted shrink-0">{ago(l.createdDate, isRtl)}</span>
                     </div>
                     {l.message && <p dir="auto" className="text-[11px] text-ink-muted line-clamp-2 italic">"{l.message}"</p>}
                     <ContactRow lead={l} isRtl={isRtl} />
+                    <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
+                      <span className={`px-1.5 py-0.5 rounded font-bold ${l.addedManually ? "bg-gold-soft text-gold-active" : "bg-surface-2 text-ink-muted"}`}>{sourceLabel(l, isRtl)}</span>
+                      {!!l.budget && <span className="font-semibold text-ink-muted">{fmtMoney(l.budget, isRtl)}</span>}
+                      {!!l.notes?.length && <span className="text-ink-muted">{l.notes.length === 1 ? t("1 note", "ملاحظة واحدة") : t(`${l.notes.length} notes`, `${l.notes.length} ملاحظات`)}</span>}
+                    </div>
                     {col === LeadStatus.LOST && l.lostReason && <p className="text-[11px] text-ink-muted">{t("Reason: ", "السبب: ")}{l.lostReason}</p>}
                     {showAgent && l.agentName && <p className="text-[10px] text-ink-muted">{t("Agent: ", "الوكيل: ")}{l.agentName}</p>}
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -574,7 +706,7 @@ function Deals({ deals, isRtl, t, canEdit, showAgent, onNew, onEdit, onReceived,
 // ---------------------------------------------------------------------------------------------
 // Reports
 // ---------------------------------------------------------------------------------------------
-function Reports({ deals, isRtl, t, onError }: { deals: DeskDeal[]; isRtl: boolean; t: T; onError: (m: string) => void }) {
+function Reports({ deals, leads, isRtl, t, onError }: { deals: DeskDeal[]; leads: DeskLead[]; isRtl: boolean; t: T; onError: (m: string) => void }) {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [busy, setBusy] = useState("");
@@ -582,6 +714,20 @@ function Reports({ deals, isRtl, t, onError }: { deals: DeskDeal[]; isRtl: boole
     () => monthlySummary(deals.filter(d => (!from || d.closedDate >= from) && (!to || d.closedDate <= to))),
     [deals, from, to]
   );
+
+  // where the clients come from, and how many of each source turned into a won deal
+  const bySource = useMemo(() => {
+    const m = new Map<string, { label: string; clients: number; won: number; lost: number }>();
+    for (const l of leads) {
+      const key = l.addedManually ? l.source || "OTHER" : "PLATFORM";
+      const row = m.get(key) || { label: sourceLabel(l, isRtl), clients: 0, won: 0, lost: 0 };
+      row.clients += 1;
+      if (l.status === LeadStatus.CONVERTED) row.won += 1;
+      if (l.status === LeadStatus.LOST) row.lost += 1;
+      m.set(key, row);
+    }
+    return [...m.values()].sort((a, b) => b.clients - a.clients);
+  }, [leads, isRtl]);
 
   const run = async (kind: string) => {
     setBusy(kind);
@@ -619,6 +765,30 @@ function Reports({ deals, isRtl, t, onError }: { deals: DeskDeal[]; isRtl: boole
         ))}
       </div>
       <p className="text-[11px] text-ink-muted">{t("Files open directly in Excel or Google Sheets, Arabic included.", "تُفتح الملفات مباشرة في Excel أو Google Sheets مع دعم كامل للعربية.")}</p>
+
+      {bySource.length > 0 && (
+        <section>
+          <h4 className="text-xs font-bold text-ink mb-2">{t("Where your clients come from", "من أين يأتيك عملاؤك")}</h4>
+          <div className="bg-surface border border-border rounded-xl overflow-x-auto">
+            <table className="w-full text-xs min-w-[420px]">
+              <thead className="bg-ink-inverse text-ink-muted">
+                <tr>{[t("Source", "المصدر"), t("Clients", "العملاء"), t("Won", "تمت الصفقة"), t("Lost", "خسارة"), t("Win rate", "نسبة النجاح")].map(h => <th key={h} className="px-3 py-2.5 font-bold text-start">{h}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-surface-2">
+                {bySource.map(r => (
+                  <tr key={r.label}>
+                    <td className="px-3 py-2.5 font-bold text-ink">{r.label}</td>
+                    <td className="px-3 py-2.5">{r.clients}</td>
+                    <td className="px-3 py-2.5">{r.won}</td>
+                    <td className="px-3 py-2.5">{r.lost}</td>
+                    <td className="px-3 py-2.5">{r.clients ? Math.round((r.won / r.clients) * 100) : 0}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section>
         <h4 className="text-xs font-bold text-ink mb-2">{t("Commission by month", "العمولات حسب الشهر")}</h4>

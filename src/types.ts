@@ -505,6 +505,17 @@ export interface Project {
   representationRequests?: RepresentationRequest[];
 }
 
+// Where a client the agent registered by hand came from.
+export type LeadSource =
+  | "WHATSAPP"
+  | "PHONE_CALL"
+  | "WALK_IN"
+  | "REFERRAL"
+  | "INSTAGRAM"
+  | "FACEBOOK"
+  | "OTHER_PORTAL"
+  | "OTHER";
+
 export interface Lead {
   id: string;
   propertyId?: string;
@@ -549,6 +560,14 @@ export interface Lead {
   reminderCount?: number;
   // Why a lead was lost (free text, optional) - shown on the board and in reports.
   lostReason?: string;
+  // A client the agent registered by hand (a call, a walk-in, a referral, a social media chat...),
+  // as opposed to an inquiry that came through the platform. These are the agent's private
+  // records: platform admins do not see them, they never count toward platform statistics,
+  // ad performance or review eligibility, and the client is never emailed by the platform.
+  addedManually?: boolean;
+  source?: LeadSource;
+  budget?: number; // QAR, what the client says they can spend
+  interest?: string; // free text: what the client is looking for
   // Every pipeline move, oldest first - the lead's timeline.
   stageHistory?: LeadStageChange[];
 }

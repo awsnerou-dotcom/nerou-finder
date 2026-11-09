@@ -2,7 +2,7 @@
 // writing, Qatar-time helpers and "who is due a reminder". Kept free of server code so the same
 // logic can be unit tested and shared with the browser.
 
-import { Deal, Lead, LeadStatus, ViewingRequest } from "../types.js";
+import { Deal, Lead, LeadSource, LeadStatus, ViewingRequest } from "../types.js";
 
 // ---------------------------------------------------------------------------------------------
 // Pipeline
@@ -215,4 +215,210 @@ export function viewingsDueForReminder(viewings: ViewingRequest[], now: number):
       v.preferredDate <= tomorrow &&
       v.reminderSentFor !== viewingReminderKey(v)
   );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Clients registered by hand (not from the platform)
+// ---------------------------------------------------------------------------------------------
+
+export const LEAD_SOURCES: LeadSource[] = [
+  "WHATSAPP", "PHONE_CALL", "WALK_IN", "REFERRAL", "INSTAGRAM", "FACEBOOK", "OTHER_PORTAL", "OTHER"
+];
+
+export const LEAD_SOURCE_TEXT: Record<LeadSource, { en: string; ar: string }> = {
+  WHATSAPP: { en: "WhatsApp", ar: "واتساب" },
+  PHONE_CALL: { en: "Phone call", ar: "اتصال هاتفي" },
+  WALK_IN: { en: "Walk-in / office visit", ar: "زيارة للمكتب" },
+  REFERRAL: { en: "Referral", ar: "توصية / إحالة" },
+  INSTAGRAM: { en: "Instagram", ar: "إنستغرام" },
+  FACEBOOK: { en: "Facebook", ar: "فيسبوك" },
+  OTHER_PORTAL: { en: "Another property portal", ar: "منصة عقارية أخرى" },
+  OTHER: { en: "Other", ar: "أخرى" }
+};
+
+/** Everything an agent can tell us about a client they register themselves. */
+export interface ClientInput {
+  name: string;
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+  source: LeadSource;
+  interest?: string;
+  budget?: number;
+  notes?: string;
+}
+
+const PHONE_OK = /^[+0-9 ()-]{5,25}$/;
+const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Arabic-Indic and Persian digits -> 0-9 (clients' numbers are often typed on an Arabic keyboard). */
+export function westernDigits(s: string): string {
+  return s
+    .replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x06f0));
+}
+
+/** What identifies the same person by phone: the last 8 digits (ignores +974 / 00974 / spaces). */
+export function phoneKey(phone: string | undefined): string {
+  const digits = westernDigits(phone || "").replace(/\D/g, "");
+  return digits.length >= 6 ? digits.slice(-8) : "";
+}
+
+function cleanText(v: unknown, max: number): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const t = v.replace(/\s+/g, " ").trim();
+  return t ? t.slice(0, max) : undefined;
+}
+
+function cleanPhone(v: unknown): string | undefined | "invalid" {
+  if (v === undefined || v === null || v === "") return undefined;
+  if (typeof v !== "string" && typeof v !== "number") return "invalid";
+  const s = westernDigits(String(v)).trim();
+  if (!s) return undefined;
+  return PHONE_OK.test(s) && s.replace(/\D/g, "").length >= 5 ? s : "invalid";
+}
+
+export type ClientValidation = { ok: true; value: ClientInput } | { ok: false; error: string };
+
+/** Checks and cleans one client. Needs a name and at least one way to reach them. */
+export function validateClientInput(raw: Record<string, unknown>): ClientValidation {
+  const name = cleanText(raw.name, 120);
+  if (!name) return { ok: false, error: "A name is required." };
+
+  const phone = cleanPhone(raw.phone);
+  const whatsapp = cleanPhone(raw.whatsapp);
+  if (phone === "invalid") return { ok: false, error: "The phone number is not valid." };
+  if (whatsapp === "invalid") return { ok: false, error: "The WhatsApp number is not valid." };
+
+  let email: string | undefined;
+  if (raw.email !== undefined && raw.email !== null && String(raw.email).trim() !== "") {
+    email = String(raw.email).trim().toLowerCase();
+    if (email.length > 120 || !EMAIL_OK.test(email)) return { ok: false, error: "The email address is not valid." };
+  }
+  if (!phone && !whatsapp && !email) return { ok: false, error: "Add a phone number, WhatsApp or email so you can reach this client." };
+
+  let source: LeadSource = "OTHER";
+  if (raw.source !== undefined && raw.source !== null && raw.source !== "") {
+    if (!LEAD_SOURCES.includes(raw.source as LeadSource)) return { ok: false, error: "Unknown source." };
+    source = raw.source as LeadSource;
+  }
+
+  let budget: number | undefined;
+  if (raw.budget !== undefined && raw.budget !== null && raw.budget !== "") {
+    const n = Number(raw.budget);
+    if (!Number.isFinite(n) || n < 0 || n > 1e11) return { ok: false, error: "The budget must be a positive number." };
+    budget = n || undefined;
+  }
+
+  return {
+    ok: true,
+    value: { name, phone, whatsapp, email, source, interest: cleanText(raw.interest, 300), budget, notes: cleanText(raw.notes, 1000) }
+  };
+}
+
+// ---------------------------------------------------------------------------------------------
+// CSV import (an agent's existing client list, from Excel or Google Sheets)
+// ---------------------------------------------------------------------------------------------
+
+/** Reads CSV text into rows. Handles a BOM, quoted cells with commas/quotes/line breaks, CRLF, and
+ *  the semicolon or tab separators Excel uses in many regional settings. */
+export function parseCsv(text: string): string[][] {
+  const src = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text; // drop a byte-order mark
+  // choose the separator by counting candidates on the first line, outside quotes
+  const firstLine = (() => {
+    let inQ = false, out = "";
+    for (const ch of src) {
+      if (ch === '"') inQ = !inQ;
+      if (!inQ && (ch === "\n" || ch === "\r")) break;
+      out += ch;
+    }
+    return out;
+  })();
+  const count = (c: string) => firstLine.split(c).length - 1;
+  const sep = count(";") > count(",") && count(";") >= count("\t") ? ";" : count("\t") > count(",") ? "\t" : ",";
+
+  const rows: string[][] = [];
+  let row: string[] = [], cell = "", inQuotes = false;
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (src[i + 1] === '"') { cell += '"'; i++; } else inQuotes = false;
+      } else cell += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === sep) { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && src[i + 1] === "\n") i++;
+      row.push(cell); cell = "";
+      if (row.some(c => c.trim() !== "")) rows.push(row);
+      row = [];
+    } else cell += ch;
+  }
+  row.push(cell);
+  if (row.some(c => c.trim() !== "")) rows.push(row);
+  return rows;
+}
+
+const normHeader = (s: string) =>
+  s.toLowerCase().replace(/[\s_\-./:()]+/g, "").replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه");
+
+const COLUMN_ALIASES: Record<string, string[]> = {
+  name: ["name", "fullname", "client", "clientname", "customer", "الاسم", "اسم", "العميل", "اسمالعميل", "الاسمالكامل"],
+  phone: ["phone", "mobile", "tel", "telephone", "phonenumber", "mobilenumber", "الهاتف", "الجوال", "رقمالهاتف", "رقمالجوال", "موبايل", "هاتف"],
+  whatsapp: ["whatsapp", "wa", "واتساب", "واتس", "رقمالواتساب"],
+  email: ["email", "mail", "emailaddress", "البريد", "الايميل", "بريد", "البريدالالكتروني", "ايميل"],
+  source: ["source", "origin", "channel", "المصدر", "مصدر"],
+  interest: ["interest", "property", "requirement", "looking", "lookingfor", "الاهتمام", "العقار", "الطلب", "المطلوب"],
+  budget: ["budget", "الميزانيه", "ميزانيه", "السعر"],
+  notes: ["notes", "note", "comments", "comment", "remarks", "ملاحظات", "ملاحظه"]
+};
+
+/** Free text from a spreadsheet's "Source" column -> one of our sources. */
+export function guessSource(text: string | undefined): LeadSource | undefined {
+  const t = normHeader(text || "");
+  if (!t) return undefined;
+  if (/واتس|whats|^wa$/.test(t)) return "WHATSAPP";
+  if (/اتصال|هاتف|call|phone|tel/.test(t)) return "PHONE_CALL";
+  if (/walk|office|visit|زيار|مكتب/.test(t)) return "WALK_IN";
+  if (/refer|recommend|friend|توصي|احال|صديق/.test(t)) return "REFERRAL";
+  if (/insta|انستا|انستغرام/.test(t)) return "INSTAGRAM";
+  if (/face|فيس|fb/.test(t)) return "FACEBOOK";
+  if (/portal|bayut|propertyfinder|mourjan|dubizzle|qatarliving|موقع|منصه/.test(t)) return "OTHER_PORTAL";
+  return "OTHER";
+}
+
+export interface CsvClientsResult {
+  clients: Record<string, unknown>[];
+  /** Which columns of the file were recognised (for showing the agent what was understood). */
+  recognised: string[];
+  error?: string;
+}
+
+/** Turns the rows of a spreadsheet (first row = headers) into raw clients, ready for validateClientInput. */
+export function rowsToClients(table: string[][]): CsvClientsResult {
+  if (table.length < 2) return { clients: [], recognised: [], error: "The file has no client rows." };
+  const headers = table[0].map(normHeader);
+  const colOf: Record<string, number> = {};
+  for (const [field, aliases] of Object.entries(COLUMN_ALIASES)) {
+    const idx = headers.findIndex(h => aliases.map(normHeader).includes(h));
+    if (idx >= 0) colOf[field] = idx;
+  }
+  if (colOf.name === undefined) {
+    return { clients: [], recognised: [], error: "No name column found. The first row must have headers such as Name, Phone, WhatsApp, Email." };
+  }
+  const get = (r: string[], f: string) => (colOf[f] !== undefined ? (r[colOf[f]] ?? "").trim() : "");
+  const clients = table.slice(1).map(r => {
+    const budgetText = westernDigits(get(r, "budget")).replace(/[^\d.]/g, "");
+    return {
+      name: get(r, "name"),
+      phone: get(r, "phone"),
+      whatsapp: get(r, "whatsapp"),
+      email: get(r, "email"),
+      source: guessSource(get(r, "source")),
+      interest: get(r, "interest"),
+      budget: budgetText ? Number(budgetText) : undefined,
+      notes: get(r, "notes")
+    };
+  });
+  return { clients, recognised: Object.keys(colOf) };
 }
