@@ -23,7 +23,11 @@ const SLIDES = [
   },
   {
     src: "/assets/images/hero-qatar-pearl.jpg",
-    focus: "50% 50%"
+    focus: "50% 50%",
+    // This file is only 736x411. Stretched across the full-width hero it was twice its real size
+    // and visibly soft, so it is shown at its true pixel size (never larger), uncropped, on a
+    // blurred, dimmed copy of itself that fills the rest of the hero.
+    nativeWidth: 736
   }
 ];
 const SLIDE_SECONDS = 12; // time between one photo taking over and the next doing so
@@ -32,19 +36,49 @@ export default function PhotoHero() {
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#0d1b2a] isolate" aria-hidden="true">
       {SLIDES.map((slide, i) => (
-        <img
+        // Each slide is one animated layer (the fade/stacking animation runs on this wrapper) so
+        // that a slide made of several images (blurred backdrop + the photo itself) fades as one.
+        <div
           key={slide.src}
-          src={slide.src}
-          alt=""
-          // The first photo is the page's LCP image; the second only has to be ready before the
-          // first cross-fade, so it must not compete with it.
-          fetchPriority={i === 0 ? "high" : "low"}
-          decoding="async"
-          className="hero-slide absolute inset-0 w-full h-full object-cover"
+          className="hero-slide absolute inset-0"
           // photo k starts its loop (SLIDES.length - k) steps ahead so the three take turns
-          style={{ objectPosition: slide.focus, animationDelay: i === 0 ? undefined : `-${SLIDE_SECONDS * (SLIDES.length - i)}s` }}
-          draggable={false}
-        />
+          style={i === 0 ? undefined : { animationDelay: `-${SLIDE_SECONDS * (SLIDES.length - i)}s` }}
+        >
+          {slide.nativeWidth ? (
+            <>
+              <img
+                src={slide.src}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 brightness-75"
+                draggable={false}
+              />
+              <img
+                src={slide.src}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className="absolute top-1/2 -translate-y-1/2 start-1/2 -translate-x-1/2 rtl:translate-x-1/2 lg:start-auto lg:end-[5%] lg:translate-x-0 lg:rtl:translate-x-0 h-auto rounded-lg shadow-2xl ring-1 ring-white/15"
+                // never wider than the file really is, and never wider than the screen
+                style={{ width: slide.nativeWidth, maxWidth: "92%" }}
+                draggable={false}
+              />
+            </>
+          ) : (
+            <img
+              src={slide.src}
+              alt=""
+              // The first photo is the page's LCP image; the others only have to be ready before
+              // their turn, so they must not compete with it.
+              fetchPriority={i === 0 ? "high" : "low"}
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ objectPosition: slide.focus }}
+              draggable={false}
+            />
+          )}
+        </div>
       ))}
 
       {/* Header-legibility gradient: protects the logo/nav specifically, independent of any
