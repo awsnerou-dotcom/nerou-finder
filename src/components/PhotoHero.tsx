@@ -3,21 +3,49 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Home-page hero: two Qatar skyline photos that dissolve into each other in slow motion, each
+// with a gentle zoom-and-drift (a "Ken Burns" move) that keeps going straight through the
+// cross-fade, so the picture never stops or snaps. Pure CSS - no timers or re-renders - and it
+// settles on a still first photo for visitors who ask their device to reduce motion.
+// The timing lives in src/index.css (.hero-slide / hero-fade / hero-kenburns).
+
+const SLIDES = [
+  {
+    src: "/assets/images/hero-lusail-towers.jpg",
+    small: "/assets/images/hero-lusail-towers-900.jpg",
+    // pan direction (percent of the photo) - opposite for each slide so the motion alternates
+    pan: { x: "-1.6%", y: "-1%" },
+    // the hero is a wide, short strip, so only the middle band of each photo shows: aim it at the
+    // towers' crowns (this one) / the downtown cluster (the other) instead of the sky or the sea
+    focus: "50% 66%"
+  },
+  {
+    src: "/assets/images/hero-doha-aerial.jpg",
+    small: "/assets/images/hero-doha-aerial-900.jpg",
+    pan: { x: "1.6%", y: "-0.6%" },
+    focus: "50% 58%"
+  }
+];
+
 export default function PhotoHero() {
   return (
-    <div className="absolute inset-0 overflow-hidden" aria-hidden="true">
-      {/* This is the page's LCP image. A real srcset with multiple pre-resized variants would
-          be the fuller fix (mobile visitors currently download the same full-resolution file
-          as desktop) but that needs an image pipeline to actually generate those variants,
-          which isn't wired up in this project - fetchpriority is a safe, real improvement in
-          the meantime, telling the browser to prioritize this fetch immediately. */}
-      <img
-        src="/assets/images/hero-doha-skyline.jpg"
-        alt=""
-        fetchPriority="high"
-        className="w-full h-full object-cover kenburns-slow"
-        draggable={false}
-      />
+    <div className="absolute inset-0 overflow-hidden bg-[#0d1b2a]" aria-hidden="true">
+      {SLIDES.map((slide, i) => (
+        <img
+          key={slide.src}
+          src={slide.src}
+          srcSet={`${slide.small} 900w, ${slide.src} 1600w`}
+          sizes="100vw"
+          alt=""
+          // The first photo is the page's LCP image; the second only has to be ready before the
+          // first cross-fade, so it must not compete with it.
+          fetchPriority={i === 0 ? "high" : "low"}
+          decoding="async"
+          className={`hero-slide ${i === 1 ? "hero-slide-b" : ""} absolute inset-0 w-full h-full object-cover`}
+          style={{ ["--px" as string]: slide.pan.x, ["--py" as string]: slide.pan.y, objectPosition: slide.focus }}
+          draggable={false}
+        />
+      ))}
 
       {/* Header-legibility gradient: protects the logo/nav specifically, independent of any
           other overlay layers rendered by the parent panel. */}
