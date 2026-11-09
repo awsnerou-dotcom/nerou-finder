@@ -48,7 +48,7 @@ import {
   Mail,
   ExternalLink,
   ShieldAlert,
-  Activity,
+  GitCompare,
   Bell,
   Trash,
   Award,
@@ -1566,7 +1566,7 @@ export default function VisitorExperience({
                 }`}
               >
                 <div>
-                  <div className="relative h-52 overflow-hidden bg-gray-100">
+                  <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
                     <img
                       src={getThumbnailUrl(property.images[0])}
                       onError={(e) => { if (e.currentTarget.src !== property.images[0]) e.currentTarget.src = property.images[0]; }}
@@ -1574,8 +1574,10 @@ export default function VisitorExperience({
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/35 to-transparent" />
                     <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
-                      <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md text-white ${
+                      <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md text-white shadow-sm ${
                         property.transactionType === TransactionType.FOR_RENT ? "bg-blue-600" :
                         property.transactionType === TransactionType.FOR_SALE ? "bg-green-600" : "bg-gold"
                       }`}>
@@ -1597,24 +1599,28 @@ export default function VisitorExperience({
                               setComparedPropertyIds([...comparedPropertyIds, property.id]);
                             }
                           }}
-                          className={`p-2 rounded-full shadow-sm hover:scale-110 transition-transform cursor-pointer ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full shadow-md text-[10px] font-bold hover:scale-105 transition-transform cursor-pointer ${
                             comparedPropertyIds.includes(property.id)
                               ? "bg-gold text-gold-ink"
-                              : "bg-surface text-ink-muted"
+                              : "bg-white text-ink"
                           }`}
                           title={isRtl ? "مقارنة العقار" : "Compare Side-by-Side"}
+                          aria-label={isRtl ? "مقارنة العقار" : "Compare property"}
                         >
-                          <Activity size={15} />
+                          <GitCompare size={13} />
+                          <span>{isRtl ? "قارن" : "Compare"}</span>
                         </button>
 
                         <button
                           onClick={(e) => toggleSaveProperty(property.id, e)}
-                          className="p-2 bg-surface rounded-full shadow-sm hover:scale-110 transition-transform cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white rounded-full shadow-md text-[10px] font-bold text-ink hover:scale-105 transition-transform cursor-pointer"
+                          aria-label={isRtl ? "حفظ العقار" : "Save property"}
                         >
                           <Bookmark
-                            size={15}
-                            className={savedPropertyIds.includes(property.id) ? "fill-gold text-gold" : "text-ink-muted"}
+                            size={13}
+                            className={savedPropertyIds.includes(property.id) ? "fill-gold text-gold" : "text-ink"}
                           />
+                          <span>{savedPropertyIds.includes(property.id) ? (isRtl ? "محفوظ" : "Saved") : (isRtl ? "حفظ" : "Save")}</span>
                         </button>
                       </div>
                     </div>

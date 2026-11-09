@@ -16,6 +16,7 @@ import {
 } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
 import { getNearbyPlaces, LandmarkType } from "../lib/nearbyPlaces.js";
+import PropertyGallery, { GalleryGroup } from "./PropertyGallery.js";
 import {
   MapPin,
   Calendar,
@@ -24,11 +25,11 @@ import {
   Shield,
   Eye,
   ChevronLeft,
-  ChevronRight,
+  X,
   Maximize2,
+  GitCompare,
   FileText,
   Calculator,
-  Compass,
   AlertTriangle,
   Building,
   DollarSign,
@@ -93,11 +94,6 @@ export default function PropertyDetailView({
   onViewAgentProfile,
 }: PropertyDetailViewProps) {
   const { activeCurrency, formatPrice, convertPrice, getCurrencySymbol } = useCurrency();
-  // Gallery State
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [activeCategory, setActiveCategory] = useState<"ALL" | "INTERIOR" | "EXTERIOR" | "FLOOR_PLAN">("ALL");
-  const [view360, setView360] = useState(false);
-  const [virtualPitch, setVirtualPitch] = useState(0); // For virtual tour rotation effect
 
   // Interactive Tools State
   const [downpaymentPercent, setDownpaymentPercent] = useState(20);
@@ -557,9 +553,22 @@ export default function PropertyDetailView({
       : ["https://images.unsplash.com/photo-1545464693-f1798a373343?auto=format&fit=crop&w=600&q=80"];
   }
 
-  const currentImagesList = categorizedImages[activeCategory];
-  const safeImageIndex = activeImageIndex >= currentImagesList.length ? 0 : activeImageIndex;
-  const activeImage = currentImagesList[safeImageIndex] || images[0];
+  // Gallery tabs: only categories that really have photos are offered. (The fallback split above
+  // is kept for the floor-plan section, but a made-up "interior/exterior" split or a stock
+  // floor plan must not be presented as the listing's own photos.)
+  const hasRealCategories = imageCategories.length > 0;
+  const galleryGroups: GalleryGroup[] = [{ key: "ALL", label: isRtl ? "كل الصور" : "All photos", images }];
+  if (hasRealCategories) {
+    const interior = images.filter((_, i) => imageCategories[i] === "INTERIOR");
+    const exterior = images.filter((_, i) => imageCategories[i] === "EXTERIOR");
+    if (interior.length) galleryGroups.push({ key: "INTERIOR", label: isRtl ? "الداخلية" : "Interior", images: interior });
+    if (exterior.length) galleryGroups.push({ key: "EXTERIOR", label: isRtl ? "الخارجية" : "Exterior", images: exterior });
+  }
+  const realFloorPlans = [
+    ...(hasRealCategories ? images.filter((_, i) => imageCategories[i] === "FLOOR_PLAN") : []),
+    ...(property.floorPlans || [])
+  ].filter((u, i, arr) => arr.indexOf(u) === i);
+  if (realFloorPlans.length) galleryGroups.push({ key: "FLOOR_PLAN", label: isRtl ? "مخطط الطابق" : "Floor plans", images: realFloorPlans });
 
   // Price calculations
   const isRent = property.transactionType === TransactionType.FOR_RENT || property.transactionType === TransactionType.COMMERCIAL_LEASE;
@@ -743,45 +752,51 @@ export default function PropertyDetailView({
           <div className="flex items-center gap-2">
             <button
               onClick={() => onToggleCompare(property.id)}
-              className={`p-2 rounded-full border cursor-pointer transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-bold cursor-pointer transition-colors ${
                 isCompared
                   ? "bg-gold/10 border-gold text-gold"
-                  : "bg-surface border-border text-ink-muted hover:text-ink"
+                  : "bg-surface border-border text-ink hover:border-gold hover:text-gold"
               }`}
               title={isRtl ? "مقارنة العقار" : "Compare Property"}
             >
-              <Activity size={15} />
+              <GitCompare size={15} />
+              <span className="hidden sm:inline">{isRtl ? "قارن" : "Compare"}</span>
             </button>
             <button
               onClick={() => onToggleSave(property.id)}
-              className={`p-2 rounded-full border cursor-pointer transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-bold cursor-pointer transition-colors ${
                 isSaved
                   ? "bg-rose-50 border-rose-300 text-rose-500"
-                  : "bg-surface border-border text-ink-muted hover:text-ink"
+                  : "bg-surface border-border text-ink hover:border-gold hover:text-gold"
               }`}
               title={isRtl ? "حفظ العقار" : "Bookmark Property"}
             >
               <Bookmark size={15} fill={isSaved ? "currentColor" : "none"} />
+              <span className="hidden sm:inline">{isSaved ? (isRtl ? "محفوظ" : "Saved") : (isRtl ? "حفظ" : "Save")}</span>
             </button>
             <button
               onClick={handleShareViaWhatsApp}
-              className="p-2 rounded-full border bg-surface border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border bg-surface border-border text-xs font-bold text-ink hover:border-gold hover:text-gold cursor-pointer transition-colors"
               title={isRtl ? "مشاركة عبر واتساب" : "Share via WhatsApp"}
             >
               <MessageCircle size={15} />
+              <span className="hidden sm:inline">WhatsApp</span>
             </button>
             <button
               onClick={handleShare}
-              className="p-2 rounded-full border bg-surface border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full border bg-surface border-border text-xs font-bold text-ink hover:border-gold hover:text-gold cursor-pointer transition-colors"
               title={isRtl ? "نسخ رابط العقار" : "Copy Link"}
             >
               {copiedLink ? <Check size={15} className="text-emerald-600" /> : <Share2 size={15} />}
+              <span className="hidden sm:inline">{copiedLink ? (isRtl ? "تم النسخ" : "Copied") : (isRtl ? "نسخ الرابط" : "Copy link")}</span>
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-full border bg-surface border-border text-ink-muted hover:text-ink cursor-pointer transition-colors"
+              className="p-2 rounded-full border bg-surface border-border text-ink hover:border-gold hover:text-gold cursor-pointer transition-colors"
+              aria-label={isRtl ? "إغلاق" : "Close"}
+              title={isRtl ? "إغلاق" : "Close"}
             >
-              <Maximize2 size={15} className="rotate-45" />
+              <X size={15} />
             </button>
           </div>
         </div>
@@ -841,139 +856,16 @@ export default function PropertyDetailView({
             </div>
           </div>
 
+          {/* PHOTO GALLERY - full width, above the details (large hero + full-screen viewer) */}
+          <div className="px-4 sm:px-6 pt-4 sm:pt-6">
+            <PropertyGallery key={property.id} title={isRtl ? property.titleAr || property.title : property.title} isRtl={isRtl} groups={galleryGroups} />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 p-4 sm:p-6">
             
             {/* LEFT COLUMN: MULTIMEDIA & DEEP DETAILS */}
             <div className="lg:col-span-8 space-y-6">
               
-              {/* ADVANCED MEDIA GALLERY WITH TABS */}
-              <div className="bg-surface rounded-xl border border-border overflow-hidden shadow-sm relative">
-                
-                {/* Category Tags Overlay */}
-                <div className="absolute top-4 left-4 right-4 z-10 flex flex-wrap gap-1.5 justify-center sm:justify-start">
-                  {(["ALL", "INTERIOR", "EXTERIOR", "FLOOR_PLAN"] as const).map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => {
-                        setActiveCategory(cat);
-                        setActiveImageIndex(0);
-                        setView360(false);
-                      }}
-                      className={`px-3 py-1 text-[10px] font-bold rounded-full cursor-pointer transition-all ${
-                        activeCategory === cat && !view360
-                          ? "bg-gold text-gold-ink shadow-md"
-                          : "bg-white/90 backdrop-blur-xs text-ink border border-border hover:bg-surface"
-                      }`}
-                    >
-                      {isRtl
-                        ? cat === "ALL" ? "الكل" : cat === "INTERIOR" ? "الداخلية" : cat === "EXTERIOR" ? "الخارجية" : "مخطط الطابق"
-                        : cat === "ALL" ? "All Media" : cat === "INTERIOR" ? "Interior" : cat === "EXTERIOR" ? "Exterior" : "Floor Plans"
-                      }
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setView360(true)}
-                    className={`px-3 py-1 text-[10px] font-bold rounded-full cursor-pointer transition-all flex items-center gap-1 ${
-                      view360
-                        ? "bg-gold text-gold-ink shadow-md"
-                        : "bg-white/90 backdrop-blur-xs text-ink border border-border hover:bg-surface"
-                    }`}
-                  >
-                    <Compass size={11} className="animate-spin-slow" />
-                    <span>{isRtl ? "جولة افتراضية ٣٦٠°" : "360° Virtual Tour"}</span>
-                  </button>
-                </div>
-
-                {/* Main Media Preview Box */}
-                <div className="aspect-video w-full bg-slate-100 relative overflow-hidden group">
-                  {view360 ? (
-                    <div className="w-full h-full relative flex flex-col justify-center items-center bg-slate-900 text-white">
-                      {/* Panoramic Mock Image with drag rotation slider */}
-                      <img
-                        src={activeImage}
-                        alt="360 view"
-                        className="w-full h-full object-cover opacity-50 select-none pointer-events-none transition-transform duration-200"
-                        style={{ transform: `scale(1.1) translateX(${virtualPitch}px)` }}
-                      />
-                      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center space-y-3">
-                        <div className="p-3 bg-white/10 rounded-full border border-white/20 backdrop-blur-md">
-                          <Compass size={32} className="text-gold animate-pulse" />
-                        </div>
-                        <h4 className="text-sm font-bold tracking-wider">{isRtl ? "معاينة بانورامية تفاعلية للمشروع" : "Interactive VR Panorama Experience"}</h4>
-                        <p className="text-xs text-slate-300 max-w-md">{isRtl ? "استخدم شريط التمرير أدناه لتدوير المنظور واستعراض تفاصيل الغرف بالكامل" : "Move the controller below to simulate rotation inside the high-end premises"}</p>
-                        
-                        {/* Drag Simulator slider */}
-                        <div className="w-64 space-y-1">
-                          <input
-                            type="range"
-                            min="-200"
-                            max="200"
-                            value={virtualPitch}
-                            onChange={(e) => setVirtualPitch(Number(e.target.value))}
-                            className="w-full accent-gold cursor-ew-resize"
-                          />
-                          <div className="flex justify-between text-[10px] text-slate-400">
-                            <span>{isRtl ? "يسار" : "Rotate Left"}</span>
-                            <span>{isRtl ? "يمين" : "Rotate Right"}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <img
-                      src={activeImage}
-                      alt={property.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-102"
-                    />
-                  )}
-
-                  {/* Navigation Arrows */}
-                  {!view360 && currentImagesList.length > 1 && (
-                    <>
-                      <button
-                        onClick={() => setActiveImageIndex((prev) => (prev === 0 ? currentImagesList.length - 1 : prev - 1))}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/85 text-ink border border-border hover:bg-surface cursor-pointer"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button
-                        onClick={() => setActiveImageIndex((prev) => (prev === currentImagesList.length - 1 ? 0 : prev + 1))}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/85 text-ink border border-border hover:bg-surface cursor-pointer"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </>
-                  )}
-
-                  {/* Image counter indicator */}
-                  <div className="absolute bottom-4 right-4 bg-black/70 text-white text-[10px] px-2.5 py-1 rounded font-bold">
-                    {safeImageIndex + 1} / {currentImagesList.length}
-                  </div>
-                </div>
-
-                {/* Media Thumbnail strip */}
-                {currentImagesList.length > 1 && (
-                  <div className="p-3 bg-canvas border-t border-border overflow-x-auto flex gap-2 scrollbar-none">
-                    {currentImagesList.map((img, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          setView360(false);
-                          setActiveImageIndex(idx);
-                        }}
-                        className={`w-16 h-12 rounded overflow-hidden border-2 shrink-0 cursor-pointer transition-all ${
-                          activeImageIndex === idx && !view360
-                            ? "border-gold scale-102 shadow-sm"
-                            : "border-border opacity-75 hover:opacity-100"
-                        }`}
-                      >
-                        <img src={img} alt={`${isRtl ? "صورة" : "Photo"} ${idx + 1}`} loading="lazy" className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
               {/* DYNAMIC SMART MATCHING CARD */}
               <div className="bg-surface p-5 rounded-xl border border-gold/30 shadow-sm space-y-3 relative overflow-hidden">
                 <div className="absolute top-0 right-0 left-0 h-1 bg-gold"></div>

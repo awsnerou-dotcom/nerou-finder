@@ -69,7 +69,7 @@ export const compressImage = (file: File): Promise<File> => {
   });
 };
 
-// Derives the small (480px-wide) grid/card variant server.ts generates alongside every
+// Derives the mid-size (960px-wide) grid/card variant server.ts generates alongside every
 // watermarked upload (see generateThumbnail() in server.ts) from the full-size URL, so card
 // grids don't have to load full-resolution originals just to show them at a fraction of their
 // size. Only rewrites our own /assets/uploads/ paths - anything else (external fallback stock

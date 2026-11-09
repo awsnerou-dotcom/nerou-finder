@@ -7366,7 +7366,7 @@ async function applyWatermark(inputPath: string, outputPath: string) {
   }
 }
 
-// Generates a small (480px-wide) JPEG copy of an already-watermarked image, for grid/card
+// Generates a mid-size (960px-wide) JPEG copy of an already-watermarked image, for grid/card
 // views that render many properties at once - without this, a listing grid loads every
 // card's full-resolution original just to show it at a fraction of its size. Best-effort:
 // a thumbnail failure must never fail the upload/sync it's part of, so callers don't need to
@@ -7374,7 +7374,7 @@ async function applyWatermark(inputPath: string, outputPath: string) {
 // the full image kicks in (see getThumbnailUrl() in src/lib/images.ts).
 async function generateThumbnail(inputPath: string, outputPath: string): Promise<void> {
   try {
-    await sharp(inputPath).resize({ width: 480, withoutEnlargement: true }).jpeg({ quality: 72 }).toFile(outputPath);
+    await sharp(inputPath).resize({ width: 960, withoutEnlargement: true }).jpeg({ quality: 80, mozjpeg: true }).toFile(outputPath);
   } catch (err) {
     console.error(`Failed to generate thumbnail for ${inputPath}:`, err);
   }
