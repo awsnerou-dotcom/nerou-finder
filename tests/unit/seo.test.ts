@@ -167,8 +167,13 @@ describe("the HTML a crawler receives", () => {
     expect(out).toContain('href="/villas-for-sale-in-qatar"');
     expect(out).not.toContain("<b>");
     // the shell's generic no-JavaScript block is removed so the page has one H1
-    const withNoscript = shell.replace("</body>", "<noscript><h1>Generic</h1></noscript></body>");
-    expect(applyRootContent(withNoscript, body)).not.toContain("Generic");
+    // ...but the head's <noscript> (it loads the fonts for visitors without JavaScript) stays
+    const withNoscript = shell
+      .replace("</head>", '<noscript><link rel="stylesheet" href="https://fonts.example/x.css" /></noscript></head>')
+      .replace("</body>", "<noscript><h1>Generic</h1></noscript></body>");
+    const cleaned = applyRootContent(withNoscript, body);
+    expect(cleaned).not.toContain("Generic");
+    expect(cleaned).toContain("fonts.example/x.css");
   });
 
   it("keeps Arabic links on the Arabic version of the site", () => {

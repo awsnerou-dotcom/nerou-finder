@@ -83,10 +83,12 @@ export function applyHead(html: string, o: HeadOptions): string {
 
 /** Puts server-rendered content into the empty app root. The app replaces it when it loads. */
 export function applyRootContent(html: string, content: string): string {
-  return html
-    .replace(/<div id="root"><\/div>/, () => `<div id="root" data-ssr="1">${content}</div>`)
-    // the shell's generic English no-JavaScript text would add a second, unrelated H1 to this page
-    .replace(/\s*<noscript>[\s\S]*?<\/noscript>/, "");
+  const withRoot = html.replace(/<div id="root"><\/div>/, () => `<div id="root" data-ssr="1">${content}</div>`);
+  // The shell's generic English no-JavaScript text (in the body) would add a second, unrelated H1 to
+  // this page. Only the body's is removed: the head's <noscript> loads the fonts for no-JS visitors.
+  const at = withRoot.indexOf("<body");
+  if (at < 0) return withRoot;
+  return withRoot.slice(0, at) + withRoot.slice(at).replace(/\s*<noscript>[\s\S]*?<\/noscript>/, "");
 }
 
 // ---------------------------------------------------------------------------------------------

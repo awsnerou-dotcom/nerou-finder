@@ -44,7 +44,10 @@
     <!-- Only the four weights src/ actually uses. Tajawal has no 600. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=El+Messiri:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" />
+    <!-- Loaded without blocking the first paint (a blocking stylesheet from another site cost over a
+         second on a phone): the page paints in the fallback font, then the real fonts swap in. -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=El+Messiri:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=El+Messiri:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet" /></noscript>
 
     <!-- Favicon and Theme Colors -->
     <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png" />
