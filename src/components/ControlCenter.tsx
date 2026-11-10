@@ -80,6 +80,7 @@ import { buildDailyCountSeries, isThisMonth } from "../lib/dashboardMetrics.js";
 import DocumentViewer from "./DocumentViewer.js";
 import ProspectPipeline from "./ProspectPipeline.js";
 import SeoCenter from "./SeoCenter.js";
+import ShowcaseAdmin from "./ShowcaseAdmin.js";
 import ApplicantCard from "./ApplicantCard.js";
 import type { SubscriptionForm } from "./ApplicantCard.js";
 import { buildApplicantCards, matchesApplicantSearch } from "../lib/applicants.js";
@@ -117,6 +118,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     | "partner_feeds"
     | "sales_pipeline"
     | "seo"
+    | "showcase"
   >("overview");
 
   // Collapsible sidebar navigation: which grouped sections are expanded
@@ -1725,7 +1727,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
         { id: "help_articles", label: { en: "Help Desk", ar: "المساعدة" } },
         { id: "careers", label: { en: "Careers CMS", ar: "الوظائف والتوظيف" } },
         { id: "press", label: { en: "Press CMS", ar: "الصحافة والإعلام" } },
-        { id: "partnerships", label: { en: "Partner Requests", ar: "شراكات الشركات" } }
+        { id: "partnerships", label: { en: "Partner Requests", ar: "شراكات الشركات" } },
+        { id: "showcase", label: { en: "Subscribers Showcase", ar: "عرض المشتركين" } }
       ]
     },
     {
@@ -2882,6 +2885,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           {activeSubTab === "sales_pipeline" && <ProspectPipeline isRtl={isRtl} currentUserId={currentUser.id} />}
 
           {activeSubTab === "seo" && <SeoCenter isRtl={isRtl} />}
+          {activeSubTab === "showcase" && <ShowcaseAdmin isRtl={isRtl} />}
 
           {/* VIEWING REQUESTS SUB-TAB (FIX 7) */}
           {activeSubTab === "viewing_requests" && (

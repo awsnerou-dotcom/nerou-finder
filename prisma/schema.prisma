@@ -238,3 +238,13 @@ model Prospect {
   @@index([ownerId])
   @@index([stage])
 }
+
+// A company shown in the public "subscribers" section (see ShowcaseEntry in src/types.ts).
+model ShowcaseEntry {
+  id        String  @id
+  published Boolean
+  sortOrder Int
+  data      String
+
+  @@index([published])
+}

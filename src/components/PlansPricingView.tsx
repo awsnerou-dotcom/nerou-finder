@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Check, X, ShieldCheck, Zap, Award, CheckCircle2, ChevronRight, HelpCircle } from "lucide-react";
 import { SubscriptionPlan } from "../types.js";
 import SalesDeskShowcase from "./SalesDeskShowcase.js";
+import SubscribersShowcase from "./SubscribersShowcase.js";
 
 interface PlansPricingViewProps {
   isRtl: boolean;
@@ -291,6 +292,11 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
       {/* 2b. Sales Desk - included in every plan */}
       <div className="max-w-7xl mx-auto">
         <SalesDeskShowcase isRtl={isRtl} onStart={() => onSelectPlan("plan-trial")} />
+      </div>
+
+      {/* 2c. Who has already subscribed (shown only when a platform admin has added companies) */}
+      <div className="max-w-7xl mx-auto">
+        <SubscribersShowcase isRtl={isRtl} />
       </div>
 
       {/* 3. Deep-Dive Detailed Features Comparison Table */}

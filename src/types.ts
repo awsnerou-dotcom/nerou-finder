@@ -1098,3 +1098,28 @@ export interface Prospect {
   lastReminderAt?: string;
   reminderCount?: number; // stale-prospect nudges sent since the last activity
 }
+
+// ---------------------------------------------------------------------------------------------
+// Subscribers showcase: the real-estate companies that subscribed to the platform, shown to visitors
+// to build trust. Curated by a platform admin (each entry is added with the company's agreement) -
+// a card with the company's logo, a group photo taken with them, and a short description.
+// ---------------------------------------------------------------------------------------------
+export type ShowcaseKind = "AGENCY" | "BROKERAGE" | "DEVELOPER" | "OTHER";
+
+export interface ShowcaseEntry {
+  id: string;
+  name: string;
+  nameAr?: string;
+  kind: ShowcaseKind;
+  description: string;
+  descriptionAr?: string;
+  logoUrl?: string;
+  photoUrl?: string; // the group photo with the company
+  website?: string;
+  orgId?: string; // the company's account on the platform: adds a verified badge, its listing count and a profile link
+  since?: string; // YYYY-MM the company subscribed
+  published: boolean;
+  sortOrder: number; // smaller shows first
+  createdAt: string;
+  updatedAt: string;
+}

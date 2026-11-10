@@ -80,6 +80,7 @@ import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../
 import { homeTitle, listingTitle } from "../lib/pageTitle.js";
 import { LandingIntro, LandingFaq } from "./LandingSeoContent.js";
 import CardImageSlideshow from "./CardImageSlideshow.js";
+import SubscribersShowcase from "./SubscribersShowcase.js";
 
 // The page path without the /ar language prefix: /ar/properties/x and /properties/x are the same page.
 const appPath = () => stripLang(window.location.pathname).path;
@@ -1840,6 +1841,17 @@ export default function VisitorExperience({
 
       {landingPathRef.current && currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && !aiSearchActive && (
         <LandingFaq path={landingPathRef.current} isRtl={isRtl} />
+      )}
+
+      {/* The companies that subscribed (added by a platform admin): trust for the visitor. Hidden when there are none. */}
+      {currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && !aiSearchActive && (
+        <SubscribersShowcase
+          isRtl={isRtl}
+          onOpenCompany={(orgId) => {
+            const org = organizations.find(o => o.id === orgId);
+            if (org) setSelectedOrgProfile(org);
+          }}
+        />
       )}
 
       {/* 5. Detailed Property Overlay Modal Drawer */}

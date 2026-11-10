@@ -37,6 +37,7 @@ import {
   Prospect,
   ProspectActivity,
   ProspectStage,
+  ShowcaseEntry,
   RenewalStatus,
   ViewingRequest,
   SupportTicket,
@@ -111,6 +112,7 @@ import {
   ProspectDue,
   ProspectInput
 } from "./src/lib/prospects.js";
+import { validateShowcaseInput, sortShowcase } from "./src/lib/showcase.js";
 import {
   Lang as SeoLang,
   Landing,
@@ -9204,6 +9206,115 @@ const indexNowKey = () => crypto.createHmac("sha256", JWT_SECRET).update("indexn
 app.get(/^\/([a-f0-9]{32})\.txt$/, (req, res, next) => {
   if (req.params[0] !== indexNowKey()) return next();
   res.type("text/plain").send(indexNowKey());
+});
+
+// ---------------------------------------------------------------------------------------------
+// Subscribers showcase: the companies that subscribed, shown to visitors to build trust.
+// A platform admin adds each one (with the company's agreement); only published entries are public.
+// ---------------------------------------------------------------------------------------------
+function publicShowcaseEntry(db: DatabaseState, e: ShowcaseEntry) {
+  // a link to the company's account only counts when that account is verified
+  const org = e.orgId ? db.organizations.find(o => o.id === e.orgId) : undefined;
+  const verified = !!org && org.verificationStatus === VerificationStatus.APPROVED;
+  return {
+    id: e.id,
+    name: e.name,
+    nameAr: e.nameAr,
+    kind: e.kind,
+    description: e.description,
+    descriptionAr: e.descriptionAr,
+    logoUrl: e.logoUrl,
+    photoUrl: e.photoUrl,
+    website: e.website,
+    since: e.since,
+    verified,
+    orgId: verified ? e.orgId : undefined,
+    listingCount: verified ? db.properties.filter(p => p.orgId === e.orgId && isPublishedListing(p)).length : 0
+  };
+}
+
+app.get("/api/showcase", (req, res) => {
+  const db = readDb();
+  const entries = sortShowcase((db.showcase || []).filter(e => e.published));
+  res.json({ entries: entries.map(e => publicShowcaseEntry(db, e)) });
+});
+
+app.get("/api/admin/showcase", (req, res) => {
+  const db = readDb();
+  res.json({
+    entries: sortShowcase(db.showcase || []),
+    organizations: db.organizations.map(o => ({ id: o.id, name: o.name, type: o.type, verificationStatus: o.verificationStatus }))
+  });
+});
+
+function checkShowcaseOrg(db: DatabaseState, orgId?: string): string | null {
+  return orgId && !db.organizations.some(o => o.id === orgId) ? "That company has no account on the platform." : null;
+}
+
+app.post("/api/admin/showcase", (req, res) => {
+  const actor = getAuditActor(req);
+  const checked = validateShowcaseInput(req.body || {});
+  if (checked.ok === false) return res.status(400).json({ error: checked.error });
+  const db = readDb();
+  const orgError = checkShowcaseOrg(db, checked.value.orgId);
+  if (orgError) return res.status(400).json({ error: orgError });
+  if (!db.showcase) db.showcase = [];
+  const now = new Date().toISOString();
+  const entry: ShowcaseEntry = {
+    id: `showcase-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    ...checked.value,
+    sortOrder: db.showcase.reduce((m, e) => Math.max(m, e.sortOrder), 0) + 1, // new ones go last
+    createdAt: now,
+    updatedAt: now
+  };
+  db.showcase.push(entry);
+  writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "CREATE_SHOWCASE", entry.id, "ShowcaseEntry", { name: entry.name, published: entry.published });
+  res.status(201).json({ entry });
+});
+
+app.patch("/api/admin/showcase/:id", (req, res) => {
+  const actor = getAuditActor(req);
+  const db = readDb();
+  const entry = (db.showcase || []).find(e => e.id === req.params.id);
+  if (!entry) return res.status(404).json({ error: "Entry not found." });
+  // validate the merged record so a half edit can never leave it invalid
+  const checked = validateShowcaseInput({ ...entry, ...(req.body || {}) });
+  if (checked.ok === false) return res.status(400).json({ error: checked.error });
+  const orgError = checkShowcaseOrg(db, checked.value.orgId);
+  if (orgError) return res.status(400).json({ error: orgError });
+  Object.assign(entry, checked.value, { updatedAt: new Date().toISOString() });
+  for (const k of ["nameAr", "descriptionAr", "logoUrl", "photoUrl", "website", "orgId", "since"] as const) {
+    if (checked.value[k] === undefined) delete entry[k];
+  }
+  writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "UPDATE_SHOWCASE", entry.id, "ShowcaseEntry", { published: entry.published });
+  res.json({ entry });
+});
+
+app.post("/api/admin/showcase/:id/move", (req, res) => {
+  const db = readDb();
+  const list = sortShowcase(db.showcase || []);
+  const i = list.findIndex(e => e.id === req.params.id);
+  if (i === -1) return res.status(404).json({ error: "Entry not found." });
+  const dir = (req.body || {}).direction;
+  const j = dir === "up" ? i - 1 : dir === "down" ? i + 1 : -1;
+  if (j < 0 || j >= list.length) return res.json({ entries: list });
+  [list[i], list[j]] = [list[j], list[i]];
+  list.forEach((e, idx) => { e.sortOrder = idx + 1; }); // renumber so the order is always explicit
+  writeDb(db);
+  res.json({ entries: sortShowcase(db.showcase || []) });
+});
+
+app.delete("/api/admin/showcase/:id", (req, res) => {
+  const actor = getAuditActor(req);
+  const db = readDb();
+  const idx = (db.showcase || []).findIndex(e => e.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: "Entry not found." });
+  const [gone] = db.showcase!.splice(idx, 1);
+  writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "DELETE_SHOWCASE", gone.id, "ShowcaseEntry", { name: gone.name });
+  res.json({ success: true });
 });
 
 // The text of a landing page for the app to show people (heading, intro, FAQ, related searches) - the
