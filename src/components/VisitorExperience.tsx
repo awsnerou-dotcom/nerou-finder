@@ -22,7 +22,6 @@ import {
 import { useCurrency } from "../currencyContext.js";
 import { trackEvent, trackPageView } from "../lib/analytics.js";
 import { getThumbnailUrl } from "../lib/image.js";
-import DirectorySearch from "./DirectorySearch.js";
 import FeaturedAgencies from "./FeaturedAgencies.js";
 import {
   Search,
@@ -56,22 +55,26 @@ import {
   List,
   Eye
 } from "lucide-react";
-import PropertyDetailView from "./PropertyDetailView.js";
-import PropertyCompareView from "./PropertyCompareView.js";
-import InteractiveMap from "./InteractiveMap.js";
-import ProfileReviewsSection from "./ProfileReviewsSection.js";
-import MarketPriceIndex from "./MarketPriceIndex.js";
-import AreaGuidesView from "./AreaGuidesView.js";
-import AreaGuideView from "./AreaGuideView.js";
 
 // Enterprise & Public Sub-Pages
-import ProjectsView from "./ProjectsView.js";
-import HelpCenterView from "./HelpCenterView.js";
-import CareersView from "./CareersView.js";
-import SupportTicketsView from "./SupportTicketsView.js";
-import PressView from "./PressView.js";
-import PartnershipsView from "./PartnershipsView.js";
-import PlansPricingView from "./PlansPricingView.js";import PhotoHero from "./PhotoHero.js";
+import PhotoHero from "./PhotoHero.js";
+import {
+  DirectorySearch,
+  PropertyDetailView,
+  PropertyCompareView,
+  InteractiveMap,
+  ProfileReviewsSection,
+  MarketPriceIndex,
+  AreaGuidesView,
+  AreaGuideView,
+  ProjectsView,
+  HelpCenterView,
+  CareersView,
+  SupportTicketsView,
+  PressView,
+  PartnershipsView,
+  PlansPricingView
+} from "./lazyViews.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
 import { homeTitle, listingTitle } from "../lib/pageTitle.js";

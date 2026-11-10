@@ -195,7 +195,19 @@ app.use("/assets", (req, res, next) => {
   }
   next();
 });
-app.use("/assets", express.static(path.join(process.cwd(), "assets"), { dotfiles: "ignore" }));
+// Browser caching for the site's images and agents' listing photos. They used to be sent with
+// "max-age=0", so every visit re-checked every photo. Listing photos get a new file name per upload,
+// so a week is safe; the site's own images (hero photos, icons) keep a name when they are replaced,
+// so they get a day.
+app.use("/assets", express.static(path.join(process.cwd(), "assets"), {
+  dotfiles: "ignore",
+  setHeaders: (res, filePath) => {
+    const isUpload = filePath.split(path.sep).includes("uploads");
+    res.setHeader("Cache-Control", isUpload ? "public, max-age=604800" : "public, max-age=86400");
+    // this Express version does not know .avif; with "nosniff" a wrong type makes browsers refuse the image
+    if (filePath.endsWith(".avif")) res.setHeader("Content-Type", "image/avif");
+  }
+}));
 
 // Fail fast rather than silently signing every session token with a public, guessable
 // string - a missing JWT_SECRET in production would otherwise let anyone forge a valid
@@ -8970,6 +8982,12 @@ function seoPageHtml(db: DatabaseState, pagePath: string, lang: SeoLang, origin:
     { path: "/legal", label: SEO_PAGES["/legal"][lang].h1 }
   ];
   if (pagePath === "/") {
+    // The first hero photo is what the visitor sees first (and what Google times): start fetching it
+    // while the page's code is still downloading. Phone and desktop get their own copy.
+    const hero = "/assets/images/hero-lusail-towers";
+    html = html.replace("</head>", () =>
+      `    <link rel="preload" as="image" href="${hero}-m.avif" type="image/avif" media="(max-width: 600px)" fetchpriority="high" />\n` +
+      `    <link rel="preload" as="image" href="${hero}.avif" type="image/avif" media="(min-width: 601px)" fetchpriority="high" />\n  </head>`);
     html = applyRootContent(html, homeBodyHtml({
       lang, h1: t.h1, intro: t.intro,
       popular: seoPopularSearches(db, lang),
