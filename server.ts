@@ -33,6 +33,8 @@ import {
   LegalDocument,
   HelpArticle,
   Deal,
+  Task,
+  RenewalStatus,
   ViewingRequest,
   SupportTicket,
   JobListing,
@@ -83,7 +85,16 @@ import {
   ClientInput,
   validateClientInput,
   phoneKey,
-  LEAD_SOURCE_TEXT
+  LEAD_SOURCE_TEXT,
+  tasksDueForReminder,
+  renewalsDueForReminder,
+  taskReminderTime,
+  qatarDueAt,
+  qatarTime,
+  snoozeTarget,
+  TaskDue,
+  RenewalDue,
+  SnoozeKind
 } from "./src/lib/crm.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
@@ -4025,7 +4036,13 @@ app.get("/api/crm/overview", authMiddleware, (req, res) => {
     canEditDeals: actor.role === UserRole.AGENT || !!orgId,
     team,
     properties,
-    reminderEmail: me?.email || ""
+    reminderEmail: me?.email || "",
+    tasks: scopedTasks(db, actor).map(t => ({
+      ...t,
+      agentName: agentName(t.agentId),
+      leadName: t.leadId ? db.leads.find(l => l.id === t.leadId)?.visitorName || "" : "",
+      dealTitle: t.dealId ? (db.deals || []).find(d => d.id === t.dealId)?.propertyTitle || "" : ""
+    }))
   });
 });
 
@@ -4396,6 +4413,21 @@ app.post("/api/deals", authMiddleware, (req, res) => {
   const closedDate = b.closedDate === undefined || b.closedDate === "" ? qatarDate(Date.now()) : b.closedDate;
   if (!isValidDateString(closedDate)) return res.status(400).json({ error: "closedDate must be a date (YYYY-MM-DD)." });
 
+  // A rental can carry the date its contract ends: that is what the renewal reminders count from.
+  let contractEndDate: string | undefined;
+  if (b.contractEndDate !== undefined && b.contractEndDate !== null && b.contractEndDate !== "") {
+    if (dealType !== "RENT") return res.status(400).json({ error: "Only a rental has a contract end date." });
+    if (!isValidDateString(b.contractEndDate)) return res.status(400).json({ error: "contractEndDate must be a date (YYYY-MM-DD)." });
+    if (b.contractEndDate <= closedDate) return res.status(400).json({ error: "The contract must end after the closing date." });
+    contractEndDate = b.contractEndDate;
+  }
+  // The deal this one renews (the old contract is then marked renewed and stops reminding).
+  let renewedDeal: Deal | undefined;
+  if (b.renewsDealId !== undefined && b.renewsDealId !== null && b.renewsDealId !== "") {
+    renewedDeal = (db.deals || []).find(d => d.id === b.renewsDealId);
+    if (!renewedDeal || !canManageDeal(db, actor, renewedDeal)) return res.status(404).json({ error: "The deal to renew was not found." });
+  }
+
   // Linked to a lead: fill in client/listing from it, and mark it won.
   let lead: Lead | undefined;
   if (b.leadId !== undefined && b.leadId !== null && b.leadId !== "") {
@@ -4444,10 +4476,18 @@ app.post("/api/deals", authMiddleware, (req, res) => {
     closedDate,
     notes: typeof b.notes === "string" && b.notes.trim() ? b.notes.trim().slice(0, 1000) : undefined,
     createdDate: now,
-    updatedDate: now
+    updatedDate: now,
+    contractEndDate,
+    renewalStatus: contractEndDate ? "PENDING" : undefined,
+    renewalRemindersSent: contractEndDate ? [] : undefined,
+    renewsDealId: renewedDeal?.id
   };
   if (!db.deals) db.deals = [];
   db.deals.unshift(deal);
+  if (renewedDeal) {
+    renewedDeal.renewalStatus = "RENEWED";
+    renewedDeal.updatedDate = now;
+  }
   if (lead && lead.status !== LeadStatus.CONVERTED) applyLeadStatus(lead, LeadStatus.CONVERTED, "Deal recorded");
   writeDb(db);
   logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "CREATE_DEAL", deal.id, "Deal", { dealType, dealValue, commissionAmount });
@@ -4464,6 +4504,11 @@ app.patch("/api/deals/:id", authMiddleware, (req, res) => {
   if (b.dealType !== undefined) {
     if (b.dealType !== "SALE" && b.dealType !== "RENT") return res.status(400).json({ error: "dealType must be SALE or RENT." });
     deal.dealType = b.dealType;
+    if (b.dealType === "SALE") { // a sale has no contract to renew
+      deal.contractEndDate = undefined;
+      deal.renewalStatus = undefined;
+      deal.renewalRemindersSent = undefined;
+    }
   }
   if (b.dealValue !== undefined) {
     const v = readMoney(b.dealValue, 1e11);
@@ -4495,6 +4540,25 @@ app.patch("/api/deals/:id", authMiddleware, (req, res) => {
     deal.commissionStatus = b.commissionStatus;
     deal.commissionReceivedDate = b.commissionStatus === "RECEIVED" ? (deal.commissionReceivedDate || qatarDate(Date.now())) : undefined;
   }
+  if (b.contractEndDate !== undefined) {
+    if (b.contractEndDate === null || b.contractEndDate === "") {
+      deal.contractEndDate = undefined;
+      deal.renewalStatus = undefined;
+      deal.renewalRemindersSent = undefined;
+    } else {
+      if (deal.dealType !== "RENT") return res.status(400).json({ error: "Only a rental has a contract end date." });
+      if (!isValidDateString(b.contractEndDate)) return res.status(400).json({ error: "contractEndDate must be a date (YYYY-MM-DD)." });
+      if (b.contractEndDate <= deal.closedDate) return res.status(400).json({ error: "The contract must end after the closing date." });
+      if (b.contractEndDate !== deal.contractEndDate) deal.renewalRemindersSent = []; // a new end date re-arms the reminders
+      deal.contractEndDate = b.contractEndDate;
+      deal.renewalStatus = deal.renewalStatus || "PENDING";
+    }
+  }
+  if (b.renewalStatus !== undefined) {
+    if (!["PENDING", "RENEWED", "NOT_RENEWING"].includes(String(b.renewalStatus))) return res.status(400).json({ error: "renewalStatus must be PENDING, RENEWED or NOT_RENEWING." });
+    if (!deal.contractEndDate) return res.status(400).json({ error: "This deal has no contract end date." });
+    deal.renewalStatus = b.renewalStatus as RenewalStatus;
+  }
   if (b.propertyTitle !== undefined) deal.propertyTitle = String(b.propertyTitle).trim().slice(0, 200) || deal.propertyTitle;
   if (b.clientName !== undefined) deal.clientName = String(b.clientName).trim().slice(0, 200) || deal.clientName;
   if (b.notes !== undefined) deal.notes = typeof b.notes === "string" && b.notes.trim() ? b.notes.trim().slice(0, 1000) : undefined;
@@ -4512,6 +4576,139 @@ app.delete("/api/deals/:id", authMiddleware, (req, res) => {
   const [removed] = db.deals!.splice(idx, 1);
   writeDb(db);
   logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "DELETE_DEAL", removed.id, "Deal", { dealValue: removed.dealValue });
+  res.json({ success: true });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Tasks: to-dos the agent schedules for themselves, reminded by email
+// ---------------------------------------------------------------------------------------------
+// Anything that is not tied to a client's follow-up date: call an owner, collect a cheque, shoot a
+// listing, renew a licence. A task has a Qatar date and time, can be linked to a client or a deal,
+// can be snoozed ("remind me later"), and is emailed in the same digest as the follow-ups.
+const TASK_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const SNOOZE_KINDS: SnoozeKind[] = ["1h", "tomorrow", "3d", "week"];
+
+function scopedTasks(db: CrmDb, actor: CrmActor): Task[] {
+  const tasks = db.tasks || [];
+  if (isPlatformAdminRole(actor.role)) return []; // an agent's to-do list is theirs alone
+  const orgId = adminOrgIdOf(db, actor);
+  return orgId ? tasks.filter(t => t.orgId === orgId) : tasks.filter(t => t.agentId === actor.id);
+}
+
+function canManageTask(db: CrmDb, actor: CrmActor, task: Task): boolean {
+  if (task.agentId === actor.id) return true;
+  const orgId = adminOrgIdOf(db, actor);
+  return !!orgId && task.orgId === orgId;
+}
+
+app.post("/api/tasks", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const b = req.body as Record<string, unknown>;
+  const owner = resolveClientOwner(db, actor, b.agentId);
+  if ("error" in owner) return res.status(owner.status).json({ error: owner.error });
+
+  const title = typeof b.title === "string" ? b.title.replace(/\s+/g, " ").trim().slice(0, 200) : "";
+  if (!title) return res.status(400).json({ error: "A task needs a title." });
+  if (!isValidDateString(b.dueDate)) return res.status(400).json({ error: "dueDate must be a date (YYYY-MM-DD)." });
+  const dueTime = b.dueTime === undefined || b.dueTime === null || b.dueTime === "" ? "09:00" : b.dueTime;
+  if (typeof dueTime !== "string" || !TASK_TIME.test(dueTime)) return res.status(400).json({ error: "dueTime must be a time (HH:MM)." });
+
+  let leadId: string | undefined;
+  if (b.leadId !== undefined && b.leadId !== null && b.leadId !== "") {
+    const lead = db.leads.find(l => l.id === b.leadId);
+    if (!lead || !canManageLead(db, actor, lead)) return res.status(404).json({ error: "Client not found" });
+    leadId = lead.id;
+  }
+  let dealId: string | undefined;
+  if (b.dealId !== undefined && b.dealId !== null && b.dealId !== "") {
+    const deal = (db.deals || []).find(d => d.id === b.dealId);
+    if (!deal || !canManageDeal(db, actor, deal)) return res.status(404).json({ error: "Deal not found" });
+    dealId = deal.id;
+  }
+
+  const now = new Date().toISOString();
+  const task: Task = {
+    id: `task-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    agentId: owner.agentId,
+    orgId: owner.orgId,
+    title,
+    notes: typeof b.notes === "string" && b.notes.trim() ? b.notes.trim().slice(0, 1000) : undefined,
+    dueAt: qatarDueAt(b.dueDate, dueTime),
+    leadId,
+    dealId,
+    status: "OPEN",
+    createdDate: now,
+    updatedDate: now
+  };
+  if (!db.tasks) db.tasks = [];
+  db.tasks.unshift(task);
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "CREATE_TASK", task.id, "Task", {});
+  res.json({ success: true, task });
+});
+
+app.patch("/api/tasks/:id", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const task = (db.tasks || []).find(t => t.id === req.params.id);
+  if (!task || !canManageTask(db, actor, task)) return res.status(404).json({ error: "Task not found" }); // strangers get 404 too
+  const b = req.body as Record<string, unknown>;
+  const now = Date.now();
+
+  if (b.title !== undefined) {
+    const title = typeof b.title === "string" ? b.title.replace(/\s+/g, " ").trim().slice(0, 200) : "";
+    if (!title) return res.status(400).json({ error: "A task needs a title." });
+    task.title = title;
+  }
+  if (b.notes !== undefined) task.notes = typeof b.notes === "string" && b.notes.trim() ? b.notes.trim().slice(0, 1000) : undefined;
+
+  // A new date or time starts the reminder cycle again (and cancels any snooze).
+  if (b.dueDate !== undefined || b.dueTime !== undefined) {
+    const date = b.dueDate !== undefined ? b.dueDate : qatarDate(Date.parse(task.dueAt));
+    const time = b.dueTime !== undefined ? b.dueTime : qatarTime(Date.parse(task.dueAt));
+    if (!isValidDateString(date)) return res.status(400).json({ error: "dueDate must be a date (YYYY-MM-DD)." });
+    if (typeof time !== "string" || !TASK_TIME.test(time)) return res.status(400).json({ error: "dueTime must be a time (HH:MM)." });
+    task.dueAt = qatarDueAt(date, time);
+    task.snoozedUntil = undefined;
+    task.lastReminderAt = undefined;
+    task.reminderCount = 0;
+  }
+
+  if (b.snooze !== undefined) {
+    if (!SNOOZE_KINDS.includes(b.snooze as SnoozeKind)) return res.status(400).json({ error: "snooze must be 1h, tomorrow, 3d or week." });
+    if (task.status !== "OPEN") return res.status(400).json({ error: "Only an open task can be snoozed." });
+    task.snoozedUntil = snoozeTarget(b.snooze as SnoozeKind, now);
+    task.reminderCount = 0;
+  }
+
+  if (b.status !== undefined) {
+    if (b.status !== "OPEN" && b.status !== "DONE") return res.status(400).json({ error: "status must be OPEN or DONE." });
+    if (b.status === "DONE" && task.status !== "DONE") {
+      task.status = "DONE";
+      task.doneAt = new Date(now).toISOString();
+    } else if (b.status === "OPEN" && task.status !== "OPEN") {
+      task.status = "OPEN";
+      task.doneAt = undefined;
+      task.snoozedUntil = undefined;
+      task.lastReminderAt = undefined;
+      task.reminderCount = 0;
+    }
+  }
+  task.updatedDate = new Date(now).toISOString();
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "UPDATE_TASK", task.id, "Task", { status: task.status });
+  res.json({ success: true, task });
+});
+
+app.delete("/api/tasks/:id", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = (req as AuthenticatedRequest).user!;
+  const idx = (db.tasks || []).findIndex(t => t.id === req.params.id);
+  if (idx === -1 || !canManageTask(db, actor, db.tasks![idx])) return res.status(404).json({ error: "Task not found" });
+  const [removed] = db.tasks!.splice(idx, 1);
+  writeDb(db);
+  logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "DELETE_TASK", removed.id, "Task", {});
   res.json({ success: true });
 });
 
@@ -4559,11 +4756,12 @@ app.get("/api/crm/export", authMiddleware, (req, res) => {
   } else if (kind === "deals") {
     headers = ["Closed / تاريخ الإغلاق", "Property / العقار", "Client / العميل", "Type / النوع", "Deal value (QAR) / قيمة الصفقة",
       "Commission % / نسبة العمولة", "Commission (QAR) / العمولة", "Commission status / حالة العمولة", "Received on / تاريخ الاستلام",
-      "Status / الحالة", "Agent / الوكيل", "Notes / ملاحظات"];
+      "Status / الحالة", "Agent / الوكيل", "Contract ends / نهاية العقد", "Renewal / التجديد", "Notes / ملاحظات"];
     rows = scopedDeals(db, actor).filter(d => inRange(d.closedDate)).map(d => [
       d.closedDate, d.propertyTitle, d.clientName, d.dealType === "SALE" ? "Sale / بيع" : "Rent / إيجار", d.dealValue,
       d.commissionRate ?? "", d.commissionAmount, d.commissionStatus === "RECEIVED" ? "Received / مستلمة" : "Expected / متوقعة",
-      d.commissionReceivedDate || "", d.status === "CANCELLED" ? "Cancelled / ملغاة" : "Closed / مغلقة", agentName(d.agentId), d.notes
+      d.commissionReceivedDate || "", d.status === "CANCELLED" ? "Cancelled / ملغاة" : "Closed / مغلقة", agentName(d.agentId), d.contractEndDate || "",
+      d.contractEndDate ? ({ PENDING: "Pending / قيد المتابعة", RENEWED: "Renewed / تم التجديد", NOT_RENEWING: "Not renewing / لن يجدد" } as Record<string, string>)[d.renewalStatus || "PENDING"] : "", d.notes
     ]);
   } else if (kind === "viewings") {
     headers = ["Date / التاريخ", "Time / الوقت", "Property / العقار", "Client / العميل", "Phone / الهاتف", "Status / الحالة", "Agent / الوكيل", "Notes / ملاحظات"];
@@ -4571,6 +4769,12 @@ app.get("/api/crm/export", authMiddleware, (req, res) => {
       const lead = db.leads.find(l => l.id === v.leadId);
       return [v.preferredDate, v.preferredTimeSlot, titleOf(v.propertyId), lead?.visitorName, lead?.visitorPhone, v.status, agentName(v.agentId), v.notes];
     });
+  } else if (kind === "tasks") {
+    headers = ["Due / الموعد", "Task / المهمة", "Status / الحالة", "Client / العميل", "Notes / ملاحظات", "Agent / الوكيل"];
+    rows = scopedTasks(db, actor).filter(t => inRange(qatarDate(Date.parse(t.dueAt)))).map(t => [
+      `${qatarDate(Date.parse(t.dueAt))} ${qatarTime(Date.parse(t.dueAt))}`, t.title, t.status === "DONE" ? "Done / تمت" : "Open / مفتوحة",
+      t.leadId ? db.leads.find(l => l.id === t.leadId)?.visitorName : "", t.notes, agentName(t.agentId)
+    ]);
   } else if (kind === "monthly") {
     headers = ["Month / الشهر", "Deals closed / الصفقات", "Sales value (QAR) / قيمة المبيعات", "Rentals value (QAR) / قيمة الإيجارات",
       "Commission total (QAR) / إجمالي العمولة", "Received (QAR) / المستلمة", "Expected (QAR) / المتوقعة"];
@@ -4578,7 +4782,7 @@ app.get("/api/crm/export", authMiddleware, (req, res) => {
       r.month, r.deals, r.saleValue, r.rentValue, r.commissionTotal, r.commissionReceived, r.commissionExpected
     ]);
   } else {
-    return res.status(400).json({ error: "kind must be leads, deals, viewings or monthly." });
+    return res.status(400).json({ error: "kind must be leads, deals, viewings, tasks or monthly." });
   }
 
   logAudit(actor.id, (req as AuthenticatedRequest).user!.fullName, actor.role, "EXPORT_CRM", kind, "Export", { kind, from, to, rows: rows.length });
@@ -4599,62 +4803,128 @@ const REMINDER_REASON_TEXT: Record<ReminderReason, string> = {
 };
 
 /**
- * Hourly sweep behind the follow-up and viewing reminder emails. One email per agent listing
- * everything due (not one per client), at most once per lead per reason (see leadsDueForReminder),
+ * Hourly sweep behind the follow-up, task, lease-renewal and viewing reminder emails. One email
+ * per agent listing everything due (not one per client), at most once per item per reason (see
+ * leadsDueForReminder / tasksDueForReminder / renewalsDueForReminder),
  * nothing overnight (Qatar time), and nothing to agents who turned reminders off. `now` is a
  * parameter so tests can run it at any moment, and `onlyAgentIds` limits a run to some agents.
  */
 export function runCrmReminders(now: number = Date.now(), opts: { ignoreQuietHours?: boolean; onlyAgentIds?: string[] } = {}) {
-  const result = { leads: 0, viewings: 0, emails: 0 };
+  const result = { leads: 0, tasks: 0, renewals: 0, viewings: 0, emails: 0 };
   if (!opts.ignoreQuietHours && isQuietHourInQatar(now)) return result;
   const db = readDb();
   const nowIso = new Date(now).toISOString();
   const appUrl = process.env.APP_URL || "https://neroufinder.com";
   let changed = false;
 
-  // 1) Leads
-  const byAgent = new Map<string, DueLead[]>();
+  // 1) Everything due for an agent - clients to follow up, scheduled tasks, lease renewals -
+  //    goes into ONE email and one in-app notice per category.
+  type Bundle = { leads: DueLead[]; tasks: TaskDue[]; renewals: RenewalDue[] };
+  const bundles = new Map<string, Bundle>();
+  const bundleOf = (agentId: string): Bundle => {
+    let b = bundles.get(agentId);
+    if (!b) { b = { leads: [], tasks: [], renewals: [] }; bundles.set(agentId, b); }
+    return b;
+  };
   const inScope = (agentId?: string) => !!agentId && (!opts.onlyAgentIds || opts.onlyAgentIds.includes(agentId));
-  for (const due of leadsDueForReminder(db.leads, now)) {
-    if (!inScope(due.lead.agentId)) continue;
-    const list = byAgent.get(due.lead.agentId) || [];
-    list.push(due);
-    byAgent.set(due.lead.agentId, list);
-  }
-  for (const [agentId, items] of byAgent) {
+  for (const due of leadsDueForReminder(db.leads, now)) if (inScope(due.lead.agentId)) bundleOf(due.lead.agentId!).leads.push(due);
+  for (const due of tasksDueForReminder(db.tasks || [], now)) if (inScope(due.task.agentId)) bundleOf(due.task.agentId).tasks.push(due);
+  for (const due of renewalsDueForReminder(db.deals || [], qatarDate(now))) if (inScope(due.deal.agentId)) bundleOf(due.deal.agentId).renewals.push(due);
+
+  const cell = "padding:8px 6px;border-bottom:1px solid #eee;";
+  for (const [agentId, b] of bundles) {
     const agent = db.users.find(u => u.id === agentId);
     if (!agent) continue;
-    for (const { lead, reason } of items) {
+
+    for (const { lead, reason } of b.leads) {
       lead.lastReminderAt = nowIso;
       if (reason !== "follow_up_due") lead.reminderCount = (lead.reminderCount ?? 0) + 1;
       result.leads += 1;
       changed = true;
     }
-    notifyUser(db, agent.id, {
-      type: "followup_reminder",
-      title: items.length === 1 ? "A client needs a follow-up" : `${items.length} clients need a follow-up`,
-      body: items.slice(0, 3).map(i => i.lead.visitorName).join(", "),
-      link: items[0].lead.id
-    });
+    for (const { task } of b.tasks) {
+      task.lastReminderAt = nowIso;
+      task.reminderCount = (task.reminderCount ?? 0) + 1;
+      result.tasks += 1;
+      changed = true;
+    }
+    for (const { deal, thresholds } of b.renewals) {
+      deal.renewalRemindersSent = [...(deal.renewalRemindersSent || []), ...thresholds];
+      result.renewals += 1;
+      changed = true;
+    }
+
+    if (b.leads.length > 0) {
+      notifyUser(db, agent.id, {
+        type: "followup_reminder",
+        title: b.leads.length === 1 ? "A client needs a follow-up" : `${b.leads.length} clients need a follow-up`,
+        body: b.leads.slice(0, 3).map(i => i.lead.visitorName).join(", "),
+        link: b.leads[0].lead.id
+      });
+    }
+    if (b.tasks.length > 0) {
+      notifyUser(db, agent.id, {
+        type: "task_reminder",
+        title: b.tasks.length === 1 ? "A task is due" : `${b.tasks.length} tasks are due`,
+        body: b.tasks.slice(0, 3).map(i => i.task.title).join(", "),
+        link: b.tasks[0].task.id
+      });
+    }
+    if (b.renewals.length > 0) {
+      notifyUser(db, agent.id, {
+        type: "lease_renewal",
+        title: b.renewals.length === 1 ? "A lease is coming up for renewal" : `${b.renewals.length} leases are coming up for renewal`,
+        body: b.renewals.slice(0, 3).map(i => i.deal.clientName).join(", "),
+        link: b.renewals[0].deal.id
+      });
+    }
+
     if (agent.email && agent.followUpRemindersEnabled !== false) {
-      const rowsHtml = items.map(({ lead, reason }) => {
-        const wa = (lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "");
-        const title = db.properties.find(p => p.id === lead.propertyId)?.title || "";
-        return `<tr>
-          <td style="padding:8px 6px;border-bottom:1px solid #eee;"><strong>${escapeHtml(lead.visitorName)}</strong>${title ? `<br/><span style="color:#666;font-size:12px;">${escapeHtml(title)}</span>` : ""}</td>
-          <td style="padding:8px 6px;border-bottom:1px solid #eee;font-size:12px;">${escapeHtml(REMINDER_REASON_TEXT[reason])}</td>
-          <td style="padding:8px 6px;border-bottom:1px solid #eee;font-size:12px;">${wa ? `<a href="https://wa.me/${wa}">${escapeHtml(lead.visitorPhone || wa)}</a>` : escapeHtml(lead.visitorPhone || "")}</td>
-        </tr>`;
-      }).join("");
+      const sections: string[] = [];
+      if (b.renewals.length > 0) {
+        sections.push(`<h3 style="margin:18px 0 6px;color:#1a1918;font-size:14px;">Lease renewals / تجديد العقود</h3>
+          <p style="margin:0 0 6px;color:#666;font-size:12px;">A renewal is a new commission - call before they look elsewhere.</p>
+          <table style="width:100%;border-collapse:collapse;">${b.renewals.map(({ deal, daysLeft }) => `<tr>
+            <td style="${cell}"><strong>${escapeHtml(deal.clientName)}</strong><br/><span style="color:#666;font-size:12px;">${escapeHtml(deal.propertyTitle)}</span></td>
+            <td style="${cell}font-size:12px;">${daysLeft >= 0 ? `Contract ends ${escapeHtml(deal.contractEndDate || "")} (${daysLeft} day${daysLeft === 1 ? "" : "s"})` : `Contract ended ${-daysLeft} day${daysLeft === -1 ? "" : "s"} ago`}</td>
+          </tr>`).join("")}</table>`);
+      }
+      if (b.tasks.length > 0) {
+        sections.push(`<h3 style="margin:18px 0 6px;color:#1a1918;font-size:14px;">Tasks / المهام</h3>
+          <table style="width:100%;border-collapse:collapse;">${b.tasks.map(({ task, reason }) => {
+            const at = taskReminderTime(task);
+            const client = task.leadId ? db.leads.find(l => l.id === task.leadId)?.visitorName : undefined;
+            return `<tr>
+              <td style="${cell}"><strong>${escapeHtml(task.title)}</strong>${client ? `<br/><span style="color:#666;font-size:12px;">${escapeHtml(client)}</span>` : ""}${task.notes ? `<br/><span style="color:#666;font-size:12px;">${escapeHtml(task.notes)}</span>` : ""}</td>
+              <td style="${cell}font-size:12px;">${escapeHtml(qatarDate(at))} ${escapeHtml(qatarTime(at))}${reason === "overdue" ? " &middot; <span style=\"color:#b42318;\">still open / لم تُنجز</span>" : ""}</td>
+            </tr>`;
+          }).join("")}</table>`);
+      }
+      if (b.leads.length > 0) {
+        sections.push(`<h3 style="margin:18px 0 6px;color:#1a1918;font-size:14px;">Clients to follow up / عملاء للمتابعة</h3>
+          <table style="width:100%;border-collapse:collapse;">${b.leads.map(({ lead, reason }) => {
+            const wa = (lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "");
+            const title = db.properties.find(p => p.id === lead.propertyId)?.title || "";
+            return `<tr>
+              <td style="${cell}"><strong>${escapeHtml(lead.visitorName)}</strong>${title ? `<br/><span style="color:#666;font-size:12px;">${escapeHtml(title)}</span>` : ""}</td>
+              <td style="${cell}font-size:12px;">${escapeHtml(REMINDER_REASON_TEXT[reason])}</td>
+              <td style="${cell}font-size:12px;">${wa ? `<a href="https://wa.me/${wa}">${escapeHtml(lead.visitorPhone || wa)}</a>` : escapeHtml(lead.visitorPhone || "")}</td>
+            </tr>`;
+          }).join("")}</table>`);
+      }
+      const parts = [
+        b.leads.length ? `${b.leads.length} client${b.leads.length === 1 ? "" : "s"}` : "",
+        b.tasks.length ? `${b.tasks.length} task${b.tasks.length === 1 ? "" : "s"}` : "",
+        b.renewals.length ? `${b.renewals.length} lease renewal${b.renewals.length === 1 ? "" : "s"}` : ""
+      ].filter(Boolean);
       sendMockEmail(
         agent.email,
-        `[Nerou Finder] ${items.length} client${items.length === 1 ? "" : "s"} waiting for your follow-up`,
+        `[Nerou Finder] Your reminders: ${parts.join(", ")}`,
         generateNotificationEmailHtml(
-          "Follow-up reminder / تذكير بالمتابعة",
+          "Your reminders / تذكيراتك",
           agent.fullName,
-          `<p>These clients are waiting for you:</p>
-           <table style="width:100%;border-collapse:collapse;">${rowsHtml}</table>
-           <p><a href="${escapeHtml(appUrl)}" style="color:#bf9b30;font-weight:bold;">Open your Sales Desk</a></p>
+          `<p>Here is what needs you:</p>${sections.join("")}
+           <p style="margin-top:18px;"><a href="${escapeHtml(appUrl)}" style="color:#bf9b30;font-weight:bold;">Open your Sales Desk</a></p>
            <p style="color:#888;font-size:11px;">You can turn these reminders off in the Sales Desk settings.</p>`
         ),
         "crm_followup_reminder"

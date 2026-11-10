@@ -41,6 +41,7 @@ import {
   FeedSource,
   Notification,
   Deal,
+  Task,
   DEFAULT_MONTHLY_BOOST_CAPS
 } from "./src/types.js";
 
@@ -71,6 +72,7 @@ export interface DatabaseState {
   feedSources?: FeedSource[];
   notifications?: Notification[];
   deals?: Deal[];
+  tasks?: Task[];
   aiConfig?: {
     whatsappDefaultNumber?: string;
     watermarkText?: string;
@@ -1044,6 +1046,7 @@ export function getDefaults(): DatabaseState {
     feedSources: [],
     notifications: [],
     deals: [],
+    tasks: [],
     aiConfig: DEFAULT_AI_CONFIG
   };
 }
@@ -1098,6 +1101,7 @@ export function ensureStateDefaults(db: DatabaseState): void {
   if (!db.feedSources) db.feedSources = [];
   if (!db.notifications) db.notifications = [];
   if (!db.deals) db.deals = [];
+  if (!db.tasks) db.tasks = [];
   if (!db.aiConfig) db.aiConfig = DEFAULT_AI_CONFIG;
 
   // Backfill Project.developerName/isPlatformDeveloper/createdByUserId for any project record
@@ -1152,7 +1156,8 @@ async function loadStateFromDb(): Promise<DatabaseState> {
     adCharges,
     feedSources,
     notifications,
-    deals
+    deals,
+    tasks
   ] = await Promise.all([
     prisma.user.findMany(),
     prisma.organization.findMany(),
@@ -1180,7 +1185,8 @@ async function loadStateFromDb(): Promise<DatabaseState> {
     prisma.adCharge.findMany(),
     prisma.feedSource.findMany(),
     prisma.notification.findMany(),
-    prisma.deal.findMany()
+    prisma.deal.findMany(),
+    prisma.task.findMany()
   ]);
 
   return {
@@ -1210,6 +1216,7 @@ async function loadStateFromDb(): Promise<DatabaseState> {
     feedSources: feedSources.map(f => JSON.parse(f.data)),
     notifications: notifications.map(n => JSON.parse(n.data)),
     deals: deals.map(d => JSON.parse(d.data)),
+    tasks: tasks.map(t => JSON.parse(t.data)),
     aiConfig: aiConfigRows[0] ? JSON.parse(aiConfigRows[0].data) : DEFAULT_AI_CONFIG
   };
 }
@@ -1236,6 +1243,7 @@ interface SyncSnapshots {
   verificationDocuments: RowSnapshot; adCharges: RowSnapshot; feedSources: RowSnapshot;
   notifications: RowSnapshot;
   deals: RowSnapshot;
+  tasks: RowSnapshot;
   systemHealth: string | null; aiConfig: string | null;
 }
 
@@ -1249,6 +1257,7 @@ let snapshots: SyncSnapshots = {
   verificationDocuments: new Map(), adCharges: new Map(), feedSources: new Map(),
   notifications: new Map(),
   deals: new Map(),
+  tasks: new Map(),
   systemHealth: null, aiConfig: null,
 };
 
@@ -1283,6 +1292,7 @@ function initSyncSnapshots(state?: DatabaseState): void {
     feedSources: new Map((state?.feedSources ?? []).map(f => [f.id, JSON.stringify(f)])),
     notifications: new Map((state?.notifications ?? []).map(n => [n.id, JSON.stringify(n)])),
     deals: new Map((state?.deals ?? []).map(d => [d.id, JSON.stringify(d)])),
+    tasks: new Map((state?.tasks ?? []).map(t => [t.id, JSON.stringify(t)])),
     systemHealth: null,
     aiConfig: null,
   };
@@ -1472,6 +1482,13 @@ async function syncStateToDb(state: DatabaseState): Promise<void> {
         return prisma.deal.upsert({ where: { id: d.id }, create: { id: d.id, ...row }, update: row });
       },
       ids => prisma.deal.deleteMany({ where: { id: { in: ids } } }));
+
+    diffCollection(ops, pending, snapshots.tasks, state.tasks ?? [],
+      t => {
+        const row = { agentId: t.agentId, orgId: t.orgId ?? null, status: t.status, data: JSON.stringify(t) };
+        return prisma.task.upsert({ where: { id: t.id }, create: { id: t.id, ...row }, update: row });
+      },
+      ids => prisma.task.deleteMany({ where: { id: { in: ids } } }));
 
     // Singleton rows - only upsert when the serialized value actually changed.
     const healthJson = JSON.stringify(state.systemHealth);

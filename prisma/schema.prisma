@@ -213,3 +213,16 @@ model Deal {
   @@index([agentId])
   @@index([orgId])
 }
+
+// A task the agent scheduled for themselves, reminded by email (see Task in src/types.ts).
+model Task {
+  id      String  @id
+  agentId String
+  orgId   String?
+  status  String
+  data    String
+
+  @@index([agentId])
+  @@index([orgId])
+  @@index([status])
+}

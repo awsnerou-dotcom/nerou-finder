@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Calendar, FileDown, Mail, MessageCircle, Phone, Trash2, Upload } from "lucide-react";
+import { Calendar, FileDown, ListChecks, Mail, MessageCircle, Phone, Trash2, Upload } from "lucide-react";
 import { Modal } from "../ui/Modal.js";
 import { Button } from "../ui/Button.js";
 import { FormField, Input, Select, Textarea } from "../ui/FormField.js";
@@ -306,12 +306,13 @@ export function ImportModal({ open, team, isOrgAdmin, isRtl, t, onClose, onImpor
 // ---------------------------------------------------------------------------------------------
 // Client detail: contact, notes, timeline, actions
 // ---------------------------------------------------------------------------------------------
-export function ClientDetailModal({ lead, viewings, showAgent, isRtl, t, onClose, onMove, onAddNote, onFollowUp, onSchedule, onEdit, onArchive, onDelete }: {
+export function ClientDetailModal({ lead, viewings, showAgent, isRtl, t, onClose, onMove, onAddNote, onFollowUp, onSchedule, onAddTask, onEdit, onArchive, onDelete }: {
   lead: DeskLead | null; viewings: DeskViewing[]; showAgent: boolean; isRtl: boolean; t: T; onClose: () => void;
   onMove: (l: DeskLead, s: LeadStatus) => void;
   onAddNote: (l: DeskLead, text: string) => Promise<void>;
   onFollowUp: (l: DeskLead) => void;
   onSchedule: (l: DeskLead) => void;
+  onAddTask: (l: DeskLead) => void;
   onEdit: (l: DeskLead) => void;
   onArchive: (l: DeskLead) => void;
   onDelete: (l: DeskLead) => void;
@@ -369,6 +370,9 @@ export function ClientDetailModal({ lead, viewings, showAgent, isRtl, t, onClose
           </button>
           <button type="button" onClick={() => onSchedule(lead)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-xs font-semibold text-ink hover:border-gold cursor-pointer">
             <Calendar size={12} />{t("Schedule viewing", "جدولة معاينة")}
+          </button>
+          <button type="button" onClick={() => onAddTask(lead)} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border text-xs font-semibold text-ink hover:border-gold cursor-pointer">
+            <ListChecks size={12} />{t("Add task", "إضافة مهمة")}
           </button>
         </div>
 

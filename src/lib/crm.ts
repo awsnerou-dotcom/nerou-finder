@@ -2,7 +2,7 @@
 // writing, Qatar-time helpers and "who is due a reminder". Kept free of server code so the same
 // logic can be unit tested and shared with the browser.
 
-import { Deal, Lead, LeadSource, LeadStatus, ViewingRequest } from "../types.js";
+import { Deal, Lead, LeadSource, LeadStatus, Task, ViewingRequest } from "../types.js";
 
 // ---------------------------------------------------------------------------------------------
 // Pipeline
@@ -421,4 +421,91 @@ export function rowsToClients(table: string[][]): CsvClientsResult {
     };
   });
   return { clients, recognised: Object.keys(colOf) };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Tasks (scheduled to-dos) and lease renewals
+// ---------------------------------------------------------------------------------------------
+
+/** "HH:MM" in Qatar for a moment in time. */
+export function qatarTime(now: Date | number): string {
+  const t = typeof now === "number" ? now : now.getTime();
+  return new Date(t + 3 * 60 * 60 * 1000).toISOString().slice(11, 16);
+}
+
+/** The moment a Qatar date + time ("YYYY-MM-DD", "HH:MM") happens, as an ISO timestamp. */
+export function qatarDueAt(date: string, time: string): string {
+  return new Date(`${date}T${time}:00+03:00`).toISOString();
+}
+
+export type SnoozeKind = "1h" | "tomorrow" | "3d" | "week";
+
+/** Where "remind me later" moves a reminder: an hour on, or 08:00 Qatar time on a later day. */
+export function snoozeTarget(kind: SnoozeKind, now: number): string {
+  if (kind === "1h") return new Date(now + 60 * 60 * 1000).toISOString();
+  const days = kind === "tomorrow" ? 1 : kind === "3d" ? 3 : 7;
+  return qatarDueAt(addDaysToDate(qatarDate(now), days), "08:00");
+}
+
+/** When a task's reminder is actually due: its snoozed time if it was snoozed, else the due time. */
+export function taskReminderTime(task: Pick<Task, "dueAt" | "snoozedUntil">): number {
+  return Date.parse(task.snoozedUntil || task.dueAt);
+}
+
+export type TaskReminderReason = "due" | "overdue";
+export interface TaskDue {
+  task: Task;
+  reason: TaskReminderReason;
+}
+
+/**
+ * Open tasks that deserve a reminder email now: once when the time arrives (or the snoozed time
+ * arrives), then - if it is still open - one more every 24 hours, 3 reminders in all.
+ * Moving the time (edit or snooze) starts the cycle again.
+ */
+export function tasksDueForReminder(tasks: Task[], now: number): TaskDue[] {
+  const due: TaskDue[] = [];
+  for (const task of tasks) {
+    if (task.status !== "OPEN") continue;
+    const at = taskReminderTime(task);
+    if (Number.isNaN(at) || at > now) continue;
+    const last = task.lastReminderAt ? Date.parse(task.lastReminderAt) : NaN;
+    if (Number.isNaN(last) || last < at) due.push({ task, reason: "due" });
+    else if (now - last >= DAY && (task.reminderCount ?? 0) < AUTO_NUDGE_MAX) due.push({ task, reason: "overdue" });
+  }
+  return due;
+}
+
+/** Days between two YYYY-MM-DD dates (b - a). */
+export function daysBetween(a: string, b: string): number {
+  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / DAY);
+}
+
+/** Reminders go out this many days before a rental contract ends. */
+export const RENEWAL_THRESHOLDS = [90, 60, 30];
+/** A contract that ended up to this many days ago still gets its (one) reminder. */
+const RENEWAL_GRACE_DAYS = 14;
+
+export interface RenewalDue {
+  deal: Deal;
+  daysLeft: number;
+  /** The thresholds this reminder covers - all of them get marked as sent, so a contract added
+   *  with 20 days left produces one email, not three. */
+  thresholds: number[];
+}
+
+/** Rental deals whose contract is within 90/60/30 days of ending and that nobody has said they
+ *  renew (or not) yet. `today` is the Qatar date. */
+export function renewalsDueForReminder(deals: Deal[], today: string): RenewalDue[] {
+  const out: RenewalDue[] = [];
+  for (const deal of deals) {
+    if (deal.dealType !== "RENT" || deal.status !== "CLOSED" || !deal.contractEndDate) continue;
+    if ((deal.renewalStatus || "PENDING") !== "PENDING") continue;
+    const daysLeft = daysBetween(today, deal.contractEndDate);
+    if (Number.isNaN(daysLeft) || daysLeft < -RENEWAL_GRACE_DAYS) continue;
+    const sent = deal.renewalRemindersSent || [];
+    const thresholds = RENEWAL_THRESHOLDS.filter(t => daysLeft <= t && !sent.includes(t));
+    if (thresholds.length > 0) out.push({ deal, daysLeft, thresholds });
+  }
+  return out;
 }

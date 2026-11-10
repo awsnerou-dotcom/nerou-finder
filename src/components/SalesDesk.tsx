@@ -11,24 +11,27 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  BellRing, Banknote, CalendarClock, CalendarPlus, Check, Clock, Download, FileDown, LayoutGrid, MessageCircle,
+  BellRing, Banknote, CalendarClock, CalendarPlus, Check, Clock, Download, FileDown, LayoutGrid, ListChecks, MessageCircle,
   Pencil, Phone, Plus, RefreshCw, Search, Trash2, TrendingUp, Upload, UserPlus, Users, X
 } from "lucide-react";
 import { LeadStatus } from "../types.js";
-import { BOARD_COLUMNS, LEAD_SOURCES, LEAD_SOURCE_TEXT, addDaysToDate, columnForStatus, isClosedStatus, isOpenLead, monthlySummary, phoneKey, qatarDate } from "../lib/crm.js";
+import { BOARD_COLUMNS, LEAD_SOURCES, LEAD_SOURCE_TEXT, addDaysToDate, columnForStatus, isClosedStatus, isOpenLead, monthlySummary, phoneKey, qatarDate, taskReminderTime } from "../lib/crm.js";
+import type { SnoozeKind } from "../lib/crm.js";
 import { Button } from "./ui/Button.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Spinner } from "./ui/Spinner.js";
 import { Input } from "./ui/FormField.js";
 import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import {
-  DeskDeal, DeskLead, DeskOverview, DeskViewing, STAGE_ACCENT, STAGE_TEXT, T, VIEWING_STATUS_TEXT,
-  ago, deskApi, downloadCsv, fmtDay, fmtFullDay, fmtMoney, followUpDay, leadPhone, sourceLabel, waLink
+  DeskDeal, DeskLead, DeskOverview, DeskTask, DeskViewing, STAGE_ACCENT, STAGE_TEXT, T, VIEWING_STATUS_TEXT,
+  ago, deskApi, downloadCsv, fmtDate, fmtDay, fmtFullDay, fmtMoney, followUpDay, leadPhone, sourceLabel, waLink
 } from "./salesdesk/shared.js";
 import { DealForm, DealModal, FollowUpModal, LostModal, ViewingModal } from "./salesdesk/Modals.js";
 import { ClientDetailModal, ClientForm, ClientModal, ImportModal } from "./salesdesk/ClientModals.js";
+import { TaskForm, TaskModal } from "./salesdesk/TaskModal.js";
+import { TasksView, pendingRenewals } from "./salesdesk/TasksView.js";
 
-type DeskTab = "pipeline" | "followups" | "viewings" | "deals" | "reports";
+type DeskTab = "pipeline" | "followups" | "viewings" | "tasks" | "deals" | "reports";
 
 export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
   const t: T = useCallback((en, ar) => (isRtl ? ar : en), [isRtl]);
@@ -39,13 +42,15 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
 
   const [followUpLead, setFollowUpLead] = useState<DeskLead | null>(null);
   const [lostLead, setLostLead] = useState<DeskLead | null>(null);
-  const [dealCtx, setDealCtx] = useState<{ lead: DeskLead | null; deal: DeskDeal | null; fromWon: boolean } | null>(null);
+  const [dealCtx, setDealCtx] = useState<{ lead: DeskLead | null; deal: DeskDeal | null; fromWon: boolean; renewing?: DeskDeal | null } | null>(null);
   const [viewingCtx, setViewingCtx] = useState<{ viewing: DeskViewing | null; presetLeadId?: string } | null>(null);
   const [deleteDeal, setDeleteDeal] = useState<DeskDeal | null>(null);
   const [clientCtx, setClientCtx] = useState<{ client: DeskLead | null } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [deleteClient, setDeleteClient] = useState<DeskLead | null>(null);
+  const [taskCtx, setTaskCtx] = useState<{ task: DeskTask | null; presetLeadId?: string } | null>(null);
+  const [deleteTask, setDeleteTask] = useState<DeskTask | null>(null);
   const [dupWarning, setDupWarning] = useState<{ form: ClientForm; name: string } | null>(null);
   const [search, setSearch] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
@@ -94,7 +99,7 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
       await deskApi(`/api/deals/${existing.id}`, { method: "PATCH", body: JSON.stringify({
         propertyTitle: form.propertyTitle, clientName: form.clientName, dealType: form.dealType, dealValue: form.dealValue,
         commissionRate: form.commissionRate, commissionAmount: form.commissionAmount, closedDate: form.closedDate,
-        commissionStatus: form.commissionStatus, notes: form.notes
+        commissionStatus: form.commissionStatus, notes: form.notes, contractEndDate: form.contractEndDate ?? null
       }) });
     } else {
       await deskApi("/api/deals", { method: "POST", body: JSON.stringify(form) });
@@ -102,6 +107,22 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
     setDealCtx(null);
     await reload();
     say(existing ? t("Deal updated.", "تم تحديث الصفقة.") : t("Deal recorded - congratulations!", "تم تسجيل الصفقة - مبروك!"));
+  };
+
+  const saveTask = async (form: TaskForm, existing: DeskTask | null) => {
+    if (existing) {
+      await deskApi(`/api/tasks/${existing.id}`, { method: "PATCH", body: JSON.stringify({
+        title: form.title, dueDate: form.dueDate, dueTime: form.dueTime, notes: form.notes
+      }) });
+    } else {
+      await deskApi("/api/tasks", { method: "POST", body: JSON.stringify({
+        title: form.title, dueDate: form.dueDate, dueTime: form.dueTime, notes: form.notes,
+        leadId: form.leadId || undefined, agentId: form.agentId || undefined
+      }) });
+    }
+    setTaskCtx(null);
+    await reload();
+    say(existing ? t("Task updated.", "تم تحديث المهمة.") : t("Task added - we'll email you when it's time.", "تمت إضافة المهمة - سنرسل لك إيميلاً في موعدها."));
   };
 
   const sendClient = async (form: ClientForm, existing: DeskLead | null, allowDuplicate = false) => {
@@ -153,6 +174,8 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
 
   // ---- numbers for the strip ------------------------------------------------------------------
   const dueCount = openLeads.filter(l => { const d = followUpDay(l); return d && d <= today; }).length;
+  const tasksDueCount = data.tasks.filter(x => x.status === "OPEN" && qatarDate(taskReminderTime(x)) <= today).length;
+  const renewalsSoonCount = pendingRenewals(data.deals, today).filter(r => r.daysLeft <= 30).length;
   const week = addDaysToDate(today, 7);
   const viewingsThisWeek = data.viewings.filter(v => v.status === "CONFIRMED" && v.preferredDate >= today && v.preferredDate <= week).length;
   const liveDeals = data.deals.filter(d => d.status !== "CANCELLED");
@@ -162,6 +185,7 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
     { id: "pipeline", label: t("Pipeline", "مسار البيع"), icon: <LayoutGrid size={14} /> },
     { id: "followups", label: t("Follow-ups", "المتابعات"), icon: <BellRing size={14} />, badge: dueCount },
     { id: "viewings", label: t("Viewings", "المعاينات"), icon: <CalendarClock size={14} /> },
+    { id: "tasks", label: t("Tasks & renewals", "المهام والتجديدات"), icon: <ListChecks size={14} />, badge: tasksDueCount + renewalsSoonCount },
     { id: "deals", label: t("Deals & commission", "الصفقات والعمولات"), icon: <Banknote size={14} /> },
     { id: "reports", label: t("Reports", "التقارير"), icon: <FileDown size={14} /> }
   ];
@@ -252,6 +276,19 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
           onStatus={(v, status) => act(() => deskApi("/api/viewings/status", { method: "POST", body: JSON.stringify({ viewingId: v.id, status }) }),
             t("Viewing updated.", "تم تحديث المعاينة.")).catch(() => {})} />
       )}
+      {tab === "tasks" && (
+        <TasksView tasks={data.tasks} deals={data.deals} leads={data.leads} isRtl={isRtl} t={t} today={today} showAgent={data.isOrgAdmin} canEdit={data.canEditDeals}
+          onAdd={() => setTaskCtx({ task: null })} onEdit={x => setTaskCtx({ task: x })}
+          onToggleDone={x => act(() => deskApi(`/api/tasks/${x.id}`, { method: "PATCH", body: JSON.stringify({ status: x.status === "DONE" ? "OPEN" : "DONE" }) }),
+            x.status === "DONE" ? t("Task reopened.", "أُعيد فتح المهمة.") : t("Done - nice work.", "تم - عمل رائع.")).catch(() => {})}
+          onSnooze={(x: DeskTask, kind: SnoozeKind) => act(() => deskApi(`/api/tasks/${x.id}`, { method: "PATCH", body: JSON.stringify({ snooze: kind }) }),
+            t("Snoozed - we'll remind you then.", "تم التأجيل - سنذكّرك في الموعد الجديد.")).catch(() => {})}
+          onDelete={setDeleteTask} onOpenLead={setDetailId}
+          onRenewed={d => setDealCtx({ lead: null, deal: null, fromWon: false, renewing: d })}
+          onNotRenewing={d => act(() => deskApi(`/api/deals/${d.id}`, { method: "PATCH", body: JSON.stringify({ renewalStatus: "NOT_RENEWING" }) }),
+            t("Noted - no more reminders for this lease.", "تم - لن نذكّرك بهذا العقد بعد الآن.")).catch(() => {})}
+          onEditDeal={d => setDealCtx({ lead: null, deal: d, fromWon: false })} />
+      )}
       {tab === "deals" && (
         <Deals deals={data.deals} isRtl={isRtl} t={t} canEdit={data.canEditDeals} showAgent={data.isOrgAdmin}
           onNew={() => setDealCtx({ lead: null, deal: null, fromWon: false })} onEdit={d => setDealCtx({ lead: null, deal: d, fromWon: false })}
@@ -273,6 +310,7 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
         onAddNote={async (l, text) => { await act(() => deskApi(`/api/leads/${l.id}/notes`, { method: "POST", body: JSON.stringify({ text }) }), t("Note added.", "تمت إضافة الملاحظة.")); }}
         onFollowUp={setFollowUpLead}
         onSchedule={l => setViewingCtx({ viewing: null, presetLeadId: l.id })}
+        onAddTask={l => setTaskCtx({ task: null, presetLeadId: l.id })}
         onEdit={l => setClientCtx({ client: l })}
         onArchive={l => { setDetailId(null); act(() => deskApi(`/api/leads/${l.id}/archive`, { method: "PATCH", body: JSON.stringify({ isArchived: true }) }), t("Client archived.", "تمت أرشفة العميل.")).catch(() => {}); }}
         onDelete={setDeleteClient}
@@ -301,11 +339,24 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
         onConfirm={async () => { const c = deleteClient!; setDeleteClient(null); setDetailId(null); await act(() => deskApi(`/api/crm/clients/${c.id}`, { method: "DELETE" }), t("Client deleted.", "تم حذف العميل.")).catch(() => {}); }}
         isRtl={isRtl}
       />
+      <TaskModal open={!!taskCtx} task={taskCtx?.task || null} presetLeadId={taskCtx?.presetLeadId} leads={openLeads} team={data.team} isOrgAdmin={data.isOrgAdmin}
+        isRtl={isRtl} t={t} onClose={() => setTaskCtx(null)} onSave={saveTask} />
+      <ConfirmDialog
+        open={!!deleteTask}
+        title={t("Delete this task?", "حذف هذه المهمة؟")}
+        description={deleteTask?.title}
+        confirmLabel={t("Delete", "حذف")}
+        cancelLabel={t("Keep it", "إبقاؤها")}
+        tone="danger"
+        onCancel={() => setDeleteTask(null)}
+        onConfirm={async () => { const x = deleteTask!; setDeleteTask(null); await act(() => deskApi(`/api/tasks/${x.id}`, { method: "DELETE" }), t("Task deleted.", "تم حذف المهمة.")).catch(() => {}); }}
+        isRtl={isRtl}
+      />
       <FollowUpModal lead={followUpLead} isRtl={isRtl} t={t} onClose={() => setFollowUpLead(null)}
         onSave={async date => { const l = followUpLead!; await act(() => deskApi(`/api/leads/${l.id}/follow-up`, { method: "PATCH", body: JSON.stringify({ nextFollowUpDate: date }) }), date ? t("Follow-up saved.", "تم حفظ موعد المتابعة.") : t("Follow-up cleared.", "تمت إزالة موعد المتابعة.")); setFollowUpLead(null); }} />
       <LostModal lead={lostLead} isRtl={isRtl} t={t} onClose={() => setLostLead(null)}
         onSave={async reason => { const l = lostLead!; await act(() => deskApi("/api/leads/status", { method: "POST", body: JSON.stringify({ leadId: l.id, status: LeadStatus.LOST, lostReason: reason }) }), t("Marked as lost.", "تم تسجيلها كخسارة.")); setLostLead(null); }} />
-      <DealModal open={!!dealCtx} lead={dealCtx?.lead || null} deal={dealCtx?.deal || null} team={data.team} isOrgAdmin={data.isOrgAdmin}
+      <DealModal open={!!dealCtx} lead={dealCtx?.lead || null} deal={dealCtx?.deal || null} renewing={dealCtx?.renewing || null} team={data.team} isOrgAdmin={data.isOrgAdmin}
         isRtl={isRtl} t={t} onClose={() => setDealCtx(null)} onSave={saveDeal}
         onWonOnly={dealCtx?.fromWon && dealCtx.lead ? async () => {
           const l = dealCtx.lead!;
@@ -670,7 +721,15 @@ function Deals({ deals, isRtl, t, canEdit, showAgent, onNew, onEdit, onReceived,
                     <div className="font-bold text-ink">{d.propertyTitle}</div>
                     <div className="text-ink-muted">{d.clientName}{showAgent && d.agentName ? ` · ${d.agentName}` : ""}</div>
                   </td>
-                  <td className="px-3 py-2.5">{d.dealType === "SALE" ? t("Sale", "بيع") : t("Rent", "إيجار")}</td>
+                  <td className="px-3 py-2.5">
+                    <div>{d.dealType === "SALE" ? t("Sale", "بيع") : t("Rent", "إيجار")}</div>
+                    {d.contractEndDate && (
+                      <div className="text-[10px] text-ink-muted whitespace-nowrap">
+                        {t("Ends ", "ينتهي ")}{fmtDate(d.contractEndDate, isRtl)}
+                        {d.renewalStatus === "RENEWED" ? " · " + t("renewed", "تم التجديد") : d.renewalStatus === "NOT_RENEWING" ? " · " + t("not renewing", "لن يجدد") : ""}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">{fmtMoney(d.dealValue, isRtl)}</td>
                   <td className="px-3 py-2.5 whitespace-nowrap">
                     <div className="font-bold text-ink">{fmtMoney(d.commissionAmount, isRtl)}</div>
@@ -737,6 +796,7 @@ function Reports({ deals, leads, isRtl, t, onError }: { deals: DeskDeal[]; leads
     { kind: "leads", title: t("Clients & pipeline", "العملاء ومسار البيع"), hint: t("Every client with stage, follow-up and contact details", "كل عميل مع مرحلته وموعد متابعته وبيانات التواصل") },
     { kind: "viewings", title: t("Viewings", "المعاينات"), hint: t("Your viewing schedule and outcomes", "جدول المعاينات ونتائجها") },
     { kind: "deals", title: t("Deals & commissions", "الصفقات والعمولات"), hint: t("Each closed deal with its commission and status", "كل صفقة مغلقة مع عمولتها وحالتها") },
+    { kind: "tasks", title: t("Tasks", "المهام"), hint: t("Your scheduled tasks with their status", "مهامك المجدولة مع حالتها") },
     { kind: "monthly", title: t("Monthly commission summary", "ملخص العمولات الشهري"), hint: t("Deals, value and commission per month", "الصفقات والقيمة والعمولة لكل شهر") }
   ];
 

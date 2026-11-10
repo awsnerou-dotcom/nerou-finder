@@ -1,6 +1,6 @@
 // Shared types, labels and small helpers for the Sales Desk screens.
 
-import { Deal, Lead, LeadStatus, ViewingRequest } from "../../types.js";
+import { Deal, Lead, LeadStatus, Task, ViewingRequest } from "../../types.js";
 import { LEAD_SOURCE_TEXT, qatarDate } from "../../lib/crm.js";
 
 export type DeskLead = Lead & { propertyTitle: string; agentName: string };
@@ -12,11 +12,13 @@ export type DeskViewing = ViewingRequest & {
   visitorWhatsapp: string;
 };
 export type DeskDeal = Deal & { agentName: string };
+export type DeskTask = Task & { agentName: string; leadName: string; dealTitle: string };
 
 export interface DeskOverview {
   leads: DeskLead[];
   viewings: DeskViewing[];
   deals: DeskDeal[];
+  tasks: DeskTask[];
   settings: { followUpRemindersEnabled: boolean };
   isOrgAdmin: boolean;
   canEditDeals: boolean;
@@ -92,6 +94,14 @@ export function fmtDay(value: string | undefined, isRtl: boolean): string {
   const d = new Date(`${day}T12:00:00Z`);
   if (Number.isNaN(d.getTime())) return value;
   return d.toLocaleDateString(locale(isRtl), { day: "numeric", month: "short", timeZone: "UTC" });
+}
+
+/** "5 Jan 2028" - for dates that can be a year or more away (contract ends). */
+export function fmtDate(value: string | undefined, isRtl: boolean): string {
+  if (!value) return "";
+  const d = new Date(`${value.slice(0, 10)}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString(locale(isRtl), { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 }
 
 export function fmtFullDay(value: string, isRtl: boolean): string {

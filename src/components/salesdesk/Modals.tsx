@@ -186,10 +186,14 @@ export interface DealForm {
   closedDate: string;
   commissionStatus: "EXPECTED" | "RECEIVED";
   notes: string;
+  /** Rentals: when the contract ends (reminders count from it). */
+  contractEndDate?: string;
+  /** Set when this deal renews an earlier contract. */
+  renewsDealId?: string;
 }
 
-export function DealModal({ open, lead, deal, team, isOrgAdmin, isRtl, t, onClose, onSave, onWonOnly }: {
-  open: boolean; lead: DeskLead | null; deal: DeskDeal | null; team: { id: string; fullName: string }[]; isOrgAdmin: boolean;
+export function DealModal({ open, lead, deal, renewing, team, isOrgAdmin, isRtl, t, onClose, onSave, onWonOnly }: {
+  open: boolean; lead: DeskLead | null; deal: DeskDeal | null; /** the rental being renewed (prefills a new rental) */ renewing?: DeskDeal | null; team: { id: string; fullName: string }[]; isOrgAdmin: boolean;
   isRtl: boolean; t: T; onClose: () => void; onSave: (form: DealForm, existing: DeskDeal | null) => Promise<void>;
   /** Shown when the modal was opened by moving a lead to "Won": record the win without a deal. */
   onWonOnly?: () => Promise<void>;
@@ -201,6 +205,7 @@ export function DealModal({ open, lead, deal, team, isOrgAdmin, isRtl, t, onClos
   const [rate, setRate] = useState("");
   const [amount, setAmount] = useState("");
   const [closedDate, setClosedDate] = useState(today());
+  const [contractEnd, setContractEnd] = useState("");
   const [received, setReceived] = useState(false);
   const [notes, setNotes] = useState("");
   const [agentId, setAgentId] = useState("");
@@ -215,12 +220,20 @@ export function DealModal({ open, lead, deal, team, isOrgAdmin, isRtl, t, onClos
       setValue(String(deal.dealValue)); setRate(deal.commissionRate !== undefined ? String(deal.commissionRate) : "");
       setAmount(String(deal.commissionAmount)); setClosedDate(deal.closedDate);
       setReceived(deal.commissionStatus === "RECEIVED"); setNotes(deal.notes || ""); setAgentId(deal.agentId);
+      setContractEnd(deal.contractEndDate || "");
+    } else if (renewing) {
+      // a renewal starts from the old contract: same tenant, flat, price and rate, a year further on
+      setPropertyTitle(renewing.propertyTitle); setClientName(renewing.clientName); setDealType("RENT");
+      setValue(String(renewing.dealValue)); setRate(renewing.commissionRate !== undefined ? String(renewing.commissionRate) : "");
+      setAmount(String(renewing.commissionAmount)); setClosedDate(today()); setReceived(false); setNotes("");
+      setAgentId(renewing.agentId);
+      setContractEnd(addDaysToDate(renewing.contractEndDate && renewing.contractEndDate > today() ? renewing.contractEndDate : today(), 365));
     } else {
       setPropertyTitle(lead?.propertyTitle || ""); setClientName(lead?.visitorName || ""); setDealType("SALE");
       setValue(""); setRate("2"); setAmount(""); setClosedDate(today()); setReceived(false); setNotes("");
-      setAgentId(lead?.agentId || "");
+      setAgentId(lead?.agentId || ""); setContractEnd("");
     }
-  }, [open, deal, lead]);
+  }, [open, deal, lead, renewing]);
   if (!open) return null;
 
   const num = (s: string) => (s.trim() === "" ? undefined : Number(s));
@@ -245,12 +258,15 @@ export function DealModal({ open, lead, deal, team, isOrgAdmin, isRtl, t, onClos
     const rn = num(rate), an = num(amount);
     if (rn !== undefined && (rn < 0 || rn > 100)) return setError(t("The commission rate must be between 0 and 100.", "نسبة العمولة يجب أن تكون بين 0 و100."));
     if (an !== undefined && (an < 0 || an > valueNum)) return setError(t("The commission cannot be more than the deal value.", "العمولة لا يمكن أن تتجاوز قيمة الصفقة."));
+    if (dealType === "RENT" && contractEnd && contractEnd <= closedDate) return setError(t("The contract must end after the closing date.", "يجب أن ينتهي العقد بعد تاريخ الإغلاق."));
     setBusy(true);
     try {
       await onSave({
         leadId: lead?.id || deal?.leadId, agentId: isOrgAdmin ? agentId || undefined : undefined,
         propertyTitle: propertyTitle.trim(), clientName: clientName.trim(), dealType, dealValue: valueNum,
-        commissionRate: rn, commissionAmount: an, closedDate, commissionStatus: received ? "RECEIVED" : "EXPECTED", notes
+        commissionRate: rn, commissionAmount: an, closedDate, commissionStatus: received ? "RECEIVED" : "EXPECTED", notes,
+        contractEndDate: dealType === "RENT" && contractEnd ? contractEnd : undefined,
+        renewsDealId: renewing?.id
       }, deal);
     } catch (e: any) {
       setError(e?.message || t("Could not save the deal.", "تعذر حفظ الصفقة."));
@@ -265,7 +281,7 @@ export function DealModal({ open, lead, deal, team, isOrgAdmin, isRtl, t, onClos
       onClose={onClose}
       isRtl={isRtl}
       size="lg"
-      title={deal ? t("Edit deal", "تعديل الصفقة") : t("Record a deal", "تسجيل صفقة")}
+      title={deal ? t("Edit deal", "تعديل الصفقة") : renewing ? t("Record the renewal", "تسجيل التجديد") : t("Record a deal", "تسجيل صفقة")}
       footer={
         <div className="flex items-center justify-between gap-2 w-full flex-wrap">
           {onWonOnly && !deal ? (
@@ -312,6 +328,11 @@ export function DealModal({ open, lead, deal, team, isOrgAdmin, isRtl, t, onClos
           <FormField label={t("Closing date", "تاريخ الإغلاق")} htmlFor="dl-date">
             <Input id="dl-date" type="date" value={closedDate} onChange={e => setClosedDate(e.target.value)} />
           </FormField>
+          {dealType === "RENT" && (
+            <FormField label={t("Contract ends", "ينتهي العقد في")} htmlFor="dl-end" hint={t("We remind you 90, 60 and 30 days before, so you can renew it.", "نذكّرك قبل 90 و60 و30 يوماً لتجدده.")}>
+              <Input id="dl-end" type="date" value={contractEnd} min={closedDate} onChange={e => setContractEnd(e.target.value)} />
+            </FormField>
+          )}
           {isOrgAdmin && (
             <FormField label={t("Agent", "الوكيل")} htmlFor="dl-agent">
               <Select id="dl-agent" value={agentId} onChange={e => setAgentId(e.target.value)}>

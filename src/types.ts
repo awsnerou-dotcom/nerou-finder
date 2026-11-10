@@ -629,6 +629,37 @@ export interface Deal {
   notes?: string;
   createdDate: string;
   updatedDate: string;
+  // Rentals only: when the contract ends. Drives the automatic renewal reminders (90/60/30 days
+  // before) - a renewal is a new commission with no marketing cost.
+  contractEndDate?: string; // YYYY-MM-DD
+  renewalStatus?: RenewalStatus; // PENDING until the agent says what happened
+  renewalRemindersSent?: number[]; // which of 90/60/30 have already been emailed
+  renewsDealId?: string; // set on the NEW deal that renews an earlier one
+}
+
+export type RenewalStatus = "PENDING" | "RENEWED" | "NOT_RENEWING";
+
+// A to-do the agent scheduled for themselves (call the owner, collect a cheque, shoot a listing...)
+// with a date and time, reminded by email, optionally tied to a client or a deal.
+export type TaskStatus = "OPEN" | "DONE";
+export interface Task {
+  id: string;
+  agentId: string;
+  orgId?: string;
+  title: string;
+  notes?: string;
+  dueAt: string; // ISO timestamp (the agent picks a Qatar date and time)
+  // "Remind me later": the reminder is moved to this moment instead (the due date stays as set).
+  snoozedUntil?: string;
+  leadId?: string;
+  dealId?: string;
+  status: TaskStatus;
+  doneAt?: string;
+  // Reminder bookkeeping: when the last reminder email covered it and how many were sent.
+  lastReminderAt?: string;
+  reminderCount?: number;
+  createdDate: string;
+  updatedDate: string;
 }
 
 export interface SupportReport {
