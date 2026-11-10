@@ -2325,7 +2325,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                                 type="button"
                                 onClick={() => moveListingImage(index, -1)}
                                 disabled={index === 0}
-                                className="p-0.5 bg-white/90 hover:bg-surface text-ink rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="p-0.5 bg-white/90 hover:bg-white text-gray-900 rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                 title={isRtl ? "تحريك للأعلى" : "Move earlier"}
                               >
                                 <ChevronUp size={12} />
@@ -2334,7 +2334,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                                 type="button"
                                 onClick={() => moveListingImage(index, 1)}
                                 disabled={index === listingImages.length - 1}
-                                className="p-0.5 bg-white/90 hover:bg-surface text-ink rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="p-0.5 bg-white/90 hover:bg-white text-gray-900 rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                                 title={isRtl ? "تحريك للأسفل" : "Move later"}
                               >
                                 <ChevronDown size={12} />

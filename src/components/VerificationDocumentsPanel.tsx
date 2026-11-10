@@ -233,7 +233,7 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
         </div>
 
         {isDragOver && (
-          <div className="flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gold rounded-lg text-gold text-[11px] font-semibold bg-white/60 pointer-events-none">
+          <div className="flex items-center justify-center gap-2 py-3 border-2 border-dashed border-gold rounded-lg text-gold text-[11px] font-semibold bg-surface/60 pointer-events-none">
             <UploadCloud size={14} />
             <span>{isRtl ? "أفلت الملف هنا للرفع" : "Drop file here to upload"}</span>
           </div>

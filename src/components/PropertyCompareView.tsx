@@ -79,7 +79,7 @@ export default function PropertyCompareView({
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-full border border-border hover:bg-stone-100 cursor-pointer text-ink-muted"
+              className="p-2 rounded-full border border-border hover:bg-surface-2 cursor-pointer text-ink-muted"
             >
               <X size={16} />
             </button>
@@ -100,7 +100,7 @@ export default function PropertyCompareView({
           >
 
             {/* ROW 1: HEADER LABELS & PROPERTY IMAGES */}
-            <div className="p-4 bg-stone-50 font-bold flex items-center">
+            <div className="p-4 bg-surface-2 font-bold flex items-center">
               {isRtl ? "العقار" : "Property Profile"}
             </div>
             {Array.from({ length: slotCount }).map((_, idx) => {
@@ -144,7 +144,7 @@ export default function PropertyCompareView({
             })}
 
             {/* ROW 2: TRANSACTION TYPE */}
-            <div className="p-4 bg-stone-50 font-bold flex items-center">
+            <div className="p-4 bg-surface-2 font-bold flex items-center">
               {isRtl ? "نوع المعاملة" : "Transaction"}
             </div>
             {Array.from({ length: slotCount }).map((_, idx) => {
@@ -163,7 +163,7 @@ export default function PropertyCompareView({
             })}
 
             {/* ROW 3: PRICE */}
-            <div className="p-4 bg-stone-50 font-bold flex items-center">
+            <div className="p-4 bg-surface-2 font-bold flex items-center">
               {isRtl ? "السعر" : "Asking Price"}
             </div>
             {Array.from({ length: slotCount }).map((_, idx) => {
@@ -181,7 +181,7 @@ export default function PropertyCompareView({
             })}
 
             {/* ROW 4: TOTAL SIZE */}
-            <div className="p-4 bg-stone-50 font-bold flex items-center">
+            <div className="p-4 bg-surface-2 font-bold flex items-center">
               {isRtl ? "المساحة الكلية" : "Total Size"}
             </div>
             {Array.from({ length: slotCount }).map((_, idx) => {
@@ -194,7 +194,7 @@ export default function PropertyCompareView({
             })}
 
             {/* ROW 5: BEDROOMS & BATHROOMS */}
-            <div className="p-4 bg-stone-50 font-bold flex items-center">
+            <div className="p-4 bg-surface-2 font-bold flex items-center">
               {isRtl ? "الغرف والحمامات" : "Beds / Baths"}
             </div>
             {Array.from({ length: slotCount }).map((_, idx) => {
@@ -212,7 +212,7 @@ export default function PropertyCompareView({
             })}
 
             {/* ROW 6: FURNISHING */}
-            <div className="p-4 bg-stone-50 font-bold flex items-center">
+            <div className="p-4 bg-surface-2 font-bold flex items-center">
               {isRtl ? "حالة التأثيث" : "Furnishing"}
             </div>
             {Array.from({ length: slotCount }).map((_, idx) => {
@@ -230,7 +230,7 @@ export default function PropertyCompareView({
             })}
 
             {/* ROW 7: QUALITY SCORE */}
-            <div className="p-4 bg-stone-50 font-bold flex items-center">
+            <div className="p-4 bg-surface-2 font-bold flex items-center">
               {isRtl ? "تقييم جودة الإعلان" : "Listing Quality Score"}
             </div>
             {Array.from({ length: slotCount }).map((_, idx) => {
@@ -240,7 +240,7 @@ export default function PropertyCompareView({
                   {prop && (
                     <div className="flex items-center gap-1">
                       <span className="font-bold text-emerald-600">{prop.qualityScore}%</span>
-                      <div className="w-12 h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                      <div className="w-12 h-1.5 bg-surface-2 rounded-full overflow-hidden">
                         <div className="h-full bg-emerald-500" style={{ width: `${prop.qualityScore}%` }}></div>
                       </div>
                     </div>
@@ -250,7 +250,7 @@ export default function PropertyCompareView({
             })}
 
             {/* ROW 8: PORTAL VERIFICATION */}
-            <div className="p-4 bg-stone-50 font-bold flex items-center">
+            <div className="p-4 bg-surface-2 font-bold flex items-center">
               {isRtl ? "التوثيق القانوني" : "Portal Verification"}
             </div>
             {Array.from({ length: slotCount }).map((_, idx) => {
@@ -274,7 +274,7 @@ export default function PropertyCompareView({
             })}
 
             {/* ROW 9: KEY AMENITIES */}
-            <div className="p-4 bg-stone-50 font-bold flex items-center">
+            <div className="p-4 bg-surface-2 font-bold flex items-center">
               {isRtl ? "أبرز المرافق" : "Key Amenities"}
             </div>
             {Array.from({ length: slotCount }).map((_, idx) => {

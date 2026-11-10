@@ -1617,7 +1617,7 @@ export default function VisitorExperience({
                           className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full shadow-md text-[10px] font-bold hover:scale-105 transition-transform cursor-pointer ${
                             comparedPropertyIds.includes(property.id)
                               ? "bg-gold text-gold-ink"
-                              : "bg-white text-ink"
+                              : "bg-white text-gray-900"
                           }`}
                           title={isRtl ? "مقارنة العقار" : "Compare Side-by-Side"}
                           aria-label={isRtl ? "مقارنة العقار" : "Compare property"}
@@ -1628,12 +1628,12 @@ export default function VisitorExperience({
 
                         <button
                           onClick={(e) => toggleSaveProperty(property.id, e)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white rounded-full shadow-md text-[10px] font-bold text-ink hover:scale-105 transition-transform cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white rounded-full shadow-md text-[10px] font-bold text-gray-900 hover:scale-105 transition-transform cursor-pointer"
                           aria-label={isRtl ? "حفظ العقار" : "Save property"}
                         >
                           <Bookmark
                             size={13}
-                            className={savedPropertyIds.includes(property.id) ? "fill-gold text-gold" : "text-ink"}
+                            className={savedPropertyIds.includes(property.id) ? "fill-gold text-gold" : "text-gray-900"}
                           />
                           <span>{savedPropertyIds.includes(property.id) ? (isRtl ? "محفوظ" : "Saved") : (isRtl ? "حفظ" : "Save")}</span>
                         </button>
@@ -1643,7 +1643,7 @@ export default function VisitorExperience({
                     <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center gap-1.5">
                       <div className="flex items-center gap-1.5">
                         {property.verificationStatus === VerificationStatus.APPROVED && (
-                          <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-ink flex items-center gap-1 shadow-xs border border-gold/30">
+                          <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-gray-900 flex items-center gap-1 shadow-xs border border-gold/30">
                             <CheckCircle size={12} className="text-gold" />
                             <span>{t.verified}</span>
                           </div>
@@ -1759,14 +1759,14 @@ export default function VisitorExperience({
                   <div className="flex gap-1.5">
                     <button
                       onClick={(e) => { e.stopPropagation(); handleWhatsAppAction(property); }}
-                      className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-full transition-colors cursor-pointer"
+                      className="p-2 bg-success-soft hover:bg-success/20 text-success rounded-full transition-colors cursor-pointer"
                       title={t.whatsappCTA}
                     >
                       <MessageCircle size={16} />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleCallAction(property); }}
-                      className="p-2 bg-[#fdf6e8] hover:bg-[#f8ecc9] text-gold-active rounded-full transition-colors cursor-pointer"
+                      className="p-2 bg-gold-soft hover:bg-gold/25 text-gold-active rounded-full transition-colors cursor-pointer"
                       title={t.callCTA}
                     >
                       <Phone size={16} />
@@ -1936,7 +1936,7 @@ export default function VisitorExperience({
           <div className="bg-canvas rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedAgentProfile(null)}
-              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-surface-2 rounded-full border border-border text-ink cursor-pointer"
             >
               <X size={15} />
             </button>
@@ -2093,7 +2093,7 @@ export default function VisitorExperience({
           <div className="bg-canvas rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setSelectedOrgProfile(null)}
-              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-surface-2 rounded-full border border-border text-ink cursor-pointer"
             >
               <X size={15} />
             </button>
@@ -2112,7 +2112,7 @@ export default function VisitorExperience({
                       {isRtl && selectedOrgProfile.nameAr ? selectedOrgProfile.nameAr : selectedOrgProfile.name}
                     </h3>
                     {selectedOrgProfile.verificationStatus === VerificationStatus.APPROVED && (
-                      <span className="p-0.5 bg-amber-50 text-gold border border-gold/30 rounded-md" title="Accredited Partner">
+                      <span className="p-0.5 bg-gold-soft text-gold-active border border-gold/30 rounded-md" title="Accredited Partner">
                         <CheckCircle size={12} className="fill-gold text-white" />
                       </span>
                     )}
@@ -2240,7 +2240,7 @@ export default function VisitorExperience({
                 </h3>
                 <button
                   onClick={() => setIsAlertsOpen(false)}
-                  className="p-1 rounded-full border border-border hover:bg-gray-100 text-ink cursor-pointer"
+                  className="p-1 rounded-full border border-border hover:bg-surface-2 text-ink cursor-pointer"
                 >
                   <X size={16} />
                 </button>
@@ -2353,7 +2353,7 @@ export default function VisitorExperience({
           <div className="bg-canvas rounded-xl border border-border w-full max-w-md overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
             <button
               onClick={() => setIsSaveSearchModalOpen(false)}
-              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-gray-100 rounded-full border border-border text-ink cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-surface-2 rounded-full border border-border text-ink cursor-pointer"
             >
               <X size={15} />
             </button>

@@ -211,7 +211,7 @@ export default function ProjectsView({ isRtl, organizations, users }: ProjectsVi
               </div>
               <button
                 onClick={() => setSelectedProject(null)}
-                className="p-1.5 bg-gray-50 border border-border rounded-lg hover:bg-gray-100 cursor-pointer"
+                className="p-1.5 bg-surface-2 border border-border rounded-lg hover:bg-border cursor-pointer"
                 aria-label={isRtl ? "إغلاق" : "Close"}
               >
                 <X size={15} />

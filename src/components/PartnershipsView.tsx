@@ -105,8 +105,8 @@ export default function PartnershipsView({ isRtl }: PartnershipsViewProps) {
           <div className="border border-border rounded-xl p-5 space-y-2 bg-ink-inverse">
             <span className="font-serif font-bold text-sm text-ink block">{isRtl ? "عناوين التواصل الرسمية" : "Corporate Desk"}</span>
             <p className="font-semibold text-ink">{isRtl ? COMPANY.nameAr : COMPANY.nameEn}</p>
-            <p className="text-gray-600">🏢 {isRtl ? COMPANY.addressAr : COMPANY.addressEn}</p>
-            <p className="text-gray-600">✉️ <a href={`mailto:${COMPANY.email}`} dir="ltr" className="hover:text-gold underline-offset-2 hover:underline">{COMPANY.email}</a></p>
+            <p className="text-ink-muted">🏢 {isRtl ? COMPANY.addressAr : COMPANY.addressEn}</p>
+            <p className="text-ink-muted">✉️ <a href={`mailto:${COMPANY.email}`} dir="ltr" className="hover:text-gold underline-offset-2 hover:underline">{COMPANY.email}</a></p>
           </div>
         </div>
 
@@ -119,7 +119,7 @@ export default function PartnershipsView({ isRtl }: PartnershipsViewProps) {
             <div className="p-8 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 text-center space-y-3">
               <CheckCircle2 className="mx-auto text-emerald-600" size={36} />
               <p className="font-bold text-sm">{isRtl ? "تم تقديم طلب الشراكة بنجاح!" : "Application Transmitted!"}</p>
-              <p className="text-[11px] text-gray-500">
+              <p className="text-[11px] text-ink-muted">
                 {isRtl
                   ? "سيقوم فريق العمليات والشؤون القانونية لدينا بمراجعة طلبك والتواصل معك عبر البريد الإلكتروني."
                   : "The administration and platform operations desk will audit your profile and reach out within 2 business days."}

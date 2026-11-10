@@ -2190,7 +2190,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       </button>
                       <button
                         onClick={() => { setShowDisable2faConfirm(false); setDisable2faPassword(""); setTfaError(""); }}
-                        className="px-3.5 py-1.5 bg-surface hover:bg-gray-50 border border-gray-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                        className="px-3.5 py-1.5 bg-surface hover:bg-surface-2 border border-gray-200 text-xs font-bold rounded-lg transition-colors cursor-pointer"
                       >
                         {isRtl ? "إلغاء" : "Cancel"}
                       </button>
@@ -2233,7 +2233,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           <button
                             type="button"
                             onClick={() => { setShow2faSetup(false); setTfaSecret(""); setTfaQrCode(""); setTfaCode(""); }}
-                            className="px-3.5 py-2 bg-surface hover:bg-gray-50 text-gray-700 border border-border text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                            className="px-3.5 py-2 bg-surface hover:bg-surface-2 text-ink border border-border text-xs font-bold rounded-lg transition-colors cursor-pointer"
                           >
                             {isRtl ? "إلغاء" : "Cancel"}
                           </button>
@@ -3695,7 +3695,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           <div>
                             <div className="flex justify-between items-start">
                               <h5 className="font-serif font-bold text-ink text-xs">{plan.name}</h5>
-                              <span className="px-2 py-0.5 bg-yellow-50 text-gold text-[9px] font-mono font-bold rounded">
+                              <span className="px-2 py-0.5 bg-gold-soft text-gold-active text-[9px] font-mono font-bold rounded">
                                 ID: {plan.id}
                               </span>
                             </div>
@@ -4431,7 +4431,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         </div>
 
                         {selectedTicket.replies?.map(reply => (
-                          <div key={reply.id} className={`p-3 rounded-lg border ${reply.senderRole === "PLATFORM_ADMIN" ? "bg-amber-50/50 border-amber-100 ml-4" : "bg-gray-50 border-gray-100 mr-4"} space-y-1`}>
+                          <div key={reply.id} className={`p-3 rounded-lg border ${reply.senderRole === "PLATFORM_ADMIN" ? "bg-gold-soft border-border ml-4" : "bg-surface-2 border-border mr-4"} space-y-1`}>
                             <div className="flex justify-between font-bold text-[10px] text-ink">
                               <span>{reply.senderName} ({reply.senderRole.replace("_", " ")})</span>
                               <span>{reply.createdDate ? reply.createdDate.split("T")[0] : ""}</span>
@@ -5247,7 +5247,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="border-b border-border bg-gray-50 text-[10px] font-bold text-ink-muted uppercase tracking-wider">
+                        <tr className="border-b border-border bg-surface-2 text-[10px] font-bold text-ink-muted uppercase tracking-wider">
                           <th className="p-3">{isRtl ? "المقيم" : "Reviewer"}</th>
                           <th className="p-3">{isRtl ? "النوع" : "Target Type"}</th>
                           <th className="p-3">{isRtl ? "الهدف" : "Target Profile"}</th>
@@ -5262,7 +5262,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                         {filteredReviews.map((rev: any) => {
                           const isPending = rev.status === "PENDING";
                           return (
-                            <tr key={rev.id} className="hover:bg-gray-50">
+                            <tr key={rev.id} className="hover:bg-surface-2">
                               <td className="p-3 font-semibold text-ink">{rev.reviewerName}</td>
                               <td className="p-3">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -5462,7 +5462,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsAddingLocation(false)}
-                      className="px-3 py-1.5 border border-[#cbd5e1] text-ink hover:bg-gray-100 rounded-lg text-xs font-medium cursor-pointer"
+                      className="px-3 py-1.5 border border-[#cbd5e1] text-ink hover:bg-surface-2 rounded-lg text-xs font-medium cursor-pointer"
                     >
                       {isRtl ? "إلغاء" : "Cancel"}
                     </button>
@@ -5613,7 +5613,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                     <button
                       type="button"
                       onClick={() => setIsAddingFeedSource(false)}
-                      className="px-3 py-1.5 border border-[#cbd5e1] text-ink hover:bg-gray-100 rounded-lg text-xs font-medium cursor-pointer"
+                      className="px-3 py-1.5 border border-[#cbd5e1] text-ink hover:bg-surface-2 rounded-lg text-xs font-medium cursor-pointer"
                     >
                       {isRtl ? "إلغاء" : "Cancel"}
                     </button>
@@ -5671,7 +5671,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                             <div className="flex items-center gap-2 shrink-0">
                               <button
                                 onClick={() => handleToggleFeedStatus(feed)}
-                                className="px-3 py-1.5 border border-[#cbd5e1] text-ink hover:bg-gray-100 rounded-lg text-[11px] font-semibold cursor-pointer"
+                                className="px-3 py-1.5 border border-[#cbd5e1] text-ink hover:bg-surface-2 rounded-lg text-[11px] font-semibold cursor-pointer"
                               >
                                 {feed.status === "ACTIVE" ? (isRtl ? "إيقاف مؤقت" : "Pause") : (isRtl ? "استئناف" : "Resume")}
                               </button>

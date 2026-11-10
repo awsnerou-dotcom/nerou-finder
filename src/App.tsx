@@ -1638,7 +1638,7 @@ export default function App() {
 
                     {/* Sticky footer so the submit button stays reachable on short viewports
                         instead of requiring a scroll to the very bottom of a long form. */}
-                    <div className="sticky bottom-0 -mx-6 md:-mx-8 -mb-6 md:-mb-8 px-6 md:px-8 pt-3 pb-6 md:pb-8 bg-white/95 backdrop-blur-sm border-t border-border">
+                    <div className="sticky bottom-0 -mx-6 md:-mx-8 -mb-6 md:-mb-8 px-6 md:px-8 pt-3 pb-6 md:pb-8 bg-surface/95 backdrop-blur-sm border-t border-border">
                       <button
                         type="submit"
                         disabled={authLoading}

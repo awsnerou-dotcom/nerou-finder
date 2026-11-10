@@ -89,7 +89,7 @@ export default function SupportTicketsView({
           </button>
           <button
             onClick={onSignupTrigger}
-            className="px-5 py-2.5 bg-surface border border-border hover:bg-gray-50 text-ink text-xs font-bold rounded-lg uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            className="px-5 py-2.5 bg-surface border border-border hover:bg-surface-2 text-ink text-xs font-bold rounded-lg uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
             <UserPlus size={14} />
             <span>{isRtl ? "شريك جديد" : "Sign Up"}</span>
@@ -192,7 +192,7 @@ export default function SupportTicketsView({
         <div className="flex gap-2">
           <button
             onClick={fetchUserTickets}
-            className="p-1.5 bg-surface border border-border rounded-lg hover:bg-gray-50 text-ink-muted cursor-pointer"
+            className="p-1.5 bg-surface border border-border rounded-lg hover:bg-surface-2 text-ink-muted cursor-pointer"
             title={isRtl ? "تحديث" : "Refresh"}
           >
             <RefreshCw size={14} />
@@ -352,8 +352,8 @@ export default function SupportTicketsView({
                       key={reply.id}
                       className={`p-3 rounded-lg border ${
                         reply.senderRole === "PLATFORM_ADMIN"
-                          ? "bg-amber-50/50 border-amber-100 ml-4"
-                          : "bg-gray-50 border-gray-100 mr-4"
+                          ? "bg-gold-soft border-border ml-4"
+                          : "bg-surface-2 border-border mr-4"
                       } space-y-1`}
                     >
                       <span className="font-bold text-[9px] text-ink block">

@@ -1243,7 +1243,7 @@ export default function PropertyDetailView({
                   <a
                     href={categorizedImages.FLOOR_PLAN[activeFloorPlanIndex] || categorizedImages.FLOOR_PLAN[0]}
                     download={`floorplan-${property.listingId}.jpg`}
-                    className="absolute bottom-3 right-3 p-2 bg-white/90 backdrop-blur-xs border border-border text-ink-muted hover:text-ink rounded-full shadow-sm hover:scale-105 transition-all"
+                    className="absolute bottom-3 right-3 p-2 bg-white/90 backdrop-blur-xs border border-border text-gray-500 hover:text-gray-900 rounded-full shadow-sm hover:scale-105 transition-all"
                     title={isRtl ? "تحميل المخطط" : "Download High-Res PDF Schema"}
                   >
                     <Download size={15} />
@@ -1273,12 +1273,12 @@ export default function PropertyDetailView({
                       <MapPin size={24} className="text-gold" />
                     </div>
 
-                    <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 border border-border rounded text-[10px] text-ink-muted font-bold flex items-center gap-1">
+                    <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-xs px-2.5 py-1 border border-border rounded text-[10px] text-gray-500 font-bold flex items-center gap-1">
                       <MapPin size={11} className="text-gold" />
                       <span>{property.district}, {property.city}</span>
                     </div>
 
-                    <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-xs p-2 border border-border rounded text-[9px] text-ink-muted text-center font-medium flex items-center justify-center gap-1">
+                    <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-xs p-2 border border-border rounded text-[9px] text-gray-500 text-center font-medium flex items-center justify-center gap-1">
                       <AlertTriangle size={11} className="text-amber-600 shrink-0" />
                       <span>{isRtl ? "العنوان الدقيق مخفي لخصوصية البائع. الدائرة تمثل النطاق التقريبي للحي." : "Approximate area only to safeguard property owner's absolute privacy rights."}</span>
                     </div>
@@ -1548,7 +1548,7 @@ export default function PropertyDetailView({
                     )}
                   </div>
                   {property.serviceCharges != null && (
-                    <p className="text-[10px] text-gray-500 pt-1">
+                    <p className="text-[10px] text-ink-muted pt-1">
                       {isRtl ? "+ رسوم الخدمة" : "+ Service Charges"}: {property.serviceCharges.toLocaleString()} {currencySymbol}
                     </p>
                   )}

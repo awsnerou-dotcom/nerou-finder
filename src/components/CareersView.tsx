@@ -216,7 +216,7 @@ export default function CareersView({ isRtl }: CareersViewProps) {
               <div className="p-6 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200 text-center space-y-2 text-xs">
                 <CheckCircle2 className="mx-auto text-emerald-600" size={32} />
                 <p className="font-bold">{isRtl ? "تم إرسال طلبك بنجاح!" : "Application Sent Successfully!"}</p>
-                <p className="text-[10px] text-gray-500">{isRtl ? "سيتصل بك فريق التوظيف والموارد البشرية لدينا قريبًا." : "Our human resources desk will reach out if your profile matches our needs."}</p>
+                <p className="text-[10px] text-ink-muted">{isRtl ? "سيتصل بك فريق التوظيف والموارد البشرية لدينا قريبًا." : "Our human resources desk will reach out if your profile matches our needs."}</p>
               </div>
             ) : (
               <form onSubmit={handleApply} className="space-y-3 text-xs text-ink">
