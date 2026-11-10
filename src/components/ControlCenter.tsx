@@ -1728,7 +1728,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
         { id: "careers", label: { en: "Careers CMS", ar: "الوظائف والتوظيف" } },
         { id: "press", label: { en: "Press CMS", ar: "الصحافة والإعلام" } },
         { id: "partnerships", label: { en: "Partner Requests", ar: "شراكات الشركات" } },
-        { id: "showcase", label: { en: "Subscribers Showcase", ar: "عرض المشتركين" } }
+        { id: "showcase", label: { en: "Our Partners (Subscribers)", ar: "شركاؤنا (المشتركون)" } }
       ]
     },
     {

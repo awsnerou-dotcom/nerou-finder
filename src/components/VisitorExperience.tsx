@@ -1143,7 +1143,7 @@ export default function VisitorExperience({
                   currentTab === "PARTNERSHIPS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
-                {isRtl ? "شراكات" : "Partnerships"}
+                {isRtl ? "شركاؤنا" : "Our Partners"}
               </button>
 
               <button
@@ -1843,17 +1843,6 @@ export default function VisitorExperience({
         <LandingFaq path={landingPathRef.current} isRtl={isRtl} />
       )}
 
-      {/* The companies that subscribed (added by a platform admin): trust for the visitor. Hidden when there are none. */}
-      {currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && !aiSearchActive && (
-        <SubscribersShowcase
-          isRtl={isRtl}
-          onOpenCompany={(orgId) => {
-            const org = organizations.find(o => o.id === orgId);
-            if (org) setSelectedOrgProfile(org);
-          }}
-        />
-      )}
-
       {/* 5. Detailed Property Overlay Modal Drawer */}
       {selectedProperty && (
         <PropertyDetailView
@@ -1953,7 +1942,23 @@ export default function VisitorExperience({
       {currentTab === "HELP_CENTER" && <HelpCenterView isRtl={isRtl} />}
       {currentTab === "CAREERS" && <CareersView isRtl={isRtl} />}
       {currentTab === "PRESS" && <PressView isRtl={isRtl} />}
-      {currentTab === "PARTNERSHIPS" && <PartnershipsView isRtl={isRtl} />}
+      {currentTab === "PARTNERSHIPS" && (
+        <div className="space-y-12">
+          {/* Our partners: the companies that subscribed (added by a platform admin). Hidden while there are none. */}
+          <SubscribersShowcase
+            isRtl={isRtl}
+            title={isRtl ? "شركاؤنا" : "Our partners"}
+            subtitle={isRtl
+              ? "شركات عقارية وشركات وساطة ومطورون اشتركوا في نيرو فايندر وينشرون عقاراتهم عليها."
+              : "Real-estate companies, brokerages and developers that subscribed to Nerou Finder and publish their properties here."}
+            onOpenCompany={(orgId) => {
+              const org = organizations.find(o => o.id === orgId);
+              if (org) setSelectedOrgProfile(org);
+            }}
+          />
+          <PartnershipsView isRtl={isRtl} />
+        </div>
+      )}
       {currentTab === "AREA_GUIDES" && <AreaGuidesView isRtl={isRtl} onSelectGuide={openAreaGuide} />}
       {currentTab === "SUPPORT_TICKETS" && (
         <SupportTicketsView

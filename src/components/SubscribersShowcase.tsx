@@ -31,7 +31,12 @@ interface PublicEntry {
 
 let cache: PublicEntry[] | null = null;
 
-export default function SubscribersShowcase({ isRtl, onOpenCompany }: { isRtl: boolean; onOpenCompany?: (orgId: string) => void }) {
+export default function SubscribersShowcase({ isRtl, onOpenCompany, title, subtitle }: {
+  isRtl: boolean;
+  onOpenCompany?: (orgId: string) => void;
+  title?: string; // the heading; the default suits the plans page ("trusted by...")
+  subtitle?: string;
+}) {
   const [entries, setEntries] = useState<PublicEntry[] | null>(cache);
   useEffect(() => {
     if (cache) return;
@@ -54,12 +59,12 @@ export default function SubscribersShowcase({ isRtl, onOpenCompany }: { isRtl: b
     <section aria-labelledby="subscribers-title" className="space-y-6 py-4" data-testid="subscribers-showcase">
       <div className="max-w-3xl space-y-1.5">
         <h2 id="subscribers-title" className="text-2xl md:text-3xl font-serif text-ink font-medium tracking-tight">
-          {isRtl ? "شركات عقارية تثق بنا" : "Real-estate companies that trust Nerou Finder"}
+          {title ?? (isRtl ? "شركات عقارية تثق بنا" : "Real-estate companies that trust Nerou Finder")}
         </h2>
         <p className="text-sm text-ink-muted leading-relaxed">
-          {isRtl
+          {subtitle ?? (isRtl
             ? "شركات عقارية وشركات وساطة ومطورون اشتركوا في المنصة وينشرون عقاراتهم عليها."
-            : "Agencies, brokerages and developers who subscribed and publish their properties here."}
+            : "Agencies, brokerages and developers who subscribed and publish their properties here.")}
         </p>
       </div>
 

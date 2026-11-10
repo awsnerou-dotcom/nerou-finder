@@ -75,10 +75,10 @@ export default function ShowcaseAdmin({ isRtl }: { isRtl: boolean }) {
     <div className="space-y-4 text-xs" data-testid="showcase-admin">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="font-serif text-lg font-semibold text-ink flex items-center gap-2"><Users size={18} className="text-gold" />{t("Subscribers showcase", "عرض المشتركين")}</h3>
+          <h3 className="font-serif text-lg font-semibold text-ink flex items-center gap-2"><Users size={18} className="text-gold" />{t("Our partners (subscribers)", "شركاؤنا (المشتركون)")}</h3>
           <p className="text-ink-muted mt-0.5 max-w-2xl">
-            {t("The companies shown to visitors on the home page and the plans page to build trust: logo, a group photo with them and a short description. Only add a company that agreed to appear. Nothing shows until you publish it.",
-              "الشركات التي تظهر للزوار في الصفحة الرئيسية وصفحة الباقات لبناء الثقة: الشعار وصورة جماعية معهم ووصف قصير. أضف فقط شركة وافقت على الظهور. لا يظهر شيء حتى تنشره.")}
+            {t("The companies shown to visitors on the \"Our Partners\" page (and on the plans page) to build trust: logo, a group photo with them and a short description. Only add a company that agreed to appear. Nothing shows until you publish it.",
+              "الشركات التي تظهر للزوار في صفحة «شركاؤنا» (وفي صفحة الباقات) لبناء الثقة: الشعار وصورة جماعية معهم ووصف قصير. أضف فقط شركة وافقت على الظهور. لا يظهر شيء حتى تنشره.")}
           </p>
         </div>
         <Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setForm({ entry: null })}>{t("Add a company", "إضافة شركة")}</Button>
@@ -88,7 +88,7 @@ export default function ShowcaseAdmin({ isRtl }: { isRtl: boolean }) {
 
       {entries.length === 0 ? (
         <EmptyState icon={<Building2 size={20} />} title={t("No companies yet", "لا توجد شركات بعد")}
-          description={t("Add the first company that subscribed. After you publish it, the \"subscribers\" section appears on the site.", "أضف أول شركة اشتركت. بعد نشرها يظهر قسم المشتركين في الموقع.")}
+          description={t("Add the first company that subscribed. After you publish it, the \"Our Partners\" section appears on the site.", "أضف أول شركة اشتركت. بعد نشرها يظهر قسم «شركاؤنا» في الموقع.")}
           action={<Button size="sm" leftIcon={<Plus size={14} />} onClick={() => setForm({ entry: null })}>{t("Add a company", "إضافة شركة")}</Button>} />
       ) : (
         <ul className="space-y-3">

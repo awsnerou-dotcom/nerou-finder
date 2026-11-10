@@ -8952,8 +8952,8 @@ const SEO_PAGES: Record<string, { en: SeoPageText; ar: SeoPageText }> = {
     ar: { title: "الأخبار الصحفية | نيرو فايندر", description: "أخبار وبيانات صحفية من نيرو فايندر.", h1: "الأخبار الصحفية", intro: "أخبار وبيانات صحفية من نيرو فايندر." }
   },
   "/partnerships": {
-    en: { title: "Partner with Nerou Finder", description: "Work with Nerou Finder: partnerships for agencies, developers, banks and service companies in Qatar.", h1: "Partnerships", intro: "Work with Nerou Finder: partnerships for agencies, developers, banks and service companies in Qatar." },
-    ar: { title: "الشراكة مع نيرو فايندر", description: "اعمل مع نيرو فايندر: شراكات للمكاتب والمطورين والبنوك وشركات الخدمات في قطر.", h1: "الشراكات", intro: "اعمل مع نيرو فايندر: شراكات للمكاتب والمطورين والبنوك وشركات الخدمات في قطر." }
+    en: { title: "Our Partners | Nerou Finder", description: "The real-estate companies, brokerages and developers that subscribed to Nerou Finder, and how to partner with us in Qatar.", h1: "Our partners", intro: "The real-estate companies, brokerages and developers that subscribed to Nerou Finder, and how agencies, developers, banks and service companies in Qatar can partner with us." },
+    ar: { title: "شركاؤنا | نيرو فايندر", description: "الشركات العقارية وشركات الوساطة والمطورون المشتركون في نيرو فايندر، وكيف تصبح شريكًا لنا في قطر.", h1: "شركاؤنا", intro: "الشركات العقارية وشركات الوساطة والمطورون المشتركون في نيرو فايندر، وكيف يمكن للمكاتب والمطورين والبنوك وشركات الخدمات في قطر الشراكة معنا." }
   },
   "/legal": {
     en: { title: "Terms and Privacy | Nerou Finder", description: "The terms of use and privacy policy of Nerou Finder.", h1: "Terms and privacy", intro: "The terms of use and privacy policy of Nerou Finder." },

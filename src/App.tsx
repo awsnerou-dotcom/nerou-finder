@@ -1089,7 +1089,7 @@ export default function App() {
                 {isRtl ? "الصحافة" : "Press"}
               </button>
               <button onClick={() => navigateFooter("PARTNERSHIPS")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
-                {isRtl ? "شراكات" : "Partnerships"}
+                {isRtl ? "شركاؤنا" : "Our Partners"}
               </button>
               <button onClick={() => navigateFooter("LEGAL")} className="text-left text-gray-400 hover:text-white transition-colors cursor-pointer">
                 {isRtl ? "الوثائق القانونية" : "Legal Policies"}
