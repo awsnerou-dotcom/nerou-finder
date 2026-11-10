@@ -1717,9 +1717,55 @@ app.post("/api/admin/locations", (req, res) => {
 // storefront (VisitorExperience) uses it to resolve agent/org display names for anyone
 // browsing, and it's also the data source for the admin Users directory. It must NEVER
 // return the bcrypt password hash regardless of caller, which it previously did unconditionally.
+// This list used to be public AND complete: anyone, signed in or not, got every account's email,
+// phone, WhatsApp, referral code, role and verification state (and, mid-signup, the email code's hash).
+// Now:
+//   - a platform admin gets everyone (the admin console needs it);
+//   - an agency or developer admin also gets full records for their own organisation (their team page);
+//   - everyone else gets only the people the public pages show - verified professionals, or anyone
+//     who has a published listing - and only the fields those pages read.
+const PUBLIC_PROFILE_FIELDS = [
+  "id", "fullName", "role", "orgId", "avatarUrl", "bio", "languages", "specialties",
+  "verificationStatus", "agentType", "affiliatedAgencyName", "createdDate",
+  "email", "phone", "whatsapp"
+] as const;
+
+export function publicUserProfile(u: Record<string, any>) {
+  const out: Record<string, unknown> = {};
+  for (const k of PUBLIC_PROFILE_FIELDS) if (u[k] !== undefined) out[k] = u[k];
+  return out;
+}
+
+function viewerFromRequest(req: express.Request): { id: string; role: string } | null {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) return null;
+  try {
+    const d = jwt.verify(header.split(" ")[1], JWT_SECRET) as any;
+    return d?.id ? { id: d.id, role: d.role } : null;
+  } catch {
+    return null;
+  }
+}
+
 app.get("/api/users", (req, res) => {
   const db = readDb();
-  res.json(db.users.map(({ password, ...safe }) => safe));
+  const viewer = viewerFromRequest(req);
+  if (viewer && (viewer.role === UserRole.PLATFORM_ADMIN || viewer.role === UserRole.SUPER_ADMIN)) {
+    return res.json(db.users.map(sanitizeUser));
+  }
+  const me = viewer ? db.users.find(u => u.id === viewer.id) : undefined;
+  const myOrg = me && (me.role === UserRole.AGENCY_ADMIN || me.role === UserRole.DEVELOPER_ADMIN) ? me.orgId : undefined;
+  const owners = new Set(db.properties.filter(p => isPublishedListing(p)).map(p => p.agentId));
+  const professionals: string[] = [UserRole.AGENT, UserRole.AGENCY_ADMIN, UserRole.DEVELOPER_ADMIN];
+  const isPublic = (u: (typeof db.users)[number]) =>
+    owners.has(u.id) ||
+    (professionals.includes(u.role) &&
+      u.verificationStatus === VerificationStatus.APPROVED &&
+      (!u.applicationStatus || u.applicationStatus === ApplicationStatus.ACTIVE));
+  const result = db.users
+    .filter(u => u.id === me?.id || (myOrg && u.orgId === myOrg) || isPublic(u))
+    .map(u => (u.id === me?.id || (myOrg && u.orgId === myOrg) ? sanitizeUser(u) : publicUserProfile(u)));
+  res.json(result);
 });
 
 // Update own profile (Agent/Agency/Developer "Save Profile Changes" forms), or any user if PLATFORM_ADMIN
@@ -2069,7 +2115,8 @@ export interface MarketIndexGroup {
 function computeMarketIndexGroups(properties: Property[], filters: { district?: string; city?: string }): MarketIndexGroup[] {
   // "Live" mirrors GET /api/properties's own default (no includeAllStatuses=true) - only
   // listings a visitor could actually find and inquire about today count toward the index.
-  const live = properties.filter(p => p.listingStatus === ListingStatus.PUBLISHED);
+  // A listing with no district or city cannot be placed in an area, so it is skipped (it used to crash this whole endpoint).
+  const live = properties.filter(p => p.listingStatus === ListingStatus.PUBLISHED && !!p.district && !!p.city);
 
   const districtFilter = filters.district?.trim().toLowerCase();
   const cityFilter = filters.city?.trim().toLowerCase();

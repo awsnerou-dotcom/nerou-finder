@@ -242,7 +242,8 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   const fetchAgencyContext = async () => {
     try {
       // Get all agents belonging to this organization
-      const usersRes = await fetch("/api/users");
+      // signed in: the server returns this organisation's full team records, not just the public profiles
+      const usersRes = await fetch("/api/users", { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
       const usersData = await usersRes.json();
       const orgAgents = usersData.filter((u: User) => u.orgId === agency.id && u.role === UserRole.AGENT);
       setAgents(orgAgents);
