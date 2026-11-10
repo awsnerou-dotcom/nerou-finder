@@ -34,6 +34,7 @@ import {
   MessageCircle,
   Calendar,
   Bookmark,
+  ChevronDown,
   ChevronRight,
   Info,
   Clock,
@@ -81,6 +82,8 @@ import { homeTitle, listingTitle } from "../lib/pageTitle.js";
 import { LandingIntro, LandingFaq } from "./LandingSeoContent.js";
 import CardImageSlideshow from "./CardImageSlideshow.js";
 import SubscribersShowcase from "./SubscribersShowcase.js";
+import LegalText from "./LegalText.js";
+import { COMPANY, companyCrLabel } from "../companyInfo.js";
 
 // The page path without the /ar language prefix: /ar/properties/x and /properties/x are the same page.
 const appPath = () => stripLang(window.location.pathname).path;
@@ -109,6 +112,8 @@ export default function VisitorExperience({
   const { formatPrice } = useCurrency();
   const [properties, setProperties] = useState<Property[]>([]);
   const [legalDocs, setLegalDocs] = useState<any[]>([]);
+  // which legal document is open on the Legal page (null = the first one)
+  const [openLegalDoc, setOpenLegalDoc] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   
   // Custom Filter States
@@ -1976,8 +1981,13 @@ export default function VisitorExperience({
             </h2>
             <p className="text-xs text-ink-muted mt-1">
               {isRtl
-                ? "تصفح مستندات وشروط الاستخدام وسياسة الخصوصية المعتمدة وفقاً لقانون حماية الخصوصية رقم ١٣ لعام ٢٠١٦ بدولة قطر."
-                : "Review active terms of service, developer guidelines, and privacy regulations under Law No. 13 of 2016."}
+                ? "تصفح شروط الاستخدام وسياسة الخصوصية وباقي الوثائق، وفق قانون حماية خصوصية البيانات الشخصية رقم 13 لسنة 2016 بدولة قطر."
+                : "Read the Terms of Use, the Privacy Policy and our other policies, in line with Qatar Law No. 13 of 2016 on Personal Data Privacy Protection."}
+            </p>
+            <p className="text-xs text-ink-muted mt-1.5">
+              {isRtl ? "تملك المنصة وتشغّلها " : "Owned and operated by "}
+              <span className="font-semibold text-ink">{isRtl ? COMPANY.nameAr : COMPANY.nameEn}</span>
+              {" · "}{companyCrLabel(isRtl)}
             </p>
           </div>
 
@@ -1987,24 +1997,31 @@ export default function VisitorExperience({
                 {isRtl ? "لا توجد مستندات قانونية منشورة حالياً." : "No certified documents in repository currently."}
               </div>
             ) : (
-              legalDocs.map((doc) => (
-                <div key={doc.id} className="p-6 bg-surface border border-border rounded-xl space-y-4 text-xs">
-                  <div className="flex justify-between items-start border-b border-surface-2 pb-3">
-                    <div>
-                      <h3 className="font-serif font-bold text-sm text-ink">{isRtl ? doc.titleAr : doc.title}</h3>
-                      <span className="text-[10px] text-ink-muted block font-mono mt-1">
-                        {isRtl ? "الإصدار: " : "Version: "} {doc.version} • {isRtl ? "آخر تحديث: " : "Last updated: "} {doc.lastUpdated ? doc.lastUpdated.split("T")[0] : doc.effectiveDate}
+              legalDocs.map((doc, index) => {
+                // the first document (Terms of Use) is open; the others open when clicked. The text stays in the page either way.
+                const open = openLegalDoc === null ? index === 0 : openLegalDoc === doc.id;
+                return (
+                  <div key={doc.id} id={doc.slug} className="bg-surface border border-border rounded-xl text-xs overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setOpenLegalDoc(open ? "" : doc.id)}
+                      aria-expanded={open}
+                      className="w-full flex justify-between items-start gap-3 p-5 text-start cursor-pointer hover:bg-surface-2 transition-colors"
+                    >
+                      <span>
+                        <span className="block font-serif font-bold text-sm text-ink">{isRtl ? doc.titleAr : doc.title}</span>
+                        <span className="text-[10px] text-ink-muted block font-mono mt-1">
+                          {isRtl ? "الإصدار: " : "Version: "} {doc.version} • {isRtl ? "آخر تحديث: " : "Last updated: "} {doc.lastUpdated ? doc.lastUpdated.split("T")[0] : doc.effectiveDate}
+                        </span>
                       </span>
+                      <ChevronDown size={16} className={`shrink-0 mt-1 text-ink-muted transition-transform ${open ? "rotate-180" : ""}`} />
+                    </button>
+                    <div hidden={!open} className="px-5 pb-6 border-t border-surface-2 pt-4">
+                      <LegalText text={isRtl ? doc.contentAr : doc.content} />
                     </div>
-                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-bold uppercase rounded">
-                      {isRtl ? "معتمد وموثق" : "Certified & Valid"}
-                    </span>
                   </div>
-                  <p className="leading-relaxed text-ink-muted whitespace-pre-wrap font-sans">
-                    {isRtl ? doc.contentAr : doc.content}
-                  </p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

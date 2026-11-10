@@ -46,6 +46,7 @@ import {
   ShowcaseEntry,
   DEFAULT_MONTHLY_BOOST_CAPS
 } from "./src/types.js";
+import { NEW_LEGAL_DOCUMENTS, upgradeSeededLegalDocuments } from "./src/data/legalTexts.js";
 
 export interface DatabaseState {
   users: User[];
@@ -771,7 +772,7 @@ const DEFAULT_SYSTEM_HEALTH: SystemHealthStatus = {
   lastCheck: new Date().toISOString()
 };
 
-const DEFAULT_LEGAL_DOCUMENTS: LegalDocument[] = [
+const SEEDED_LEGAL_DOCUMENTS: LegalDocument[] = [
   {
     id: "legal-tou",
     slug: "terms-of-use",
@@ -871,6 +872,11 @@ const DEFAULT_LEGAL_DOCUMENTS: LegalDocument[] = [
     legalReviewStatus: "PENDING"
   }
 ];
+
+// The Terms of Use and Privacy Policy are the full versions from src/data/legalTexts.ts.
+const DEFAULT_LEGAL_DOCUMENTS: LegalDocument[] = SEEDED_LEGAL_DOCUMENTS.map(d =>
+  d.slug in NEW_LEGAL_DOCUMENTS ? { ...d, ...NEW_LEGAL_DOCUMENTS[d.slug as keyof typeof NEW_LEGAL_DOCUMENTS] } : d
+);
 
 const DEFAULT_HELP_ARTICLES: HelpArticle[] = [
   {
@@ -1080,6 +1086,9 @@ export function ensureStateDefaults(db: DatabaseState): void {
         db.legalDocuments.push(d);
       }
     }
+    // Replace the old one-paragraph Terms of Use / Privacy Policy with the full versions - only where an
+    // admin has not edited them (see upgradeSeededLegalDocuments).
+    upgradeSeededLegalDocuments(db.legalDocuments);
   }
   if (!db.helpArticles || db.helpArticles.length === 0) db.helpArticles = DEFAULT_HELP_ARTICLES;
   if (!db.subscriptionPlans || db.subscriptionPlans.length === 0) {

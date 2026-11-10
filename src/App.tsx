@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { COMPANY } from "./companyInfo.js";
+import { COMPANY, companyCrLabel } from "./companyInfo.js";
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
 import VisitorExperience from "./components/VisitorExperience.js";
 import CinematicSkyline from "./components/CinematicSkyline.js";
@@ -1036,6 +1036,7 @@ export default function App() {
             </p>
             <div className="text-[11px] text-gray-400 leading-relaxed space-y-1 pt-1">
               <p className="font-semibold text-gray-300">{isRtl ? COMPANY.nameAr : COMPANY.nameEn}</p>
+              <p>{companyCrLabel(isRtl)}</p>
               <p>{isRtl ? COMPANY.addressAr : COMPANY.addressEn}</p>
               <p>
                 <a href={`mailto:${COMPANY.email}`} dir="ltr" className="hover:text-white transition-colors underline-offset-2 hover:underline">

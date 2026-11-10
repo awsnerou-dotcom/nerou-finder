@@ -9195,6 +9195,10 @@ ${popular.map(p => `- [${p.label}](${origin}${p.path})`).join("\n") || "- (no li
 ## Area guides
 ${AREA_GUIDES.map(g => `- [${g.title}](${origin}/areas/${g.slug})`).join("\n")}
 
+## Operator
+- Nerou Technology Services Trading, Commercial Registration (CR) No. 209013, Al Muntazah Commercial Center, Tower B, Doha, Qatar
+- Nerou Finder displays properties so advertisers can reach interested people; it does not negotiate, mediate or charge brokerage commissions. See [Terms of Use](${origin}/legal).
+
 ## Contact
 - info@neroutechnologyservices.com
 `);
