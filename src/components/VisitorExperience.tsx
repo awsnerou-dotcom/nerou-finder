@@ -79,6 +79,7 @@ import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.j
 import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
 import { homeTitle, listingTitle } from "../lib/pageTitle.js";
 import { LandingIntro, LandingFaq } from "./LandingSeoContent.js";
+import CardImageSlideshow from "./CardImageSlideshow.js";
 
 // The page path without the /ar language prefix: /ar/properties/x and /properties/x are the same page.
 const appPath = () => stripLang(window.location.pathname).path;
@@ -1624,6 +1625,7 @@ export default function VisitorExperience({
             return (
               <div
                 key={property.id}
+                data-listing-card
                 onClick={() => setSelectedProperty(property)}
                 role="button"
                 tabIndex={0}
@@ -1642,13 +1644,10 @@ export default function VisitorExperience({
               >
                 <div>
                   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
-                    <img
-                      src={getThumbnailUrl(property.images[0])}
-                      onError={(e) => { if (e.currentTarget.src !== property.images[0]) e.currentTarget.src = property.images[0]; }}
-                      alt={property.title}
-                      loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+                    {/* the listing's photos change by themselves; they stop when the card is touched or hovered */}
+                    <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-500">
+                      <CardImageSlideshow images={property.images} alt={property.title} />
+                    </div>
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/35 to-transparent" />
                     <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
