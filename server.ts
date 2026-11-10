@@ -70,6 +70,7 @@ import {
 import { AREA_GUIDES, getAreaGuideBySlug } from "./src/data/areaGuides.js";
 import { SPA_PATHS, normalizePath } from "./src/routes.js";
 import { getVideoEmbedUrl } from "./src/lib/video.js";
+import { firstUsableNumber } from "./src/lib/phone.js";
 import {
   computeCommission,
   monthlySummary,
@@ -86,6 +87,7 @@ import {
   validateClientInput,
   phoneKey,
   LEAD_SOURCE_TEXT,
+  isAnonymousClickLead,
   tasksDueForReminder,
   renewalsDueForReminder,
   taskReminderTime,
@@ -2169,38 +2171,15 @@ app.get("/api/properties/:id/whatsapp-number", (req, res) => {
   if (!property) {
     return res.status(404).json({ error: "Property not found" });
   }
-
-  let phone = "";
-
-  // 1. Check agent
   const agent = db.users.find(u => u.id === property.agentId);
-  if (agent) {
-    if (agent.whatsapp && agent.whatsapp.trim()) {
-      phone = agent.whatsapp.trim();
-    } else if (agent.phone && agent.phone.trim()) {
-      phone = agent.phone.trim();
-    }
-  }
+  const org = property.orgId ? db.organizations.find(o => o.id === property.orgId) : undefined;
 
-  // 2. Check organization
-  if (!phone && property.orgId) {
-    const org = db.organizations.find(o => o.id === property.orgId);
-    if (org) {
-      if (org.whatsapp && org.whatsapp.trim()) {
-        phone = org.whatsapp.trim();
-      } else if (org.phone && org.phone.trim()) {
-        phone = org.phone.trim();
-      }
-    }
-  }
-
-  // 3. Fallback to platform default in aiConfig
-  if (!phone) {
-    phone = db.aiConfig?.whatsappDefaultNumber || "97433334444";
-  }
-
-  // Clean to ensure digits only, international format (remove non-digits)
-  const cleanedPhone = phone.replace(/\D/g, "");
+  // The listing's agent first (WhatsApp number, else phone), then its organisation, then the
+  // platform default. Every candidate is normalised to international digits for wa.me.
+  const cleanedPhone = firstUsableNumber([
+    agent?.whatsapp, agent?.phone, org?.whatsapp, org?.phone,
+    db.aiConfig?.whatsappDefaultNumber, "97433334444"
+  ]);
 
   res.json({ whatsappNumber: cleanedPhone });
 });
@@ -2218,31 +2197,21 @@ app.get("/api/properties/:id/agent-info", (req, res) => {
   const agent = db.users.find(u => u.id === property.agentId);
   const org = property.orgId ? db.organizations.find(o => o.id === property.orgId) : undefined;
 
-  let phone = "";
-  if (agent) {
-    if (agent.whatsapp && agent.whatsapp.trim()) {
-      phone = agent.whatsapp.trim();
-    } else if (agent.phone && agent.phone.trim()) {
-      phone = agent.phone.trim();
-    }
-  }
-  if (!phone && org) {
-    if (org.whatsapp && org.whatsapp.trim()) {
-      phone = org.whatsapp.trim();
-    } else if (org.phone && org.phone.trim()) {
-      phone = org.phone.trim();
-    }
-  }
-  if (!phone) {
-    phone = db.aiConfig?.whatsappDefaultNumber || "97433334444";
-  }
-  const cleanedPhone = phone.replace(/\D/g, "");
+  // WhatsApp-first number, with the platform default as a last resort (what the WhatsApp button uses).
+  const cleanedPhone = firstUsableNumber([
+    agent?.whatsapp, agent?.phone, org?.whatsapp, org?.phone,
+    db.aiConfig?.whatsappDefaultNumber, "97433334444"
+  ]);
+  // A phone CALL goes to the voice number first and never to a placeholder: "" means there is no
+  // number to dial, and the Call buttons say so instead of ringing a stranger.
+  const callNumber = firstUsableNumber([agent?.phone, agent?.whatsapp, org?.phone, org?.whatsapp]);
 
   res.json({
     agentName: agent ? agent.fullName : null,
     agentPhotoUrl: agent?.avatarUrl || org?.logoUrl || null,
     orgName: org ? org.name : null,
     phone: cleanedPhone,
+    callNumber,
     isVerifiedAgent: agent ? agent.verificationStatus === VerificationStatus.APPROVED : false,
     hasAssignedAgent: !!agent,
     // FIX 4: real agency name instead of a generic "Nerou Verified Consultant" claim.
@@ -4003,7 +3972,7 @@ app.get("/api/crm/overview", authMiddleware, (req, res) => {
   const agentName = (id?: string) => db.users.find(u => u.id === id)?.fullName || "";
 
   const leads = scopedLeads(db, actor)
-    .filter(l => !l.isArchived)
+    .filter(l => !l.isArchived && !isAnonymousClickLead(l))
     .map(l => ({ ...l, propertyTitle: titleOf(l.propertyId), agentName: agentName(l.agentId) }));
   const viewings = scopedViewings(db, actor).map(v => {
     const lead = db.leads.find(l => l.id === v.leadId);
@@ -4748,7 +4717,7 @@ app.get("/api/crm/export", authMiddleware, (req, res) => {
   if (kind === "leads") {
     headers = ["Created / التاريخ", "Client / العميل", "Phone / الهاتف", "WhatsApp / واتساب", "Email / البريد", "Property / العقار",
       "Source / المصدر", "Stage / المرحلة", "Next follow-up / المتابعة القادمة", "Last update / آخر تحديث", "Agent / الوكيل", "Lost reason / سبب الخسارة", "Budget (QAR) / الميزانية", "Interest / الاهتمام", "Message / الرسالة"];
-    rows = scopedLeads(db, actor).filter(l => inRange(l.createdDate)).map(l => [
+    rows = scopedLeads(db, actor).filter(l => inRange(l.createdDate) && !isAnonymousClickLead(l)).map(l => [
       l.createdDate.slice(0, 10), l.visitorName, l.visitorPhone, l.visitorWhatsapp, l.visitorEmail, titleOf(l.propertyId),
       l.addedManually ? `${LEAD_SOURCE_TEXT[l.source || "OTHER"].en} / ${LEAD_SOURCE_TEXT[l.source || "OTHER"].ar}` : "Nerou Finder / المنصة", STAGE_LABELS[l.status] || l.status, l.nextFollowUpDate ? qatarDate(Date.parse(l.nextFollowUpDate)) : "",
       l.updatedDate.slice(0, 10), agentName(l.agentId), l.lostReason, l.budget ?? "", l.interest, l.message

@@ -18,6 +18,7 @@ import { useCurrency } from "../currencyContext.js";
 import { getNearbyPlaces, LandmarkType } from "../lib/nearbyPlaces.js";
 import PropertyGallery, { GalleryGroup } from "./PropertyGallery.js";
 import { getVideoEmbedUrl } from "../lib/video.js";
+import { formatPhoneForDisplay } from "../lib/phone.js";
 import {
   MapPin,
   Calendar,
@@ -121,6 +122,8 @@ export default function PropertyDetailView({
     agentPhotoUrl: string | null;
     orgName: string | null;
     phone: string;
+    /** The number to dial for a phone call ("" when the agent has none on file). */
+    callNumber?: string;
     isVerifiedAgent: boolean;
     hasAssignedAgent: boolean;
     verifiedBadgeLabel: string | null;
@@ -415,9 +418,8 @@ export default function PropertyDetailView({
       doc.text("REPRESENTED BY AUTHORIZED BROKER", 25, footerY + 8);
 
       const brochureAgentName = agentInfo?.agentName || agentInfo?.orgName || "Nerou Finder Team";
-      const brochurePhone = agentInfo?.phone
-        ? `+${agentInfo.phone.slice(0, 3)} ${agentInfo.phone.slice(3, 7)} ${agentInfo.phone.slice(7)}`
-        : "+974 3333 4444";
+      // Only a number that really belongs to this agent: a made-up fallback would send a client to a stranger.
+      const brochurePhone = agentInfo?.callNumber ? formatPhoneForDisplay(agentInfo.callNumber) : "";
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
@@ -435,7 +437,7 @@ export default function PropertyDetailView({
       // Only the phone is real/dynamic data here (agentInfo doesn't currently carry an email) -
       // a fabricated "licensing@..." address previously shown here would have misled a real
       // client trying to reach the agent, so this only ever shows contact info we actually have.
-      doc.text(`Contact: ${brochurePhone}`, 25, footerY + 29);
+      if (brochurePhone) doc.text(`Contact: ${brochurePhone}`, 25, footerY + 29);
       doc.text(
         (agentInfo?.isVerifiedAgent && agentInfo.verifiedBadgeLabel) || "Nerou Finder Certified Partner Network",
         25,
@@ -1631,13 +1633,24 @@ export default function PropertyDetailView({
                       <MessageCircle size={14} />
                       <span>WhatsApp</span>
                     </button>
-                    <a
-                      href={`tel:+${agentInfo?.phone || "97433334444"}`}
-                      className="px-3 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded-lg font-bold flex items-center justify-center gap-1 transition-colors"
-                    >
-                      <Phone size={14} />
-                      <span>{isRtl ? "اتصال" : "Call"}</span>
-                    </a>
+                    {agentInfo?.callNumber ? (
+                      <a
+                        href={`tel:+${agentInfo.callNumber}`}
+                        className="px-3 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white rounded-lg font-bold flex items-center justify-center gap-1 transition-colors"
+                      >
+                        <Phone size={14} />
+                        <span>{isRtl ? "اتصال" : "Call"}</span>
+                      </a>
+                    ) : (
+                      <span
+                        aria-disabled="true"
+                        title={agentInfo ? (isRtl ? "لم يضف الوكيل رقم هاتف" : "The agent has not listed a phone number") : undefined}
+                        className="px-3 py-2 bg-chrome/40 text-white/70 rounded-lg font-bold flex items-center justify-center gap-1 cursor-not-allowed"
+                      >
+                        <Phone size={14} />
+                        <span>{isRtl ? "اتصال" : "Call"}</span>
+                      </span>
+                    )}
                   </div>
 
                   {onViewAgentProfile && (agentInfo?.hasAssignedAgent || agentInfo?.orgName) && (
@@ -1754,13 +1767,20 @@ export default function PropertyDetailView({
             >
               <MessageCircle size={18} />
             </button>
-            <a
-              href={`tel:+${agentInfo?.phone || "97433334444"}`}
-              className="px-4 py-2.5 bg-chrome text-white font-bold rounded-lg hover:bg-gold hover:text-gold-ink flex items-center gap-1"
-            >
-              <Phone size={14} />
-              <span>{isRtl ? "اتصال" : "Call Agent"}</span>
-            </a>
+            {agentInfo?.callNumber ? (
+              <a
+                href={`tel:+${agentInfo.callNumber}`}
+                className="px-4 py-2.5 bg-chrome text-white font-bold rounded-lg hover:bg-gold hover:text-gold-ink flex items-center gap-1"
+              >
+                <Phone size={14} />
+                <span>{isRtl ? "اتصال" : "Call Agent"}</span>
+              </a>
+            ) : (
+              <span aria-disabled="true" className="px-4 py-2.5 bg-chrome/40 text-white/70 font-bold rounded-lg flex items-center gap-1 cursor-not-allowed">
+                <Phone size={14} />
+                <span>{isRtl ? "اتصال" : "Call Agent"}</span>
+              </span>
+            )}
           </div>
         </div>
 

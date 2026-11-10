@@ -767,25 +767,40 @@ export default function VisitorExperience({
   };
 
   const handleCallAction = async (property: Property) => {
+    // Dial the listing's own agent (or agency). This used to be a hard-coded placeholder number
+    // for EVERY listing; if the agent has no phone on file we say so instead of ringing a stranger.
+    let callNumber = "";
     try {
-      await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          propertyId: property.id,
-          visitorName: "Anonymous Visitor (Phone Link)",
-          visitorPhone: "Call Event",
-          contactMethod: "CALL",
-          message: `Visitor initiated a call for property ${property.listingId}`,
-          campaign: sessionStorage.getItem("attributionCampaignId") || undefined
-        })
-      });
-      trackEvent("call_click", "marketplace", property.title);
-      onLeadSubmitted();
+      const res = await fetch(`/api/properties/${property.id}/agent-info`);
+      if (res.ok) callNumber = (await res.json()).callNumber || "";
     } catch (e) {
-      console.error(e);
+      console.error("Failed to look up the agent's phone number:", e);
     }
-    window.location.href = "tel:+97444448888";
+    if (!callNumber) {
+      alert(isRtl
+        ? "لم يضف هذا الوكيل رقم هاتف لهذا العقار. تواصل معه عبر واتساب أو أرسل استفساراً."
+        : "This agent has not listed a phone number. Contact them on WhatsApp or send an inquiry instead.");
+      return;
+    }
+    // Count the click in the background - it must never delay the call.
+    fetch("/api/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        propertyId: property.id,
+        visitorName: "Anonymous Visitor (Phone Link)",
+        visitorPhone: "Call Event",
+        contactMethod: "CALL",
+        message: `Visitor initiated a call for property ${property.listingId}`,
+        campaign: sessionStorage.getItem("attributionCampaignId") || undefined
+      })
+    })
+      .then(() => {
+        trackEvent("call_click", "marketplace", property.title);
+        onLeadSubmitted();
+      })
+      .catch(e => console.error(e));
+    window.location.href = `tel:+${callNumber}`;
   };
 
   const isFeatured = (propId: string) => {

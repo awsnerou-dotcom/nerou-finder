@@ -29,6 +29,17 @@ export function isClosedStatus(status: LeadStatus): boolean {
   return status === LeadStatus.CONVERTED || status === LeadStatus.LOST;
 }
 
+/**
+ * The "Call" and "WhatsApp" buttons on a listing log a lead the moment someone clicks, before
+ * they have said who they are: no email and no real phone number ("Call Event", "WhatsApp Event").
+ * That is a click to count, not a client to follow up - nobody can be called back or reminded about.
+ */
+export function isAnonymousClickLead(lead: Pick<Lead, "visitorEmail" | "visitorPhone" | "visitorWhatsapp" | "addedManually">): boolean {
+  if (lead.addedManually || lead.visitorEmail) return false;
+  const hasNumber = (v?: string) => !!v && westernDigits(v).replace(/\D/g, "").length >= 5;
+  return !hasNumber(lead.visitorPhone) && !hasNumber(lead.visitorWhatsapp);
+}
+
 /** A lead somebody still has to work: not archived, not won, not lost. */
 export function isOpenLead(lead: Pick<Lead, "status" | "isArchived">): boolean {
   return !lead.isArchived && !isClosedStatus(lead.status);
@@ -165,7 +176,7 @@ export const AUTO_NUDGE_MAX = 3;
 export function leadsDueForReminder(leads: Lead[], now: number): DueLead[] {
   const due: DueLead[] = [];
   for (const lead of leads) {
-    if (!isOpenLead(lead)) continue;
+    if (!isOpenLead(lead) || isAnonymousClickLead(lead)) continue;
     const lastReminder = lead.lastReminderAt ? Date.parse(lead.lastReminderAt) : NaN;
 
     if (lead.nextFollowUpDate) {
