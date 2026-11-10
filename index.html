@@ -44,6 +44,24 @@
     <!-- Only the four weights src/ actually uses. Tajawal has no 600. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Pages the server renders for search engines (see server.ts) carry their text inside #root. People
+         should not see that text flash up before the app starts, so with JavaScript on it is hidden from
+         the eye (still in the page for crawlers and screen readers) until the app has taken over - the app
+         removes data-ssr on start. If the app never starts, it is revealed after 10 seconds. -->
+    <script>
+      document.documentElement.classList.add("js");
+      setTimeout(function () {
+        var r = document.getElementById("root");
+        if (r && r.hasAttribute("data-ssr")) document.documentElement.classList.remove("js");
+      }, 10000);
+    </script>
+    <style>
+      .js #root[data-ssr] > main {
+        position: absolute !important; width: 1px !important; height: 1px !important; margin: -1px !important;
+        padding: 0 !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important;
+      }
+    </style>
+
     <!-- Loaded without blocking the first paint (a blocking stylesheet from another site cost over a
          second on a phone): the page paints in the fallback font, then the real fonts swap in. -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;500;600;700&family=El+Messiri:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Tajawal:wght@400;500;700&display=swap" onload="this.onload=null;this.rel='stylesheet'" />

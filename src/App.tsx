@@ -65,6 +65,11 @@ export default function App() {
       setIsRtl(!isRtl); // signed-in workspaces have no per-language URL
     }
   };
+  // The app has started and replaced the server-rendered text: tell index.html's rule to stand down
+  // (and its 10-second safety net not to reveal anything).
+  useEffect(() => {
+    document.getElementById("root")?.removeAttribute("data-ssr");
+  }, []);
   useEffect(() => {
     const onPop = () => setIsRtl(stripLang(window.location.pathname).lang === "ar");
     window.addEventListener("popstate", onPop);
