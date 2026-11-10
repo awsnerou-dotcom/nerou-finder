@@ -78,6 +78,7 @@ import {
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
 import { homeTitle, listingTitle } from "../lib/pageTitle.js";
+import { LandingIntro, LandingFaq } from "./LandingSeoContent.js";
 
 // The page path without the /ar language prefix: /ar/properties/x and /properties/x are the same page.
 const appPath = () => stripLang(window.location.pathname).path;
@@ -491,7 +492,8 @@ export default function VisitorExperience({
 
       const res = await fetch(`/api/properties?${params.toString()}`);
       const data = await res.json();
-      setProperties(data);
+      // an error reply is an object, not a list: keep the page alive instead of crashing on it
+      setProperties(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -1221,9 +1223,12 @@ export default function VisitorExperience({
                   <Sparkles size={14} />
                   <span>{t.aiTitle}</span>
                 </div>
-                <h2 className="text-2xl md:text-3xl font-serif tracking-tight font-medium">
-                  {t.aiSubtitle}
-                </h2>
+                {/* The page's one H1: here on the home page, or in the landing block on a landing page. */}
+                {React.createElement(
+                  landingPathRef.current ? "h2" : "h1",
+                  { className: "text-2xl md:text-3xl font-serif tracking-tight font-medium" },
+                  t.aiSubtitle
+                )}
 
                 {/* Conversational Chat History Logs */}
                 {aiHistory.length > 0 && (
@@ -1502,6 +1507,11 @@ export default function VisitorExperience({
             ))}
           </div>
         </div>
+      )}
+
+      {/* An SEO landing page: its heading and intro above the listings (the FAQ follows them) */}
+      {landingPathRef.current && currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && !aiSearchActive && (
+        <LandingIntro path={landingPathRef.current} isRtl={isRtl} />
       )}
 
       {/* 3. Listings Section Header */}
@@ -1827,6 +1837,10 @@ export default function VisitorExperience({
             );
           })}
         </div>
+      )}
+
+      {landingPathRef.current && currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && !aiSearchActive && (
+        <LandingFaq path={landingPathRef.current} isRtl={isRtl} />
       )}
 
       {/* 5. Detailed Property Overlay Modal Drawer */}

@@ -180,3 +180,36 @@ describe("the SEO center (admin)", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("the landing text the app shows people", () => {
+  it("returns the same heading, intro, FAQ and related links the server puts in the page", async (ctx) => {
+    if (!dbReady) return ctx.skip();
+    addListing();
+    const path = `/apartments-for-rent-in-${SLUG}`;
+    const api = await request(app).get("/api/seo/landing").query({ path, lang: "en" });
+    expect(api.status).toBe(200);
+    expect(api.body.h1).toMatch(/^Apartments for Rent in /);
+    expect(api.body.intro).toContain("verified");
+    expect(api.body.faq.length).toBeGreaterThanOrEqual(2);
+    expect(Array.isArray(api.body.related)).toBe(true);
+    expect(api.body.count).toBeGreaterThan(0);
+    const page = await request(app).get(path);
+    expect(page.text).toContain(`<h1>${api.body.h1}</h1>`); // what people read is what is indexed
+  });
+
+  it("answers in Arabic when asked", async (ctx) => {
+    if (!dbReady) return ctx.skip();
+    addListing();
+    const api = await request(app).get("/api/seo/landing").query({ path: `/apartments-for-rent-in-${SLUG}`, lang: "ar" });
+    expect(api.status).toBe(200);
+    expect(api.body.h1).toMatch(/^شقق للإيجار في /);
+    expect(api.body.faq[0].q).toMatch(/[\u0600-\u06FF]/);
+  });
+
+  it("is a 404 for a made-up page or one with no listings", async (ctx) => {
+    if (!dbReady) return ctx.skip();
+    expect((await request(app).get("/api/seo/landing").query({ path: "/villas-for-sale-in-nowhere-at-all" })).status).toBe(404);
+    expect((await request(app).get("/api/seo/landing").query({ path: "/not-a-landing-page" })).status).toBe(404);
+    expect((await request(app).get("/api/seo/landing")).status).toBe(404);
+  });
+});

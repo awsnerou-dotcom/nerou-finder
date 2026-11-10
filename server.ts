@@ -1954,10 +1954,10 @@ app.get("/api/properties", (req, res) => {
   }
 
   if (city) {
-    properties = properties.filter(p => p.city.toLowerCase() === (city as string).toLowerCase());
+    properties = properties.filter(p => (p.city || "").toLowerCase() === (city as string).toLowerCase());
   }
   if (district) {
-    properties = properties.filter(p => p.district.toLowerCase() === (district as string).toLowerCase());
+    properties = properties.filter(p => (p.district || "").toLowerCase() === (district as string).toLowerCase());
   }
   if (propertyType) {
     properties = properties.filter(p => p.propertyType === propertyType);
@@ -1993,10 +1993,10 @@ app.get("/api/properties", (req, res) => {
     const q = (searchQuery as string).toLowerCase();
     properties = properties.filter(
       p =>
-        p.title.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.city.toLowerCase().includes(q) ||
-        p.district.toLowerCase().includes(q)
+        (p.title || "").toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q) ||
+        (p.city || "").toLowerCase().includes(q) ||
+        (p.district || "").toLowerCase().includes(q)
     );
   }
 
@@ -2225,7 +2225,7 @@ app.get("/api/areas/:slug", (req, res) => {
   const db = readDb();
   const marketStats = computeMarketIndexGroups(db.properties, { district: guide.district });
   const liveListingCount = db.properties.filter(
-    p => p.listingStatus === ListingStatus.PUBLISHED && p.district.toLowerCase() === guide.district.toLowerCase()
+    p => p.listingStatus === ListingStatus.PUBLISHED && (p.district || "").toLowerCase() === guide.district.toLowerCase()
   ).length;
 
   res.json({
@@ -8989,13 +8989,19 @@ function seoAreaGuideFor(areaSlug?: string) {
   return areaSlug ? AREA_GUIDES.find(g => slugify(g.district) === areaSlug) : undefined;
 }
 
-export function renderLandingPage(db: DatabaseState, landing: Landing, lang: SeoLang, origin: string, shell: string): string {
+/** Everything a landing page says, in one place: used for the HTML search engines get AND for the text the app shows people. */
+function landingParts(db: DatabaseState, landing: Landing, lang: SeoLang) {
   const all = buildLandingPages(db.properties);
   const district = landing.listings[0]?.district;
   const areaName = landing.spec.area && district ? areaNameFor(district, db.locations) : undefined;
   const guide = seoAreaGuideFor(landing.spec.area);
   const text = landingText(landing, { lang, areaName, areaGuide: guide ? { slug: guide.slug, overview: guide.overview, overviewAr: guide.overviewAr } : undefined });
   const related = relatedLandings(all, landing).map(l => ({ path: l.path, label: landingLabel(l, lang, db.locations) }));
+  return { text, related, guide };
+}
+
+export function renderLandingPage(db: DatabaseState, landing: Landing, lang: SeoLang, origin: string, shell: string): string {
+  const { text, related, guide } = landingParts(db, landing, lang);
   const otherLang: SeoLang = lang === "ar" ? "en" : "ar";
   const canonical = `${origin}${withLang(landing.canonicalPath, lang)}`;
   const alternates = landing.indexable
@@ -9198,6 +9204,26 @@ const indexNowKey = () => crypto.createHmac("sha256", JWT_SECRET).update("indexn
 app.get(/^\/([a-f0-9]{32})\.txt$/, (req, res, next) => {
   if (req.params[0] !== indexNowKey()) return next();
   res.type("text/plain").send(indexNowKey());
+});
+
+// The text of a landing page for the app to show people (heading, intro, FAQ, related searches) - the
+// same text the server puts in the page for search engines, so what people read matches what is indexed.
+app.get("/api/seo/landing", (req, res) => {
+  const parsed = parseLandingPath(String(req.query.path || ""));
+  if (!parsed) return res.status(404).json({ error: "Not a landing page." });
+  const lang: SeoLang = req.query.lang === "ar" ? "ar" : "en";
+  const db = readDb();
+  const landing = buildLandingPages(db.properties).find(l => l.path === landingPath(parsed.spec));
+  if (!landing) return res.status(404).json({ error: "No listings here." });
+  const { text, related, guide } = landingParts(db, landing, lang);
+  res.json({
+    h1: text.h1,
+    intro: text.intro,
+    faq: text.faq,
+    related,
+    areaGuide: guide ? { slug: guide.slug, title: lang === "ar" ? guide.titleAr : guide.title } : null,
+    count: landing.listings.length
+  });
 });
 
 // Popular searches for the footer (real links the page itself can crawl).
