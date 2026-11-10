@@ -34,6 +34,9 @@ import {
   HelpArticle,
   Deal,
   Task,
+  Prospect,
+  ProspectActivity,
+  ProspectStage,
   RenewalStatus,
   ViewingRequest,
   SupportTicket,
@@ -98,6 +101,16 @@ import {
   RenewalDue,
   SnoozeKind
 } from "./src/lib/crm.js";
+import {
+  PROSPECT_STAGES,
+  STAGE_TEXT,
+  validateProspectInput,
+  findDuplicateProspect,
+  prospectsDueForReminder,
+  prospectStats,
+  ProspectDue,
+  ProspectInput
+} from "./src/lib/prospects.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
 import * as Sentry from "@sentry/node";
@@ -4954,6 +4967,301 @@ export function runCrmReminders(now: number = Date.now(), opts: { ignoreQuietHou
   return result;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Platform sales pipeline (admin only, /api/admin/* is already limited to PLATFORM_ADMIN)
+//
+// The people and companies the Nerou team wants to sign up as subscribers. Entirely separate
+// from the agents' Sales Desk: nothing here is ever visible to agents, and nothing in an agent's
+// private client list is visible here.
+// ---------------------------------------------------------------------------------------------
+
+function platformAdmins(db: DatabaseState) {
+  return db.users.filter(u => u.role === UserRole.PLATFORM_ADMIN);
+}
+
+/** If this prospect has already registered on the site (same email or phone), say so. */
+function prospectSignup(db: DatabaseState, p: Prospect) {
+  const email = p.email?.toLowerCase();
+  const keys = [phoneKey(p.phone), phoneKey(p.whatsapp)].filter(Boolean);
+  const u = db.users.find(x =>
+    x.role !== UserRole.PLATFORM_ADMIN && x.role !== UserRole.SUPER_ADMIN &&
+    ((email && x.email?.toLowerCase() === email) || (keys.length > 0 && [phoneKey(x.phone), phoneKey(x.whatsapp)].some(k => k && keys.includes(k)))));
+  if (!u) return undefined;
+  const org = u.orgId ? db.organizations.find(o => o.id === u.orgId) : undefined;
+  const sub = org ?? u;
+  const plan = db.subscriptionPlans.find(pl => pl.id === sub.subscriptionPlanId);
+  return {
+    userId: u.id,
+    name: u.fullName,
+    role: u.role,
+    applicationStatus: u.applicationStatus || "ACTIVE",
+    verificationStatus: org?.verificationStatus || u.verificationStatus,
+    subscriptionStatus: sub.subscriptionStatus || null,
+    planName: plan?.name || null,
+    registeredAt: u.createdDate
+  };
+}
+
+function prospectView(db: DatabaseState, p: Prospect) {
+  return { ...p, ownerName: db.users.find(u => u.id === p.ownerId)?.fullName || "—", signedUp: prospectSignup(db, p) || null };
+}
+
+function addProspectActivity(p: Prospect, by: string, type: ProspectActivity["type"], text: string, now = new Date()) {
+  p.activity = [...(p.activity || []), { id: `pa-${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`, at: now.toISOString(), by, type, text: text.slice(0, 1000) }].slice(-200);
+}
+
+app.get("/api/admin/prospects", (req, res) => {
+  const db = readDb();
+  const prospects = [...(db.prospects || [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  res.json({
+    prospects: prospects.map(p => prospectView(db, p)),
+    owners: platformAdmins(db).map(u => ({ id: u.id, fullName: u.fullName })),
+    plans: db.subscriptionPlans.map(pl => ({ id: pl.id, name: pl.name, priceMonthly: pl.priceMonthly })),
+    stats: prospectStats(prospects, Date.now())
+  });
+});
+
+function resolveProspectOwner(db: DatabaseState, requested: unknown, fallback: string): string {
+  return typeof requested === "string" && platformAdmins(db).some(u => u.id === requested) ? requested : fallback;
+}
+
+function buildProspect(db: DatabaseState, value: ProspectInput, actor: { id: string; name: string }, extra: { stage?: unknown; ownerId?: unknown }, now = new Date()): Prospect {
+  const stage = PROSPECT_STAGES.includes(extra.stage as ProspectStage) && extra.stage !== "LOST" ? (extra.stage as ProspectStage) : "NEW";
+  const p: Prospect = {
+    id: `prospect-${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`,
+    ...value,
+    stage,
+    ownerId: resolveProspectOwner(db, extra.ownerId, actor.id),
+    activity: [],
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    createdBy: actor.name,
+    wonAt: stage === "WON" ? now.toISOString() : undefined
+  };
+  addProspectActivity(p, actor.name, "created", "Added to the pipeline.", now);
+  return p;
+}
+
+app.post("/api/admin/prospects", (req, res) => {
+  const actor = getAuditActor(req);
+  const checked = validateProspectInput(req.body || {});
+  if (checked.ok === false) return res.status(400).json({ error: checked.error });
+  const db = readDb();
+  if (!db.prospects) db.prospects = [];
+  const dup = findDuplicateProspect(db.prospects, checked.value);
+  if (dup && req.body?.allowDuplicate !== true) {
+    return res.status(409).json({ error: `${dup.name} is already in the pipeline with the same contact details.`, duplicateId: dup.id });
+  }
+  const p = buildProspect(db, checked.value, actor, { stage: req.body?.stage, ownerId: req.body?.ownerId });
+  db.prospects.unshift(p);
+  writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "CREATE_PROSPECT", p.id, "Prospect", { name: p.name });
+  res.status(201).json({ prospect: prospectView(db, p) });
+});
+
+app.patch("/api/admin/prospects/:id", (req, res) => {
+  const actor = getAuditActor(req);
+  const db = readDb();
+  const p = (db.prospects || []).find(x => x.id === req.params.id);
+  if (!p) return res.status(404).json({ error: "Prospect not found." });
+  const body = (req.body || {}) as Record<string, unknown>;
+  const now = new Date();
+
+  // details: validate the merged record so a half edit can never leave it unreachable
+  const detailKeys = ["name", "company", "kind", "email", "phone", "whatsapp", "source", "interestedPlanId", "expectedMonthly", "nextFollowUp", "followUpNote", "notes"];
+  if (detailKeys.some(k => k in body)) {
+    const merged: Record<string, unknown> = {};
+    for (const k of detailKeys) merged[k] = k in body ? body[k] : (p as any)[k];
+    const checked = validateProspectInput(merged);
+    if (checked.ok === false) return res.status(400).json({ error: checked.error });
+    const dup = findDuplicateProspect(db.prospects || [], checked.value, p.id);
+    if (dup && body.allowDuplicate !== true) return res.status(409).json({ error: `${dup.name} is already in the pipeline with the same contact details.`, duplicateId: dup.id });
+    const followUpChanged = checked.value.nextFollowUp !== p.nextFollowUp;
+    const detailsChanged = JSON.stringify([checked.value.name, checked.value.company, checked.value.kind, checked.value.email, checked.value.phone, checked.value.whatsapp, checked.value.source, checked.value.interestedPlanId, checked.value.expectedMonthly, checked.value.notes])
+      !== JSON.stringify([p.name, p.company, p.kind, p.email, p.phone, p.whatsapp, p.source, p.interestedPlanId, p.expectedMonthly, p.notes]);
+    Object.assign(p, checked.value);
+    if (!("nextFollowUp" in checked.value) || !checked.value.nextFollowUp) { delete p.nextFollowUp; }
+    if (!checked.value.followUpNote) delete p.followUpNote;
+    if (followUpChanged) {
+      p.lastReminderAt = undefined;
+      addProspectActivity(p, actor.name, "followup", checked.value.nextFollowUp ? `Follow-up set for ${checked.value.nextFollowUp}${checked.value.followUpNote ? `: ${checked.value.followUpNote}` : ""}.` : "Follow-up cleared.", now);
+    }
+    if (detailsChanged) addProspectActivity(p, actor.name, "edit", "Details updated.", now);
+  }
+
+  if ("ownerId" in body) {
+    const owner = platformAdmins(db).find(u => u.id === body.ownerId);
+    if (!owner) return res.status(400).json({ error: "That owner is not a platform admin." });
+    if (owner.id !== p.ownerId) { p.ownerId = owner.id; addProspectActivity(p, actor.name, "edit", `Assigned to ${owner.fullName}.`, now); }
+  }
+
+  if ("stage" in body && body.stage !== p.stage) {
+    if (!PROSPECT_STAGES.includes(body.stage as ProspectStage)) return res.status(400).json({ error: "Unknown stage." });
+    const stage = body.stage as ProspectStage;
+    const reason = typeof body.lostReason === "string" ? body.lostReason.trim().slice(0, 300) : "";
+    if (stage === "LOST" && !reason) return res.status(400).json({ error: "Say why we lost them (a short reason)." });
+    const from = p.stage;
+    p.stage = stage;
+    if (stage === "LOST") p.lostReason = reason; else delete p.lostReason;
+    if (stage === "WON") p.wonAt = now.toISOString(); else delete p.wonAt;
+    if (stage === "WON" || stage === "LOST") { delete p.nextFollowUp; delete p.followUpNote; }
+    p.reminderCount = 0;
+    addProspectActivity(p, actor.name, "stage", `${STAGE_TEXT[from].en} → ${STAGE_TEXT[stage].en}${stage === "LOST" ? ` (${reason})` : ""}.`, now);
+  }
+
+  p.updatedAt = now.toISOString();
+  writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "UPDATE_PROSPECT", p.id, "Prospect", { stage: p.stage });
+  res.json({ prospect: prospectView(db, p) });
+});
+
+// Log a call / message / meeting / note, optionally booking the next follow-up in the same step.
+app.post("/api/admin/prospects/:id/activity", (req, res) => {
+  const actor = getAuditActor(req);
+  const db = readDb();
+  const p = (db.prospects || []).find(x => x.id === req.params.id);
+  if (!p) return res.status(404).json({ error: "Prospect not found." });
+  const { type, text, nextFollowUp, followUpNote } = (req.body || {}) as Record<string, unknown>;
+  const kinds = ["note", "call", "whatsapp", "email", "meeting"];
+  if (typeof type !== "string" || !kinds.includes(type)) return res.status(400).json({ error: "type must be note, call, whatsapp, email or meeting." });
+  const body = typeof text === "string" ? text.trim() : "";
+  if (!body) return res.status(400).json({ error: "Write what happened." });
+  if (nextFollowUp !== undefined && nextFollowUp !== null && nextFollowUp !== "" && !(typeof nextFollowUp === "string" && /^\d{4}-\d{2}-\d{2}$/.test(nextFollowUp))) {
+    return res.status(400).json({ error: "The follow-up date must look like 2026-12-31." });
+  }
+  const now = new Date();
+  addProspectActivity(p, actor.name, type as ProspectActivity["type"], body, now);
+  if (type !== "note") p.lastContactAt = now.toISOString();
+  p.reminderCount = 0;
+  if (typeof nextFollowUp === "string" && nextFollowUp) {
+    p.nextFollowUp = nextFollowUp;
+    p.followUpNote = typeof followUpNote === "string" && followUpNote.trim() ? followUpNote.trim().slice(0, 300) : undefined;
+    p.lastReminderAt = undefined;
+    addProspectActivity(p, actor.name, "followup", `Follow-up set for ${nextFollowUp}${p.followUpNote ? `: ${p.followUpNote}` : ""}.`, now);
+  }
+  // First real contact moves a brand-new prospect along.
+  if (p.stage === "NEW" && type !== "note") {
+    p.stage = "CONTACTED";
+    addProspectActivity(p, actor.name, "stage", `${STAGE_TEXT.NEW.en} → ${STAGE_TEXT.CONTACTED.en}.`, now);
+  }
+  p.updatedAt = now.toISOString();
+  writeDb(db);
+  res.json({ prospect: prospectView(db, p) });
+});
+
+app.delete("/api/admin/prospects/:id", (req, res) => {
+  const actor = getAuditActor(req);
+  const db = readDb();
+  const idx = (db.prospects || []).findIndex(x => x.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: "Prospect not found." });
+  const [gone] = db.prospects!.splice(idx, 1);
+  writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "DELETE_PROSPECT", gone.id, "Prospect", { name: gone.name });
+  res.json({ success: true });
+});
+
+// Bulk add from a spreadsheet the browser has already parsed into rows.
+app.post("/api/admin/prospects/import", (req, res) => {
+  const actor = getAuditActor(req);
+  const rows = (req.body as any)?.prospects;
+  if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ error: "No rows to import." });
+  if (rows.length > 1000) return res.status(400).json({ error: "Import up to 1,000 rows at a time." });
+  const db = readDb();
+  if (!db.prospects) db.prospects = [];
+  const added: Prospect[] = [];
+  const skipped: { row: number; name: string; reason: string }[] = [];
+  const stamp = Date.now();
+  rows.forEach((raw: any, i: number) => {
+    const checked = validateProspectInput(raw && typeof raw === "object" ? raw : {});
+    const name = typeof raw?.name === "string" ? raw.name : "";
+    if (checked.ok === false) { skipped.push({ row: i + 2, name, reason: checked.error }); return; }
+    const dup = findDuplicateProspect([...db.prospects!, ...added], checked.value);
+    if (dup) { skipped.push({ row: i + 2, name: checked.value.name, reason: `Already in the pipeline as ${dup.name}.` }); return; }
+    const p = buildProspect(db, checked.value, actor, { stage: "NEW", ownerId: (req.body as any)?.ownerId }, new Date(stamp + i));
+    addProspectActivity(p, actor.name, "note", "Imported from a file.", new Date(stamp + i));
+    added.push(p);
+  });
+  db.prospects.unshift(...added);
+  if (added.length > 0) writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "IMPORT_PROSPECTS", "bulk", "Prospect", { added: added.length, skipped: skipped.length });
+  res.json({ added: added.length, skipped });
+});
+
+// "Email me my reminders now" - same digest as the hourly one, for the signed-in admin only.
+app.post("/api/admin/prospects/send-reminders", (req, res) => {
+  const actor = getAuditActor(req);
+  const result = runProspectReminders(Date.now(), { ignoreQuietHours: true, onlyOwnerIds: [actor.id] });
+  res.json(result);
+});
+
+const PROSPECT_REASON_TEXT: Record<string, string> = {
+  due: "Follow-up due today",
+  overdue: "Follow-up overdue",
+  stale: "Nobody has touched this for over a week"
+};
+
+/**
+ * One email a day per admin listing the prospects they should follow up with: follow-ups due or
+ * overdue, plus prospects gone quiet. Like the Sales Desk sweep it never sends 21:00-07:00 Qatar
+ * time, and each prospect is flagged when reminded so a restart can't double-send.
+ */
+export function runProspectReminders(now: number = Date.now(), opts: { ignoreQuietHours?: boolean; onlyOwnerIds?: string[] } = {}) {
+  const result = { prospects: 0, emails: 0 };
+  if (!opts.ignoreQuietHours && isQuietHourInQatar(now)) return result;
+  const db = readDb();
+  const appUrl = process.env.APP_URL || "https://neroufinder.com";
+  const nowIso = new Date(now).toISOString();
+  const byOwner = new Map<string, ProspectDue[]>();
+  for (const due of prospectsDueForReminder(db.prospects || [], now)) {
+    if (opts.onlyOwnerIds && !opts.onlyOwnerIds.includes(due.prospect.ownerId)) continue;
+    byOwner.set(due.prospect.ownerId, [...(byOwner.get(due.prospect.ownerId) || []), due]);
+  }
+  const cell = "padding:8px 6px;border-bottom:1px solid #eee;";
+  let changed = false;
+  for (const [ownerId, items] of byOwner) {
+    const owner = db.users.find(u => u.id === ownerId && u.role === UserRole.PLATFORM_ADMIN);
+    if (!owner) continue;
+    const rank = { overdue: 0, due: 1, stale: 2 } as Record<string, number>;
+    items.sort((a, b) => rank[a.reason] - rank[b.reason]);
+    for (const { prospect, reason } of items) {
+      prospect.lastReminderAt = nowIso;
+      if (reason === "stale") prospect.reminderCount = (prospect.reminderCount ?? 0) + 1;
+      result.prospects += 1;
+      changed = true;
+    }
+    notifyUser(db, owner.id, {
+      type: "prospect_reminder",
+      title: items.length === 1 ? "A prospect needs a follow-up" : `${items.length} prospects need a follow-up`,
+      body: items.slice(0, 3).map(i => i.prospect.name).join(", "),
+      link: items[0].prospect.id
+    });
+    if (owner.email) {
+      const rows = items.map(({ prospect: p, reason, daysOverdue }) => {
+        const wa = (p.whatsapp || p.phone || "").replace(/[^0-9]/g, "");
+        return `<tr>
+          <td style="${cell}"><strong>${escapeHtml(p.name)}</strong>${p.company ? `<br/><span style="color:#666;font-size:12px;">${escapeHtml(p.company)}</span>` : ""}<br/><span style="color:#666;font-size:12px;">${escapeHtml(STAGE_TEXT[p.stage].en)}${p.expectedMonthly ? ` &middot; ${escapeHtml(p.expectedMonthly)} QAR/mo` : ""}</span></td>
+          <td style="${cell}font-size:12px;">${reason === "overdue" ? `<span style="color:#b42318;">${escapeHtml(PROSPECT_REASON_TEXT[reason])} (${daysOverdue} day${daysOverdue === 1 ? "" : "s"})</span>` : escapeHtml(PROSPECT_REASON_TEXT[reason])}${p.followUpNote ? `<br/><span style="color:#666;">${escapeHtml(p.followUpNote)}</span>` : ""}</td>
+          <td style="${cell}font-size:12px;">${wa ? `<a href="https://wa.me/${wa}">${escapeHtml(p.whatsapp || p.phone || wa)}</a>` : escapeHtml(p.phone || "")}${p.email ? `<br/><a href="mailto:${escapeHtml(p.email)}">${escapeHtml(p.email)}</a>` : ""}</td>
+        </tr>`;
+      }).join("");
+      sendMockEmail(
+        owner.email,
+        `[Nerou Finder] Sales pipeline: ${items.length} prospect${items.length === 1 ? "" : "s"} to follow up`,
+        generateNotificationEmailHtml(
+          "Sales pipeline reminders / تذكيرات خط المبيعات",
+          owner.fullName,
+          `<p>These prospects need you today:</p><table style="width:100%;border-collapse:collapse;">${rows}</table>
+           <p style="margin-top:18px;"><a href="${escapeHtml(appUrl)}" style="color:#bf9b30;font-weight:bold;">Open the sales pipeline</a></p>`
+        ),
+        "prospect_followup_reminder"
+      );
+      result.emails += 1;
+    }
+  }
+  if (changed) writeDb(db);
+  return result;
+}
+
 // Developer Mock Outbound SMTP Log Queue
 app.get("/api/admin/emails", (req, res) => {
   let emails: any[] = [];
@@ -8994,6 +9302,7 @@ async function startServer() {
   // never means a missed morning. Each lead/viewing is flagged when reminded, so repeats are safe.
   const crmSweep = () => {
     try { runCrmReminders(); } catch (err) { console.error("CRM reminder sweep failed:", err); }
+    try { runProspectReminders(); } catch (err) { console.error("Prospect reminder sweep failed:", err); }
   };
   setTimeout(crmSweep, 2 * 60 * 1000);
   setInterval(crmSweep, 60 * 60 * 1000);

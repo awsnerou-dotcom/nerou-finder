@@ -78,6 +78,7 @@ import { EmptyState } from "./ui/EmptyState.js";
 import { Button } from "./ui/Button.js";
 import { buildDailyCountSeries, isThisMonth } from "../lib/dashboardMetrics.js";
 import DocumentViewer from "./DocumentViewer.js";
+import ProspectPipeline from "./ProspectPipeline.js";
 import ApplicantCard from "./ApplicantCard.js";
 import type { SubscriptionForm } from "./ApplicantCard.js";
 import { buildApplicantCards, matchesApplicantSearch } from "../lib/applicants.js";
@@ -113,6 +114,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     | "users"
     | "viewing_requests"
     | "partner_feeds"
+    | "sales_pipeline"
   >("overview");
 
   // Collapsible sidebar navigation: which grouped sections are expanded
@@ -1650,6 +1652,12 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       ]
     },
     {
+      id: "sales_group",
+      label: { en: "Sales Pipeline", ar: "خط المبيعات" },
+      icon: TrendingUp,
+      tabs: [{ id: "sales_pipeline", label: { en: "Prospects & Follow-ups", ar: "العملاء المحتملون والمتابعة" } }]
+    },
+    {
       id: "users_group",
       label: { en: "Users", ar: "المستخدمون" },
       icon: Users,
@@ -2861,6 +2869,9 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
               })()}
             </div>
           )}
+
+          {/* SALES PIPELINE SUB-TAB: the team's own prospects (agents/agencies/developers to sign up) */}
+          {activeSubTab === "sales_pipeline" && <ProspectPipeline isRtl={isRtl} currentUserId={currentUser.id} />}
 
           {/* VIEWING REQUESTS SUB-TAB (FIX 7) */}
           {activeSubTab === "viewing_requests" && (

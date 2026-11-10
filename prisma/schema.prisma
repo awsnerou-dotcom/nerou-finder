@@ -226,3 +226,15 @@ model Task {
   @@index([orgId])
   @@index([status])
 }
+
+// A person or company the Nerou team is trying to sign up as a subscriber (see Prospect in
+// src/types.ts). Admin-only sales pipeline.
+model Prospect {
+  id      String @id
+  ownerId String
+  stage   String
+  data    String
+
+  @@index([ownerId])
+  @@index([stage])
+}

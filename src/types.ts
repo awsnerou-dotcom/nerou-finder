@@ -1052,3 +1052,49 @@ export const DOHA_METRO_STATIONS: string[] = [
   "Hamad International Airport"
 ];
 
+
+// ---------------------------------------------------------------------------------------------
+// Platform sales pipeline (admin only): the people and companies the Nerou team is trying to sign
+// up as subscribers. Separate from the agents' own Sales Desk - these are PROSPECTS for the
+// platform, not clients of an agent.
+// ---------------------------------------------------------------------------------------------
+
+export type ProspectStage = "NEW" | "CONTACTED" | "DEMO" | "TRIAL" | "NEGOTIATION" | "WON" | "LOST";
+export type ProspectKind = "AGENT" | "AGENCY" | "DEVELOPER" | "OTHER";
+export type ProspectSource = "REFERRAL" | "WEBSITE" | "WHATSAPP" | "PHONE" | "EVENT" | "SOCIAL" | "COLD_OUTREACH" | "SIGNUP" | "OTHER";
+export type ProspectActivityType = "created" | "note" | "call" | "whatsapp" | "email" | "meeting" | "stage" | "followup" | "edit";
+
+export interface ProspectActivity {
+  id: string;
+  at: string; // ISO
+  by: string; // admin's name
+  type: ProspectActivityType;
+  text: string;
+}
+
+export interface Prospect {
+  id: string;
+  name: string;
+  company?: string;
+  kind: ProspectKind;
+  email?: string;
+  phone?: string;
+  whatsapp?: string;
+  source: ProspectSource;
+  stage: ProspectStage;
+  ownerId: string; // the admin responsible - gets the reminder emails
+  interestedPlanId?: string;
+  expectedMonthly?: number; // QAR per month this prospect would pay
+  nextFollowUp?: string; // YYYY-MM-DD (Qatar)
+  followUpNote?: string;
+  notes?: string;
+  lostReason?: string;
+  activity: ProspectActivity[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  lastContactAt?: string;
+  wonAt?: string;
+  lastReminderAt?: string;
+  reminderCount?: number; // stale-prospect nudges sent since the last activity
+}
