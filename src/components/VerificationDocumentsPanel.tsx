@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from "react";
 import { VerificationDocument, User, DOCUMENT_DECLARATION } from "../types.js";
-import { openVerificationDocument } from "../lib/documents.js";
+import DocumentViewer from "./DocumentViewer.js";
 import { UploadCloud, CheckCircle2, XCircle, Clock, AlertTriangle, Loader2, FileText, Building2, ShieldCheck } from "lucide-react";
 
 interface VerificationDocumentsPanelProps {
@@ -23,7 +23,7 @@ interface ChecklistResponse {
   verificationStatus: string;
 }
 
-const DOC_LABELS: Record<string, { en: string; ar: string }> = {
+export const DOC_LABELS: Record<string, { en: string; ar: string }> = {
   QID_FRONT: { en: "Qatar ID - Front", ar: "البطاقة الشخصية القطرية - الوجه الأمامي" },
   QID_BACK: { en: "Qatar ID - Back", ar: "البطاقة الشخصية القطرية - الوجه الخلفي" },
   PASSPORT: { en: "Passport (Expat Agents)", ar: "جواز السفر (للوكلاء الوافدين)" },
@@ -67,6 +67,8 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
   // the same rule, so this is a UX gate, not the only one). Deliberately starts unticked on
   // every visit - an attestation made last week isn't a fresh one for today's files.
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
+  // The document being looked at, shown in an in-app viewer that has a Back/close button.
+  const [viewing, setViewing] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
     setAgencyNameDraft(agent?.affiliatedAgencyName || "");
@@ -219,10 +221,7 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
             {doc?.fileUrl && (
               <button
                 type="button"
-                onClick={async () => {
-                  const r = await openVerificationDocument(doc.id);
-                  if (!r.ok) showToast(r.error || (isRtl ? "تعذر فتح المستند." : "Could not open the document."));
-                }}
+                onClick={() => setViewing({ id: doc.id, title: label })}
                 className="text-[10px] text-gold underline"
               >
                 {isRtl ? "عرض الملف الحالي" : "View current file"}
@@ -362,6 +361,8 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
           {isRtl ? "+ أنا وافد، أضف جواز السفر" : "+ I'm an expat agent, add my passport"}
         </button>
       )}
+
+      {viewing && <DocumentViewer docId={viewing.id} title={viewing.title} isRtl={isRtl} onClose={() => setViewing(null)} />}
 
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 max-w-sm bg-chrome text-white p-4 rounded-xl shadow-2xl border border-gold flex items-center gap-3 animate-slide-in">

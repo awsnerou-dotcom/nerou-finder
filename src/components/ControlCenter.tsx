@@ -77,7 +77,11 @@ import DashboardChart from "./DashboardChart.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Button } from "./ui/Button.js";
 import { buildDailyCountSeries, isThisMonth } from "../lib/dashboardMetrics.js";
-import { openVerificationDocument } from "../lib/documents.js";
+import DocumentViewer from "./DocumentViewer.js";
+import ApplicantCard from "./ApplicantCard.js";
+import type { SubscriptionForm } from "./ApplicantCard.js";
+import { buildApplicantCards, matchesApplicantSearch } from "../lib/applicants.js";
+import type { ApplicantCardData } from "../lib/applicants.js";
 
 interface ControlCenterProps {
   onRefreshAll: () => void;
@@ -148,8 +152,6 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   const [savingFeedSource, setSavingFeedSource] = useState<boolean>(false);
   const [syncingFeedId, setSyncingFeedId] = useState<string>("");
   const [lastSyncLog, setLastSyncLog] = useState<{ feedId: string; log: string[] } | null>(null);
-  const [rejectingDocId, setRejectingDocId] = useState<string>("");
-  const [rejectionReasonDraft, setRejectionReasonDraft] = useState<string>("");
   const [adCharges, setAdCharges] = useState<any[]>([]);
   // Post-Campaign ROI Report: which org+billingPeriod ledger groups have their per-charge
   // breakdown expanded (each charge now carries a live-computed roiSummary from the server).
@@ -236,6 +238,10 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
   // New Applications (FIX3 onboarding pipeline) - inline "Confirm Payment" form state
   const [confirmingAppId, setConfirmingAppId] = useState<string>("");
+  // Verifications screen: one card per client, a search box, and the document being viewed.
+  const [applicantSearch, setApplicantSearch] = useState("");
+  const [applicantFilter, setApplicantFilter] = useState<"all" | "needs">("all");
+  const [viewingDoc, setViewingDoc] = useState<{ id: string; title: string } | null>(null);
   const [appPlanId, setAppPlanId] = useState<string>("");
   const [appExpiryDate, setAppExpiryDate] = useState<string>("");
   const [appActivationMethod, setAppActivationMethod] = useState<"MANUAL" | "BANK_TRANSFER" | "INVOICE" | "OTHER">("MANUAL");
@@ -1062,8 +1068,6 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       });
       if (res.ok) {
         showToast(status === "APPROVED" ? (isRtl ? "تم اعتماد المستند!" : "Document approved!") : (isRtl ? "تم رفض المستند." : "Document rejected."));
-        setRejectingDocId("");
-        setRejectionReasonDraft("");
         fetchControlContext();
         onRefreshAll();
       } else {
@@ -1360,6 +1364,49 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     }
   };
 
+  // Verifications card: set or change one applicant's subscription (confirm payment, extend,
+  // suspend, cancel). Agents go to the user endpoint, agencies/developers to the organization one.
+  const handleSaveApplicantSubscription = async (card: ApplicantCardData, form: SubscriptionForm): Promise<boolean> => {
+    const isOrg = card.context !== "AGENT";
+    if (isOrg ? !card.org : !card.user) {
+      showToast(isRtl ? "تعذر العثور على الحساب." : "Could not find this account.");
+      return false;
+    }
+    try {
+      const token = localStorage.getItem("token") || "";
+      const today = new Date().toISOString().split("T")[0];
+      const payload: any = {
+        planId: form.planId,
+        startDate: (isOrg && card.org?.subscriptionStartDate) || today,
+        expiryDate: form.expiryDate,
+        status: form.status,
+        notes: form.notes,
+        activationMethod: form.method,
+        actorId: currentUser.id,
+        actorName: currentUser.fullName,
+        actorRole: "PLATFORM_ADMIN"
+      };
+      if (isOrg) payload.orgId = card.org!.id;
+      const res = await fetch(isOrg ? "/api/admin/organizations/subscription" : `/api/admin/users/${card.user!.id}/subscription`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        showToast(isRtl ? "تم حفظ الاشتراك." : "Subscription saved.");
+        fetchControlContext();
+        onRefreshAll();
+        return true;
+      }
+      const d = await res.json().catch(() => ({}));
+      showToast(d.error || (isRtl ? "فشل حفظ الاشتراك." : "Failed to save the subscription."));
+    } catch (err) {
+      console.error(err);
+      showToast(isRtl ? "فشل حفظ الاشتراك." : "Failed to save the subscription.");
+    }
+    return false;
+  };
+
   const handleSavePress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pressTitle || !pressContent) return;
@@ -1423,17 +1470,11 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   // so it must never show up here; only users explicitly sitting at a non-ACTIVE status do.
   const pendingApplications = users.filter(u => u.applicationStatus && u.applicationStatus !== ApplicationStatus.ACTIVE);
 
-  // Group submitted verification documents by applicant (AGENT user or AGENCY/DEVELOPER org)
-  const documentApplicantGroups: { key: string; applicantName: string; applicantEmail: string; context: string; docs: any[] }[] = [];
-  verificationDocs.forEach(d => {
-    const key = `${d.context}:${d.userId || d.orgId}`;
-    let group = documentApplicantGroups.find(g => g.key === key);
-    if (!group) {
-      group = { key, applicantName: d.applicantName, applicantEmail: d.applicantEmail, context: d.context, docs: [] };
-      documentApplicantGroups.push(group);
-    }
-    group.docs.push(d);
-  });
+  // One card per applicant (an agent, or an agency/developer): their details, every document they
+  // sent, and where their application stands.
+  const applicantCards = buildApplicantCards(verificationDocs as any, users, organizations);
+  const visibleApplicantCards = applicantCards.filter(c =>
+    matchesApplicantSearch(c, applicantSearch) && (applicantFilter === "all" || c.needsAction));
 
   // Real MRR: only ACTIVE-subscription orgs, priced from the actual SubscriptionPlan record
   // rather than a hardcoded per-plan-id price map.
@@ -2439,109 +2480,50 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       : "An account becomes fully VERIFIED only once every required document for its role is APPROVED."}
                   </p>
                 </div>
-                <div className="divide-y divide-surface-2">
-                  {documentApplicantGroups.length === 0 ? (
+                <div className="p-4 space-y-4 bg-canvas">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      type="text"
+                      value={applicantSearch}
+                      onChange={(e) => setApplicantSearch(e.target.value)}
+                      placeholder={isRtl ? "بحث بالاسم أو البريد أو الجوال" : "Search name, email or mobile"}
+                      className="px-3 py-1.5 bg-surface border border-border rounded-lg text-[11px] min-w-[220px] flex-1 max-w-sm"
+                    />
+                    {([["all", isRtl ? "الكل" : "All"], ["needs", isRtl ? "يحتاج مراجعة" : "Needs review"]] as const).map(([id, text]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setApplicantFilter(id)}
+                        aria-pressed={applicantFilter === id}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border cursor-pointer ${applicantFilter === id ? "bg-chrome text-white border-chrome" : "bg-surface text-ink border-border hover:bg-surface-2"}`}
+                      >
+                        {text}
+                      </button>
+                    ))}
+                    <span className="text-[10px] text-ink-muted ms-auto">{visibleApplicantCards.length} / {applicantCards.length}</span>
+                  </div>
+                  {visibleApplicantCards.length === 0 ? (
                     <p className="p-8 text-center text-ink-muted">
-                      {isRtl ? "لا توجد مستندات مقدمة بعد." : "No documents have been submitted yet."}
+                      {applicantCards.length === 0
+                        ? (isRtl ? "لا توجد مستندات مقدمة بعد." : "No documents have been submitted yet.")
+                        : (isRtl ? "لا توجد نتائج مطابقة." : "No clients match.")}
                     </p>
                   ) : (
-                    documentApplicantGroups.map(group => (
-                      <div key={group.key} className="p-4 space-y-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm text-ink">{group.applicantName}</span>
-                          <span className="text-[10px] bg-surface-2 text-ink-muted px-1.5 py-0.5 rounded">{group.context}</span>
-                          <span className="text-[10px] text-ink-muted">{group.applicantEmail}</span>
-                        </div>
-                        <div className="space-y-2">
-                          {group.docs.map((doc: any) => (
-                            <div key={doc.id} className="p-3 bg-ink-inverse border border-border rounded-lg space-y-2">
-                              <div className="flex items-center justify-between gap-3 flex-wrap">
-                                <div>
-                                  <p className="font-semibold text-ink">{doc.documentType.replace(/_/g, " ")}</p>
-                                  <button
-                                    type="button"
-                                    onClick={async () => {
-                                      const r = await openVerificationDocument(doc.id);
-                                      if (!r.ok) showToast(r.error || (isRtl ? "تعذر فتح المستند." : "Could not open the document."));
-                                    }}
-                                    className="text-[10px] text-gold underline"
-                                  >
-                                    {isRtl ? "عرض المستند" : "View document"}
-                                  </button>
-                                  {doc.expiryDate && (
-                                    <span className="text-[10px] text-ink-muted ml-2">
-                                      {isRtl ? "ينتهي في: " : "Expires: "}{new Date(doc.expiryDate).toLocaleDateString()}
-                                    </span>
-                                  )}
-                                </div>
-                                <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                    doc.status === "APPROVED"
-                                      ? "bg-emerald-50 text-emerald-700"
-                                      : doc.status === "REJECTED"
-                                      ? "bg-rose-50 text-rose-700"
-                                      : doc.status === "EXPIRED"
-                                      ? "bg-orange-50 text-orange-700"
-                                      : "bg-amber-50 text-amber-700"
-                                  }`}
-                                >
-                                  {doc.status}
-                                </span>
-                              </div>
-
-                              {doc.status === "REJECTED" && doc.rejectionReason && (
-                                <p className="text-[10px] text-rose-700">
-                                  <strong>{isRtl ? "سبب الرفض: " : "Reason: "}</strong>{doc.rejectionReason}
-                                </p>
-                              )}
-
-                              {(doc.status === "PENDING" || doc.status === "EXPIRED") && (
-                                <div className="flex items-center gap-2 flex-wrap pt-1">
-                                  <button
-                                    onClick={() => handleReviewDocument(doc.id, "APPROVED")}
-                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-semibold cursor-pointer"
-                                  >
-                                    {isRtl ? "اعتماد" : "Approve"}
-                                  </button>
-                                  {rejectingDocId === doc.id ? (
-                                    <>
-                                      <input
-                                        type="text"
-                                        value={rejectionReasonDraft}
-                                        onChange={(e) => setRejectionReasonDraft(e.target.value)}
-                                        placeholder={isRtl ? "سبب الرفض (مطلوب)" : "Rejection reason (required)"}
-                                        className="px-2 py-1 bg-surface border border-border rounded text-[10px] w-56"
-                                        autoFocus
-                                      />
-                                      <button
-                                        onClick={() => handleReviewDocument(doc.id, "REJECTED", rejectionReasonDraft)}
-                                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded font-semibold cursor-pointer"
-                                      >
-                                        {isRtl ? "تأكيد الرفض" : "Confirm Reject"}
-                                      </button>
-                                      <button
-                                        onClick={() => { setRejectingDocId(""); setRejectionReasonDraft(""); }}
-                                        className="px-2 py-1 text-ink-muted hover:text-ink cursor-pointer"
-                                      >
-                                        {isRtl ? "إلغاء" : "Cancel"}
-                                      </button>
-                                    </>
-                                  ) : (
-                                    <button
-                                      onClick={() => { setRejectingDocId(doc.id); setRejectionReasonDraft(""); }}
-                                      className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded font-semibold cursor-pointer"
-                                    >
-                                      {isRtl ? "رفض" : "Reject"}
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                    visibleApplicantCards.map(card => (
+                      <ApplicantCard
+                        key={card.key}
+                        card={card}
+                        plans={plans}
+                        isRtl={isRtl}
+                        onViewDoc={(doc, title) => setViewingDoc({ id: doc.id, title })}
+                        onReviewDoc={handleReviewDocument}
+                        onMoveToAwaitingPayment={handleMoveToAwaitingPayment}
+                        onSaveSubscription={handleSaveApplicantSubscription}
+                        onVerifyOrg={handleVerifyOrg}
+                      />
                     ))
                   )}
+                  {viewingDoc && <DocumentViewer docId={viewingDoc.id} title={viewingDoc.title} isRtl={isRtl} onClose={() => setViewingDoc(null)} />}
                 </div>
               </div>
             </div>
