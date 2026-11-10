@@ -72,6 +72,7 @@ import SupportTicketsView from "./SupportTicketsView.js";
 import PressView from "./PressView.js";
 import PartnershipsView from "./PartnershipsView.js";
 import PlansPricingView from "./PlansPricingView.js";
+import SalesDeskShowcase from "./SalesDeskShowcase.js";
 import PhotoHero from "./PhotoHero.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 
@@ -1417,6 +1418,16 @@ export default function VisitorExperience({
             const org = organizations.find(o => o.id === agencyId);
             if (org) setSelectedOrgProfile(org);
           }}
+        />
+      )}
+
+      {/* Sales Desk pitch for professionals - shown to visitors who are not already signed in
+          as a broker/agency/developer. */}
+      {!aiSearchActive && searchMode === "PROPERTIES" && !["AGENT", "AGENCY_ADMIN", "DEVELOPER_ADMIN"].includes(currentUser?.role) && (
+        <SalesDeskShowcase
+          isRtl={isRtl}
+          onStart={onSignupTrigger}
+          onSeePlans={() => setCurrentTab("PLANS")}
         />
       )}
 

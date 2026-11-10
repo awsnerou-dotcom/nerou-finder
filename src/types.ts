@@ -145,6 +145,9 @@ export interface User {
   // true once the user has dismissed/finished it, so it only auto-shows once. Undefined is
   // treated the same as false (never seen it) for every pre-existing account.
   hasSeenOnboardingTour?: boolean;
+  // Edition of the tour last seen (see TOUR_VERSION in src/lib/tour.ts). Accounts that finished an
+  // older edition (undefined/0 counts as edition 1) get a short "what's new" tour once.
+  onboardingTourVersion?: number;
   // ---------------------------------------------------------------------------
   // Referral Program
   // ---------------------------------------------------------------------------
@@ -567,7 +570,7 @@ export interface Lead {
   addedManually?: boolean;
   source?: LeadSource;
   budget?: number; // QAR, what the client says they can spend
-  interest?: string; // free text: what the client is looking for
+  interest?: string; // free text: what the client is looking for
   // Every pipeline move, oldest first - the lead's timeline.
   stageHistory?: LeadStageChange[];
 }

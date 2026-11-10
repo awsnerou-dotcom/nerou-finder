@@ -14,6 +14,9 @@ export interface TourStep {
   selector: string;
   title: string;
   body: string;
+  // Runs when the step is shown, before its target is looked up. Used to open the screen the
+  // target lives on (the target is then awaited briefly instead of being skipped at once).
+  onEnter?: () => void;
 }
 
 interface OnboardingTourProps {
@@ -42,24 +45,51 @@ export default function OnboardingTour({ steps, isRtl, onFinish }: OnboardingTou
       return;
     }
 
-    const el = document.querySelector(`[data-tour="${step.selector}"]`);
-    if (!el) {
-      setMissingTarget(true);
-      return;
+    // A step can first prepare the screen (e.g. switch to the Sales Desk tab) so its target exists.
+    if (step.onEnter) {
+      setRect(null); // don't show the previous step's spotlight over the new screen
+      step.onEnter();
     }
-    setMissingTarget(false);
 
-    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    let cancelled = false;
+    let measureTimer = 0;
+    let pollTimer = 0;
+    let attached: { el: Element; measure: () => void } | null = null;
 
-    const measure = () => setRect(el.getBoundingClientRect());
-    // One tick so scrollIntoView has a chance to settle before measuring.
-    const t = window.setTimeout(measure, 220);
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
+    const attach = (el: Element) => {
+      setMissingTarget(false);
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      const measure = () => setRect(el.getBoundingClientRect());
+      // One tick so scrollIntoView has a chance to settle before measuring.
+      measureTimer = window.setTimeout(measure, 220);
+      window.addEventListener("resize", measure);
+      window.addEventListener("scroll", measure, true);
+      attached = { el, measure };
+    };
+
+    // A target that a tab switch just revealed may take a moment to render, so look for it
+    // for up to ~1.5s before deciding it is genuinely absent and skipping the step.
+    const deadline = Date.now() + (step.onEnter ? 1500 : 0);
+    const find = () => {
+      if (cancelled) return;
+      const el = document.querySelector(`[data-tour="${step.selector}"]`);
+      if (el) return attach(el);
+      if (Date.now() < deadline) {
+        pollTimer = window.setTimeout(find, 100);
+      } else {
+        setMissingTarget(true);
+      }
+    };
+    find();
+
     return () => {
-      window.clearTimeout(t);
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
+      cancelled = true;
+      window.clearTimeout(measureTimer);
+      window.clearTimeout(pollTimer);
+      if (attached) {
+        window.removeEventListener("resize", attached.measure);
+        window.removeEventListener("scroll", attached.measure, true);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepIndex, steps]);

@@ -1755,11 +1755,21 @@ app.post("/api/users/:id/onboarding-tour-seen", authMiddleware, (req, res) => {
   const idx = db.users.findIndex(u => u.id === id);
   if (idx === -1) return res.status(404).json({ error: "User not found." });
 
-  const { seen } = req.body as { seen?: boolean };
+  const { seen, version } = req.body as { seen?: boolean; version?: unknown };
   (db.users[idx] as any).hasSeenOnboardingTour = seen !== false;
+  // Which edition of the tour the person has now seen. Lets us show a short "what's new" tour to
+  // people who finished an older one when new features ship. Only ever moves forward.
+  if (typeof version === "number" && Number.isInteger(version) && version >= 1 && version <= 1000 && seen !== false) {
+    const current = Number((db.users[idx] as any).onboardingTourVersion) || 0;
+    (db.users[idx] as any).onboardingTourVersion = Math.max(current, version);
+  }
   writeDb(db);
 
-  res.json({ success: true, hasSeenOnboardingTour: (db.users[idx] as any).hasSeenOnboardingTour });
+  res.json({
+    success: true,
+    hasSeenOnboardingTour: (db.users[idx] as any).hasSeenOnboardingTour,
+    onboardingTourVersion: (db.users[idx] as any).onboardingTourVersion ?? 0,
+  });
 });
 
 // Change own password. A user may only change their own password - never another user's,

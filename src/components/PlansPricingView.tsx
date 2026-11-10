@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { motion } from "motion/react";
 import { Check, X, ShieldCheck, Zap, Award, CheckCircle2, ChevronRight, HelpCircle } from "lucide-react";
 import { SubscriptionPlan } from "../types.js";
+import SalesDeskShowcase from "./SalesDeskShowcase.js";
 
 interface PlansPricingViewProps {
   isRtl: boolean;
@@ -287,6 +288,11 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
         })}
       </div>
 
+      {/* 2b. Sales Desk - included in every plan */}
+      <div className="max-w-7xl mx-auto">
+        <SalesDeskShowcase isRtl={isRtl} onStart={() => onSelectPlan("plan-trial")} />
+      </div>
+
       {/* 3. Deep-Dive Detailed Features Comparison Table */}
       <div className="max-w-5xl mx-auto bg-surface rounded-xl border border-border overflow-hidden shadow-xs">
         <div className="p-5 bg-ink-inverse border-b border-border">
@@ -351,6 +357,20 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
                   <Check size={16} className="mx-auto" />
                 </td>
               </tr>
+              {[
+                isRtl ? "مكتب المبيعات: لوحة المسار، المتابعات، المعاينات" : "Sales Desk: pipeline, follow-ups, viewings",
+                isRtl ? "الصفقات والعمولات وتقارير إكسل" : "Deals, commission and Excel reports",
+                isRtl ? "استيراد عملائك من إكسل" : "Import your own client list",
+              ].map((label) => (
+                <tr key={label}>
+                  <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{label}</td>
+                  {[0, 1, 2, 3].map((i) => (
+                    <td key={i} className="p-4 text-center text-emerald-600">
+                      <Check size={16} className="mx-auto" />
+                    </td>
+                  ))}
+                </tr>
+              ))}
               <tr>
                 <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.certifiedSupport}</td>
                 <td className="p-4 text-center">Standard Support</td>

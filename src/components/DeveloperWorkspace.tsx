@@ -48,6 +48,9 @@ import { Button } from "./ui/Button.js";
 import { ConfirmDialog } from "./ui/ConfirmDialog.js";
 import { buildDailyCountSeries, isThisMonth, listingStatusTone, leadStatusTone } from "../lib/dashboardMetrics.js";
 import OnboardingTour, { TourStep } from "./OnboardingTour.js";
+import { salesDeskTourSteps } from "./salesDeskTour.js";
+import { TOUR_VERSION, tourModeFor } from "../lib/tour.js";
+import type { TourMode } from "../lib/tour.js";
 import ListingPerformanceModal from "./ListingPerformanceModal.js";
 import NotificationBell from "./NotificationBell.js";
 import SalesDesk from "./SalesDesk.js";
@@ -101,14 +104,18 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
   // First-time onboarding tour: shows once automatically for an account that hasn't seen it
   // yet, and can be replayed on demand from the Profile tab.
   const [showTour, setShowTour] = useState(false);
+  // "full" = the whole tour; "whatsnew" = only the new Sales Desk steps, for accounts that finished an older tour.
+  const [tourMode, setTourMode] = useState<TourMode>(null);
   useEffect(() => {
-    if (!currentUser.hasSeenOnboardingTour) {
+    const mode = tourModeFor(currentUser);
+    if (mode) {
+      setTourMode(mode);
       setShowTour(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id]);
 
-  const DEVELOPER_TOUR_STEPS: TourStep[] = [
+  const DEVELOPER_BASE_TOUR_STEPS: TourStep[] = [
     {
       selector: "developer-dashboard-tab",
       title: isRtl ? "لوحة القيادة" : "Dashboard",
@@ -146,6 +153,11 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
     }
   ];
 
+  const deskTourSteps = salesDeskTourSteps({ isRtl, isAdmin: true, tabSelector: "developer-salesdesk-tab", openDesk: () => setActiveTab("salesdesk") });
+  const DEVELOPER_TOUR_STEPS: TourStep[] = tourMode === "whatsnew"
+    ? deskTourSteps
+    : [...DEVELOPER_BASE_TOUR_STEPS.slice(0, 3), ...deskTourSteps, ...DEVELOPER_BASE_TOUR_STEPS.slice(3)];
+
   const handleFinishTour = async () => {
     setShowTour(false);
     try {
@@ -155,12 +167,12 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
       await fetch(`/api/users/${currentUser.id}/onboarding-tour-seen`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ seen: true })
+        body: JSON.stringify({ seen: true, version: TOUR_VERSION })
       });
       const stored = localStorage.getItem("nerou_user");
       if (stored) {
         const parsed = JSON.parse(stored);
-        localStorage.setItem("nerou_user", JSON.stringify({ ...parsed, hasSeenOnboardingTour: true }));
+        localStorage.setItem("nerou_user", JSON.stringify({ ...parsed, hasSeenOnboardingTour: true, onboardingTourVersion: TOUR_VERSION }));
       }
       onRefreshAll();
     } catch (err) {
@@ -1028,7 +1040,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
             </div>
             <button
               type="button"
-              onClick={() => setShowTour(true)}
+              onClick={() => { setTourMode("full"); setShowTour(true); }}
               className="px-4 py-2 bg-surface-2 hover:bg-border text-ink font-semibold rounded-lg cursor-pointer shrink-0"
             >
               {isRtl ? "أرني الجولة مرة أخرى" : "Show me the tour again"}

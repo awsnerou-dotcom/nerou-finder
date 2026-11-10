@@ -17,6 +17,7 @@ import {
 import { LeadStatus } from "../types.js";
 import { BOARD_COLUMNS, LEAD_SOURCES, LEAD_SOURCE_TEXT, addDaysToDate, columnForStatus, isClosedStatus, isOpenLead, monthlySummary, phoneKey, qatarDate, taskReminderTime } from "../lib/crm.js";
 import type { SnoozeKind } from "../lib/crm.js";
+import { DESK_TAB_EVENT, takePendingDeskTab } from "../lib/tour.js";
 import { Button } from "./ui/Button.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Spinner } from "./ui/Spinner.js";
@@ -69,6 +70,18 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
     }
   }, []);
   useEffect(() => { reload(); }, [reload]);
+
+  // The guided tour can ask the desk to open a specific tab so it can point at it.
+  useEffect(() => {
+    const first = takePendingDeskTab(); // asked for before this screen finished mounting
+    if (first) setTab(first);
+    const open = (e: Event) => {
+      const wanted = takePendingDeskTab() ?? (e as CustomEvent<DeskTab>).detail;
+      if (wanted) setTab(wanted);
+    };
+    window.addEventListener(DESK_TAB_EVENT, open);
+    return () => window.removeEventListener(DESK_TAB_EVENT, open);
+  }, []);
 
   // Run an action, then refresh; show a message either way.
   const act = async (fn: () => Promise<unknown>, okText: string) => {
@@ -211,7 +224,7 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer select-none" title={t("Daily follow-up and viewing reminder emails", "إيميلات تذكير بالمتابعة والمعاينات")}>
+          <label data-tour="desk-reminders" className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer select-none" title={t("Daily follow-up and viewing reminder emails", "إيميلات تذكير بالمتابعة والمعاينات")}>
             <BellRing size={14} className={data.settings.followUpRemindersEnabled ? "text-gold" : ""} />
             {t("Reminder emails", "إيميلات التذكير")}
             <input
@@ -226,8 +239,10 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
             />
           </label>
           <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={13} />} onClick={reload}>{t("Refresh", "تحديث")}</Button>
-          <Button variant="outline" size="sm" leftIcon={<Upload size={13} />} onClick={() => setImportOpen(true)}>{t("Import list", "استيراد قائمة")}</Button>
-          <Button size="sm" leftIcon={<UserPlus size={14} />} onClick={() => setClientCtx({ client: null })}>{t("Add client", "إضافة عميل")}</Button>
+          <span data-tour="desk-clients" className="inline-flex items-center gap-2">
+            <Button variant="outline" size="sm" leftIcon={<Upload size={13} />} onClick={() => setImportOpen(true)}>{t("Import list", "استيراد قائمة")}</Button>
+            <Button size="sm" leftIcon={<UserPlus size={14} />} onClick={() => setClientCtx({ client: null })}>{t("Add client", "إضافة عميل")}</Button>
+          </span>
         </div>
       </div>
 
@@ -245,6 +260,7 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
           <button
             key={x.id}
             role="tab"
+            data-tour={`desk-tab-${x.id}`}
             aria-selected={tab === x.id}
             onClick={() => setTab(x.id)}
             className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold border-b-2 -mb-px cursor-pointer transition-colors ${
