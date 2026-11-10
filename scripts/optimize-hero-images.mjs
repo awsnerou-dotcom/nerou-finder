@@ -1,10 +1,10 @@
-// Makes the lighter copies of the three home-page hero photos.
+// Makes the lighter copies of the home-page hero photos (see PHOTOS below).
 //
 //   node scripts/optimize-hero-images.mjs
 //
 // For each assets/images/hero-<name>.jpg it writes (the jpg stays as the fallback for old browsers):
 //   hero-<name>.avif / .webp      same size as the jpg, same pixels, a third smaller or more
-//   hero-<name>-m.avif / -m.webp  for phones: only the middle 70% of the width, full height, same pixel
+//   hero-<name>-m.avif / -m.webp  for phones: 70% of the width (the middle, or around cropCenter), full height, same pixel
 //                                 density. A phone shows a narrow strip from the middle of the photo
 //                                 (object-position 50%), so the sides were being downloaded for nothing.
 // No resizing and no extra blur: nothing here makes a photo look smaller or softer than before.
@@ -15,16 +15,23 @@ import fs from "fs";
 import path from "path";
 
 const dir = path.join(process.cwd(), "assets", "images");
-const NAMES = ["hero-lusail-towers", "hero-qatar-spiral-minaret", "hero-pearl-marina"];
+// cropCenter = where the phone copy is centred, as a share of the photo's width (0.5 = the middle).
+// A phone only shows a narrow strip, so a photo whose subject sits off-centre says where to cut.
+const PHOTOS = [
+  { name: "hero-lusail-towers" },
+  { name: "hero-qatar-spiral-minaret" },
+  { name: "hero-pearl-marina" },
+  { name: "hero-qanat-quartier", cropCenter: 0.4 } // the big beige tower and the dark glass tower beside it
+];
 const MOBILE_KEEP = 0.7; // share of the width kept for phones
 
 const kb = file => Math.round(fs.statSync(file).size / 1024) + "KB";
 
-for (const name of NAMES) {
+for (const { name, cropCenter = 0.5 } of PHOTOS) {
   const src = path.join(dir, `${name}.jpg`);
   const { width, height } = await sharp(src).metadata();
   const cropWidth = Math.round(width * MOBILE_KEEP);
-  const left = Math.round((width - cropWidth) / 2);
+  const left = Math.min(width - cropWidth, Math.max(0, Math.round(width * cropCenter - cropWidth / 2)));
   const variants = [
     { suffix: "", make: () => sharp(src) },
     { suffix: "-m", make: () => sharp(src).extract({ left, top: 0, width: cropWidth, height }) }

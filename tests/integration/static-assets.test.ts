@@ -23,7 +23,7 @@ describe("site images: type and browser caching", () => {
 
   it("has a lighter phone copy and a desktop copy for every hero photo", () => {
     const dir = path.join(process.cwd(), "assets", "images");
-    for (const n of ["hero-lusail-towers", "hero-qatar-spiral-minaret", "hero-pearl-marina"]) {
+    for (const n of ["hero-lusail-towers", "hero-qatar-spiral-minaret", "hero-pearl-marina", "hero-qanat-quartier"]) {
       for (const f of [`${n}.jpg`, `${n}.avif`, `${n}.webp`, `${n}-m.avif`, `${n}-m.webp`]) {
         expect(fs.existsSync(path.join(dir, f)), f).toBe(true);
       }
