@@ -76,7 +76,9 @@ export const compressImage = (file: File): Promise<File> => {
 // photos, avatar/logo uploads, which skip thumbnail generation entirely) is returned unchanged.
 // A caller should still set an onError handler falling back to the original URL, since an
 // older image uploaded before this feature existed has no thumb-* file on disk.
-export function getThumbnailUrl(url: string): string {
+export function getThumbnailUrl(url: string | undefined | null): string {
+  // A listing can have no photos (images[0] is then undefined): that must not crash the page.
+  if (!url) return "";
   const match = url.match(/^(.*\/assets\/uploads\/)([^/]+)$/);
   if (!match || match[2].startsWith("original-") || match[2].startsWith("thumb-")) return url;
   return `${match[1]}thumb-${match[2]}`;

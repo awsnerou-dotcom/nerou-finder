@@ -111,6 +111,35 @@ import {
   ProspectDue,
   ProspectInput
 } from "./src/lib/prospects.js";
+import {
+  Lang as SeoLang,
+  Landing,
+  stripLang,
+  withLang,
+  slugify,
+  parseLandingPath,
+  landingPath,
+  buildLandingPages,
+  landingText,
+  landingLabel,
+  relatedLandings,
+  areaNameFor,
+  isPublishedListing,
+  listingMetaAr,
+  SITE_NAME_AR
+} from "./src/lib/seo.js";
+import {
+  applyHead,
+  applyRootContent,
+  addAlternates,
+  absoluteUrl,
+  landingBodyHtml,
+  landingJsonLd,
+  homeBodyHtml,
+  simpleBodyHtml,
+  propertyBodyHtml,
+  areaBodyHtml
+} from "./src/lib/seoHtml.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
 import * as Sentry from "@sentry/node";
@@ -8813,24 +8842,215 @@ app.get("/api/user/export-data", authMiddleware, (req, res) => {
 });
 
 // -----------------------------------------------------------------------------
-// SEO INFRASTRUCTURE (robots.txt & dynamic sitemap.xml)
+// SEO INFRASTRUCTURE: landing pages, Arabic URLs (/ar/...), sitemap, robots, llms.txt, IndexNow
+//
+// Search engines get real HTML for every page that matters: its own title, description,
+// canonical, English/Arabic alternates, structured data and the content itself, with internal
+// links between pages. The app loads over the top for people. See src/lib/seo.ts for the rules.
 // -----------------------------------------------------------------------------
+type SeoPageText = { title: string; description: string; h1: string; intro: string };
+const SEO_PAGES: Record<string, { en: SeoPageText; ar: SeoPageText }> = {
+  "/": {
+    en: {
+      title: "Nerou Finder | Verified Property Listings in Qatar",
+      description: "Properties for rent and sale in Qatar from licence-verified agents, with availability confirmed before publishing. One unit, one listing.",
+      h1: "Verified property listings in Qatar",
+      intro: "Nerou Finder lists properties for rent, for sale and off-plan across Qatar. Every agent's licence is verified, and a listing's availability is confirmed before it is published."
+    },
+    ar: {
+      title: "نيرو فايندر | عقارات موثّقة في قطر",
+      description: "عقارات للإيجار والبيع في قطر من وسطاء موثّقي الرخصة، مع تأكيد توفر كل عقار قبل نشره. وحدة واحدة، إعلان واحد.",
+      h1: "عقارات موثّقة في قطر",
+      intro: "يعرض نيرو فايندر عقارات للإيجار والبيع وعلى الخريطة في أنحاء قطر. يتم التحقق من رخصة كل وسيط، ويُؤكَّد توفر كل عقار قبل نشره."
+    }
+  },
+  "/plans-pricing": {
+    en: {
+      title: "Plans & Pricing for Agents, Agencies and Developers | Nerou Finder",
+      description: "List properties in Qatar with Standard Broker, Enterprise Agency or Master Developer plans, or start a 60-day free trial. Includes a sales desk for clients, follow-ups, viewings and commission.",
+      h1: "Plans and pricing for agents, agencies and developers",
+      intro: "Choose a plan to publish verified listings in Qatar. Every plan includes the Sales Desk: pipeline, email follow-up reminders, viewing schedule, deals and commission, and Excel reports."
+    },
+    ar: {
+      title: "الباقات والأسعار للوسطاء والمكاتب والمطورين | نيرو فايندر",
+      description: "انشر عقاراتك في قطر بباقة الوسيط أو المكتب المتكامل أو المطور العقاري، أو ابدأ تجربة مجانية 60 يومًا. تشمل مكتب مبيعات للعملاء والمتابعات والمعاينات والعمولات.",
+      h1: "الباقات والأسعار للوسطاء والمكاتب والمطورين",
+      intro: "اختر باقة لنشر إعلانات موثّقة في قطر. تشمل كل باقة مكتب المبيعات: مسار المبيعات، وتذكيرات المتابعة بالإيميل، وجدول المعاينات، والصفقات والعمولات، وتقارير إكسل."
+    }
+  },
+  "/help-center": {
+    en: { title: "Help Center | Nerou Finder", description: "Answers about searching, listing, verification and subscriptions on Nerou Finder.", h1: "Help Center", intro: "Answers about searching, listing, verification and subscriptions on Nerou Finder." },
+    ar: { title: "مركز المساعدة | نيرو فايندر", description: "إجابات عن البحث والنشر والتوثيق والاشتراكات في نيرو فايندر.", h1: "مركز المساعدة", intro: "إجابات عن البحث والنشر والتوثيق والاشتراكات في نيرو فايندر." }
+  },
+  "/careers": {
+    en: { title: "Careers | Nerou Finder", description: "Open roles at Nerou Finder, the verified property marketplace for Qatar.", h1: "Careers at Nerou Finder", intro: "Open roles at Nerou Finder, the verified property marketplace for Qatar." },
+    ar: { title: "الوظائف | نيرو فايندر", description: "الوظائف المتاحة في نيرو فايندر، سوق العقارات الموثّقة في قطر.", h1: "الوظائف في نيرو فايندر", intro: "الوظائف المتاحة في نيرو فايندر، سوق العقارات الموثّقة في قطر." }
+  },
+  "/press": {
+    en: { title: "Press | Nerou Finder", description: "News and press releases from Nerou Finder.", h1: "Press", intro: "News and press releases from Nerou Finder." },
+    ar: { title: "الأخبار الصحفية | نيرو فايندر", description: "أخبار وبيانات صحفية من نيرو فايندر.", h1: "الأخبار الصحفية", intro: "أخبار وبيانات صحفية من نيرو فايندر." }
+  },
+  "/partnerships": {
+    en: { title: "Partner with Nerou Finder", description: "Work with Nerou Finder: partnerships for agencies, developers, banks and service companies in Qatar.", h1: "Partnerships", intro: "Work with Nerou Finder: partnerships for agencies, developers, banks and service companies in Qatar." },
+    ar: { title: "الشراكة مع نيرو فايندر", description: "اعمل مع نيرو فايندر: شراكات للمكاتب والمطورين والبنوك وشركات الخدمات في قطر.", h1: "الشراكات", intro: "اعمل مع نيرو فايندر: شراكات للمكاتب والمطورين والبنوك وشركات الخدمات في قطر." }
+  },
+  "/legal": {
+    en: { title: "Terms and Privacy | Nerou Finder", description: "The terms of use and privacy policy of Nerou Finder.", h1: "Terms and privacy", intro: "The terms of use and privacy policy of Nerou Finder." },
+    ar: { title: "الشروط والخصوصية | نيرو فايندر", description: "شروط الاستخدام وسياسة الخصوصية في نيرو فايندر.", h1: "الشروط والخصوصية", intro: "شروط الاستخدام وسياسة الخصوصية في نيرو فايندر." }
+  },
+  "/projects": {
+    en: { title: "New Property Projects in Qatar | Nerou Finder", description: "Off-plan and new development projects in Qatar from verified developers.", h1: "New property projects in Qatar", intro: "Off-plan and new development projects in Qatar from verified developers." },
+    ar: { title: "مشاريع عقارية جديدة في قطر | نيرو فايندر", description: "مشاريع على الخريطة وتطويرات جديدة في قطر من مطورين موثّقين.", h1: "مشاريع عقارية جديدة في قطر", intro: "مشاريع على الخريطة وتطويرات جديدة في قطر من مطورين موثّقين." }
+  },
+  "/area-guides": {
+    en: { title: "Qatar Area Guides: Neighbourhoods, Lifestyle and Property | Nerou Finder", description: "Guides to Doha's neighbourhoods: West Bay, The Pearl, Lusail, Al Sadd and more, with the properties available in each.", h1: "Qatar area guides", intro: "Guides to Doha's neighbourhoods, with the properties available in each." },
+    ar: { title: "أدلة مناطق قطر: الأحياء ونمط الحياة والعقارات | نيرو فايندر", description: "أدلة لأحياء الدوحة: الخليج الغربي واللؤلؤة ولوسيل والسد وغيرها، مع العقارات المتاحة في كل منها.", h1: "أدلة مناطق قطر", intro: "أدلة لأحياء الدوحة، مع العقارات المتاحة في كل منها." }
+  }
+};
+
+function seoShell(): string | null {
+  for (const p of [path.join(process.cwd(), "dist", "index.html"), path.join(process.cwd(), "index.html")]) {
+    try { if (fs.existsSync(p)) return fs.readFileSync(p, "utf-8"); } catch { /* try the next one */ }
+  }
+  return null;
+}
+
+/** The most useful landing pages (most listings first), as plain links with labels. */
+function seoPopularSearches(db: DatabaseState, lang: SeoLang, limit = 12) {
+  const all = buildLandingPages(db.properties);
+  return all
+    .filter(l => l.indexable)
+    .sort((a, b) => b.listings.length - a.listings.length || specificityOf(a) - specificityOf(b))
+    .slice(0, limit)
+    .map(l => ({ path: l.path, label: landingLabel(l, lang, db.locations) }));
+}
+const specificityOf = (l: Landing) => (l.spec.area ? 2 : 0) + (l.spec.type ? 1 : 0);
+
+function seoAreaGuideFor(areaSlug?: string) {
+  return areaSlug ? AREA_GUIDES.find(g => slugify(g.district) === areaSlug) : undefined;
+}
+
+export function renderLandingPage(db: DatabaseState, landing: Landing, lang: SeoLang, origin: string, shell: string): string {
+  const all = buildLandingPages(db.properties);
+  const district = landing.listings[0]?.district;
+  const areaName = landing.spec.area && district ? areaNameFor(district, db.locations) : undefined;
+  const guide = seoAreaGuideFor(landing.spec.area);
+  const text = landingText(landing, { lang, areaName, areaGuide: guide ? { slug: guide.slug, overview: guide.overview, overviewAr: guide.overviewAr } : undefined });
+  const related = relatedLandings(all, landing).map(l => ({ path: l.path, label: landingLabel(l, lang, db.locations) }));
+  const otherLang: SeoLang = lang === "ar" ? "en" : "ar";
+  const canonical = `${origin}${withLang(landing.canonicalPath, lang)}`;
+  const alternates = landing.indexable
+    ? { en: `${origin}${landing.path}`, ar: `${origin}${withLang(landing.path, "ar")}` }
+    : { en: `${origin}${landing.canonicalPath}`, ar: `${origin}${withLang(landing.canonicalPath, "ar")}` };
+  let html = applyHead(shell, {
+    lang, title: text.title, description: text.description, canonical, alternates,
+    image: landing.listings[0]?.images?.[0] ? absoluteUrl(origin, landing.listings[0].images[0]) : undefined,
+    jsonLd: landingJsonLd({ landing, text, lang, origin })
+  });
+  html = applyRootContent(html, landingBodyHtml({
+    landing, text, lang, related,
+    areaGuide: guide ? { slug: guide.slug, title: lang === "ar" ? guide.titleAr : guide.title } : undefined,
+    otherLang: { path: withLang(landing.path, otherLang), label: otherLang === "ar" ? "النسخة العربية" : "English version" }
+  }));
+  return html;
+}
+
+function seoPageHtml(db: DatabaseState, pagePath: string, lang: SeoLang, origin: string, shell: string): string | null {
+  const page = SEO_PAGES[pagePath];
+  if (!page) return null;
+  const t = page[lang];
+  const alternates = { en: `${origin}${pagePath === "/" ? "/" : pagePath}`, ar: `${origin}${withLang(pagePath, "ar")}` };
+  let html = applyHead(shell, { lang, title: t.title, description: t.description, canonical: lang === "ar" ? alternates.ar : alternates.en, alternates });
+  const pages = [
+    { path: "/plans-pricing", label: SEO_PAGES["/plans-pricing"][lang].h1 },
+    { path: "/help-center", label: SEO_PAGES["/help-center"][lang].h1 },
+    { path: "/area-guides", label: SEO_PAGES["/area-guides"][lang].h1 },
+    { path: "/careers", label: SEO_PAGES["/careers"][lang].h1 },
+    { path: "/press", label: SEO_PAGES["/press"][lang].h1 },
+    { path: "/legal", label: SEO_PAGES["/legal"][lang].h1 }
+  ];
+  if (pagePath === "/") {
+    html = applyRootContent(html, homeBodyHtml({
+      lang, h1: t.h1, intro: t.intro,
+      popular: seoPopularSearches(db, lang),
+      areas: AREA_GUIDES.map(g => ({ path: `/areas/${g.slug}`, label: lang === "ar" ? g.titleAr : g.title })),
+      pages
+    }));
+  } else {
+    html = applyRootContent(html, simpleBodyHtml({ lang, h1: t.h1, intro: t.intro, links: [{ path: "/", label: SEO_PAGES["/"][lang].h1 }, ...(pagePath === "/area-guides" ? AREA_GUIDES.map(g => ({ path: `/areas/${g.slug}`, label: lang === "ar" ? g.titleAr : g.title })) : [])] }));
+  }
+  return html;
+}
+
+/** Final touches for the property and area-guide pages, whose English head the handlers already wrote. */
+function seoFinish(html: string, req: express.Request, res: express.Response, o: {
+  enPath: string; arTitle?: string; arDesc?: string; body?: { en: string; ar: string }; image?: string;
+}): string {
+  const lang: SeoLang = (res.locals.seoLang as SeoLang) || "en";
+  const origin = requestOrigin(req);
+  const alternates = { en: `${origin}${o.enPath}`, ar: o.arTitle ? `${origin}${withLang(o.enPath, "ar")}` : undefined };
+  if (lang === "ar" && o.arTitle) {
+    html = applyHead(html, { lang: "ar", title: o.arTitle, description: o.arDesc || "", canonical: alternates.ar!, alternates, image: o.image });
+  } else {
+    html = addAlternates(html, alternates, "index,follow,max-image-preview:large,max-snippet:-1");
+  }
+  if (o.body) html = applyRootContent(html, o.body[lang]);
+  return html;
+}
+
+app.use((req, res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD") return next();
+  const raw = req.path;
+  if (raw.startsWith("/api/") || raw.startsWith("/assets/") || raw.startsWith("/@") || raw.startsWith("/src/") || raw.startsWith("/node_modules/") || /\.[a-z0-9]{2,5}$/i.test(raw)) return next();
+  const { lang, path: p } = stripLang(normalizePath(raw));
+  const shell = seoShell();
+  if (!shell) return next();
+  const origin = requestOrigin(req);
+
+  // /ar/properties/:id and /ar/areas/:slug are served by the same handlers as the English pages.
+  if (lang === "ar" && /^\/(properties|areas)\/[^/]+$/.test(p)) {
+    res.locals.seoLang = "ar";
+    req.url = p + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
+    return next();
+  }
+
+  const db = readDb();
+  const parsed = parseLandingPath(raw);
+  if (parsed) {
+    const landing = buildLandingPages(db.properties).find(l => l.path === landingPath(parsed.spec));
+    if (!landing) return next(); // nothing to show here: a genuine 404
+    return res.type("html").set("Cache-Control", "no-cache").send(renderLandingPage(db, landing, parsed.lang, origin, shell));
+  }
+
+  if (SEO_PAGES[p]) {
+    const html = seoPageHtml(db, p, lang, origin, shell);
+    if (html) return res.type("html").set("Cache-Control", "no-cache").send(html);
+  }
+  return next();
+});
+
 app.get("/robots.txt", (req, res) => {
-  res.type("text/plain");
-  res.send(`User-agent: *
+  const origin = requestOrigin(req);
+  res.type("text/plain").send(`User-agent: *
 Allow: /
-Allow: /properties/
-Allow: /areas/
-Allow: /help-center
-Allow: /careers
-Allow: /press
-Allow: /plans-pricing
 Disallow: /api/
 Disallow: /admin/
 Disallow: /control-center/
 Disallow: /workspace/
 
-Sitemap: ${req.protocol}://${req.get("host")}/sitemap.xml
+# AI search and answer engines are welcome to read the public pages.
+User-agent: GPTBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+User-agent: PerplexityBot
+Allow: /
+User-agent: ClaudeBot
+Allow: /
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: ${origin}/sitemap.xml
 `);
 });
 
@@ -8838,67 +9058,162 @@ Sitemap: ${req.protocol}://${req.get("host")}/sitemap.xml
 // since the catch-all now returns a real 404 it would otherwise dead-end. 301 so any link
 // that already exists in the wild transfers to the canonical path.
 app.get("/plans", (req, res) => res.redirect(301, "/plans-pricing"));
+app.get("/ar/plans", (req, res) => res.redirect(301, "/ar/plans-pricing"));
 
 app.get("/sitemap.xml", (req, res) => {
   const db = readDb();
-  const host = `${req.protocol}://${req.get("host")}`;
-  const now = new Date().toISOString().split("T")[0];
-  
-  // Static pages
-  const staticPaths = [
-    "",
-    "/help-center",
-    "/careers",
-    "/press",
-    "/plans-pricing"
-  ];
-  
+  const origin = requestOrigin(req);
+  type Entry = { path: string; lastmod?: string; hasAr: boolean };
+  const entries: Entry[] = [];
+  for (const p of Object.keys(SEO_PAGES)) entries.push({ path: p, hasAr: true });
+  entries.push({ path: "/area-guides", hasAr: true });
+  const live = db.properties.filter(isPublishedListing);
+  for (const prop of live) {
+    entries.push({ path: `/properties/${prop.id}`, lastmod: (prop.updatedDate || prop.createdDate || "").slice(0, 10) || undefined, hasAr: true });
+  }
+  for (const g of AREA_GUIDES) entries.push({ path: `/areas/${g.slug}`, hasAr: true });
+  for (const l of buildLandingPages(db.properties)) {
+    if (!l.indexable) continue;
+    const newest = l.listings.map(p => (p.updatedDate || p.createdDate || "").slice(0, 10)).filter(Boolean).sort().pop();
+    entries.push({ path: l.path, lastmod: newest, hasAr: true });
+  }
+  // de-duplicate ("/area-guides" is also in SEO_PAGES)
+  const seen = new Set<string>();
+  const unique = entries.filter(e => (seen.has(e.path) ? false : (seen.add(e.path), true)));
+
+  const url = (e: Entry, lang: SeoLang) => {
+    const loc = `${origin}${e.path === "/" && lang === "en" ? "/" : withLang(e.path, lang)}`;
+    const en = `${origin}${e.path === "/" ? "/" : e.path}`;
+    const ar = `${origin}${withLang(e.path, "ar")}`;
+    return `
+  <url>
+    <loc>${escapeHtml(loc)}</loc>${e.lastmod ? `\n    <lastmod>${e.lastmod}</lastmod>` : ""}
+    <xhtml:link rel="alternate" hreflang="en" href="${escapeHtml(en)}" />
+    <xhtml:link rel="alternate" hreflang="ar" href="${escapeHtml(ar)}" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="${escapeHtml(en)}" />
+  </url>`;
+  };
   let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
-
-  // Add static URLs
-  staticPaths.forEach(path => {
-    xml += `
-  <url>
-    <loc>${host}${path}</loc>
-    <lastmod>${now}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>${path === "" ? "1.0" : "0.8"}</priority>
-  </url>`;
-  });
-
-  // Add published properties
-  const publishedProperties = db.properties.filter(
-    p => (p.listingStatus as any) === "APPROVED" || p.listingStatus === "PUBLISHED" || (p.listingStatus as any) === "ACTIVE"
-  );
-  
-  publishedProperties.forEach(prop => {
-    xml += `
-  <url>
-    <loc>${host}/properties/${prop.id}</loc>
-    <lastmod>${prop.updatedDate ? prop.updatedDate.split("T")[0] : now}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>`;
-  });
-
-  // Area guide SEO content pages (Feature: District Market Price Index / Area Guides) -
-  // static curated content, so every guide is always indexable regardless of live listing data.
-  AREA_GUIDES.forEach(guide => {
-    xml += `
-  <url>
-    <loc>${host}/areas/${guide.slug}</loc>
-    <lastmod>${now}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>`;
-  });
-
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">`;
+  for (const e of unique) { xml += url(e, "en"); xml += url(e, "ar"); }
   xml += `
 </urlset>`;
+  res.type("application/xml").send(xml);
+});
 
-  res.type("application/xml");
-  res.send(xml);
+// A plain-text map of the site for AI assistants and answer engines (llmstxt.org).
+app.get("/llms.txt", (req, res) => {
+  const db = readDb();
+  const origin = requestOrigin(req);
+  const popular = seoPopularSearches(db, "en", 20);
+  res.type("text/plain").send(`# Nerou Finder
+
+> Verified property listings in Qatar. Every agent's licence is verified and each listing's availability is confirmed before it is published. One unit, one listing. Available in English and Arabic (/ar).
+
+## Main pages
+- [Home](${origin}/): search properties for rent, for sale and off-plan
+- [Plans and pricing for agents](${origin}/plans-pricing): subscriptions for agents, agencies and developers, with a 60-day free trial
+- [Area guides](${origin}/area-guides): neighbourhood guides for Doha and Qatar
+- [Help Center](${origin}/help-center)
+
+## Popular searches
+${popular.map(p => `- [${p.label}](${origin}${p.path})`).join("\n") || "- (no listings published yet)"}
+
+## Area guides
+${AREA_GUIDES.map(g => `- [${g.title}](${origin}/areas/${g.slug})`).join("\n")}
+
+## Contact
+- info@neroutechnologyservices.com
+`);
+});
+
+// IndexNow (Bing, Yandex and others): the key file proves we own the site. The key is derived from
+// the server secret, so there is nothing to configure.
+const indexNowKey = () => crypto.createHmac("sha256", JWT_SECRET).update("indexnow").digest("hex").slice(0, 32);
+app.get(/^\/([a-f0-9]{32})\.txt$/, (req, res, next) => {
+  if (req.params[0] !== indexNowKey()) return next();
+  res.type("text/plain").send(indexNowKey());
+});
+
+// Popular searches for the footer (real links the page itself can crawl).
+app.get("/api/seo/links", (req, res) => {
+  const lang: SeoLang = req.query.lang === "ar" ? "ar" : "en";
+  res.json({ links: seoPopularSearches(readDb(), lang, 12) });
+});
+
+// ---- Admin: how healthy is our SEO, and tell the search engines about it ----------------------
+function seoAudit(db: DatabaseState) {
+  const live = db.properties.filter(isPublishedListing);
+  const issues: { id: string; title: string; problems: string[] }[] = [];
+  for (const p of live) {
+    const problems: string[] = [];
+    const title = (p.title || "").trim();
+    if (title.length < 20) problems.push("Title is very short (under 20 characters)");
+    if (title.length > 90) problems.push("Title is too long (over 90 characters)");
+    if ((p.description || "").trim().length < 120) problems.push("Description is thin (under 120 characters)");
+    if (!p.images || p.images.length < 3) problems.push(`Only ${p.images?.length || 0} photo${(p.images?.length || 0) === 1 ? "" : "s"} (3 or more ranks and converts better)`);
+    if (!p.district) problems.push("No district, so it cannot appear on an area page");
+    if (!p.price || p.price <= 0) problems.push("No price");
+    if (problems.length) issues.push({ id: p.id, title: title || "(untitled)", problems });
+  }
+  const landings = buildLandingPages(db.properties);
+  return {
+    listings: live.length,
+    listingsWithIssues: issues.length,
+    issues: issues.slice(0, 100),
+    landingPages: landings.filter(l => l.indexable).length,
+    duplicatePages: landings.filter(l => !l.indexable).length,
+    sitemapUrls: (Object.keys(SEO_PAGES).length + live.length + AREA_GUIDES.length + landings.filter(l => l.indexable).length) * 2,
+    languages: ["en", "ar"]
+  };
+}
+
+app.get("/api/admin/seo/overview", (req, res) => {
+  const db = readDb();
+  const origin = requestOrigin(req);
+  const landings = buildLandingPages(db.properties);
+  res.json({
+    ...seoAudit(db),
+    origin,
+    sitemap: `${origin}/sitemap.xml`,
+    indexNowKeyFile: `${origin}/${indexNowKey()}.txt`,
+    pages: landings.map(l => ({
+      path: l.path,
+      arPath: withLang(l.path, "ar"),
+      label: landingLabel(l, "en", db.locations),
+      labelAr: landingLabel(l, "ar", db.locations),
+      listings: l.listings.length,
+      indexable: l.indexable,
+      canonicalPath: l.canonicalPath
+    }))
+  });
+});
+
+// Tell Bing, Yandex and the other IndexNow engines about every public URL we have.
+app.post("/api/admin/seo/indexnow", async (req, res) => {
+  const db = readDb();
+  const origin = requestOrigin(req);
+  const host = new URL(origin).host;
+  if (/^(localhost|127\.|0\.0\.0\.0)/.test(host)) return res.status(400).json({ error: "IndexNow only works on the live site (not localhost)." });
+  const paths = new Set<string>(Object.keys(SEO_PAGES));
+  db.properties.filter(isPublishedListing).forEach(p => paths.add(`/properties/${p.id}`));
+  AREA_GUIDES.forEach(g => paths.add(`/areas/${g.slug}`));
+  buildLandingPages(db.properties).filter(l => l.indexable).forEach(l => paths.add(l.path));
+  const urlList: string[] = [];
+  for (const p of paths) { urlList.push(`${origin}${p === "/" ? "/" : p}`); urlList.push(`${origin}${withLang(p, "ar")}`); }
+  try {
+    const r = await fetch("https://api.indexnow.org/indexnow", {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=utf-8" },
+      body: JSON.stringify({ host, key: indexNowKey(), keyLocation: `${origin}/${indexNowKey()}.txt`, urlList: urlList.slice(0, 10000) })
+    });
+    const actor = getAuditActor(req);
+    logAudit(actor.id, actor.name, actor.role, "SEO_INDEXNOW", "sitemap", "Seo", { urls: urlList.length, status: r.status });
+    if (r.status === 200 || r.status === 202) return res.json({ submitted: urlList.length });
+    return res.status(502).json({ error: `The search engines answered with status ${r.status}.` });
+  } catch {
+    return res.status(502).json({ error: "Could not reach the IndexNow service." });
+  }
 });
 
 // -----------------------------------------------------------------------------
@@ -9420,7 +9735,20 @@ async function startServer() {
           ? html.replace("</head>", `${jsonLdScript}</head>`)
           : html + jsonLdScript;
 
-        return res.send(html);
+        // Links up to the landing pages this listing belongs to (crawlable internal links), then the
+        // Arabic variant / alternates and a readable body for crawlers.
+        const own = buildLandingPages(db.properties).filter(l => l.indexable && l.listings.some(x => x.id === property.id));
+        const linksFor = (l: SeoLang) => own
+          .sort((x, y) => y.listings.length - x.listings.length)
+          .slice(0, 6)
+          .map(x => ({ path: x.path, label: landingLabel(x, l, db.locations) }));
+        return res.send(seoFinish(html, req, res, {
+          enPath: `/properties/${property.id}`,
+          arTitle: `${rawTitle} | ${SITE_NAME_AR}`,
+          arDesc: listingMetaAr(property, db.locations),
+          image: absoluteCoverImage,
+          body: { en: propertyBodyHtml(property, "en", linksFor("en")), ar: propertyBodyHtml(property, "ar", linksFor("ar")) }
+        }));
       } catch (err) {
         console.error("SEO dynamic meta hydration failed:", err);
       }
@@ -9477,7 +9805,21 @@ async function startServer() {
           ? html.replace("</head>", `${jsonLdScript}</head>`)
           : html + jsonLdScript;
 
-        return res.send(html);
+        const areaDb = readDb();
+        const areaSlug = slugify(guide.district);
+        const areaLinks = (l: SeoLang) => buildLandingPages(areaDb.properties)
+          .filter(x => x.indexable && x.spec.area === areaSlug)
+          .map(x => ({ path: x.path, label: landingLabel(x, l, areaDb.locations) }));
+        const arOverview = guide.overviewAr.slice(0, 200).trim() + (guide.overviewAr.length > 200 ? "…" : "");
+        return res.send(seoFinish(html, req, res, {
+          enPath: `/areas/${guide.slug}`,
+          arTitle: `${guide.titleAr} | ${SITE_NAME_AR}`,
+          arDesc: arOverview,
+          body: {
+            en: areaBodyHtml({ title: guide.title, overview: guide.overview, highlights: guide.highlights, lang: "en", links: areaLinks("en") }),
+            ar: areaBodyHtml({ title: guide.titleAr, overview: guide.overviewAr, highlights: guide.highlightsAr, lang: "ar", links: areaLinks("ar") })
+          }
+        }));
       } catch (err) {
         console.error("SEO dynamic meta hydration failed (area guide):", err);
       }

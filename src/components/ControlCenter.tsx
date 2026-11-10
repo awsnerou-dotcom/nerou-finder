@@ -79,6 +79,7 @@ import { Button } from "./ui/Button.js";
 import { buildDailyCountSeries, isThisMonth } from "../lib/dashboardMetrics.js";
 import DocumentViewer from "./DocumentViewer.js";
 import ProspectPipeline from "./ProspectPipeline.js";
+import SeoCenter from "./SeoCenter.js";
 import ApplicantCard from "./ApplicantCard.js";
 import type { SubscriptionForm } from "./ApplicantCard.js";
 import { buildApplicantCards, matchesApplicantSearch } from "../lib/applicants.js";
@@ -115,6 +116,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     | "viewing_requests"
     | "partner_feeds"
     | "sales_pipeline"
+    | "seo"
   >("overview");
 
   // Collapsible sidebar navigation: which grouped sections are expanded
@@ -1658,6 +1660,12 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
       tabs: [{ id: "sales_pipeline", label: { en: "Prospects & Follow-ups", ar: "العملاء المحتملون والمتابعة" } }]
     },
     {
+      id: "seo_group",
+      label: { en: "SEO & Search", ar: "محركات البحث" },
+      icon: Search,
+      tabs: [{ id: "seo", label: { en: "SEO Center", ar: "مركز السيو" } }]
+    },
+    {
       id: "users_group",
       label: { en: "Users", ar: "المستخدمون" },
       icon: Users,
@@ -2872,6 +2880,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
           {/* SALES PIPELINE SUB-TAB: the team's own prospects (agents/agencies/developers to sign up) */}
           {activeSubTab === "sales_pipeline" && <ProspectPipeline isRtl={isRtl} currentUserId={currentUser.id} />}
+
+          {activeSubTab === "seo" && <SeoCenter isRtl={isRtl} />}
 
           {/* VIEWING REQUESTS SUB-TAB (FIX 7) */}
           {activeSubTab === "viewing_requests" && (

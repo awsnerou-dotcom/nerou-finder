@@ -73,6 +73,11 @@ import PressView from "./PressView.js";
 import PartnershipsView from "./PartnershipsView.js";
 import PlansPricingView from "./PlansPricingView.js";import PhotoHero from "./PhotoHero.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
+import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
+import { homeTitle, listingTitle } from "../lib/pageTitle.js";
+
+// The page path without the /ar language prefix: /ar/properties/x and /properties/x are the same page.
+const appPath = () => stripLang(window.location.pathname).path;
 
 interface VisitorExperienceProps {
   isRtl: boolean;
@@ -274,7 +279,7 @@ export default function VisitorExperience({
   useEffect(() => {
     if (deepLinkConsumedRef.current) return;
     deepLinkConsumedRef.current = true;
-    const match = window.location.pathname.match(/^\/properties\/([^/]+)\/?$/);
+    const match = appPath().match(/^\/properties\/([^/]+)\/?$/);
     if (!match) return;
     fetch(`/api/properties/${match[1]}`)
       .then(res => (res.ok ? res.json() : null))
@@ -292,7 +297,7 @@ export default function VisitorExperience({
   useEffect(() => {
     if (areaGuideDeepLinkConsumedRef.current) return;
     areaGuideDeepLinkConsumedRef.current = true;
-    const match = window.location.pathname.match(/^\/areas\/([^/]+)\/?$/);
+    const match = appPath().match(/^\/areas\/([^/]+)\/?$/);
     if (match) setSelectedAreaGuideSlug(match[1]);
   }, []);
 
@@ -303,9 +308,36 @@ export default function VisitorExperience({
   useEffect(() => {
     if (staticTabDeepLinkConsumedRef.current) return;
     staticTabDeepLinkConsumedRef.current = true;
-    const tab = staticTabForPath(window.location.pathname);
+    const tab = staticTabForPath(appPath());
     if (tab) setCurrentTab(tab);
   }, []);
+
+  // An SEO landing page such as /apartments-for-rent-in-lusail (or its /ar/ twin) is the marketplace
+  // with that search already applied. The server has already sent the page's own title, text and
+  // listings for search engines; this makes the live app show the same search to people.
+  const landingPathRef = React.useRef<string | null>(null);
+  if (landingPathRef.current === null) {
+    landingPathRef.current = parseLandingPath(window.location.pathname) ? appPath() : "";
+  }
+  const landingConsumedRef = React.useRef(false);
+  useEffect(() => {
+    if (landingConsumedRef.current || !landingPathRef.current) return;
+    const parsed = parseLandingPath(landingPathRef.current);
+    if (!parsed) { landingConsumedRef.current = true; return; }
+    const { spec } = parsed;
+    let areaLoc: LocationItem | undefined;
+    if (spec.area) {
+      if (locations.length === 0) return; // wait for the location list, then apply
+      areaLoc = locations.find(l => l.type !== "COUNTRY" && l.type !== "MUNICIPALITY" && slugify(l.name) === spec.area);
+    }
+    landingConsumedRef.current = true;
+    setTransType(spec.tx === "rent" ? "FOR_RENT" : "FOR_SALE");
+    if (spec.type) setPropType(TYPE_GROUPS.find(g => g.slug === spec.type)?.types[0] ?? "");
+    if (areaLoc) {
+      if (areaLoc.parentId) setSelectedMunicipality(areaLoc.parentId);
+      setSelectedArea(areaLoc.id);
+    }
+  }, [locations]);
 
   // Keep the address bar in sync with whichever full-page overlay is open (property detail or
   // area guide - mutually exclusive in practice): push a real /properties/:id or /areas/:slug
@@ -315,10 +347,11 @@ export default function VisitorExperience({
   // doesn't push a redundant duplicate history entry. A single shared ref (rather than one per
   // overlay type) avoids the two ever fighting over the URL or double-pushing the same path.
   const lastSyncedPathRef = React.useRef<string | null>(
-    window.location.pathname.match(/^\/properties\/[^/]+\/?$/) ||
-    window.location.pathname.match(/^\/areas\/[^/]+\/?$/) ||
-    staticTabForPath(window.location.pathname)
-      ? window.location.pathname
+    appPath().match(/^\/properties\/[^/]+\/?$/) ||
+    appPath().match(/^\/areas\/[^/]+\/?$/) ||
+    staticTabForPath(appPath()) ||
+    landingPathRef.current
+      ? appPath()
       : null
   );
   useEffect(() => {
@@ -328,21 +361,36 @@ export default function VisitorExperience({
       ? `/properties/${selectedProperty.id}`
       : selectedAreaGuideSlug
       ? `/areas/${selectedAreaGuideSlug}`
-      : STATIC_TAB_PATHS[currentTab] ?? "/";
+      : STATIC_TAB_PATHS[currentTab] ?? (landingPathRef.current || "/");
     if (lastSyncedPathRef.current === targetPath) return;
     lastSyncedPathRef.current = targetPath;
-    if (window.location.pathname !== targetPath) {
-      window.history.pushState(null, "", targetPath);
+    // the Arabic version of the site keeps its /ar prefix as you move around
+    const fullPath = withLang(targetPath, isRtl ? "ar" : "en");
+    if (window.location.pathname !== fullPath) {
+      window.history.pushState(null, "", fullPath);
     }
-  }, [selectedProperty, selectedAreaGuideSlug, currentTab]);
+  }, [selectedProperty, selectedAreaGuideSlug, currentTab, isRtl]);
+
+  // Browser-tab title follows the open listing (the server wrote the right one for the first page
+  // load; this covers opening a listing from inside the app).
+  const titledPropertyRef = React.useRef(false);
+  useEffect(() => {
+    if (selectedProperty) {
+      document.title = listingTitle(selectedProperty.title, isRtl);
+      titledPropertyRef.current = true;
+    } else if (titledPropertyRef.current) {
+      titledPropertyRef.current = false;
+      document.title = homeTitle(isRtl);
+    }
+  }, [selectedProperty, isRtl]);
 
   // Back/forward support for the above: e.g. Property A -> Property B -> Back should reopen A,
   // Area Guide X -> Property A -> Back should reopen Area Guide X, and either -> Back from the
   // first overlay should return to the marketplace list, not leave the app stuck.
   useEffect(() => {
     const onPopState = () => {
-      const propMatch = window.location.pathname.match(/^\/properties\/([^/]+)\/?$/);
-      const areaMatch = window.location.pathname.match(/^\/areas\/([^/]+)\/?$/);
+      const propMatch = appPath().match(/^\/properties\/([^/]+)\/?$/);
+      const areaMatch = appPath().match(/^\/areas\/([^/]+)\/?$/);
       if (propMatch) {
         const id = propMatch[1];
         lastSyncedPathRef.current = `/properties/${id}`;
@@ -363,8 +411,8 @@ export default function VisitorExperience({
       } else {
         // Also restores the static tabs (see STATIC_TAB_PATHS): Back out of a listing opened
         // from /plans-pricing returns to the plans page, not the marketplace.
-        const staticTab = staticTabForPath(window.location.pathname);
-        lastSyncedPathRef.current = staticTab ? window.location.pathname : "/";
+        const staticTab = staticTabForPath(appPath());
+        lastSyncedPathRef.current = staticTab ? appPath() : (landingPathRef.current && appPath() === landingPathRef.current ? appPath() : "/");
         setSelectedProperty(null);
         setSelectedAreaGuideSlug(null);
         setCurrentTab(staticTab ?? "MARKETPLACE");

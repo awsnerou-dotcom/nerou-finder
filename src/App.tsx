@@ -14,6 +14,9 @@ import { trackEvent } from "./lib/analytics.js";
 import { User, UserRole, Organization, OrganizationType, VerificationStatus, TransactionType, ApplicationStatus, AgentType, getEffectiveAgentType } from "./types.js";
 import { useCurrency, CURRENCIES, CurrencyCode } from "./currencyContext.js";
 import { useTheme } from "./hooks/useTheme.js";
+import { stripLang, withLang } from "./lib/seo.js";
+import PopularSearches from "./components/PopularSearches.js";
+import { homeTitle } from "./lib/pageTitle.js";
 import {
   Globe,
   UserCheck,
@@ -50,7 +53,23 @@ const DashboardLoader = ({ isRtl }: { isRtl: boolean }) => (
 );
 
 export default function App() {
-  const [isRtl, setIsRtl] = useState<boolean>(false);
+  // Arabic lives at /ar/... (a real URL search engines can index); the language toggle moves
+  // between the two versions of the same page.
+  const [isRtl, setIsRtl] = useState<boolean>(() => stripLang(window.location.pathname).lang === "ar");
+  const toggleLanguage = () => {
+    if (viewMode === "MARKETPLACE") {
+      // Full navigation: the server renders the other language's title, description and content.
+      const { path } = stripLang(window.location.pathname);
+      window.location.assign(withLang(path, isRtl ? "en" : "ar") + window.location.search);
+    } else {
+      setIsRtl(!isRtl); // signed-in workspaces have no per-language URL
+    }
+  };
+  useEffect(() => {
+    const onPop = () => setIsRtl(stripLang(window.location.pathname).lang === "ar");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
   const { activeCurrency, setActiveCurrency } = useCurrency();
   const { resolved: resolvedTheme, toggle: toggleTheme } = useTheme();
   const [viewMode, setViewMode] = useState<"MARKETPLACE" | "DASHBOARD">("MARKETPLACE");
@@ -100,11 +119,20 @@ export default function App() {
   // Keep the browser tab title in sync with which top-level view is active - previously the
   // whole SPA shared one static <title> from index.html regardless of marketplace vs.
   // dashboard, which showed up wrong in browser history/tab-switching and any share action.
+  // The server writes a specific title for every public page (listing, area, landing page...), so
+  // the marketplace view must not overwrite it with a generic one - search engines that render the
+  // page would otherwise see that instead. Only the dashboard sets its own, and leaving it
+  // restores the home title.
+  const wasDashboardRef = React.useRef(false);
   useEffect(() => {
     const base = "Nerou Finder";
-    document.title = viewMode === "DASHBOARD"
-      ? (isRtl ? `لوحة التحكم | ${base}` : `Dashboard | ${base}`)
-      : (isRtl ? `${base} | السوق العقاري في قطر` : `${base} | Qatar Real Estate Marketplace`);
+    if (viewMode === "DASHBOARD") {
+      wasDashboardRef.current = true;
+      document.title = isRtl ? `لوحة التحكم | ${base}` : `Dashboard | ${base}`;
+    } else if (wasDashboardRef.current) {
+      wasDashboardRef.current = false;
+      document.title = homeTitle(isRtl);
+    }
   }, [viewMode, isRtl]);
 
   // Form states
@@ -226,8 +254,9 @@ export default function App() {
   }, [syncCount]);
 
   useEffect(() => {
-    // Sync direction based on RTL flag
+    // Sync direction and language based on RTL flag
     document.documentElement.dir = isRtl ? "rtl" : "ltr";
+    document.documentElement.lang = isRtl ? "ar" : "en";
   }, [isRtl]);
 
   // Read preset subscription plan from Plans page
@@ -730,7 +759,7 @@ export default function App() {
 
             {/* Language Toggle */}
             <button
-              onClick={() => setIsRtl(!isRtl)}
+              onClick={toggleLanguage}
               className="p-2 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-ink flex items-center gap-1.5 text-xs font-bold"
               title={isRtl ? "Switch to English" : "تحويل إلى العربية"}
             >
@@ -873,7 +902,7 @@ export default function App() {
 
             {/* Language Toggle */}
             <button
-              onClick={() => setIsRtl(!isRtl)}
+              onClick={toggleLanguage}
               className="w-full p-3 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-ink flex items-center justify-center gap-2 text-sm font-bold"
             >
               <Globe size={16} />
@@ -988,6 +1017,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="bg-chrome text-gray-300 mt-8">
+        <PopularSearches isRtl={isRtl} />
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
           <div className="col-span-2 md:col-span-1 space-y-3">
             <div dir="ltr" className="flex items-center gap-2">
