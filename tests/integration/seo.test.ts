@@ -98,10 +98,10 @@ describe("search-engine pages", () => {
   it("gives every static page its own title and canonical (they used to share the home page's)", async (ctx) => {
     if (!dbReady) return ctx.skip();
     const plans = await request(app).get("/plans-pricing");
-    expect(plans.text).toContain("<title>Plans &amp; Pricing for Agents, Agencies and Developers | Nerou Finder</title>");
+    expect(plans.text).toContain("<title>Plans for Agents, Companies and Developers | Nerou Finder</title>");
     expect(plans.text).toMatch(/rel="canonical" href="[^"]*\/plans-pricing"/);
     const plansAr = await request(app).get("/ar/plans-pricing");
-    expect(plansAr.text).toContain("الباقات والأسعار");
+    expect(plansAr.text).toContain("الباقات للوسطاء والشركات العقارية والمطورين");
     expect((await request(app).get("/ar/not-a-page")).status).toBe(404);
   });
 });

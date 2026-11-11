@@ -1,292 +1,209 @@
 import React, { useState } from "react";
-import { motion } from "motion/react";
-import { Check, X, ShieldCheck, Zap, Award, CheckCircle2, ChevronRight, HelpCircle } from "lucide-react";
-import { SubscriptionPlan } from "../types.js";
+import { Check, ShieldCheck, Zap, Award, CheckCircle2, ChevronRight, HelpCircle } from "lucide-react";
 import SalesDeskShowcase from "./SalesDeskShowcase.js";
 import SubscribersShowcase from "./SubscribersShowcase.js";
+import PlanRequestModal from "./PlanRequestModal.js";
 
 interface PlansPricingViewProps {
   isRtl: boolean;
   onSelectPlan: (planId: string) => void;
 }
 
+// The public Plans page. It shows what every plan includes and never what it costs: a visitor sends a request
+// (the form behind "Request this plan") and our team replies with the plan and price that suits them. Prices
+// live only inside the platform (for subscribers and admins). The 60-day free trial is still a normal signup.
 export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingViewProps) {
-  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
-  const [hoveredTier, setHoveredTier] = useState<string | null>(null);
+  const [requestFor, setRequestFor] = useState<string | null>(null); // plan id, "" = not sure, null = form closed
+  const t = (en: string, ar: string) => (isRtl ? ar : en);
 
-  // Static fallback or standard subscription plans to display if the server fetch is pending or fails
-  const localPlans = [
+  const plans = [
     {
       id: "plan-basic",
-      name: isRtl ? "الوسيط المعياري" : "Standard Broker",
-      subtitle: isRtl ? "مثالي للمسوقين العقاريين المستقلين" : "Ideal for independent brokers & starting agents",
-      priceMonthly: 500,
-      priceYearly: 4800,
-      properties: 15,
-      agents: 1,
-      aiQuota: 50,
-      analytics: false,
-      featuredListings: 2,
+      name: t("Independent Agent", "الوسيط المستقل"),
+      subtitle: t("For one independent agent selling or renting property on their own", "لوسيط عقاري مستقل يعمل بمفرده"),
+      seats: t("1 agent account", "حساب وسيط واحد"),
+      featured: 2,
       popular: false,
-      color: "border-border",
-      badge: null
+      badge: null as string | null
     },
     {
       id: "plan-premium",
-      name: isRtl ? "المكتب المتكامل" : "Enterprise Agency",
-      subtitle: isRtl ? "مثالي للمكاتب العقارية المتوسطة والكبيرة" : "Perfect for growing agencies & real estate offices",
-      priceMonthly: 1800,
-      priceYearly: 18000,
-      properties: 100,
-      agents: 10,
-      aiQuota: 500,
-      analytics: true,
-      featuredListings: 15,
+      name: t("Real-Estate Company", "الشركة العقارية"),
+      subtitle: t("For real-estate companies and offices with a team of agents", "للشركات والمكاتب العقارية التي لديها فريق وسطاء"),
+      seats: t("Up to 10 agent accounts", "حتى 10 حسابات وسطاء"),
+      featured: 15,
       popular: true,
-      color: "border-gold",
-      badge: isRtl ? "الأكثر مبيعاً" : "Most Popular"
+      badge: t("Most Popular", "الأكثر طلباً")
     },
     {
       id: "plan-developer",
-      name: isRtl ? "المطور العقاري" : "Master Developer",
-      subtitle: isRtl ? "للشركات الكبرى ومطوري المشاريع" : "For master builders & enterprise property developers",
-      priceMonthly: 4500,
-      priceYearly: 45000,
-      properties: 500,
-      agents: 50,
-      aiQuota: 2000,
-      analytics: true,
-      featuredListings: 50,
+      name: t("Developer", "المطور العقاري"),
+      subtitle: t("For property developers and large project sales teams", "لمطوري المشاريع العقارية وفرق مبيعات المشاريع الكبرى"),
+      seats: t("Up to 50 agent accounts", "حتى 50 حساب وسيط"),
+      featured: 50,
       popular: false,
-      color: "border-ink",
-      badge: isRtl ? "شريك استراتيجي" : "Enterprise Elite"
-    },
-    {
-      id: "plan-trial",
-      name: isRtl ? "تجربة مجانية 60 يوماً" : "60-Day Free Trial",
-      subtitle: isRtl ? "وصول كامل غير محدود لتجربة المنصة قبل الاشتراك" : "Full unlimited access to try the platform before you commit",
-      priceMonthly: 0,
-      priceYearly: 0,
-      // -1 is the shared "unlimited" sentinel (see SubscriptionPlan in src/types.ts) - the
-      // card/table rendering below special-cases it to show "Unlimited" instead of "-1".
-      properties: -1,
-      agents: -1,
-      aiQuota: -1,
-      analytics: true,
-      featuredListings: -1,
-      popular: false,
-      color: "border-emerald-500",
-      badge: isRtl ? "جرّبها مجاناً" : "Try It Free",
-      // Flat 60-day duration rather than a recurring monthly/yearly cycle - the price/billing-
-      // cycle toggle above doesn't apply to this tier, so its card ignores billingCycle entirely.
-      durationLabel: isRtl ? "لمدة 60 يوماً" : "for 60 days"
+      badge: t("Large projects", "للمشاريع الكبرى")
     }
   ];
+  const requestable = plans.map(p => ({ id: p.id, name: p.name }));
 
-  const t = {
-    title: isRtl ? "خطط الاشتراك والأسعار" : "Flexible Partner Licensing",
-    description: isRtl
-      ? "اختر الباقة المناسبة لتوزيع وإدارة أصولك العقارية، وافتح لوحة تحكم ذكية مدعومة بالكامل بالذكاء الاصطناعي."
-      : "Acquire high-performance real estate infrastructure. Power your listings, brokers, and lead pipeline with state-of-the-art AI.",
-    monthly: isRtl ? "فاتورة شهرية" : "Bill Monthly",
-    yearly: isRtl ? "فاتورة سنوية (خصم حصرى)" : "Bill Yearly (Save 20%)",
-    qar: isRtl ? "رق" : "QAR",
-    perMonth: isRtl ? "/ شهرياً" : "/ month",
-    requestPlan: isRtl ? "تقديم طلب اشتراك" : "Request This Plan",
-    featuresTitle: isRtl ? "مقارنة المزايا والخصائص بالتفصيل" : "Granular Tier Comparisons & SLA",
-    activeProperties: isRtl ? "الحد الأقصى للعقارات النشطة" : "Active Listing Limit",
-    agentSeats: isRtl ? "حسابات الوكلاء والوسطاء" : "Agent/Broker Seats",
-    aiQuotaLabel: isRtl ? "البحث الذكي بالذكاء الاصطناعي / شهرياً" : "AI Search Quota / Month",
-    analyticsAccessLabel: isRtl ? "تحليلات وإحصائيات السوق المتقدمة" : "Advanced Market Analytics",
-    featuredSlots: isRtl ? "حملات الترويج للمميز" : "Featured Listing Slots",
-    certifiedSupport: isRtl ? "دعم فني متكامل ومعتمد على مدار الساعة" : "24/7 Dedicated Partner SLA",
-    unlimitedSearches: isRtl ? "غير محدود" : "Unlimited",
-    included: isRtl ? "مشمول" : "Included",
-    notIncluded: isRtl ? "غير مشمول" : "Not Included",
-    guaranteeTitle: isRtl ? "سداد آمن ومحمي بالكامل" : "Guaranteed Idempotent Payments",
-    guaranteeDesc: isRtl
-      ? "نحن نستخدم نظام الفوترة والتحصيل اليدوي المباشر عبر الحوالات البنكية المعتمدة لضمان أمان تام وتجنب تكرار المعاملات."
-      : "We rely on direct invoice processing and secure bank transfers to activate SaaS licenses, bypass unstable payment gateway downtime, and prevent double charges.",
-    faqTitle: isRtl ? "الأسئلة الشائعة حول الاشتراكات" : "Subscription FAQ & Licensing Rules",
-    faqQ1: isRtl ? "كيف يتم تفعيل اشتراكي بعد تقديم الطلب؟" : "How is my SaaS subscription activated?",
-    faqA1: isRtl
-      ? "بمجرد تقديم طلبك، ستتلقى بريدًا إلكترونيًا يحتوي على الفاتورة المعتمدة ورقم المعاملة الفريد. بعد مراجعة الإدارة (خلال أقل من ٢٤ ساعة)، يتم تفعيل حسابك بالكامل."
-      : "Upon request, your custom partner portal is provisioned. An administrative invoice is generated with direct payment details. Once verified by our team, your workspace properties are fully unlocked.",
-    faqQ2: isRtl ? "هل يمكنني ترقية أو تخفيض باقتي لاحقاً؟" : "Can I upgrade or downgrade my plan later?",
-    faqA2: isRtl
-      ? "نعم، يمكنك طلب ترقية باقتك في أي وقت من خلال لوحة تحكم مكتبك العقاري، وسيتم ترحيل ميزانيتك المتبقية بشكل متناسب ودقيق تلقائيًا."
-      : "Yes. You can request changes directly from your active portal workspace. Upgrade calculations are dynamic and credit your remaining billing cycle toward the new plan.",
+  const text = {
+    title: t("Plans for every kind of real-estate business", "باقات لكل نوع من الأعمال العقارية"),
+    description: t(
+      "Every paid plan includes unlimited listings and every feature of the platform. Choose the one that fits you and send a request: we will reply with the plan and the price that suit you.",
+      "كل باقة مدفوعة تشمل عقارات غير محدودة وجميع مزايا المنصة. اختر ما يناسبك وأرسل طلبك، وسنرد عليك بالباقة والسعر المناسبين لك."
+    ),
+    requestPlan: t("Request this plan", "اطلب هذه الباقة"),
+    featuresTitle: t("What every plan includes", "ما تشمله كل باقة"),
+    activeProperties: t("Property listings", "العقارات المعروضة"),
+    agentSeats: t("Agent accounts", "حسابات الوسطاء"),
+    aiQuotaLabel: t("AI search", "البحث الذكي بالذكاء الاصطناعي"),
+    analyticsAccessLabel: t("Advanced market analytics", "تحليلات وإحصائيات السوق المتقدمة"),
+    featuredSlots: t("Featured listing promotion slots", "فتحات الترويج للعقارات المميزة"),
+    unlimited: t("Unlimited", "غير محدود"),
+    guaranteeTitle: t("Simple, direct activation", "تفعيل مباشر وبسيط"),
+    guaranteeDesc: t(
+      "No online checkout and no surprise charges. Our team confirms your plan and price with you directly, and activates your workspace once the subscription is agreed.",
+      "لا دفع إلكتروني ولا رسوم مفاجئة. يؤكد فريقنا معك الباقة والسعر مباشرة، ويفعّل مساحة عملك بعد الاتفاق على الاشتراك."
+    ),
+    faqTitle: t("Frequently asked questions", "الأسئلة الشائعة"),
+    faqQ1: t("How do I subscribe?", "كيف أشترك؟"),
+    faqA1: t(
+      "Press \"Request this plan\" and fill in the short form. Our team contacts you, confirms the plan and the price that suit you, and activates your account.",
+      "اضغط «اطلب هذه الباقة» واملأ النموذج القصير. يتواصل معك فريقنا لتأكيد الباقة والسعر المناسبين لك ثم يفعّل حسابك."
+    ),
+    faqQ2: t("Can I try it first?", "هل يمكنني التجربة أولاً؟"),
+    faqA2: t(
+      "Yes. The 60-day free trial gives you full access with no commitment. You can also send a plan request at any time, and change your plan later by contacting us.",
+      "نعم. التجربة المجانية لمدة 60 يوماً تمنحك وصولاً كاملاً دون أي التزام. ويمكنك إرسال طلب باقة في أي وقت، وتغيير باقتك لاحقاً بالتواصل معنا."
+    )
   };
+
+  const all = (key: string) => (
+    <tr key={key}>
+      <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{key}</td>
+      {[0, 1, 2, 3].map(i => (
+        <td key={i} className="p-4 text-center text-emerald-600"><Check size={16} className="mx-auto" /></td>
+      ))}
+    </tr>
+  );
 
   return (
     <div className="space-y-16 py-4 animate-in fade-in duration-500" dir={isRtl ? "rtl" : "ltr"}>
-      
-      {/* 1. Header Display */}
+
+      {/* 1. Header */}
       <div className="text-center max-w-3xl mx-auto space-y-4">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gold/10 text-gold text-xs font-bold uppercase tracking-widest rounded-full">
           <Award size={13} />
-          <span>SaaS PARTNER NETWORK</span>
+          <span>{t("PLANS", "الباقات")}</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-ink leading-tight">
-          {t.title}
-        </h1>
-        <p className="text-sm sm:text-base text-ink-muted leading-relaxed">
-          {t.description}
-        </p>
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif font-bold text-ink leading-tight">{text.title}</h1>
+        <p className="text-sm sm:text-base text-ink-muted leading-relaxed">{text.description}</p>
+      </div>
 
-        {/* Billing Cycle Toggle */}
-        <div className="flex items-center justify-center pt-6">
-          <div className="bg-canvas border border-border rounded-xl p-1.5 flex items-center gap-1.5 shadow-xs">
+      {/* 2. The three paid plans + the free trial */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+        {plans.map(tier => (
+          <div
+            key={tier.id}
+            className={`relative bg-surface rounded-xl border p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 ${
+              tier.popular ? "ring-2 ring-gold shadow-xl md:-translate-y-2" : "hover:border-gold shadow-xs"
+            }`}
+          >
+            {tier.badge && (
+              <div className={`absolute -top-3.5 ${isRtl ? "left-4" : "right-4"} bg-gold text-black text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white shadow-xs`}>
+                {tier.badge}
+              </div>
+            )}
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <h3 className="font-serif text-xl font-bold text-ink">{tier.name}</h3>
+                <p className="text-xs text-ink-muted leading-relaxed min-h-[32px]">{tier.subtitle}</p>
+              </div>
+              <ul className="space-y-3.5 text-xs text-ink-muted pt-4 border-t border-surface-2">
+                {[
+                  t("Unlimited property listings", "عقارات غير محدودة"),
+                  t("Every platform feature included", "جميع مزايا المنصة مشمولة"),
+                  tier.seats,
+                  t("Unlimited AI search", "بحث ذكي غير محدود"),
+                  t("Sales Desk and market analytics", "مكتب المبيعات وتحليلات السوق"),
+                  t(`${tier.featured} featured promotion slots`, `${tier.featured} فتحة ترويج مميزة`)
+                ].map(line => (
+                  <li key={line} className="flex items-center gap-2.5">
+                    <CheckCircle2 size={15} className="text-gold shrink-0" />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="pt-8 space-y-2">
+              <button
+                onClick={() => setRequestFor(tier.id)}
+                className={`w-full py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
+                  tier.popular
+                    ? "bg-chrome hover:bg-gold hover:text-ink text-white shadow-md hover:shadow-lg"
+                    : "bg-surface border border-ink hover:bg-chrome hover:text-white text-ink"
+                }`}
+              >
+                <span>{text.requestPlan}</span>
+                <ChevronRight size={14} className={isRtl ? "rotate-180" : ""} />
+              </button>
+              <p className="text-[10px] text-ink-muted text-center">{t("Price confirmed by our team", "السعر يؤكده فريقنا")}</p>
+            </div>
+          </div>
+        ))}
+
+        {/* Free trial: a normal signup, no request needed */}
+        <div className="relative bg-surface rounded-xl border border-emerald-500/50 p-6 sm:p-8 flex flex-col justify-between shadow-xs">
+          <div className={`absolute -top-3.5 ${isRtl ? "left-4" : "right-4"} bg-emerald-600 text-white text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white shadow-xs`}>
+            {t("Try It Free", "جرّبها مجاناً")}
+          </div>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <h3 className="font-serif text-xl font-bold text-ink">{t("60-Day Free Trial", "تجربة مجانية 60 يوماً")}</h3>
+              <p className="text-xs text-ink-muted leading-relaxed min-h-[32px]">
+                {t("Full unlimited access to try the platform before you commit", "وصول كامل غير محدود لتجربة المنصة قبل الاشتراك")}
+              </p>
+            </div>
+            <div className="pt-4 border-t border-surface-2">
+              <span className="text-3xl font-mono font-bold text-emerald-600">{t("Free", "مجاني")}</span>
+              <p className="text-[10px] text-emerald-600 font-bold uppercase mt-1">{t("for 60 days", "لمدة 60 يوماً")}</p>
+            </div>
+            <ul className="space-y-3.5 text-xs text-ink-muted">
+              {[
+                t("Unlimited property listings", "عقارات غير محدودة"),
+                t("Every platform feature included", "جميع مزايا المنصة مشمولة"),
+                t("Unlimited agent accounts", "حسابات وسطاء غير محدودة"),
+                t("Unlimited AI search", "بحث ذكي غير محدود"),
+                t("No commitment", "دون أي التزام")
+              ].map(line => (
+                <li key={line} className="flex items-center gap-2.5">
+                  <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="pt-8">
             <button
-              onClick={() => setBillingCycle("monthly")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer ${
-                billingCycle === "monthly"
-                  ? "bg-chrome text-white shadow-xs"
-                  : "text-ink-muted hover:text-ink"
-              }`}
+              onClick={() => onSelectPlan("plan-trial")}
+              className="w-full py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
             >
-              {t.monthly}
-            </button>
-            <button
-              onClick={() => setBillingCycle("yearly")}
-              className={`px-4 py-2 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 ${
-                billingCycle === "yearly"
-                  ? "bg-gold text-ink shadow-xs"
-                  : "text-ink-muted hover:text-ink"
-              }`}
-            >
-              <span>{t.yearly}</span>
+              <span>{t("Start free trial", "ابدأ التجربة المجانية")}</span>
+              <ChevronRight size={14} className={isRtl ? "rotate-180" : ""} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* 2. Tier Grid (now four columns, including the free trial) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
-        {localPlans.map((tier) => {
-          const isFree = tier.priceMonthly === 0 && tier.priceYearly === 0;
-          const displayPrice = billingCycle === "monthly" ? tier.priceMonthly : Math.round(tier.priceYearly / 12);
-          const totalYearlyPrice = tier.priceYearly;
-
-          return (
-            <div
-              key={tier.id}
-              onMouseEnter={() => setHoveredTier(tier.id)}
-              onMouseLeave={() => setHoveredTier(null)}
-              className={`relative bg-surface rounded-xl border p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 ${
-                tier.popular
-                  ? "ring-2 ring-gold shadow-xl md:-translate-y-2 bg-gold/2"
-                  : "hover:border-gold shadow-xs"
-              }`}
-            >
-              {/* Popular Badge Overlay */}
-              {tier.badge && (
-                <div className={`absolute -top-3.5 ${isRtl ? "left-4" : "right-4"} bg-gold text-black text-[9px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border border-white shadow-xs`}>
-                  {tier.badge}
-                </div>
-              )}
-
-              {/* Top Details */}
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <h3 className="font-serif text-xl font-bold text-ink">{tier.name}</h3>
-                  <p className="text-xs text-ink-muted leading-relaxed min-h-[32px]">{tier.subtitle}</p>
-                </div>
-
-                {/* Price - the trial tier is a flat one-time duration, not a recurring
-                    monthly/yearly cycle, so it ignores billingCycle entirely. */}
-                <div className="py-4 border-y border-surface-2 space-y-1">
-                  {isFree ? (
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-3xl sm:text-4xl font-mono font-bold text-emerald-600">
-                        {isRtl ? "مجاني" : "Free"}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex items-baseline gap-1.5">
-                      <span className="text-3xl sm:text-4xl font-mono font-bold text-ink">
-                        {displayPrice.toLocaleString()}
-                      </span>
-                      <span className="text-xs text-ink-muted font-medium">{t.qar} {t.perMonth}</span>
-                    </div>
-                  )}
-                  {tier.durationLabel ? (
-                    <p className="text-[10px] text-emerald-600 font-bold uppercase">{tier.durationLabel}</p>
-                  ) : billingCycle === "yearly" ? (
-                    <p className="text-[10px] text-emerald-600 font-bold uppercase">
-                      {isRtl ? `فوترة سنوية بقيمة ${totalYearlyPrice.toLocaleString()} رق` : `Billed ${totalYearlyPrice.toLocaleString()} QAR annually`}
-                    </p>
-                  ) : (
-                    <p className="text-[10px] text-ink-muted">
-                      {isRtl ? "تجديد شهري مرن" : "Flexible monthly licensing"}
-                    </p>
-                  )}
-                </div>
-
-                {/* Key Features Bullet List - -1 is the shared "unlimited" sentinel */}
-                <ul className="space-y-3.5 text-xs text-ink-muted">
-                  <li className="flex items-center gap-2.5">
-                    <CheckCircle2 size={15} className="text-gold shrink-0" />
-                    <span>
-                      {tier.properties === -1
-                        ? (isRtl ? "عقارات نشطة غير محدودة" : "Unlimited active properties")
-                        : (isRtl ? `حتى ${tier.properties} عقار نشط` : `Up to ${tier.properties} active properties`)}
-                    </span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <CheckCircle2 size={15} className="text-gold shrink-0" />
-                    <span>
-                      {tier.agents === -1
-                        ? (isRtl ? "حسابات وكلاء غير محدودة" : "Unlimited agent seats")
-                        : (isRtl ? `${tier.agents} حساب وكيل مستقل` : `${tier.agents} dedicated agent seat${tier.agents > 1 ? "s" : ""}`)}
-                    </span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <CheckCircle2 size={15} className="text-gold shrink-0" />
-                    <span>
-                      {tier.aiQuota === -1
-                        ? (isRtl ? "استعلامات ذكاء اصطناعي غير محدودة" : "Unlimited AI search inquiries")
-                        : (isRtl ? `${tier.aiQuota} استعلام ذكاء اصطناعي` : `${tier.aiQuota} AI search inquiries / mo`)}
-                    </span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    <CheckCircle2 size={15} className="text-gold shrink-0" />
-                    <span>
-                      {tier.featuredListings === -1
-                        ? (isRtl ? "ترويج مميز غير محدود" : "Unlimited featured slot campaigns")
-                        : (isRtl ? `${tier.featuredListings} فتحات ترويج مميزة` : `${tier.featuredListings} featured slot campaigns`)}
-                    </span>
-                  </li>
-                  <li className="flex items-center gap-2.5">
-                    {tier.analytics ? (
-                      <CheckCircle2 size={15} className="text-gold shrink-0" />
-                    ) : (
-                      <X size={15} className="text-gray-300 shrink-0" />
-                    )}
-                    <span className={tier.analytics ? "text-ink" : "text-gray-400 line-through"}>
-                      {t.analyticsAccessLabel}
-                    </span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Request CTA Button */}
-              <div className="pt-8">
-                <button
-                  onClick={() => onSelectPlan(tier.id)}
-                  className={`w-full py-3 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center justify-center gap-1.5 ${
-                    tier.popular
-                      ? "bg-chrome hover:bg-gold hover:text-ink text-white shadow-md hover:shadow-lg"
-                      : "bg-surface border border-ink hover:bg-chrome hover:text-white text-ink"
-                  }`}
-                >
-                  <span>{t.requestPlan}</span>
-                  <ChevronRight size={14} className={isRtl ? "rotate-180" : ""} />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+      {/* Not sure which plan? */}
+      <div className="max-w-3xl mx-auto text-center space-y-2">
+        <p className="text-sm text-ink-muted">
+          {t("Not sure which plan fits you?", "لست متأكداً أي باقة تناسبك؟")}{" "}
+          <button onClick={() => setRequestFor("")} className="text-gold font-semibold underline underline-offset-2 cursor-pointer">
+            {t("Send us a request and we will advise you", "أرسل لنا طلباً وسنرشدك")}
+          </button>
+        </p>
       </div>
 
       {/* 2b. Sales Desk - included in every plan */}
@@ -299,134 +216,95 @@ export default function PlansPricingView({ isRtl, onSelectPlan }: PlansPricingVi
         <SubscribersShowcase isRtl={isRtl} />
       </div>
 
-      {/* 3. Deep-Dive Detailed Features Comparison Table */}
+      {/* 3. What every plan includes */}
       <div className="max-w-5xl mx-auto bg-surface rounded-xl border border-border overflow-hidden shadow-xs">
         <div className="p-5 bg-ink-inverse border-b border-border">
           <h3 className="font-serif text-base font-semibold text-ink flex items-center gap-2">
             <ShieldCheck className="text-gold" size={18} />
-            <span>{t.featuresTitle}</span>
+            <span>{text.featuresTitle}</span>
           </h3>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="bg-canvas border-b border-border text-ink">
-                <th className={`p-4 font-semibold ${isRtl ? "text-right" : "text-left"}`}>{isRtl ? "الميزة / السعة" : "Operational Capability"}</th>
-                <th className="p-4 text-center font-bold">{isRtl ? "الوسيط المعياري" : "Standard Broker"}</th>
-                <th className="p-4 text-center font-bold text-gold">{isRtl ? "المكتب المتكامل" : "Enterprise Agency"}</th>
-                <th className="p-4 text-center font-bold">{isRtl ? "المطور العقاري" : "Master Developer"}</th>
-                <th className="p-4 text-center font-bold text-emerald-600">{isRtl ? "تجربة مجانية 60 يوماً" : "60-Day Free Trial"}</th>
+                <th className={`p-4 font-semibold ${isRtl ? "text-right" : "text-left"}`}>{t("Capability", "الميزة")}</th>
+                <th className="p-4 text-center font-bold">{plans[0].name}</th>
+                <th className="p-4 text-center font-bold text-gold">{plans[1].name}</th>
+                <th className="p-4 text-center font-bold">{plans[2].name}</th>
+                <th className="p-4 text-center font-bold text-emerald-600">{t("Free Trial", "التجربة المجانية")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-2 text-ink-muted">
               <tr>
-                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.activeProperties}</td>
-                <td className="p-4 text-center font-semibold">15</td>
-                <td className="p-4 text-center font-bold text-gold">100</td>
-                <td className="p-4 text-center font-semibold">500</td>
-                <td className="p-4 text-center font-bold text-emerald-600">{isRtl ? "غير محدود" : "Unlimited"}</td>
+                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{text.activeProperties}</td>
+                {[0, 1, 2, 3].map(i => <td key={i} className="p-4 text-center font-semibold">{text.unlimited}</td>)}
               </tr>
               <tr>
-                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.agentSeats}</td>
+                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{text.agentSeats}</td>
                 <td className="p-4 text-center font-semibold">1</td>
                 <td className="p-4 text-center font-bold text-gold">10</td>
                 <td className="p-4 text-center font-semibold">50</td>
-                <td className="p-4 text-center font-bold text-emerald-600">{isRtl ? "غير محدود" : "Unlimited"}</td>
+                <td className="p-4 text-center font-semibold">{text.unlimited}</td>
               </tr>
               <tr>
-                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.aiQuotaLabel}</td>
-                <td className="p-4 text-center">50</td>
-                <td className="p-4 text-center font-bold text-gold">500</td>
-                <td className="p-4 text-center">2,000</td>
-                <td className="p-4 text-center font-bold text-emerald-600">{isRtl ? "غير محدود" : "Unlimited"}</td>
+                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{text.aiQuotaLabel}</td>
+                {[0, 1, 2, 3].map(i => <td key={i} className="p-4 text-center font-semibold">{text.unlimited}</td>)}
               </tr>
               <tr>
-                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.featuredSlots}</td>
+                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{text.featuredSlots}</td>
                 <td className="p-4 text-center">2</td>
                 <td className="p-4 text-center font-bold text-gold">15</td>
                 <td className="p-4 text-center">50</td>
-                <td className="p-4 text-center font-bold text-emerald-600">{isRtl ? "غير محدود" : "Unlimited"}</td>
-              </tr>
-              <tr>
-                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.analyticsAccessLabel}</td>
-                <td className="p-4 text-center">
-                  <X size={14} className="mx-auto text-gray-300" />
-                </td>
-                <td className="p-4 text-center text-emerald-600 font-bold">
-                  <Check size={16} className="mx-auto" />
-                </td>
-                <td className="p-4 text-center text-emerald-600">
-                  <Check size={16} className="mx-auto" />
-                </td>
-                <td className="p-4 text-center text-emerald-600">
-                  <Check size={16} className="mx-auto" />
-                </td>
+                <td className="p-4 text-center font-semibold">{text.unlimited}</td>
               </tr>
               {[
-                isRtl ? "مكتب المبيعات: لوحة المسار، المتابعات، المعاينات" : "Sales Desk: pipeline, follow-ups, viewings",
-                isRtl ? "الصفقات والعمولات وتقارير إكسل" : "Deals, commission and Excel reports",
-                isRtl ? "استيراد عملائك من إكسل" : "Import your own client list",
-              ].map((label) => (
-                <tr key={label}>
-                  <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{label}</td>
-                  {[0, 1, 2, 3].map((i) => (
-                    <td key={i} className="p-4 text-center text-emerald-600">
-                      <Check size={16} className="mx-auto" />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              <tr>
-                <td className={`p-4 font-medium text-ink ${isRtl ? "text-right" : "text-left"}`}>{t.certifiedSupport}</td>
-                <td className="p-4 text-center">Standard Support</td>
-                <td className="p-4 text-center text-gold font-bold">Priority SLA (12h)</td>
-                <td className="p-4 text-center font-semibold">Dedicated AM & Elite SLA (2h)</td>
-                <td className="p-4 text-center font-semibold text-emerald-600">Standard Support</td>
-              </tr>
+                text.analyticsAccessLabel,
+                t("Sales Desk: pipeline, follow-ups, viewings", "مكتب المبيعات: المسار والمتابعات والمعاينات"),
+                t("Deals, commission and Excel reports", "الصفقات والعمولات وتقارير إكسل"),
+                t("Import your own client list", "استيراد عملائك من إكسل")
+              ].map(all)}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* 4. Payment Assurance Guarantee */}
+      {/* 4. How activation works */}
       <div className="max-w-4xl mx-auto bg-ink-inverse rounded-xl border border-dashed border-border p-6 sm:p-8 flex flex-col md:flex-row items-center gap-6">
         <div className="p-4 bg-surface border border-border rounded-full text-gold shadow-xs">
           <Zap size={32} />
         </div>
-        <div className="space-y-1.5 text-center md:text-left">
-          <h4 className="font-serif text-base font-bold text-ink">{t.guaranteeTitle}</h4>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            {t.guaranteeDesc}
-          </p>
+        <div className={`space-y-1.5 text-center ${isRtl ? "md:text-right" : "md:text-left"}`}>
+          <h4 className="font-serif text-base font-bold text-ink">{text.guaranteeTitle}</h4>
+          <p className="text-xs text-ink-muted leading-relaxed">{text.guaranteeDesc}</p>
         </div>
       </div>
 
-      {/* 5. FAQs Section */}
+      {/* 5. FAQs */}
       <div className="max-w-4xl mx-auto space-y-6">
-        <h3 className="font-serif text-lg font-bold text-ink text-center">{t.faqTitle}</h3>
+        <h3 className="font-serif text-lg font-bold text-ink text-center">{text.faqTitle}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-surface p-5 rounded-xl border border-border space-y-2">
-            <h4 className="font-semibold text-xs text-ink flex items-center gap-1.5">
-              <HelpCircle size={14} className="text-gold" />
-              <span>{t.faqQ1}</span>
-            </h4>
-            <p className="text-xs text-ink-muted leading-relaxed">
-              {t.faqA1}
-            </p>
-          </div>
-          <div className="bg-surface p-5 rounded-xl border border-border space-y-2">
-            <h4 className="font-semibold text-xs text-ink flex items-center gap-1.5">
-              <HelpCircle size={14} className="text-gold" />
-              <span>{t.faqQ2}</span>
-            </h4>
-            <p className="text-xs text-ink-muted leading-relaxed">
-              {t.faqA2}
-            </p>
-          </div>
+          {[[text.faqQ1, text.faqA1], [text.faqQ2, text.faqA2]].map(([q, a]) => (
+            <div key={q} className="bg-surface p-5 rounded-xl border border-border space-y-2">
+              <h4 className="font-semibold text-xs text-ink flex items-center gap-1.5">
+                <HelpCircle size={14} className="text-gold" />
+                <span>{q}</span>
+              </h4>
+              <p className="text-xs text-ink-muted leading-relaxed">{a}</p>
+            </div>
+          ))}
         </div>
       </div>
 
+      {requestFor !== null && (
+        <PlanRequestModal
+          isRtl={isRtl}
+          plans={requestable}
+          initialPlanId={requestFor}
+          onClose={() => setRequestFor(null)}
+          onStartTrial={() => { setRequestFor(null); onSelectPlan("plan-trial"); }}
+        />
+      )}
     </div>
   );
 }

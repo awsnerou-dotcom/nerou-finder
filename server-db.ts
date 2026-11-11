@@ -47,6 +47,7 @@ import {
   DEFAULT_MONTHLY_BOOST_CAPS
 } from "./src/types.js";
 import { NEW_LEGAL_DOCUMENTS, upgradeSeededLegalDocuments } from "./src/data/legalTexts.js";
+import { DEFAULT_SUB_PLANS, upgradeSeededPlans } from "./src/data/plans.js";
 
 export interface DatabaseState {
   users: User[];
@@ -103,57 +104,7 @@ export interface DatabaseState {
   };
 }
 
-const DEFAULT_SUB_PLANS: SubscriptionPlan[] = [
-  {
-    id: "plan-basic",
-    name: "Standard Broker",
-    priceMonthly: 500,
-    priceYearly: 4800,
-    propertyLimit: 15,
-    agentLimit: 1,
-    aiLimit: 50,
-    analyticsAccess: false,
-    featuredListingsLimit: 2
-  },
-  {
-    id: "plan-premium",
-    name: "Enterprise Agency",
-    priceMonthly: 1800,
-    priceYearly: 18000,
-    propertyLimit: 100,
-    agentLimit: 10,
-    aiLimit: 500,
-    analyticsAccess: true,
-    featuredListingsLimit: 15
-  },
-  {
-    id: "plan-developer",
-    name: "Master Developer",
-    priceMonthly: 4500,
-    priceYearly: 45000,
-    propertyLimit: 500,
-    agentLimit: 50,
-    aiLimit: 2000,
-    analyticsAccess: true,
-    featuredListingsLimit: 50
-  },
-  {
-    id: "plan-trial",
-    name: "60-Day Free Trial",
-    priceMonthly: 0,
-    priceYearly: 0,
-    // -1 is this schema's "unlimited" sentinel (these limits are informational only - see the
-    // comment on SubscriptionPlan in src/types.ts - nothing in server.ts actually enforces a
-    // hard cap against them), rendered as "Unlimited" everywhere a plan's limits are displayed
-    // (ControlCenter.tsx's plan management card, PlansPricingView.tsx's tier card and
-    // comparison table) rather than the raw -1.
-    propertyLimit: -1,
-    agentLimit: -1,
-    aiLimit: -1,
-    analyticsAccess: true,
-    featuredListingsLimit: -1
-  }
-];
+// DEFAULT_SUB_PLANS (the plans a fresh install starts with) now lives in src/data/plans.ts.
 
 const DEFAULT_USERS: User[] = [
   {
@@ -1103,6 +1054,9 @@ export function ensureStateDefaults(db: DatabaseState): void {
         db.subscriptionPlans.push(plan);
       }
     }
+    // Move the plans to the current prices and limits - only plans still exactly as first seeded;
+    // one an admin changed is left alone (see upgradeSeededPlans).
+    upgradeSeededPlans(db.subscriptionPlans);
   }
   if (!db.supportTickets) db.supportTickets = [];
   if (!db.jobListings || db.jobListings.length === 0) db.jobListings = DEFAULT_JOB_LISTINGS;

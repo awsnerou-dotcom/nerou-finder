@@ -99,13 +99,20 @@ describe("moving through the pipeline", () => {
     expect(inDb(id).activity.filter(a => a.type === "stage")).toHaveLength(3);
   });
 
-  it("logging a call books the next follow-up and moves a NEW prospect to CONTACTED", async (ctx) => {
+  it("logging a call books the next follow-up but never moves the card: only the person changes the stage", async (ctx) => {
     if (!dbReady) return ctx.skip();
     const id = (await add()).body.prospect.id;
     const res = await request(app).post(`/api/admin/prospects/${id}/activity`).set(admin()).send({ type: "call", text: "Spoke to the owner", nextFollowUp: "2026-11-18", followUpNote: "Send the offer" });
     expect(res.status).toBe(200);
-    expect(inDb(id)).toMatchObject({ stage: "CONTACTED", nextFollowUp: "2026-11-18", followUpNote: "Send the offer" });
+    expect(inDb(id)).toMatchObject({ stage: "NEW", nextFollowUp: "2026-11-18", followUpNote: "Send the offer" });
     expect(inDb(id).lastContactAt).toBeTruthy();
+    // put back in New (or moved on by hand), it stays where it was put however much is logged
+    await request(app).patch(`/api/admin/prospects/${id}`).set(admin()).send({ stage: "CONTACTED" }).expect(200);
+    await request(app).patch(`/api/admin/prospects/${id}`).set(admin()).send({ stage: "NEW" }).expect(200);
+    await request(app).post(`/api/admin/prospects/${id}/activity`).set(admin()).send({ type: "whatsapp", text: "Sent the brochure" }).expect(200);
+    await request(app).post(`/api/admin/prospects/${id}/activity`).set(admin()).send({ type: "email", text: "Sent the offer" }).expect(200);
+    expect(inDb(id).stage).toBe("NEW");
+    expect(inDb(id).activity.filter(a => a.type === "stage")).toHaveLength(2); // only the two moves by hand
     // a plain note is not a contact
     const id2 = (await add()).body.prospect.id;
     await request(app).post(`/api/admin/prospects/${id2}/activity`).set(admin()).send({ type: "note", text: "Found their number" }).expect(200);
@@ -190,5 +197,46 @@ describe("follow-up reminders by email", () => {
     const res = await request(app).post("/api/admin/prospects/send-reminders").set(admin()).expect(200);
     expect(res.body.prospects).toBeGreaterThanOrEqual(1);
     expect(res.body.emails).toBe(1);
+  });
+});
+
+describe("the email that receives the reminders", () => {
+  const sentTo = async (subjectPart: string) =>
+    (await request(app).get("/api/admin/emails").set(admin()).expect(200)).body.filter((e: any) => String(e.subject).includes(subjectPart)).map((e: any) => e.to);
+
+  it("starts empty (their sign-in email is used) and shows both addresses", async (ctx) => {
+    if (!dbReady) return ctx.skip();
+    const res = await request(app).get("/api/admin/prospects").set(admin()).expect(200);
+    expect(res.body.reminderEmail).toEqual({ custom: "", login: expect.any(String) });
+  });
+
+  it("can be set, cleaned up, changed and cleared, and only by a platform admin", async (ctx) => {
+    if (!dbReady) return ctx.skip();
+    const set = await request(app).patch("/api/admin/prospects/reminder-email").set(admin()).send({ email: "  Sales.Desk@Example.com " }).expect(200);
+    expect(set.body.reminderEmail.custom).toBe("sales.desk@example.com");
+    expect((await request(app).get("/api/admin/prospects").set(admin())).body.reminderEmail.custom).toBe("sales.desk@example.com");
+    await request(app).patch("/api/admin/prospects/reminder-email").set(admin()).send({ email: "not an email" }).expect(400);
+    await request(app).patch("/api/admin/prospects/reminder-email").set(admin()).send({ email: 5 }).expect(400);
+    await request(app).patch("/api/admin/prospects/reminder-email").send({ email: "a@b.com" }).expect(401);
+    const agent = await signupAndVerify(app, uniqueIp(), { email: uniqueEmail("rem-agent"), password: "correct-horse-battery-staple", fullName: "Rem Agent", phone: "+974 5555 9877", role: "AGENT" });
+    await request(app).patch("/api/admin/prospects/reminder-email").set({ Authorization: `Bearer ${agent.body.token}` }).send({ email: "a@b.com" }).expect(403);
+    expect((await request(app).patch("/api/admin/prospects/reminder-email").set(admin()).send({ email: "" }).expect(200)).body.reminderEmail.custom).toBe("");
+  });
+
+  it("the daily digest and the new-request alert go to the chosen address, and back to the sign-in email once cleared", async (ctx) => {
+    if (!dbReady) return ctx.skip();
+    const login = (await request(app).get("/api/admin/prospects").set(admin())).body.reminderEmail.login as string;
+    await request(app).patch("/api/admin/prospects/reminder-email").set(admin()).send({ email: "inbox@sales.example.com" }).expect(200);
+    await add({ nextFollowUp: "2020-01-01" });
+    await request(app).post("/api/admin/prospects/send-reminders").set(admin()).expect(200);
+    expect((await sentTo("Sales pipeline:"))[0]).toBe("inbox@sales.example.com");
+    await request(app).post("/api/plan-requests").set("X-Forwarded-For", uniqueIp())
+      .send({ fullName: "Omar", email: uniqueEmail("alert"), phone: "+974 5555 4321", planId: "plan-basic", consent: true }).expect(200);
+    expect((await sentTo("New subscription request"))[0]).toBe("inbox@sales.example.com");
+
+    await request(app).patch("/api/admin/prospects/reminder-email").set(admin()).send({ email: "" }).expect(200);
+    await add({ nextFollowUp: "2020-01-02" });
+    await request(app).post("/api/admin/prospects/send-reminders").set(admin()).expect(200);
+    expect((await sentTo("Sales pipeline:"))[0]).toBe(login);
   });
 });

@@ -107,12 +107,15 @@ import {
   STAGE_TEXT,
   validateProspectInput,
   findDuplicateProspect,
+  isOpenProspect,
   prospectsDueForReminder,
   prospectStats,
   ProspectDue,
   ProspectInput
 } from "./src/lib/prospects.js";
 import { validateShowcaseInput, sortShowcase } from "./src/lib/showcase.js";
+import { validatePlanRequest, describePlanRequest } from "./src/lib/planRequest.js";
+import { publicPlan } from "./src/data/plans.js";
 import {
   Lang as SeoLang,
   Landing,
@@ -5100,15 +5103,140 @@ function addProspectActivity(p: Prospect, by: string, type: ProspectActivity["ty
   p.activity = [...(p.activity || []), { id: `pa-${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`, at: now.toISOString(), by, type, text: text.slice(0, 1000) }].slice(-200);
 }
 
+// ---------------------------------------------------------------------------------------------
+// "Request a plan": the public form on the Plans page. Prices are not shown to visitors; a visitor sends
+// their details, the request lands in the sales pipeline as a new prospect (source: Website) with a
+// follow-up for today, every platform admin is told by email and in the app, and the team replies with
+// the plan and price that suits them.
+// ---------------------------------------------------------------------------------------------
+app.post("/api/plan-requests", publicWriteRateLimiter, (req, res) => {
+  const checked = validatePlanRequest(req.body || {});
+  if (checked.ok === false) return res.status(400).json({ error: checked.error });
+  if (!("value" in checked)) return res.json({ success: true }); // a bot filled the hidden field: pretend it worked
+
+  const v = checked.value;
+  const db = readDb();
+  if (!db.prospects) db.prospects = [];
+  const plan = v.planId ? db.subscriptionPlans.find(p => p.id === v.planId) : undefined;
+  const admins = platformAdmins(db);
+  const now = new Date();
+  const today = qatarDate(now.getTime());
+  const actor = { id: "website", name: "Website request" };
+  const history = describePlanRequest(v, plan?.name);
+
+  const value: ProspectInput = {
+    name: v.name, company: v.company, kind: v.kind, email: v.email, phone: v.phone, source: "WEBSITE",
+    interestedPlanId: v.planId, expectedMonthly: plan && plan.priceMonthly > 0 ? plan.priceMonthly : undefined,
+    nextFollowUp: today, followUpNote: "Answer the new subscription request",
+    notes: v.message
+  };
+
+  // the same person asking again (same email or number) updates their existing card instead of adding a second one
+  const existing = findDuplicateProspect(db.prospects, value);
+  let prospect: Prospect;
+  if (existing) {
+    prospect = existing;
+    addProspectActivity(prospect, actor.name, "note", history, now);
+    if (prospect.stage === "LOST") {
+      prospect.stage = "NEW";
+      delete prospect.lostReason;
+      addProspectActivity(prospect, actor.name, "stage", `${STAGE_TEXT.LOST.en} → ${STAGE_TEXT.NEW.en} (they asked again).`, now);
+    }
+    if (prospect.stage !== "WON") {
+      prospect.nextFollowUp = today;
+      prospect.followUpNote = "Answer the new subscription request";
+      prospect.lastReminderAt = undefined;
+    }
+    if (v.planId) prospect.interestedPlanId = v.planId;
+    prospect.updatedAt = now.toISOString();
+  } else {
+    // the admin with the fewest prospects still open takes it
+    const open = (id: string) => db.prospects!.filter(p => p.ownerId === id && isOpenProspect(p)).length;
+    const owner = [...admins].sort((a, b) => open(a.id) - open(b.id))[0];
+    prospect = buildProspect(db, value, actor, { stage: "NEW", ownerId: owner?.id }, now);
+    addProspectActivity(prospect, actor.name, "note", history, now);
+    db.prospects.unshift(prospect);
+  }
+
+  const title = v.company || v.name;
+  for (const admin of admins) {
+    notifyUser(db, admin.id, {
+      type: "plan_request",
+      title: "New subscription request",
+      body: `${title}${plan ? ` - ${plan.name}` : ""}`,
+      link: prospect.id
+    });
+  }
+  writeDb(db);
+  logAudit("public", "Website visitor", "VISITOR", "PLAN_REQUEST", prospect.id, "Prospect", { plan: plan?.id || null });
+
+  const appUrl = process.env.APP_URL || "https://neroufinder.com";
+  const rows = [
+    ["Name", v.name], ["Company", v.company || "-"], ["Email", v.email], ["Phone", v.phone],
+    ["Plan asked about", plan?.name || "Not sure - needs advice"], ["Agents", v.agents ? String(v.agents) : "-"], ["Message", v.message || "-"]
+  ].map(([k, val]) => `<tr><td style="padding:6px 10px;color:#666;font-size:12px;">${escapeHtml(k)}</td><td style="padding:6px 10px;font-size:13px;"><strong>${escapeHtml(val)}</strong></td></tr>`).join("");
+  for (const admin of admins) {
+    const to = reminderAddress(admin);
+    if (!to) continue;
+    sendMockEmail(
+      to,
+      `[Nerou Finder] New subscription request: ${title}`,
+      generateNotificationEmailHtml(
+        "New subscription request / طلب اشتراك جديد",
+        admin.fullName,
+        `<p>Someone asked for a plan on the website. Reply with the plan and price that suits them.</p><table style="border-collapse:collapse;">${rows}</table>
+         <p style="margin-top:16px;"><a href="${escapeHtml(appUrl)}" style="color:#bf9b30;font-weight:bold;">Open the sales pipeline</a> - the request is there as a new prospect.</p>`
+      ),
+      "plan_request_admin"
+    );
+  }
+  // a short receipt for the person who asked
+  sendMockEmail(
+    v.email,
+    "[Nerou Finder] We received your request",
+    generateNotificationEmailHtml(
+      "We received your request",
+      v.name,
+      `<p>Thank you for your interest in Nerou Finder. Our team will contact you shortly to confirm the plan that suits you and to complete your subscription.</p>
+       <p style="color:#888;font-size:12px;">Nerou Technology Services Trading - info@neroutechnologyservices.com</p>`
+    ),
+    "plan_request_receipt"
+  );
+
+  res.json({ success: true });
+});
+
 app.get("/api/admin/prospects", (req, res) => {
   const db = readDb();
+  const me = db.users.find(u => u.id === getAuditActor(req).id);
   const prospects = [...(db.prospects || [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   res.json({
     prospects: prospects.map(p => prospectView(db, p)),
     owners: platformAdmins(db).map(u => ({ id: u.id, fullName: u.fullName })),
     plans: db.subscriptionPlans.map(pl => ({ id: pl.id, name: pl.name, priceMonthly: pl.priceMonthly })),
-    stats: prospectStats(prospects, Date.now())
+    stats: prospectStats(prospects, Date.now()),
+    reminderEmail: { custom: me?.prospectReminderEmail || "", login: me?.email || "" }
   });
+});
+
+// Where this admin's sales-pipeline emails go (the daily follow-up digest, and new subscription requests).
+// Empty = the email they sign in with. Each admin sets their own.
+export function reminderAddress(u: { email?: string; prospectReminderEmail?: string }): string {
+  return (u.prospectReminderEmail || u.email || "").trim();
+}
+app.patch("/api/admin/prospects/reminder-email", (req, res) => {
+  const actor = getAuditActor(req);
+  const raw = (req.body as { email?: unknown } | undefined)?.email;
+  if (typeof raw !== "string") return res.status(400).json({ error: "email must be text (leave it empty to use your sign-in email)." });
+  const email = raw.trim().toLowerCase();
+  if (email && (email.length > 200 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) return res.status(400).json({ error: "That email address doesn't look right." });
+  const db = readDb();
+  const me = db.users.find(u => u.id === actor.id);
+  if (!me) return res.status(404).json({ error: "User not found." });
+  if (email) me.prospectReminderEmail = email; else delete me.prospectReminderEmail;
+  writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "SET_PROSPECT_REMINDER_EMAIL", actor.id, "User", { custom: !!email });
+  res.json({ reminderEmail: { custom: me.prospectReminderEmail || "", login: me.email || "" } });
 });
 
 function resolveProspectOwner(db: DatabaseState, requested: unknown, fallback: string): string {
@@ -5229,11 +5357,8 @@ app.post("/api/admin/prospects/:id/activity", (req, res) => {
     p.lastReminderAt = undefined;
     addProspectActivity(p, actor.name, "followup", `Follow-up set for ${nextFollowUp}${p.followUpNote ? `: ${p.followUpNote}` : ""}.`, now);
   }
-  // First real contact moves a brand-new prospect along.
-  if (p.stage === "NEW" && type !== "note") {
-    p.stage = "CONTACTED";
-    addProspectActivity(p, actor.name, "stage", `${STAGE_TEXT.NEW.en} → ${STAGE_TEXT.CONTACTED.en}.`, now);
-  }
+  // The stage is only ever changed by the person: logging a call does not move the card, so a prospect
+  // put back in "New" stays there.
   p.updatedAt = now.toISOString();
   writeDb(db);
   res.json({ prospect: prospectView(db, p) });
@@ -5325,7 +5450,8 @@ export function runProspectReminders(now: number = Date.now(), opts: { ignoreQui
       body: items.slice(0, 3).map(i => i.prospect.name).join(", "),
       link: items[0].prospect.id
     });
-    if (owner.email) {
+    const to = reminderAddress(owner);
+    if (to) {
       const rows = items.map(({ prospect: p, reason, daysOverdue }) => {
         const wa = (p.whatsapp || p.phone || "").replace(/[^0-9]/g, "");
         return `<tr>
@@ -5335,7 +5461,7 @@ export function runProspectReminders(now: number = Date.now(), opts: { ignoreQui
         </tr>`;
       }).join("");
       sendMockEmail(
-        owner.email,
+        to,
         `[Nerou Finder] Sales pipeline: ${items.length} prospect${items.length === 1 ? "" : "s"} to follow up`,
         generateNotificationEmailHtml(
           "Sales pipeline reminders / تذكيرات خط المبيعات",
@@ -5696,9 +5822,12 @@ app.patch("/api/organizations/:id/routing", authMiddleware, (req, res) => {
 });
 
 // GET all subscription plans
+// What a plan costs is shown only inside the platform (to people who are signed in); the public sees what a
+// plan includes but not its price - they send a request and the team replies (POST /api/plan-requests).
 app.get("/api/plans", (req, res) => {
   const db = readDb();
-  res.json(db.subscriptionPlans || []);
+  const plans = db.subscriptionPlans || [];
+  res.json(viewerFromRequest(req) ? plans : plans.map(publicPlan));
 });
 
 // CREATE or UPDATE subscription plan
@@ -8927,16 +9056,16 @@ const SEO_PAGES: Record<string, { en: SeoPageText; ar: SeoPageText }> = {
   },
   "/plans-pricing": {
     en: {
-      title: "Plans & Pricing for Agents, Agencies and Developers | Nerou Finder",
-      description: "List properties in Qatar with Standard Broker, Enterprise Agency or Master Developer plans, or start a 60-day free trial. Includes a sales desk for clients, follow-ups, viewings and commission.",
-      h1: "Plans and pricing for agents, agencies and developers",
-      intro: "Choose a plan to publish verified listings in Qatar. Every plan includes the Sales Desk: pipeline, email follow-up reminders, viewing schedule, deals and commission, and Excel reports."
+      title: "Plans for Agents, Companies and Developers | Nerou Finder",
+      description: "List properties in Qatar with unlimited listings and every feature, as an independent agent, a real-estate company or a developer. Send a request, or start a 60-day free trial. Includes a sales desk for clients, follow-ups, viewings and commission.",
+      h1: "Plans for agents, real-estate companies and developers",
+      intro: "Choose a plan to publish verified listings in Qatar: unlimited listings and every feature in each plan. Send a request and our team replies with the plan and price that suit you. Every plan includes the Sales Desk: pipeline, email follow-up reminders, viewing schedule, deals and commission, and Excel reports."
     },
     ar: {
-      title: "الباقات والأسعار للوسطاء والمكاتب والمطورين | نيرو فايندر",
-      description: "انشر عقاراتك في قطر بباقة الوسيط أو المكتب المتكامل أو المطور العقاري، أو ابدأ تجربة مجانية 60 يومًا. تشمل مكتب مبيعات للعملاء والمتابعات والمعاينات والعمولات.",
-      h1: "الباقات والأسعار للوسطاء والمكاتب والمطورين",
-      intro: "اختر باقة لنشر إعلانات موثّقة في قطر. تشمل كل باقة مكتب المبيعات: مسار المبيعات، وتذكيرات المتابعة بالإيميل، وجدول المعاينات، والصفقات والعمولات، وتقارير إكسل."
+      title: "الباقات للوسطاء والشركات العقارية والمطورين | نيرو فايندر",
+      description: "انشر عقاراتك في قطر بعقارات غير محدودة وجميع المزايا، كوسيط مستقل أو شركة عقارية أو مطور عقاري. أرسل طلبك أو ابدأ تجربة مجانية 60 يومًا. تشمل مكتب مبيعات للعملاء والمتابعات والمعاينات والعمولات.",
+      h1: "الباقات للوسطاء والشركات العقارية والمطورين",
+      intro: "اختر باقة لنشر إعلانات موثّقة في قطر: عقارات غير محدودة وجميع المزايا في كل باقة. أرسل طلبك وسيرد عليك فريقنا بالباقة والسعر المناسبين لك. تشمل كل باقة مكتب المبيعات: مسار المبيعات، وتذكيرات المتابعة بالإيميل، وجدول المعاينات، والصفقات والعمولات، وتقارير إكسل."
     }
   },
   "/help-center": {
@@ -9185,7 +9314,7 @@ app.get("/llms.txt", (req, res) => {
 
 ## Main pages
 - [Home](${origin}/): search properties for rent, for sale and off-plan
-- [Plans and pricing for agents](${origin}/plans-pricing): subscriptions for agents, agencies and developers, with a 60-day free trial
+- [Plans for agents, companies and developers](${origin}/plans-pricing): unlimited listings and every feature; request a plan, or start a 60-day free trial
 - [Area guides](${origin}/area-guides): neighbourhood guides for Doha and Qatar
 - [Help Center](${origin}/help-center)
 

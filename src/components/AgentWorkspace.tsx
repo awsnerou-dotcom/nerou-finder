@@ -449,7 +449,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   // INDEPENDENT_AGENT: load subscription plan catalog so we can resolve the plan name for display.
   useEffect(() => {
     if (effectiveAgentType !== AgentType.INDEPENDENT_AGENT) return;
-    fetch("/api/plans")
+    fetch("/api/plans", { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } })
       .then(res => res.json())
       .then(data => setPlans(data || []))
       .catch(e => console.error("Error loading subscription plans:", e));

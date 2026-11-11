@@ -133,6 +133,8 @@ export interface User {
   applicationStatus?: ApplicationStatus; // Onboarding pipeline state - undefined means grandfathered/active
   // Automatic follow-up / viewing reminder emails from the sales desk. On unless set to false.
   followUpRemindersEnabled?: boolean;
+  // Platform admins: where the sales-pipeline emails go. Empty = the email they sign in with.
+  prospectReminderEmail?: string;
   // Independent-agent subscription fields (same shape as Organization's equivalents below).
   // Only meaningful for an AGENT whose effective AgentType is INDEPENDENT_AGENT - an
   // AGENCY_AGENT's access is governed entirely by their agency Organization's subscription.

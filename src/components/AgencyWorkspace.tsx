@@ -280,7 +280,8 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
       }
 
       // Get subscription plan catalog
-      const plansRes = await fetch("/api/plans");
+      // signed in, so the plan's price is included (visitors who are not signed in do not get prices)
+      const plansRes = await fetch("/api/plans", { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
       if (plansRes.ok) {
         setPlans(await plansRes.json());
       }

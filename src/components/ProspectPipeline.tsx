@@ -10,7 +10,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  BellRing, Download, Mail, MessageCircle, Phone, Plus, RefreshCw, Search, Trash2, TrendingUp, Upload, UserCheck, Users, Banknote, CalendarClock, Pencil
+  BellRing, Download, Mail, MessageCircle, Phone, Plus, RefreshCw, Search, Trash2, TrendingUp, Upload, UserCheck, Users, Banknote, CalendarClock, Pencil, Settings
 } from "lucide-react";
 import type { Prospect, ProspectActivity, ProspectKind, ProspectSource, ProspectStage } from "../types.js";
 import {
@@ -35,6 +35,7 @@ interface Overview {
   owners: { id: string; fullName: string }[];
   plans: { id: string; name: string; priceMonthly: number }[];
   stats: ProspectStats;
+  reminderEmail: { custom: string; login: string };
 }
 type View = "board" | "followups" | "insights";
 
@@ -70,6 +71,7 @@ export default function ProspectPipeline({ isRtl, currentUserId }: { isRtl: bool
   const [lostCtx, setLostCtx] = useState<ProspectRow | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [deleteCtx, setDeleteCtx] = useState<ProspectRow | null>(null);
+  const [emailOpen, setEmailOpen] = useState(false);
 
   const say = (text: string, bad = false) => { setToast({ text, bad }); setTimeout(() => setToast(null), 4000); };
 
@@ -141,6 +143,7 @@ export default function ProspectPipeline({ isRtl, currentUserId }: { isRtl: bool
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={13} />} onClick={reload}>{t("Refresh", "تحديث")}</Button>
+          <Button variant="outline" size="sm" leftIcon={<Settings size={13} />} onClick={() => setEmailOpen(true)}>{t("Reminder email", "إيميل التذكيرات")}</Button>
           <Button variant="outline" size="sm" leftIcon={<BellRing size={13} />}
             onClick={() => act(async () => {
               const r = await api<{ prospects: number; emails: number }>("/api/admin/prospects/send-reminders", { method: "POST", body: "{}" });
@@ -248,6 +251,8 @@ export default function ProspectPipeline({ isRtl, currentUserId }: { isRtl: bool
           onLog={async (payload) => { const r = await act(() => api(`/api/admin/prospects/${detail.id}/activity`, { method: "POST", body: JSON.stringify(payload) }), t("Saved to the history.", "تم الحفظ في السجل.")); return !!r; }}
         />
       )}
+      {emailOpen && <ReminderEmailModal isRtl={isRtl} t={t} current={data.reminderEmail} onClose={() => setEmailOpen(false)}
+        onSave={async (email) => { const r = await act(() => api(`/api/admin/prospects/reminder-email`, { method: "PATCH", body: JSON.stringify({ email }) }), email ? t("Reminders will now go to this email.", "ستصل التذكيرات الآن إلى هذا الإيميل.") : t("Reminders will go to your sign-in email.", "ستصل التذكيرات إلى إيميل تسجيل دخولك.")); if (r) setEmailOpen(false); }} />}
       {lostCtx && <LostModal p={lostCtx} t={t} isRtl={isRtl} onClose={() => setLostCtx(null)}
         onConfirm={async (reason) => { const r = await act(() => api(`/api/admin/prospects/${lostCtx.id}`, { method: "PATCH", body: JSON.stringify({ stage: "LOST", lostReason: reason }) }), t("Marked as lost.", "تم تسجيله كخسارة.")); if (r) setLostCtx(null); }} />}
       {importOpen && <ImportModal t={t} isRtl={isRtl} onClose={() => setImportOpen(false)}
@@ -646,3 +651,34 @@ function ImportModal({ t, isRtl, onClose, onImport }: {
   );
 }
 
+
+function ReminderEmailModal({ isRtl, t, current, onClose, onSave }: {
+  isRtl: boolean; t: T; current: { custom: string; login: string }; onClose: () => void; onSave: (email: string) => Promise<void>;
+}) {
+  const [email, setEmail] = useState(current.custom);
+  const [busy, setBusy] = useState(false);
+  const save = async () => { setBusy(true); await onSave(email.trim()); setBusy(false); };
+  return (
+    <Modal open onClose={onClose} isRtl={isRtl} size="md" title={t("Where do the reminders go?", "إلى أين تصل التذكيرات؟")}>
+      <div className="space-y-3 text-xs">
+        <p className="text-ink-muted leading-relaxed">
+          {t("The daily follow-up reminders and the alerts for new subscription requests are emailed to this address. This is your own setting: each admin chooses theirs.",
+            "تصل تذكيرات المتابعة اليومية وتنبيهات طلبات الاشتراك الجديدة إلى هذا الإيميل. هذا إعداد خاص بك: كل مسؤول يختار إيميله.")}
+        </p>
+        <label className="block space-y-1.5">
+          <span className="font-semibold text-ink-muted">{t("Email for reminders", "إيميل التذكيرات")}</span>
+          <Input type="email" dir="ltr" value={email} onChange={e => setEmail(e.target.value)} placeholder={current.login} autoFocus />
+        </label>
+        <p className="text-ink-muted">
+          {email.trim()
+            ? t("Reminders will be sent to this address.", "ستُرسل التذكيرات إلى هذا الإيميل.")
+            : t(`Empty: reminders go to your sign-in email (${current.login || "none"}).`, `فارغ: تصل التذكيرات إلى إيميل تسجيل دخولك (${current.login || "لا يوجد"}).`)}
+        </p>
+        <div className="flex gap-2 justify-end pt-1">
+          <Button variant="ghost" onClick={onClose}>{t("Cancel", "إلغاء")}</Button>
+          <Button loading={busy} onClick={save}>{t("Save", "حفظ")}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

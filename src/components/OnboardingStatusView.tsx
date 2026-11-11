@@ -45,7 +45,7 @@ export default function OnboardingStatusView({ user, org, isRtl }: OnboardingSta
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
 
   useEffect(() => {
-    fetch("/api/plans")
+    fetch("/api/plans", { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } })
       .then(res => res.json())
       .then(data => setPlans(data || []))
       .catch(err => console.error("Error loading subscription plans:", err));

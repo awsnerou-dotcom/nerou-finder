@@ -1104,7 +1104,7 @@ export default function VisitorExperience({
                   currentTab === "PLANS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
                 }`}
               >
-                {isRtl ? "الأسعار والخطط" : "Plans & Pricing"}
+                {isRtl ? "الباقات" : "Plans"}
               </button>
 
               <button
