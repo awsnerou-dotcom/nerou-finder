@@ -54,7 +54,13 @@ import {
   Award,
   Map,
   List,
-  Eye
+  Eye,
+  LayoutGrid,
+  Tag,
+  KeyRound,
+  HardHat,
+  UserRound,
+  Home as HomeIcon
 } from "lucide-react";
 
 // Enterprise & Public Sub-Pages
@@ -1024,161 +1030,88 @@ export default function VisitorExperience({
         </div>
 
         <div className="relative z-10 pt-24 max-w-7xl mx-auto px-4 md:px-6">
-          {/* Premium Multi-Tab Sub-Navigation Menu */}
-          <div className="p-2 flex flex-wrap gap-1 items-center justify-between text-xs font-bold">
-            <div className="flex flex-wrap gap-1">
-              <button
-                onClick={() => {
-                  setCurrentTab("MARKETPLACE");
-                  clearAiSearch();
-                  setPropType("");
-                  setTransType("");
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "MARKETPLACE" && !propType && !transType
-                    ? "bg-gold text-black"
-                    : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "العقارات المتاحة" : "Browse Properties"}
-              </button>
+          {/* Premium navigation: the five places people browse come first as a frosted-glass bar with
+              icons; the company and help pages are quieter links beneath it. Same destinations as before. */}
+          {(() => {
+            const onMarket = currentTab === "MARKETPLACE";
+            const primary: { key: string; label: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; active: boolean; go: () => void }[] = [
+              { key: "browse", label: isRtl ? "العقارات المتاحة" : "Browse", Icon: LayoutGrid, active: onMarket && !propType && !transType,
+                go: () => { setCurrentTab("MARKETPLACE"); clearAiSearch(); setPropType(""); setTransType(""); } },
+              { key: "buy", label: isRtl ? "شراء" : "Buy", Icon: Tag, active: onMarket && transType === TransactionType.FOR_SALE,
+                go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.FOR_SALE); } },
+              { key: "rent", label: isRtl ? "إيجار" : "Rent", Icon: KeyRound, active: onMarket && transType === TransactionType.FOR_RENT,
+                go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.FOR_RENT); } },
+              { key: "offplan", label: isRtl ? "على المخطط" : "Off-Plan", Icon: HardHat, active: onMarket && transType === TransactionType.OFF_PLAN,
+                go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.OFF_PLAN); } },
+              { key: "projects", label: isRtl ? "المشاريع الكبرى" : "Masterplans", Icon: Map, active: currentTab === "PROJECTS",
+                go: () => setCurrentTab("PROJECTS") }
+            ];
+            const secondary: [string, string, string][] = [
+              ["PLANS", isRtl ? "الباقات" : "Plans", "PLANS"],
+              ["HELP_CENTER", isRtl ? "مركز المساعدة" : "Help Center", "HELP_CENTER"],
+              ["CAREERS", isRtl ? "وظائف" : "Careers", "CAREERS"],
+              ["PRESS", isRtl ? "الصحافة" : "Press", "PRESS"],
+              ["PARTNERSHIPS", isRtl ? "شركاؤنا" : "Our Partners", "PARTNERSHIPS"],
+              ["LEGAL", isRtl ? "الوثائق القانونية" : "Legal Policies", "LEGAL"]
+            ];
+            return (
+              <div className="pt-2 pb-3 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <nav aria-label={isRtl ? "تصفح العقارات" : "Browse"} className="max-w-full overflow-x-auto scrollbar-none">
+                    <div className="inline-flex items-center gap-1 p-1.5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/15 shadow-[0_10px_34px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.08)]">
+                      {primary.map(({ key, label, Icon, active, go }) => (
+                        <button
+                          key={key}
+                          onClick={go}
+                          aria-current={active ? "page" : undefined}
+                          className={`group relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                            active
+                              ? "bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] text-black shadow-[0_4px_16px_rgba(191,155,48,0.5)]"
+                              : "text-white/85 hover:text-white hover:bg-white/10"
+                          }`}
+                        >
+                          <Icon size={16} strokeWidth={active ? 2.4 : 1.9} className={active ? "text-black" : "text-gold transition-transform duration-200 group-hover:scale-110"} />
+                          <span className={isRtl ? "" : "tracking-wide"}>{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </nav>
 
-              <button
-                onClick={() => {
-                  setCurrentTab("MARKETPLACE");
-                  setTransType(TransactionType.FOR_SALE);
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "MARKETPLACE" && transType === TransactionType.FOR_SALE
-                    ? "bg-gold text-black"
-                    : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "شراء" : "Buy"}
-              </button>
+                  <button
+                    onClick={() => setCurrentTab("SUPPORT_TICKETS")}
+                    className={`px-3.5 py-2 rounded-full border text-[12px] font-semibold backdrop-blur-sm transition-all cursor-pointer flex items-center gap-2 ${
+                      currentTab === "SUPPORT_TICKETS"
+                        ? "bg-red-500/15 text-red-200 border-red-400/50"
+                        : "bg-black/25 border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <span className="relative flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60 animate-ping"></span>
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+                    </span>
+                    <span>{isRtl ? "تذاكر الدعم" : "My Support Desk"}</span>
+                  </button>
+                </div>
 
-              <button
-                onClick={() => {
-                  setCurrentTab("MARKETPLACE");
-                  setTransType(TransactionType.FOR_RENT);
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "MARKETPLACE" && transType === TransactionType.FOR_RENT
-                    ? "bg-gold text-black"
-                    : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "إيجار" : "Rent"}
-              </button>
-
-              <button
-                onClick={() => {
-                  setCurrentTab("MARKETPLACE");
-                  setTransType(TransactionType.OFF_PLAN);
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "MARKETPLACE" && transType === TransactionType.OFF_PLAN
-                    ? "bg-gold text-black"
-                    : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "على المخطط" : "Off-Plan"}
-              </button>
-
-              <button
-                onClick={() => {
-                  setCurrentTab("PROJECTS");
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "PROJECTS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "المشاريع الكبرى" : "Masterplans"}
-              </button>
-
-              <button
-                onClick={() => {
-                  setCurrentTab("PLANS");
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "PLANS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "الباقات" : "Plans"}
-              </button>
-
-              <button
-                onClick={() => {
-                  setCurrentTab("HELP_CENTER");
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "HELP_CENTER" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "مركز المساعدة" : "Help Center"}
-              </button>
-
-              <button
-                onClick={() => {
-                  setCurrentTab("CAREERS");
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "CAREERS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "وظائف" : "Careers"}
-              </button>
-
-              <button
-                onClick={() => {
-                  setCurrentTab("PRESS");
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "PRESS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "الصحافة" : "Press"}
-              </button>
-
-              <button
-                onClick={() => {
-                  setCurrentTab("PARTNERSHIPS");
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "PARTNERSHIPS" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "شركاؤنا" : "Our Partners"}
-              </button>
-
-              <button
-                onClick={() => {
-                  setCurrentTab("LEGAL");
-                }}
-                className={`px-3 py-2 rounded-lg transition-all cursor-pointer ${
-                  currentTab === "LEGAL" ? "bg-gold text-black" : "hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                {isRtl ? "الوثائق القانونية" : "Legal Policies"}
-              </button>
-            </div>
-
-            <div>
-              <button
-                onClick={() => {
-                  setCurrentTab("SUPPORT_TICKETS");
-                }}
-                className={`px-3 py-2 rounded-lg border transition-all cursor-pointer flex items-center gap-1.5 ${
-                  currentTab === "SUPPORT_TICKETS"
-                    ? "bg-red-500/15 text-red-300 border-red-500/40"
-                    : "border-white/15 hover:bg-white/10 text-gray-300 hover:text-white"
-                }`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
-                <span>{isRtl ? "تذاكر الدعم" : "My Support Desk"}</span>
-              </button>
-            </div>
-          </div>
+                <nav aria-label={isRtl ? "الشركة والمساعدة" : "Company and help"} className="self-start flex flex-wrap items-center gap-x-0.5 gap-y-1 px-2 py-1 rounded-full bg-black/35 backdrop-blur-md border border-white/10 text-[12px]">
+                  {secondary.map(([key, label, tab], i) => (
+                    <React.Fragment key={key}>
+                      {i > 0 && <span className="text-white/25" aria-hidden="true">·</span>}
+                      <button
+                        onClick={() => setCurrentTab(tab as typeof currentTab)}
+                        aria-current={currentTab === tab ? "page" : undefined}
+                        className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                          currentTab === tab ? "text-gold bg-white/10" : "text-white/85 hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </nav>
+              </div>
+            );
+          })()}
 
           {currentTab === "MARKETPLACE" && (
             <div className="border-t border-white/10 text-white p-6 md:p-8">
@@ -1187,22 +1120,23 @@ export default function VisitorExperience({
                   developer identity lookup (DirectorySearch.tsx), not a property search. */}
               <div className="max-w-3xl flex flex-wrap gap-2 mb-5" role="tablist">
                 {([
-                  ["PROPERTIES", isRtl ? "العقارات" : "Properties"],
-                  ["AGENT", isRtl ? "الوكلاء" : "Agents"],
-                  ["AGENCY", isRtl ? "المكاتب العقارية" : "Agencies"],
-                  ["DEVELOPER", isRtl ? "المطورون" : "Developers"]
-                ] as const).map(([mode, label]) => (
+                  ["PROPERTIES", isRtl ? "العقارات" : "Properties", HomeIcon],
+                  ["AGENT", isRtl ? "الوكلاء" : "Agents", UserRound],
+                  ["AGENCY", isRtl ? "المكاتب العقارية" : "Agencies", Building2],
+                  ["DEVELOPER", isRtl ? "المطورون" : "Developers", HardHat]
+                ] as const).map(([mode, label, Icon]) => (
                   <button
                     key={mode}
                     role="tab"
                     aria-selected={searchMode === mode}
                     onClick={() => setSearchMode(mode)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wide transition-colors cursor-pointer ${
+                    className={`group flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold backdrop-blur-sm border transition-all duration-200 cursor-pointer ${isRtl ? "" : "tracking-wide"} ${
                       searchMode === mode
-                        ? "bg-gold text-black"
-                        : "bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white"
+                        ? "bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] text-black border-transparent shadow-[0_4px_14px_rgba(191,155,48,0.45)]"
+                        : "bg-black/30 text-white/85 border-white/15 hover:bg-white/15 hover:text-white hover:border-white/30"
                     }`}
                   >
+                    <Icon size={14} strokeWidth={searchMode === mode ? 2.4 : 1.9} className={searchMode === mode ? "text-black" : "text-gold"} />
                     {label}
                   </button>
                 ))}
