@@ -323,3 +323,14 @@ body {
     animation-duration: 0.001ms !important;
   }
 }
+
+/* The chosen item in the home page's navigation springs into place. */
+@keyframes nav-pop {
+  0% { transform: scale(0.88); }
+  60% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+.nav-pop { animation: nav-pop 0.38s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-pop { animation: none; }
+}

@@ -177,6 +177,32 @@ export default function VisitorExperience({
   const [aiChat, setAiChat] = useState<{ prompt: string } | null>(null);
   const openAiChat = (prompt = "") => setAiChat({ prompt: prompt.trim() });
 
+  // The choices (Buy, Rent, a page link...) sit at the top, but what they change appears below the hero, out
+  // of sight. So after a choice the page glides down to the new content and the blocks rise into place one
+  // after another, instead of leaving the visitor to wonder whether anything happened.
+  const heroRef = React.useRef<HTMLDivElement>(null);
+  const revealContent = React.useCallback(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const hero = heroRef.current;
+      // on a phone the filters fill the screen, so go straight to the results; on a larger screen show the filters too
+      const results = window.innerWidth < 768 ? document.querySelector<HTMLElement>("[data-results-anchor]") : null;
+      const first = results || (hero?.nextElementSibling as HTMLElement | null);
+      if (!hero || !first) return;
+      const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      const top = first.getBoundingClientRect().top + window.scrollY - 76; // keep clear of the sticky header
+      window.scrollTo({ top: Math.max(0, top), behavior: calm ? "auto" : "smooth" });
+      if (calm) return;
+      let block: HTMLElement | null = first;
+      for (let i = 0; block && i < 5; i++, block = block.nextElementSibling as HTMLElement | null) {
+        if (getComputedStyle(block).position === "fixed") continue;
+        block.animate(
+          [{ opacity: 0, transform: "translateY(22px)" }, { opacity: 1, transform: "none" }],
+          { duration: 560, delay: i * 90, easing: "cubic-bezier(0.22, 0.8, 0.22, 1)", fill: "backwards" }
+        );
+      }
+    }));
+  }, []);
+
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   // Area Guide overlay state (see AreaGuideView.tsx / GET /api/areas/:slug) - mutually
   // exclusive with selectedProperty above; both are reconciled into a single /properties/:id
@@ -955,7 +981,7 @@ export default function VisitorExperience({
           no sense once it's flush against the browser window edge; the inner content below is
           re-wrapped in the original max-w-7xl container so the foreground (nav/search) still
           lines up with the rest of the page. */}
-      <div className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-[clamp(600px,46vw,700px)]">
+      <div ref={heroRef} className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-[clamp(600px,46vw,700px)]">
         <PhotoHero />
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <NerouAiMark size={160} strokeWidth={1.2} />
@@ -994,11 +1020,11 @@ export default function VisitorExperience({
                       {primary.map(({ key, label, Icon, active, go }) => (
                         <button
                           key={key}
-                          onClick={go}
+                          onClick={() => { go(); revealContent(); }}
                           aria-current={active ? "page" : undefined}
-                          className={`group relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10.5px] sm:text-[13px] leading-tight text-center font-semibold sm:whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                          className={`group relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10.5px] sm:text-[13px] leading-tight text-center font-semibold sm:whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95 ${
                             active
-                              ? "bg-white text-[#1a1714] shadow-[0_4px_16px_rgba(0,0,0,0.38)]"
+                              ? "nav-pop bg-white text-[#1a1714] shadow-[0_4px_16px_rgba(0,0,0,0.38)]"
                               : "text-white/85 hover:text-white hover:bg-white/10"
                           }`}
                         >
@@ -1010,8 +1036,8 @@ export default function VisitorExperience({
                   </nav>
 
                   <button
-                    onClick={() => setCurrentTab("SUPPORT_TICKETS")}
-                    className={`px-3.5 py-2 rounded-full border text-[12px] font-semibold backdrop-blur-sm transition-all cursor-pointer flex items-center gap-2 ${
+                    onClick={() => { setCurrentTab("SUPPORT_TICKETS"); revealContent(); }}
+                    className={`px-3.5 py-2 rounded-full border text-[12px] font-semibold backdrop-blur-sm transition-all cursor-pointer active:scale-95 flex items-center gap-2 ${
                       currentTab === "SUPPORT_TICKETS"
                         ? "bg-red-500/15 text-red-200 border-red-400/50"
                         : "bg-black/25 border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
@@ -1032,11 +1058,11 @@ export default function VisitorExperience({
                       return (
                         <button
                           key={key}
-                          onClick={() => setCurrentTab(key as typeof currentTab)}
+                          onClick={() => { setCurrentTab(key as typeof currentTab); revealContent(); }}
                           aria-current={on ? "page" : undefined}
-                          className={`group flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-[11.5px] sm:text-[12.5px] font-semibold whitespace-nowrap backdrop-blur-md border transition-all duration-200 cursor-pointer ${
+                          className={`group flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-[11.5px] sm:text-[12.5px] font-semibold whitespace-nowrap backdrop-blur-md border transition-all duration-200 cursor-pointer active:scale-95 ${
                             on
-                              ? "bg-white text-[#1a1714] border-transparent shadow-[0_4px_16px_rgba(0,0,0,0.38)]"
+                              ? "nav-pop bg-white text-[#1a1714] border-transparent shadow-[0_4px_16px_rgba(0,0,0,0.38)]"
                               : "bg-black/35 text-white/90 border-white/15 hover:bg-black/55 hover:border-white/50 hover:text-white hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
                           }`}
                         >
@@ -1068,9 +1094,9 @@ export default function VisitorExperience({
                     role="tab"
                     aria-selected={searchMode === mode}
                     onClick={() => setSearchMode(mode)}
-                    className={`group flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold backdrop-blur-sm border transition-all duration-200 cursor-pointer ${isRtl ? "" : "tracking-wide"} ${
+                    className={`group flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold backdrop-blur-sm border transition-all duration-200 cursor-pointer active:scale-95 ${isRtl ? "" : "tracking-wide"} ${
                       searchMode === mode
-                        ? "bg-white text-[#1a1714] border-transparent shadow-[0_4px_14px_rgba(0,0,0,0.38)]"
+                        ? "nav-pop bg-white text-[#1a1714] border-transparent shadow-[0_4px_14px_rgba(0,0,0,0.38)]"
                         : "bg-black/30 text-white/85 border-white/15 hover:bg-white/15 hover:text-white hover:border-white/30"
                     }`}
                   >
@@ -1081,7 +1107,7 @@ export default function VisitorExperience({
               </div>
 
               {searchMode !== "PROPERTIES" ? (
-                <div className="max-w-5xl">
+                <div key={searchMode} className="max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-500">
                   <DirectorySearch
                     type={searchMode}
                     isRtl={isRtl}
@@ -1097,7 +1123,7 @@ export default function VisitorExperience({
                   />
                 </div>
               ) : (
-              <div className="max-w-3xl space-y-5">
+              <div key="headline" className="max-w-3xl space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* The page's one H1: here on the home page, or in the landing block on a landing page. */}
                 {React.createElement(
                   landingPathRef.current ? "h2" : "h1",
@@ -1336,7 +1362,7 @@ export default function VisitorExperience({
       )}
 
       {/* 3. Listings Section Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+      <div data-results-anchor className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
           <h3 className="text-xl font-serif text-ink font-medium flex items-center gap-2">
             <span>{t.allProperties}</span>
