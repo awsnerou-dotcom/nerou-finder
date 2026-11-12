@@ -325,7 +325,8 @@ export function generateTOTPSecret(): string {
 
 // Outbound Email: logs every email locally (visible in Control Center's Email Logs),
 // and additionally delivers it for real via Resend when RESEND_API_KEY is configured.
-const EMAILS_FILE = path.join(process.cwd(), "emails.json");
+// (EMAILS_FILE lets the tests give each worker its own log: they would otherwise overwrite each other's entries)
+const EMAILS_FILE = process.env.EMAILS_FILE || path.join(process.cwd(), "emails.json");
 const resendApiKey = process.env.RESEND_API_KEY;
 const resendClient = resendApiKey ? new Resend(resendApiKey) : null;
 const EMAIL_FROM = process.env.EMAIL_FROM || "Nerou Finder <onboarding@resend.dev>";

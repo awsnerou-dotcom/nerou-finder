@@ -58,7 +58,6 @@ describe("POST /api/plan-requests", () => {
   it("turns a request into a website prospect with a follow-up for today and tells the admins", async (ctx) => {
     if (!dbReady) return ctx.skip();
     const b = body();
-    const before = readDb().notifications?.filter(n => n.type === "plan_request").length ?? 0;
     const res = await send(b);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -67,9 +66,8 @@ describe("POST /api/plan-requests", () => {
     expect(p.nextFollowUp).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(p.activity.some(a => a.text.includes("Subscription request"))).toBe(true);
     expect(p.notes).toContain("six agents");
-    const after = readDb().notifications!.filter(n => n.type === "plan_request");
-    expect(after.length).toBeGreaterThan(before);
-    expect(after.some(n => n.userId === ADMIN_ID && n.link === p.id)).toBe(true);
+    // (the app keeps only an admin's latest notifications, so look for this one rather than counting)
+    expect(readDb().notifications!.some(n => n.type === "plan_request" && n.userId === ADMIN_ID && n.link === p.id)).toBe(true);
   });
 
   it("shows up in the admin sales pipeline", async (ctx) => {

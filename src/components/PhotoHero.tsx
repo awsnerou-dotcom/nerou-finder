@@ -109,8 +109,6 @@ export default function PhotoHero() {
           fades to dark. (The old scrim darkened the whole picture.) */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-transparent pointer-events-none z-10" />
       <div className="absolute inset-x-0 bottom-0 h-[68%] bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none z-10" />
-      {/* a faint warm tint toward the corner, to make the picture feel richer */}
-      <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_85%_0%,rgba(191,155,48,0.14),transparent)] pointer-events-none z-10" />
     </div>
   );
 }

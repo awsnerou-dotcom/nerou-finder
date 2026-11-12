@@ -154,19 +154,19 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
     p.transactionType !== TransactionType.FOR_RENT ? "" :
       ({ YEARLY: t("/ year", "/ سنة"), WEEKLY: t("/ week", "/ أسبوع"), DAILY: t("/ day", "/ يوم") } as Record<string, string>)[p.rentalPeriod || ""] || t("/ month", "/ شهر");
 
-  const gold = "bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)]";
+  const tile = "bg-white/10 border border-white/20 backdrop-blur-sm";
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Nerou Find AI" dir={isRtl ? "rtl" : "ltr"}
       className="fixed inset-0 z-[150] flex flex-col bg-[#0f0d0b] text-white font-sans animate-in fade-in duration-200">
-      {/* soft gold glow, purely decorative */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(191,155,48,0.16),transparent)]" />
+      {/* soft light from the top, purely decorative */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(255,255,255,0.07),transparent)]" />
 
       {/* top bar */}
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-white/10 bg-black/30 backdrop-blur-md">
         <div className="flex items-center gap-3 min-w-0">
-          <span className={`w-9 h-9 shrink-0 rounded-xl ${gold} flex items-center justify-center shadow-[0_4px_16px_rgba(191,155,48,0.45)]`}>
-            <NerouAiMark size={20} strokeWidth={2.1} className="text-black" />
+          <span className={`w-9 h-9 shrink-0 rounded-xl ${tile} flex items-center justify-center`}>
+            <NerouAiMark size={20} strokeWidth={2.1} className="text-white" />
           </span>
           <div className="min-w-0 leading-tight">
             <p className="font-serif text-base font-semibold truncate">Nerou Find AI</p>
@@ -192,8 +192,8 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
           {messages.length === 0 && (
             <div className="pt-6 sm:pt-12 text-center space-y-8">
               <div className="space-y-4">
-                <span className={`mx-auto w-16 h-16 rounded-2xl ${gold} flex items-center justify-center shadow-[0_10px_40px_rgba(191,155,48,0.45)]`}>
-                  <NerouAiMark size={34} strokeWidth={2} className="text-black" />
+                <span className={`mx-auto w-16 h-16 rounded-2xl ${tile} flex items-center justify-center shadow-[0_10px_40px_rgba(0,0,0,0.45)]`}>
+                  <NerouAiMark size={34} strokeWidth={2} className="text-white" />
                 </span>
                 <h2 className="text-2xl sm:text-4xl font-serif font-medium leading-tight">
                   {t("What kind of property are you looking for?", "ما نوع العقار الذي تبحث عنه؟")}
@@ -206,12 +206,12 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-start">
                 {starters.map(([Icon, label]) => (
                   <button key={label} onClick={() => ask(label)}
-                    className="group flex items-start gap-3 p-4 rounded-2xl bg-white/[0.05] border border-white/15 hover:bg-white/[0.09] hover:border-gold/60 hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer">
-                    <Icon size={18} className="text-gold mt-0.5 shrink-0 transition-transform group-hover:scale-110" />
+                    className="group flex items-start gap-3 p-4 rounded-2xl bg-white/[0.05] border border-white/15 hover:bg-white/[0.09] hover:border-white/40 hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer">
+                    <Icon size={18} className="text-white/70 mt-0.5 shrink-0 transition-transform group-hover:scale-110" />
                     <span className="flex-1 text-sm text-white/90 leading-snug">{label}</span>
                     {isRtl
-                      ? <ChevronLeft size={16} className="text-white/30 mt-0.5 shrink-0 transition-all group-hover:text-gold group-hover:-translate-x-0.5" />
-                      : <ChevronRight size={16} className="text-white/30 mt-0.5 shrink-0 transition-all group-hover:text-gold group-hover:translate-x-0.5" />}
+                      ? <ChevronLeft size={16} className="text-white/30 mt-0.5 shrink-0 transition-all group-hover:text-white group-hover:-translate-x-0.5" />
+                      : <ChevronRight size={16} className="text-white/30 mt-0.5 shrink-0 transition-all group-hover:text-white group-hover:translate-x-0.5" />}
                   </button>
                 ))}
               </div>
@@ -224,7 +224,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
             </div>
           ) : (
             <div key={m.id} className="flex gap-3">
-              <span className={`w-8 h-8 shrink-0 rounded-lg ${gold} flex items-center justify-center mt-0.5`}><NerouAiMark size={17} strokeWidth={2.1} className="text-black" /></span>
+              <span className={`w-8 h-8 shrink-0 rounded-lg ${tile} flex items-center justify-center mt-0.5`}><NerouAiMark size={17} strokeWidth={2.1} className="text-white" /></span>
               <div className="min-w-0 flex-1 space-y-4">
                 <p className="text-[15px] leading-relaxed text-white/95 whitespace-pre-wrap break-words">{m.text}</p>
                 {m.failed && (
@@ -236,27 +236,27 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
                 {m.matches && m.matches.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {m.matches.map(({ property: p, why }) => (
-                      <article key={p.id} className="group flex flex-col rounded-2xl overflow-hidden bg-white/[0.04] border border-white/10 hover:border-gold/60 transition-colors">
+                      <article key={p.id} className="group flex flex-col rounded-2xl overflow-hidden bg-white/[0.04] border border-white/10 hover:border-white/40 transition-colors">
                         <button onClick={() => onOpenProperty(p)} className="relative block aspect-[16/10] overflow-hidden bg-black/40 cursor-pointer" aria-label={p.title}>
                           {p.images?.[0] && <img src={getThumbnailUrl(p.images[0])} alt="" loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />}
-                          <span className={`absolute top-3 ${isRtl ? "right-3" : "left-3"} px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${gold} text-black`}>{badge(p)}</span>
+                          <span className={`absolute top-3 ${isRtl ? "right-3" : "left-3"} px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white text-[#1a1714]`}>{badge(p)}</span>
                         </button>
                         <div className="p-4 flex flex-col gap-2.5 flex-1">
                           <div className="flex items-start justify-between gap-3">
                             <h3 className="font-serif text-[15px] font-medium leading-snug line-clamp-2">{isRtl && p.titleAr ? p.titleAr : p.title}</h3>
-                            <p className="text-gold font-bold text-sm whitespace-nowrap">{formatPrice(p.price, isRtl)}<span className="text-[10px] font-medium text-white/50"> {period(p)}</span></p>
+                            <p className="text-[#f0e3b8] font-bold text-sm whitespace-nowrap">{formatPrice(p.price, isRtl)}<span className="text-[10px] font-medium text-white/50"> {period(p)}</span></p>
                           </div>
                           <p className="flex items-center gap-1.5 text-xs text-white/60"><MapPin size={12} className="shrink-0" />{[p.district, p.city].filter(Boolean).join(", ")}</p>
                           <div className="flex items-center gap-4 text-xs text-white/75">
-                            {p.bedrooms > 0 && <span className="flex items-center gap-1.5"><Bed size={13} className="text-gold" />{p.bedrooms}</span>}
-                            {p.bathrooms > 0 && <span className="flex items-center gap-1.5"><Bath size={13} className="text-gold" />{p.bathrooms}</span>}
-                            <span className="flex items-center gap-1.5"><Maximize2 size={13} className="text-gold" />{p.area} {p.sizeUnit === "SQFT" ? t("sqft", "قدم²") : "m²"}</span>
+                            {p.bedrooms > 0 && <span className="flex items-center gap-1.5"><Bed size={13} className="text-white/60" />{p.bedrooms}</span>}
+                            {p.bathrooms > 0 && <span className="flex items-center gap-1.5"><Bath size={13} className="text-white/60" />{p.bathrooms}</span>}
+                            <span className="flex items-center gap-1.5"><Maximize2 size={13} className="text-white/60" />{p.area} {p.sizeUnit === "SQFT" ? t("sqft", "قدم²") : "m²"}</span>
                           </div>
                           {why && (
-                            <p className="text-xs text-white/65 leading-relaxed border-s-2 border-gold/70 ps-3">{why}</p>
+                            <p className="text-xs text-white/65 leading-relaxed border-s-2 border-white/30 ps-3">{why}</p>
                           )}
                           <button onClick={() => onOpenProperty(p)}
-                            className="mt-auto pt-1 self-start text-xs font-semibold text-gold hover:underline cursor-pointer">
+                            className="mt-auto pt-1 self-start text-xs font-semibold text-[#f0e3b8] hover:underline cursor-pointer">
                             {t("View details", "عرض التفاصيل")} {isRtl ? "←" : "→"}
                           </button>
                         </div>
@@ -268,7 +268,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
                   <div className="flex flex-wrap gap-2 pt-1">
                     {followUps.map(f => (
                       <button key={f} onClick={() => ask(f)}
-                        className="px-3.5 py-1.5 rounded-full text-xs font-medium border border-white/15 text-white/80 hover:text-white hover:border-gold/60 hover:bg-white/5 transition-colors cursor-pointer">{f}</button>
+                        className="px-3.5 py-1.5 rounded-full text-xs font-medium border border-white/15 text-white/80 hover:text-white hover:border-white/40 hover:bg-white/5 transition-colors cursor-pointer">{f}</button>
                     ))}
                   </div>
                 )}
@@ -278,10 +278,10 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
 
           {busy && (
             <div className="flex gap-3" role="status" aria-live="polite">
-              <span className={`w-8 h-8 shrink-0 rounded-lg ${gold} flex items-center justify-center mt-0.5`}><NerouAiMark size={17} strokeWidth={2.1} className="text-black animate-pulse" /></span>
+              <span className={`w-8 h-8 shrink-0 rounded-lg ${tile} flex items-center justify-center mt-0.5`}><NerouAiMark size={17} strokeWidth={2.1} className="text-white animate-pulse" /></span>
               <div className="flex items-center gap-3 pt-1.5">
                 <span className="flex gap-1.5" aria-hidden="true">
-                  {[0, 150, 300].map(d => <span key={d} className="w-2 h-2 rounded-full bg-gold animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
+                  {[0, 150, 300].map(d => <span key={d} className="w-2 h-2 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
                 </span>
                 <span className="text-xs text-white/55">{slow
                   ? t("Still searching, this is taking a little longer than usual...", "ما زلت أبحث، الأمر يستغرق وقتاً أطول قليلاً من المعتاد...")
@@ -296,7 +296,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
       {/* composer */}
       <footer className="relative z-10 px-4 sm:px-6 pt-2 pb-4 bg-gradient-to-t from-[#0f0d0b] via-[#0f0d0b] to-transparent">
         <form onSubmit={e => { e.preventDefault(); ask(input); }} className="max-w-3xl mx-auto">
-          <div className="flex items-end gap-2 p-2 ps-4 rounded-3xl bg-white/[0.07] backdrop-blur-md border border-white/15 focus-within:border-gold/70 shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition-colors">
+          <div className="flex items-end gap-2 p-2 ps-4 rounded-3xl bg-white/[0.07] backdrop-blur-md border border-white/15 focus-within:border-white/40 shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition-colors">
             <textarea
               ref={boxRef}
               value={input}
@@ -309,7 +309,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
               className="flex-1 bg-transparent resize-none outline-none py-2.5 text-[15px] leading-relaxed placeholder:text-white/40 max-h-40 overflow-y-hidden"
             />
             <button type="submit" disabled={!input.trim() || busy} aria-label={t("Send", "إرسال")}
-              className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition-all ${input.trim() && !busy ? `${gold} text-black shadow-[0_4px_14px_rgba(191,155,48,0.5)] cursor-pointer hover:scale-105` : "bg-white/10 text-white/35"}`}>
+              className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition-all ${input.trim() && !busy ? `bg-white text-[#1a1714] shadow-[0_4px_14px_rgba(0,0,0,0.4)] cursor-pointer hover:scale-105` : "bg-white/10 text-white/35"}`}>
               <ArrowUp size={18} strokeWidth={2.6} />
             </button>
           </div>

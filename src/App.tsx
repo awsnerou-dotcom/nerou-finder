@@ -119,7 +119,8 @@ export default function App() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-  const heroTransparent = viewMode === "MARKETPLACE" && !isScrolled;
+  // an open phone menu has a light panel, so the header turns solid (dark logo) while it is open
+  const heroTransparent = viewMode === "MARKETPLACE" && !isScrolled && !isMobileMenuOpen;
 
   // Keep the browser tab title in sync with which top-level view is active - previously the
   // whole SPA shared one static <title> from index.html regardless of marketplace vs.

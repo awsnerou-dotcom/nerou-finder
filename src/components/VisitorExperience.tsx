@@ -967,7 +967,7 @@ export default function VisitorExperience({
           {(() => {
             const onMarket = currentTab === "MARKETPLACE";
             const primary: { key: string; label: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; active: boolean; go: () => void }[] = [
-              { key: "browse", label: isRtl ? "العقارات المتاحة" : "Browse", Icon: LayoutGrid, active: onMarket && !propType && !transType,
+              { key: "browse", label: isRtl ? "تصفح" : "Browse", Icon: LayoutGrid, active: onMarket && !propType && !transType,
                 go: () => { setCurrentTab("MARKETPLACE"); setPropType(""); setTransType(""); } },
               { key: "buy", label: isRtl ? "شراء" : "Buy", Icon: Tag, active: onMarket && transType === TransactionType.FOR_SALE,
                 go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.FOR_SALE); } },
@@ -989,20 +989,20 @@ export default function VisitorExperience({
             return (
               <div className="pt-2 pb-3 flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <nav aria-label={isRtl ? "تصفح العقارات" : "Browse"} className="max-w-full overflow-x-auto scrollbar-none">
-                    <div className="inline-flex items-center gap-1 p-1.5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/15 shadow-[0_10px_34px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.08)]">
+                  <nav aria-label={isRtl ? "تصفح العقارات" : "Browse"} className="w-full sm:w-auto max-w-full">
+                    <div className="grid grid-cols-5 sm:inline-flex items-stretch sm:items-center gap-1 p-1.5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/15 shadow-[0_10px_34px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.08)]">
                       {primary.map(({ key, label, Icon, active, go }) => (
                         <button
                           key={key}
                           onClick={go}
                           aria-current={active ? "page" : undefined}
-                          className={`group relative flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2.5 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                          className={`group relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10.5px] sm:text-[13px] leading-tight text-center font-semibold sm:whitespace-nowrap transition-all duration-200 cursor-pointer ${
                             active
-                              ? "bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] text-black shadow-[0_4px_16px_rgba(191,155,48,0.5)]"
+                              ? "bg-white text-[#1a1714] shadow-[0_4px_16px_rgba(0,0,0,0.38)]"
                               : "text-white/85 hover:text-white hover:bg-white/10"
                           }`}
                         >
-                          <Icon size={16} strokeWidth={active ? 2.4 : 1.9} className={active ? "text-black" : "text-gold transition-transform duration-200 group-hover:scale-110"} />
+                          <Icon size={16} strokeWidth={active ? 2.4 : 1.9} className={active ? "text-[#1a1714]" : "text-white/75 transition-transform duration-200 group-hover:scale-110"} />
                           <span className={isRtl ? "" : "tracking-wide"}>{label}</span>
                         </button>
                       ))}
@@ -1025,8 +1025,8 @@ export default function VisitorExperience({
                   </button>
                 </div>
 
-                <nav aria-label={isRtl ? "الشركة والمساعدة" : "Company and help"} className="max-w-full overflow-x-auto scrollbar-none">
-                  <div className="inline-flex items-center gap-2 pb-1">
+                <nav aria-label={isRtl ? "الشركة والمساعدة" : "Company and help"} className="max-w-full">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     {secondary.map(([key, label, Icon]) => {
                       const on = currentTab === key;
                       return (
@@ -1034,13 +1034,13 @@ export default function VisitorExperience({
                           key={key}
                           onClick={() => setCurrentTab(key as typeof currentTab)}
                           aria-current={on ? "page" : undefined}
-                          className={`group flex items-center gap-2 px-3.5 py-2 rounded-full text-[12.5px] font-semibold whitespace-nowrap backdrop-blur-md border transition-all duration-200 cursor-pointer ${
+                          className={`group flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-[11.5px] sm:text-[12.5px] font-semibold whitespace-nowrap backdrop-blur-md border transition-all duration-200 cursor-pointer ${
                             on
-                              ? "bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] text-black border-transparent shadow-[0_4px_16px_rgba(191,155,48,0.45)]"
-                              : "bg-black/35 text-white/90 border-white/15 hover:bg-black/55 hover:border-gold/60 hover:text-white hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
+                              ? "bg-white text-[#1a1714] border-transparent shadow-[0_4px_16px_rgba(0,0,0,0.38)]"
+                              : "bg-black/35 text-white/90 border-white/15 hover:bg-black/55 hover:border-white/50 hover:text-white hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
                           }`}
                         >
-                          <Icon size={14} strokeWidth={on ? 2.4 : 1.9} className={on ? "text-black" : "text-gold transition-transform duration-200 group-hover:scale-110"} />
+                          <Icon size={14} strokeWidth={on ? 2.4 : 1.9} className={on ? "text-[#1a1714]" : "text-white/75 transition-transform duration-200 group-hover:scale-110"} />
                           <span>{label}</span>
                         </button>
                       );
@@ -1070,11 +1070,11 @@ export default function VisitorExperience({
                     onClick={() => setSearchMode(mode)}
                     className={`group flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold backdrop-blur-sm border transition-all duration-200 cursor-pointer ${isRtl ? "" : "tracking-wide"} ${
                       searchMode === mode
-                        ? "bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] text-black border-transparent shadow-[0_4px_14px_rgba(191,155,48,0.45)]"
+                        ? "bg-white text-[#1a1714] border-transparent shadow-[0_4px_14px_rgba(0,0,0,0.38)]"
                         : "bg-black/30 text-white/85 border-white/15 hover:bg-white/15 hover:text-white hover:border-white/30"
                     }`}
                   >
-                    <Icon size={14} strokeWidth={searchMode === mode ? 2.4 : 1.9} className={searchMode === mode ? "text-black" : "text-gold"} />
+                    <Icon size={14} strokeWidth={searchMode === mode ? 2.4 : 1.9} className={searchMode === mode ? "text-[#1a1714]" : "text-white/75"} />
                     {label}
                   </button>
                 ))}
@@ -1107,9 +1107,9 @@ export default function VisitorExperience({
                 <button
                   type="button"
                   onClick={() => openAiChat()}
-                  className="group inline-flex items-center gap-2.5 px-5 py-3 rounded-full text-sm font-bold text-black bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] shadow-[0_8px_28px_rgba(191,155,48,0.55)] hover:shadow-[0_12px_36px_rgba(191,155,48,0.7)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer"
+                  className="group inline-flex items-center gap-2.5 px-5 py-3 rounded-full text-sm font-bold text-[#1a1714] bg-white shadow-[0_8px_28px_rgba(0,0,0,0.38)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.38)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer"
                 >
-                  <NerouAiMark size={18} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
+                  <span className="w-8 h-8 -ms-2 rounded-full bg-[#1a1714] text-white flex items-center justify-center transition-transform duration-300 group-hover:scale-105"><NerouAiMark size={17} strokeWidth={2.1} /></span>
                   <span>{t.aiTitle}</span>
                   {isRtl ? <ChevronLeft size={16} strokeWidth={2.6} /> : <ChevronRight size={16} strokeWidth={2.6} />}
                 </button>
@@ -1653,13 +1653,13 @@ export default function VisitorExperience({
           type="button"
           onClick={() => openAiChat()}
           aria-label={isRtl ? "اسأل مساعد نيرو الذكي" : "Ask Nerou AI"}
-          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-14 min-w-14 justify-center sm:ps-4 sm:pe-5 rounded-full text-black bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] shadow-[0_10px_30px_rgba(191,155,48,0.55)] hover:shadow-[0_14px_38px_rgba(191,155,48,0.7)] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 cursor-pointer"
+          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-14 min-w-14 justify-center sm:ps-4 sm:pe-5 rounded-full text-white bg-[#1a1714] ring-1 ring-[#bf9b30]/55 border border-white/15 shadow-[0_12px_32px_rgba(0,0,0,0.45)] hover:ring-[#bf9b30] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 cursor-pointer"
         >
           <span className="relative flex">
             <NerouAiMark size={24} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
             <span className="absolute -top-1 -end-1 flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-black/40 opacity-70 animate-ping" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-black/80" />
+              <span className="absolute inline-flex h-full w-full rounded-full bg-[#bf9b30] opacity-70 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#bf9b30]" />
             </span>
           </span>
           <span className="hidden sm:inline text-sm font-bold whitespace-nowrap">{isRtl ? "اسأل نيرو AI" : "Ask Nerou AI"}</span>

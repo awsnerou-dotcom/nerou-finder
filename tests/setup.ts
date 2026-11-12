@@ -1,3 +1,7 @@
+import os from "node:os";
+import path from "node:path";
+import { threadId } from "node:worker_threads";
+
 // Runs before every test file. server.ts fails fast (process.exit) if JWT_SECRET is unset,
 // and Prisma validates the shape of DATABASE_URL/DIRECT_URL at client construction time even
 // before any query runs - so both need a value just to *import* server.ts/server-db.ts, even
@@ -15,3 +19,8 @@ process.env.NODE_ENV = "test";
 if (/^postgres(ql)?:\/\//.test(process.env.DATABASE_URL ?? "") && !/[?&]connection_limit=/.test(process.env.DATABASE_URL!)) {
   process.env.DATABASE_URL += (process.env.DATABASE_URL!.includes("?") ? "&" : "?") + "connection_limit=3";
 }
+
+// The mock outbound-email log is a plain file that sendMockEmail rewrites in full. Test files run in parallel
+// workers, so a shared file loses entries to whichever write lands last. One file per worker thread: the files a
+// worker runs one after another share it, parallel workers never do.
+process.env.EMAILS_FILE ??= path.join(os.tmpdir(), `nerou-test-emails-${process.pid}-${threadId}.json`);
