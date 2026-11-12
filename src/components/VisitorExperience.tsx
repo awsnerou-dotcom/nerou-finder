@@ -60,7 +60,8 @@ import {
   KeyRound,
   HardHat,
   UserRound,
-  Home as HomeIcon
+  Home as HomeIcon,
+  ArrowUp
 } from "lucide-react";
 
 // Enterprise & Public Sub-Pages
@@ -80,7 +81,8 @@ import {
   SupportTicketsView,
   PressView,
   PartnershipsView,
-  PlansPricingView
+  PlansPricingView,
+  AiChat
 } from "./lazyViews.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
@@ -165,16 +167,11 @@ export default function VisitorExperience({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalNavigation]);
 
-  // AI Search state
+  // Nerou Find AI opens as its own full-screen conversation (AiChat.tsx); this is just the box on the home page
   const [aiPrompt, setAiPrompt] = useState<string>("");
-  const [aiLoading, setAiLoading] = useState<boolean>(false);
-  const [aiResults, setAiResults] = useState<{ propertyId: string; whyMatchEn: string; whyMatchAr: string }[]>([]);
-  const [aiError, setAiError] = useState<string>("");
-  const [aiSearchActive, setAiSearchActive] = useState<boolean>(false);
-  const [aiConversationId, setAiConversationId] = useState<string>(() => `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
-  const [aiHistory, setAiHistory] = useState<{ role: "user" | "model"; text: string }[]>([]);
+  const [aiChat, setAiChat] = useState<{ prompt: string } | null>(null);
+  const openAiChat = (prompt = "") => { setAiChat({ prompt: prompt.trim() }); setAiPrompt(""); };
 
-  // Detail overlay state
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   // Area Guide overlay state (see AreaGuideView.tsx / GET /api/areas/:slug) - mutually
   // exclusive with selectedProperty above; both are reconciled into a single /properties/:id
@@ -514,70 +511,6 @@ export default function VisitorExperience({
     }
   };
 
-  const handleAiSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const promptToSend = aiPrompt.trim();
-    if (!promptToSend) return;
-    
-    setAiLoading(true);
-    setAiError("");
-    setAiSearchActive(true);
-    
-    // Add user prompt to chat history logs
-    setAiHistory(prev => [...prev, { role: "user", text: promptToSend }]);
-    setAiPrompt(""); // clear input box immediately for superb UX
-
-    try {
-      const res = await fetch("/api/ai/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: promptToSend,
-          conversationId: aiConversationId
-        })
-      });
-      const data = await res.json();
-      if (data.error) {
-        setAiError(data.error);
-        setAiResults([]);
-        setAiHistory(prev => [...prev, { role: "model", text: isRtl ? "عذراً، فشل المساعد الذكي في معالجة هذا الطلب." : "Apologies, the AI assistant encountered an error processing this request." }]);
-      } else {
-        const matches = data.matches || [];
-        setAiResults(matches);
-        
-        // Build cohesive and professional conversational assistant response
-        let answer = "";
-        if (matches.length > 0) {
-          const sampleMatch = matches[0];
-          const explanation = isRtl ? sampleMatch.whyMatchAr : sampleMatch.whyMatchEn;
-          answer = isRtl 
-            ? `لقد وجدت ${matches.length} عقارات تطابق طلبك تماماً! إليك السبب الرئيسي: ${explanation}`
-            : `I have discovered ${matches.length} matches tailored to your request! Key highlight: ${explanation}`;
-        } else {
-          answer = isRtl
-            ? "لم أجد عقارات تطابق هذه المواصفات بدقة في قاعدة البيانات حالياً. هل ترغب في تصفح بدائل أخرى أو تفاصيل تصفية مختلفة؟"
-            : "I did not find matching listings with those precise criteria in our active catalog. Would you like to check other areas or adjust your preferences?";
-        }
-        setAiHistory(prev => [...prev, { role: "model", text: answer }]);
-      }
-    } catch (err: any) {
-      setAiError("Failed to connect to AI search helper.");
-      setAiHistory(prev => [...prev, { role: "model", text: isRtl ? "فشل الاتصال بخدمات البحث الذكي." : "Failed to connect to AI search helper." }]);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  const clearAiSearch = () => {
-    setAiPrompt("");
-    setAiResults([]);
-    setAiSearchActive(false);
-    setAiError("");
-    setAiHistory([]);
-    setAiConversationId(`conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
-    fetchProperties();
-  };
-
   const fetchSavedSearches = async () => {
     const token = localStorage.getItem("token");
     if (!token || !currentUser) return;
@@ -877,13 +810,7 @@ export default function VisitorExperience({
   // empty-check, list render), each call re-filtering/re-sorting the full properties array
   // and scanning campaigns via isFeatured() inside the sort comparator.
   const sortedProperties = React.useMemo(() => {
-    let list = [...properties];
-
-    // If AI Search is active, prioritize recommended properties
-    if (aiSearchActive && aiResults.length > 0) {
-      const matchIds = aiResults.map(r => r.propertyId);
-      list = list.filter(p => matchIds.includes(p.id));
-    }
+    const list = [...properties];
 
     if (sortBy === "priceAsc") {
       list.sort((a, b) => a.price - b.price);
@@ -911,7 +838,7 @@ export default function VisitorExperience({
       if (!aFeat && bFeat) return 1;
       return 0;
     });
-  }, [properties, aiSearchActive, aiResults, sortBy, campaigns]);
+  }, [properties, sortBy, campaigns]);
   const getSortedProperties = () => sortedProperties;
 
   // Find municipality choices
@@ -1036,7 +963,7 @@ export default function VisitorExperience({
             const onMarket = currentTab === "MARKETPLACE";
             const primary: { key: string; label: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; active: boolean; go: () => void }[] = [
               { key: "browse", label: isRtl ? "العقارات المتاحة" : "Browse", Icon: LayoutGrid, active: onMarket && !propType && !transType,
-                go: () => { setCurrentTab("MARKETPLACE"); clearAiSearch(); setPropType(""); setTransType(""); } },
+                go: () => { setCurrentTab("MARKETPLACE"); setPropType(""); setTransType(""); } },
               { key: "buy", label: isRtl ? "شراء" : "Buy", Icon: Tag, active: onMarket && transType === TransactionType.FOR_SALE,
                 go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.FOR_SALE); } },
               { key: "rent", label: isRtl ? "إيجار" : "Rent", Icon: KeyRound, active: onMarket && transType === TransactionType.FOR_RENT,
@@ -1057,6 +984,14 @@ export default function VisitorExperience({
             return (
               <div className="pt-2 pb-3 flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap max-w-full">
+                  <button
+                    onClick={() => openAiChat()}
+                    className="group flex items-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-bold text-black bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] shadow-[0_8px_26px_rgba(191,155,48,0.5)] hover:shadow-[0_10px_32px_rgba(191,155,48,0.65)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer whitespace-nowrap"
+                  >
+                    <Sparkles size={16} strokeWidth={2.4} className="transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
+                    <span>{isRtl ? "اسأل الذكاء الاصطناعي" : "Ask AI"}</span>
+                  </button>
                   <nav aria-label={isRtl ? "تصفح العقارات" : "Browse"} className="max-w-full overflow-x-auto scrollbar-none">
                     <div className="inline-flex items-center gap-1 p-1.5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/15 shadow-[0_10px_34px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.08)]">
                       {primary.map(({ key, label, Icon, active, go }) => (
@@ -1076,6 +1011,7 @@ export default function VisitorExperience({
                       ))}
                     </div>
                   </nav>
+                  </div>
 
                   <button
                     onClick={() => setCurrentTab("SUPPORT_TICKETS")}
@@ -1160,10 +1096,14 @@ export default function VisitorExperience({
                 </div>
               ) : (
               <div className="max-w-3xl space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gold text-black text-xs font-semibold uppercase tracking-wider rounded-full">
+                <button
+                  type="button"
+                  onClick={() => openAiChat()}
+                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-black bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] shadow-[0_4px_16px_rgba(191,155,48,0.45)] hover:shadow-[0_6px_22px_rgba(191,155,48,0.6)] transition-shadow cursor-pointer ${isRtl ? "" : "uppercase tracking-wider"}`}
+                >
                   <Sparkles size={14} />
                   <span>{t.aiTitle}</span>
-                </div>
+                </button>
                 {/* The page's one H1: here on the home page, or in the landing block on a landing page. */}
                 {React.createElement(
                   landingPathRef.current ? "h2" : "h1",
@@ -1171,68 +1111,38 @@ export default function VisitorExperience({
                   t.aiSubtitle
                 )}
 
-                {/* Conversational Chat History Logs */}
-                {aiHistory.length > 0 && (
-                  <div className="bg-[#24211e] rounded-xl border border-[#3d3934] p-4 max-h-64 overflow-y-auto space-y-3 scrollbar-thin text-left">
-                    {aiHistory.map((chat, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex flex-col ${chat.role === "user" ? "items-end" : "items-start"} space-y-1`}
-                      >
-                        <span className="text-[10px] font-bold text-[#8c847a] uppercase tracking-wide">
-                          {chat.role === "user" ? (isRtl ? "أنت" : "You") : (isRtl ? "مساعد نيرو الذكي" : "Nerou AI Assistant")}
-                        </span>
-                        <div
-                          className={`px-3 py-2 rounded-lg text-xs md:text-sm max-w-[85%] leading-relaxed ${
-                            chat.role === "user"
-                              ? "bg-gold text-black font-medium rounded-tr-none"
-                              : "bg-[#2d2925] text-[#eae5df] border border-[#423d37] rounded-tl-none"
-                          }`}
-                        >
-                          {chat.text}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <form onSubmit={handleAiSearch} className="flex flex-col md:flex-row gap-2 mt-4">
-                  <input
-                    type="text"
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder={t.aiPlaceholder}
-                    className="flex-1 px-4 py-3 bg-[#2c2925] text-white rounded-lg border border-[#44403a] placeholder-gray-400 focus:outline-none focus:border-gold font-sans text-base"
-                  />
-                  <button
-                    type="submit"
-                    disabled={aiLoading}
-                    className="px-6 py-3 bg-gold hover:bg-gold-hover disabled:bg-gray-600 text-black font-semibold rounded-lg transition-colors text-sm md:text-base flex items-center justify-center gap-2"
-                  >
-                    {aiLoading ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                        <span>{isRtl ? "جاري البحث..." : "Searching..."}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Search size={18} />
-                        <span>{isRtl ? "ابحث بالذكاء الاصطناعي" : "AI Match"}</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-
-                {aiSearchActive && (
-                  <div className="pt-2 flex justify-end">
+                {/* The question box: asking opens the assistant already answering it */}
+                <form onSubmit={(e) => { e.preventDefault(); openAiChat(aiPrompt); }} className="mt-4 space-y-3">
+                  <div className="flex items-center gap-2 p-1.5 ps-4 rounded-2xl bg-black/45 backdrop-blur-md border border-white/20 focus-within:border-gold/80 shadow-[0_10px_34px_rgba(0,0,0,0.4)] transition-colors">
+                    <Sparkles size={18} className="text-gold shrink-0" />
+                    <input
+                      type="text"
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                      placeholder={t.aiPlaceholder}
+                      aria-label={t.aiTitle}
+                      className="flex-1 min-w-0 bg-transparent text-white placeholder-white/50 py-2.5 focus:outline-none font-sans text-base"
+                    />
                     <button
-                      onClick={clearAiSearch}
-                      className="text-xs text-gold hover:underline cursor-pointer"
+                      type="submit"
+                      className="px-5 py-2.5 rounded-xl bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] text-black font-bold text-sm flex items-center gap-2 shadow-[0_4px_14px_rgba(191,155,48,0.45)] hover:shadow-[0_6px_20px_rgba(191,155,48,0.6)] transition-shadow cursor-pointer whitespace-nowrap"
                     >
-                      {isRtl ? "إلغاء البحث الذكي والعودة للعرض التقليدي" : "Reset & show all properties"}
+                      <span>{isRtl ? "اسأل" : "Ask AI"}</span>
+                      <ArrowUp size={16} strokeWidth={2.6} />
                     </button>
                   </div>
-                )}
+                  <div className="flex flex-wrap gap-2">
+                    {(isRtl
+                      ? ["شقة للإيجار في لوسيل", "فيلا للبيع في الريان", "استوديو مفروش"]
+                      : ["Apartment to rent in Lusail", "Villa for sale in Al Rayyan", "Furnished studio"]
+                    ).map((q) => (
+                      <button key={q} type="button" onClick={() => openAiChat(q)}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-black/35 backdrop-blur-sm border border-white/15 text-white/85 hover:text-white hover:border-gold/60 hover:bg-black/50 transition-colors cursor-pointer">
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </form>
               </div>
               )}
             </div>
@@ -1243,7 +1153,7 @@ export default function VisitorExperience({
       {currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && (
         <>
           {/* 2. Central Qatar Parent-Child Location & Property Type Filters */}
-      {!aiSearchActive && (
+      {(
         <div className="space-y-3 mb-6">
           <div className="bg-surface p-4 rounded-xl border border-border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
 
@@ -1406,7 +1316,7 @@ export default function VisitorExperience({
 
       {/* Featured Agencies - real agencies with live listings, same visibility gate as the
           Recently Viewed strip below (plain properties view only). */}
-      {!aiSearchActive && searchMode === "PROPERTIES" && (
+      {searchMode === "PROPERTIES" && (
         <FeaturedAgencies
           isRtl={isRtl}
           onSelectAgency={(agencyId) => {
@@ -1419,7 +1329,7 @@ export default function VisitorExperience({
       {/* Recently Viewed strip - localStorage-only, no account needed. Only shown on the plain
           properties list (not mid-AI-search or on the agent/agency/developer directory tabs)
           so it doesn't compete with active search results for attention. */}
-      {!aiSearchActive && searchMode === "PROPERTIES" && recentlyViewedProperties.length > 0 && (
+      {searchMode === "PROPERTIES" && recentlyViewedProperties.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-serif text-ink font-medium flex items-center gap-2">
             <Clock size={16} className="text-gold" />
@@ -1451,7 +1361,7 @@ export default function VisitorExperience({
       )}
 
       {/* An SEO landing page: its heading and intro above the listings (the FAQ follows them) */}
-      {landingPathRef.current && currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && !aiSearchActive && (
+      {landingPathRef.current && currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && (
         <LandingIntro path={landingPathRef.current} isRtl={isRtl} />
       )}
 
@@ -1459,16 +1369,11 @@ export default function VisitorExperience({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
           <h3 className="text-xl font-serif text-ink font-medium flex items-center gap-2">
-            <span>{aiSearchActive ? (isRtl ? "نتائج الاكتشاف الذكي نيرو فايند" : "Nerou Find AI Discovery Matches") : t.allProperties}</span>
+            <span>{t.allProperties}</span>
             <span className="text-sm font-sans text-ink-muted bg-surface-2 px-2 py-0.5 rounded-full font-normal">
               {getSortedProperties().length}
             </span>
           </h3>
-          {aiSearchActive && (
-            <p className="text-xs text-ink-muted mt-1">
-              {isRtl ? "تمت التصفية والمطابقة بالذكاء الاصطناعي نيرو فايند مع توضيح أسباب التوافق" : "Live data discovered and scored via server-side Nerou Find AI"}
-            </p>
-          )}
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -1519,14 +1424,6 @@ export default function VisitorExperience({
         </div>
       </div>
 
-      {/* AI Error Display */}
-      {aiError && (
-        <div className="p-4 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm flex gap-3 items-center">
-          <Info size={18} />
-          <span>{t.aiErrorMsg} (Error details: {aiError})</span>
-        </div>
-      )}
-
       {/* 4. Listings Cards Grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-12">
@@ -1559,7 +1456,6 @@ export default function VisitorExperience({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {getSortedProperties().map((property) => {
-            const aiMatchInfo = aiResults.find(r => r.propertyId === property.id);
             const feat = isFeatured(property.id);
 
             return (
@@ -1731,17 +1627,6 @@ export default function VisitorExperience({
                       </div>
                     </div>
 
-                    {aiMatchInfo && (
-                      <div className="bg-[#f9f8f6] p-3 rounded-lg border-l-2 border-gold space-y-1 mt-2 animate-in fade-in duration-300">
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-gold uppercase">
-                          <Sparkles size={11} />
-                          <span>{t.whyMatchHeader}</span>
-                        </div>
-                        <p className="text-xs text-ink-muted leading-relaxed">
-                          {isRtl ? aiMatchInfo.whyMatchAr : aiMatchInfo.whyMatchEn}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -1778,8 +1663,18 @@ export default function VisitorExperience({
         </div>
       )}
 
-      {landingPathRef.current && currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && !aiSearchActive && (
+      {landingPathRef.current && currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && (
         <LandingFaq path={landingPathRef.current} isRtl={isRtl} />
+      )}
+
+      {/* Nerou Find AI: the full-screen assistant. Opening a listing from it closes it; the conversation is kept. */}
+      {aiChat && (
+        <AiChat
+          isRtl={isRtl}
+          initialPrompt={aiChat.prompt}
+          onClose={() => setAiChat(null)}
+          onOpenProperty={(p) => { setAiChat(null); setSelectedProperty(p); }}
+        />
       )}
 
       {/* 5. Detailed Property Overlay Modal Drawer */}

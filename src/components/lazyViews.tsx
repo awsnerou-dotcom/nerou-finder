@@ -21,6 +21,7 @@ import type SupportTicketsViewT from "./SupportTicketsView.js";
 import type PressViewT from "./PressView.js";
 import type PartnershipsViewT from "./PartnershipsView.js";
 import type PlansPricingViewT from "./PlansPricingView.js";
+import type AiChatT from "./AiChat.js";
 
 // Screens a visitor does not see when the home page first opens (a listing's detail page, the map,
 // the compare table, the plans page, help, careers...) are loaded only when they are opened. They
@@ -89,3 +90,5 @@ export const SupportTicketsView = lazyView<typeof SupportTicketsViewT>(() => imp
 export const PressView = lazyView<typeof PressViewT>(() => import("./PressView.js"));
 export const PartnershipsView = lazyView<typeof PartnershipsViewT>(() => import("./PartnershipsView.js"));
 export const PlansPricingView = lazyView<typeof PlansPricingViewT>(() => import("./PlansPricingView.js"));
+// the assistant opens full-screen on a click, so nothing of it is downloaded until then
+export const AiChat = lazyView<typeof AiChatT>(() => import("./AiChat.js"), overlayLoading);

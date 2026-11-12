@@ -7826,6 +7826,8 @@ Strict Grounding Rules:
 Response Schema Requirements:
 You must respond with a strictly valid JSON object matching the following structure:
 {
+  "replyEn": "string (your chat answer in English: 1-3 short, warm, professional sentences. Say what you found and why it fits; if the request is vague, ask ONE clarifying question such as budget, area, bedrooms or rent/buy. Never list property details the cards already show)",
+  "replyAr": "string (the same chat answer in natural Arabic)",
   "matches": [
     {
       "propertyId": "string (the exact property ID)",
@@ -7835,7 +7837,7 @@ You must respond with a strictly valid JSON object matching the following struct
   ]
 }
 
-If no properties logically match, or if the user asks questions completely unrelated to real estate discovery, return an empty "matches" array.
+If no properties logically match, return an empty "matches" array and, in the reply, say so kindly and suggest how to widen the search. If the user asks something unrelated to real estate discovery, return an empty "matches" array and politely steer them back. This is a chat: use the earlier turns of the conversation, so a follow-up such as "cheaper" or "with a pool" refines the previous request. Show at most 6 matches, best first.
 
 Here is the live properties JSON database:
 ${JSON.stringify(availableProperties, null, 2)}`;
@@ -7859,11 +7861,14 @@ ${JSON.stringify(availableProperties, null, 2)}`;
       config: {
         systemInstruction,
         temperature: cfg.modelConfiguration?.temperature ?? 0.1,
-        maxOutputTokens: cfg.modelConfiguration?.maxTokens ?? 1000,
+        // room for the chat reply plus up to 6 matches in both languages; a cut-off reply is invalid JSON
+        maxOutputTokens: Math.max(cfg.modelConfiguration?.maxTokens ?? 1000, 2000),
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
+            replyEn: { type: Type.STRING },
+            replyAr: { type: Type.STRING },
             matches: {
               type: Type.ARRAY,
               items: {
@@ -7877,7 +7882,7 @@ ${JSON.stringify(availableProperties, null, 2)}`;
               }
             }
           },
-          required: ["matches"]
+          required: ["replyEn", "replyAr", "matches"]
         }
       }
     });
