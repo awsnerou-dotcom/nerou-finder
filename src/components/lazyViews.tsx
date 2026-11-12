@@ -92,3 +92,5 @@ export const PartnershipsView = lazyView<typeof PartnershipsViewT>(() => import(
 export const PlansPricingView = lazyView<typeof PlansPricingViewT>(() => import("./PlansPricingView.js"));
 // the assistant opens full-screen on a click, so nothing of it is downloaded until then
 export const AiChat = lazyView<typeof AiChatT>(() => import("./AiChat.js"), overlayLoading);
+// Agents / Agencies / Developers: start the download early so choosing one shows it at once (no loading spinner)
+export const preloadDirectorySearch = () => { void import("./DirectorySearch.js"); };

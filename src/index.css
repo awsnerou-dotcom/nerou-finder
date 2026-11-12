@@ -209,6 +209,12 @@ html, body {
   max-width: 100%;
   overflow-x: hidden;
 }
+/* "hidden" turns <body> into its own scroll container, and that silently stops position: sticky from working
+   (the site header scrolled away with the page). "clip" cuts off sideways overflow the same way without that
+   side effect. Browsers without "clip" keep "hidden". */
+@supports (overflow: clip) {
+  html, body { overflow-x: clip; }
+}
 
 body {
   font-family: var(--font-sans);

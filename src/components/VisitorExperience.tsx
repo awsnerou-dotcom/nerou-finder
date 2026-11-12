@@ -88,7 +88,8 @@ import {
   PressView,
   PartnershipsView,
   PlansPricingView,
-  AiChat
+  AiChat,
+  preloadDirectorySearch
 } from "./lazyViews.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
@@ -181,6 +182,18 @@ export default function VisitorExperience({
   // of sight. So after a choice the page glides down to the new content and the blocks rise into place one
   // after another, instead of leaving the visitor to wonder whether anything happened.
   const heroRef = React.useRef<HTMLDivElement>(null);
+  const [heroNavEl, setHeroNavEl] = useState<HTMLDivElement | null>(null); // state, not a ref: the observer must start when the element exists
+  const chipsRef = React.useRef<HTMLDivElement>(null);
+  const STICKY_CLEARANCE = 132; // the 64px header plus the slim bar under it
+  // Agents / Agencies / Developers show their list inside the hero: bring the choice row to the top so the list is in view
+  const revealDirectory = React.useCallback(() => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = chipsRef.current;
+      if (!el) return;
+      const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - STICKY_CLEARANCE + 8), behavior: calm ? "auto" : "smooth" });
+    }));
+  }, []);
   const revealContent = React.useCallback(() => {
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const hero = heroRef.current;
@@ -189,7 +202,7 @@ export default function VisitorExperience({
       const first = results || (hero?.nextElementSibling as HTMLElement | null);
       if (!hero || !first) return;
       const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      const top = first.getBoundingClientRect().top + window.scrollY - 76; // keep clear of the sticky header
+      const top = first.getBoundingClientRect().top + window.scrollY - STICKY_CLEARANCE; // keep clear of the header and the slim bar
       window.scrollTo({ top: Math.max(0, top), behavior: calm ? "auto" : "smooth" });
       if (calm) return;
       let block: HTMLElement | null = first;
@@ -961,6 +974,46 @@ export default function VisitorExperience({
     aiErrorMsg: isRtl ? "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي نيرو فايند. الرجاء المحاولة مجددًا." : "Nerou Find AI is currently offline or starting up."
   };
 
+  // The places a visitor can go from the top of the home page. The hero shows them large; once the visitor has
+  // scrolled past the hero a slim bar (below) keeps the same choices within reach.
+    const onMarket = currentTab === "MARKETPLACE";
+    const navPrimary: { key: string; label: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; active: boolean; go: () => void }[] = [
+      { key: "browse", label: isRtl ? "تصفح" : "Browse", Icon: LayoutGrid, active: onMarket && !propType && !transType,
+        go: () => { setCurrentTab("MARKETPLACE"); setPropType(""); setTransType(""); } },
+      { key: "buy", label: isRtl ? "شراء" : "Buy", Icon: Tag, active: onMarket && transType === TransactionType.FOR_SALE,
+        go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.FOR_SALE); } },
+      { key: "rent", label: isRtl ? "إيجار" : "Rent", Icon: KeyRound, active: onMarket && transType === TransactionType.FOR_RENT,
+        go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.FOR_RENT); } },
+      { key: "offplan", label: isRtl ? "على المخطط" : "Off-Plan", Icon: HardHat, active: onMarket && transType === TransactionType.OFF_PLAN,
+        go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.OFF_PLAN); } },
+      { key: "projects", label: isRtl ? "المشاريع الكبرى" : "Masterplans", Icon: Map, active: currentTab === "PROJECTS",
+        go: () => setCurrentTab("PROJECTS") }
+    ];
+    const navSecondary: [string, string, React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>][] = [
+      ["PLANS", isRtl ? "الباقات" : "Plans", Gem],
+      ["HELP_CENTER", isRtl ? "مركز المساعدة" : "Help Center", LifeBuoy],
+      ["CAREERS", isRtl ? "وظائف" : "Careers", Briefcase],
+      ["PRESS", isRtl ? "الصحافة" : "Press", Newspaper],
+      ["PARTNERSHIPS", isRtl ? "شركاؤنا" : "Our Partners", Handshake],
+      ["LEGAL", isRtl ? "الوثائق القانونية" : "Legal Policies", Scale]
+    ];
+
+  const [navMore, setNavMore] = useState(false);
+  const [stickyNav, setStickyNav] = useState(false);
+  useEffect(() => {
+    // the slim bar takes over once the big navigation has scrolled up under the header
+    const el = heroNavEl;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([entry]) => setStickyNav(!entry.isIntersecting), { rootMargin: "-68px 0px 0px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [heroNavEl]);
+  useEffect(() => { if (!stickyNav) setNavMore(false); }, [stickyNav]);
+  useEffect(() => {
+    const id = window.setTimeout(preloadDirectorySearch, 1500);
+    return () => window.clearTimeout(id);
+  }, []);
+
   return (
     <div className="space-y-8" dir={isRtl ? "rtl" : "ltr"}>
       
@@ -991,29 +1044,10 @@ export default function VisitorExperience({
           {/* Premium navigation: the five places people browse come first as a frosted-glass bar with
               icons; the company and help pages are quieter links beneath it. Same destinations as before. */}
           {(() => {
-            const onMarket = currentTab === "MARKETPLACE";
-            const primary: { key: string; label: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>; active: boolean; go: () => void }[] = [
-              { key: "browse", label: isRtl ? "تصفح" : "Browse", Icon: LayoutGrid, active: onMarket && !propType && !transType,
-                go: () => { setCurrentTab("MARKETPLACE"); setPropType(""); setTransType(""); } },
-              { key: "buy", label: isRtl ? "شراء" : "Buy", Icon: Tag, active: onMarket && transType === TransactionType.FOR_SALE,
-                go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.FOR_SALE); } },
-              { key: "rent", label: isRtl ? "إيجار" : "Rent", Icon: KeyRound, active: onMarket && transType === TransactionType.FOR_RENT,
-                go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.FOR_RENT); } },
-              { key: "offplan", label: isRtl ? "على المخطط" : "Off-Plan", Icon: HardHat, active: onMarket && transType === TransactionType.OFF_PLAN,
-                go: () => { setCurrentTab("MARKETPLACE"); setTransType(TransactionType.OFF_PLAN); } },
-              { key: "projects", label: isRtl ? "المشاريع الكبرى" : "Masterplans", Icon: Map, active: currentTab === "PROJECTS",
-                go: () => setCurrentTab("PROJECTS") }
-            ];
-            const secondary: [string, string, React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>][] = [
-              ["PLANS", isRtl ? "الباقات" : "Plans", Gem],
-              ["HELP_CENTER", isRtl ? "مركز المساعدة" : "Help Center", LifeBuoy],
-              ["CAREERS", isRtl ? "وظائف" : "Careers", Briefcase],
-              ["PRESS", isRtl ? "الصحافة" : "Press", Newspaper],
-              ["PARTNERSHIPS", isRtl ? "شركاؤنا" : "Our Partners", Handshake],
-              ["LEGAL", isRtl ? "الوثائق القانونية" : "Legal Policies", Scale]
-            ];
+            const primary = navPrimary;
+            const secondary = navSecondary;
             return (
-              <div className="pt-2 pb-3 flex flex-col gap-3">
+              <div ref={setHeroNavEl} className="pt-2 pb-3 flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <nav aria-label={isRtl ? "تصفح العقارات" : "Browse"} className="w-full sm:w-auto max-w-full">
                     <div className="grid grid-cols-5 sm:inline-flex items-stretch sm:items-center gap-1 p-1.5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/15 shadow-[0_10px_34px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.08)]">
@@ -1082,7 +1116,7 @@ export default function VisitorExperience({
               {/* Search mode toggle - "Properties" keeps the existing filter/AI search
                   entirely unchanged; the other three switch to a separate agent/agency/
                   developer identity lookup (DirectorySearch.tsx), not a property search. */}
-              <div className="max-w-3xl flex flex-wrap gap-2 mb-5" role="tablist">
+              <div ref={chipsRef} className="max-w-3xl flex flex-wrap gap-2 mb-5" role="tablist">
                 {([
                   ["PROPERTIES", isRtl ? "العقارات" : "Properties", HomeIcon],
                   ["AGENT", isRtl ? "الوكلاء" : "Agents", UserRound],
@@ -1093,7 +1127,10 @@ export default function VisitorExperience({
                     key={mode}
                     role="tab"
                     aria-selected={searchMode === mode}
-                    onClick={() => setSearchMode(mode)}
+                    onClick={() => { setSearchMode(mode); if (mode === "PROPERTIES") revealContent(); else revealDirectory(); }}
+                    onMouseEnter={preloadDirectorySearch}
+                    onFocus={preloadDirectorySearch}
+                    onTouchStart={preloadDirectorySearch}
                     className={`group flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold backdrop-blur-sm border transition-all duration-200 cursor-pointer active:scale-95 ${isRtl ? "" : "tracking-wide"} ${
                       searchMode === mode
                         ? "nav-pop bg-white text-[#1a1714] border-transparent shadow-[0_4px_14px_rgba(0,0,0,0.38)]"
@@ -1107,7 +1144,7 @@ export default function VisitorExperience({
               </div>
 
               {searchMode !== "PROPERTIES" ? (
-                <div key={searchMode} className="max-w-5xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div key={searchMode} className="max-w-5xl min-h-[22rem] animate-in fade-in duration-300">
                   <DirectorySearch
                     type={searchMode}
                     isRtl={isRtl}
@@ -1123,7 +1160,7 @@ export default function VisitorExperience({
                   />
                 </div>
               ) : (
-              <div key="headline" className="max-w-3xl space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div key="headline" className="max-w-3xl space-y-5 animate-in fade-in duration-300">
                 {/* The page's one H1: here on the home page, or in the landing block on a landing page. */}
                 {React.createElement(
                   landingPathRef.current ? "h2" : "h1",
@@ -1661,35 +1698,6 @@ export default function VisitorExperience({
 
       {landingPathRef.current && currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && (
         <LandingFaq path={landingPathRef.current} isRtl={isRtl} />
-      )}
-
-      {/* Nerou Find AI: the full-screen assistant. Opening a listing from it closes it; the conversation is kept. */}
-      {aiChat && (
-        <AiChat
-          isRtl={isRtl}
-          initialPrompt={aiChat.prompt}
-          onClose={() => setAiChat(null)}
-          onOpenProperty={(p) => { setAiChat(null); setSelectedProperty(p); }}
-        />
-      )}
-
-      {/* A floating way into Nerou Find AI from anywhere on the public site */}
-      {!aiChat && (
-        <button
-          type="button"
-          onClick={() => openAiChat()}
-          aria-label={isRtl ? "اسأل مساعد نيرو الذكي" : "Ask Nerou AI"}
-          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-14 min-w-14 justify-center sm:ps-4 sm:pe-5 rounded-full text-white bg-[#1a1714] ring-1 ring-[#bf9b30]/55 border border-white/15 shadow-[0_12px_32px_rgba(0,0,0,0.45)] hover:ring-[#bf9b30] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 cursor-pointer"
-        >
-          <span className="relative flex">
-            <NerouAiMark size={24} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
-            <span className="absolute -top-1 -end-1 flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-[#bf9b30] opacity-70 animate-ping" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#bf9b30]" />
-            </span>
-          </span>
-          <span className="hidden sm:inline text-sm font-bold whitespace-nowrap">{isRtl ? "اسأل نيرو AI" : "Ask Nerou AI"}</span>
-        </button>
       )}
 
       {/* 5. Detailed Property Overlay Modal Drawer */}
@@ -2358,6 +2366,112 @@ export default function VisitorExperience({
         </div>
       )}
 
+
+      {/* Page-level overlays: present on every tab of the public site, not only on the listings */}
+      {/* Nerou Find AI: the full-screen assistant. Opening a listing from it closes it; the conversation is kept. */}
+      {aiChat && (
+        <AiChat
+          isRtl={isRtl}
+          initialPrompt={aiChat.prompt}
+          onClose={() => setAiChat(null)}
+          onOpenProperty={(p) => { setAiChat(null); setSelectedProperty(p); }}
+        />
+      )}
+
+      {/* Slim navigation: appears once the hero has scrolled away, so the choices never disappear from the screen */}
+      {stickyNav && (
+        <div style={{ marginTop: 0 }} className="fixed top-16 inset-x-0 z-30 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-[#14110f]/90 backdrop-blur-md border-b border-white/10 shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
+            <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-2 flex items-center gap-2">
+              <nav aria-label={isRtl ? "التنقل السريع" : "Quick navigation"} className="grid grid-cols-6 sm:flex items-center gap-1 flex-1 min-w-0">
+                {navPrimary.map(({ key, label, Icon, active, go }) => (
+                  <button
+                    key={key}
+                    onClick={() => { go(); setNavMore(false); revealContent(); }}
+                    aria-current={active ? "page" : undefined}
+                    className={`group flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 px-1 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[12.5px] leading-tight text-center font-semibold sm:whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95 ${
+                      active ? "bg-white text-[#1a1714]" : "text-white/85 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <Icon size={15} strokeWidth={active ? 2.4 : 1.9} className={active ? "text-[#1a1714]" : "text-white/75 group-hover:text-white"} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+                <span className="hidden xl:block w-px h-6 bg-white/15 mx-1" aria-hidden="true" />
+                {navSecondary.map(([key, label, Icon]) => (
+                  <button
+                    key={key}
+                    onClick={() => { setCurrentTab(key as typeof currentTab); setNavMore(false); revealContent(); }}
+                    aria-current={currentTab === key ? "page" : undefined}
+                    className={`hidden xl:flex items-center gap-2 px-3 py-2 rounded-xl text-[12.5px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95 ${
+                      currentTab === key ? "bg-white text-[#1a1714]" : "text-white/85 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <Icon size={14} strokeWidth={currentTab === key ? 2.4 : 1.9} className={currentTab === key ? "text-[#1a1714]" : "text-white/75"} />
+                    <span>{label}</span>
+                  </button>
+                ))}
+                <button
+                  onClick={() => setNavMore(v => !v)}
+                  aria-expanded={navMore}
+                  aria-label={isRtl ? "المزيد" : "More"}
+                  className={`xl:hidden group flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 px-1 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[12.5px] leading-tight font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
+                    navMore || navSecondary.some(([k]) => k === currentTab) ? "bg-white/15 text-white" : "text-white/85 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <ChevronDown size={15} className={`transition-transform duration-300 ${navMore ? "rotate-180" : ""}`} />
+                  <span>{isRtl ? "المزيد" : "More"}</span>
+                </button>
+              </nav>
+            </div>
+            {navMore && (
+              <div className="xl:hidden border-t border-white/10 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap gap-2">
+                  {navSecondary.map(([key, label, Icon]) => (
+                    <button
+                      key={key}
+                      onClick={() => { setCurrentTab(key as typeof currentTab); setNavMore(false); revealContent(); }}
+                      aria-current={currentTab === key ? "page" : undefined}
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-[12.5px] font-semibold whitespace-nowrap border transition-all duration-200 cursor-pointer active:scale-95 ${
+                        currentTab === key ? "bg-white text-[#1a1714] border-transparent" : "bg-white/10 text-white/90 border-white/15 hover:bg-white/20"
+                      }`}
+                    >
+                      <Icon size={14} strokeWidth={1.9} className={currentTab === key ? "text-[#1a1714]" : "text-white/75"} />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => { setCurrentTab("SUPPORT_TICKETS"); setNavMore(false); revealContent(); }}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-full text-[12.5px] font-semibold whitespace-nowrap border bg-white/10 text-white/90 border-white/15 hover:bg-white/20 transition-all duration-200 cursor-pointer active:scale-95"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-500" aria-hidden="true" />
+                    <span>{isRtl ? "تذاكر الدعم" : "My Support Desk"}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* A floating way into Nerou Find AI from anywhere on the public site */}
+      {!aiChat && (
+        <button
+          type="button"
+          onClick={() => openAiChat()}
+          aria-label={isRtl ? "اسأل مساعد نيرو الذكي" : "Ask Nerou AI"}
+          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-14 min-w-14 justify-center sm:ps-4 sm:pe-5 rounded-full text-white bg-[#1a1714] ring-1 ring-[#bf9b30]/55 border border-white/15 shadow-[0_12px_32px_rgba(0,0,0,0.45)] hover:ring-[#bf9b30] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 cursor-pointer"
+        >
+          <span className="relative flex">
+            <NerouAiMark size={24} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
+            <span className="absolute -top-1 -end-1 flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-[#bf9b30] opacity-70 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#bf9b30]" />
+            </span>
+          </span>
+          <span className="hidden sm:inline text-sm font-bold whitespace-nowrap">{isRtl ? "اسأل نيرو AI" : "Ask Nerou AI"}</span>
+        </button>
+      )}
     </div>
   );
 }
