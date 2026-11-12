@@ -7855,7 +7855,7 @@ ${JSON.stringify(availableProperties, null, 2)}`;
       parts: [{ text: `Visitor Search Request: "${prompt}"` }]
     });
 
-    const response = await ai.models.generateContent({
+    const callModel = () => ai.models.generateContent({
       model: cfg.modelConfiguration?.model || "gemini-3.6-flash",
       contents,
       config: {
@@ -7886,6 +7886,20 @@ ${JSON.stringify(availableProperties, null, 2)}`;
         }
       }
     });
+
+    // The model usually answers in 4-5 seconds but now and then stalls for a minute. A visitor waiting in a
+    // chat should not sit through that: cut the slow attempt off and ask again once.
+    const withTimeout = <T,>(p: Promise<T>, ms: number) => new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("The AI model took too long to answer.")), ms);
+      p.then(v => { clearTimeout(timer); resolve(v); }, e => { clearTimeout(timer); reject(e); });
+    });
+    let response: Awaited<ReturnType<typeof callModel>>;
+    try {
+      response = await withTimeout(callModel(), 18_000);
+    } catch (firstError: any) {
+      console.warn("AI search attempt failed or was slow, retrying once:", firstError?.message);
+      response = await withTimeout(callModel(), 25_000);
+    }
 
     const textResult = response.text;
     if (!textResult) {

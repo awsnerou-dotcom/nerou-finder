@@ -25,7 +25,6 @@ import { getThumbnailUrl } from "../lib/image.js";
 import FeaturedAgencies from "./FeaturedAgencies.js";
 import {
   Search,
-  Sparkles,
   MapPin,
   Bed,
   Bath,
@@ -61,11 +60,18 @@ import {
   HardHat,
   UserRound,
   Home as HomeIcon,
-  ArrowUp
+  ArrowUp,
+  Gem,
+  LifeBuoy,
+  Briefcase,
+  Newspaper,
+  Handshake,
+  Scale
 } from "lucide-react";
 
 // Enterprise & Public Sub-Pages
 import PhotoHero from "./PhotoHero.js";
+import NerouAiMark from "./NerouAiMark.js";
 import {
   DirectorySearch,
   PropertyDetailView,
@@ -953,7 +959,7 @@ export default function VisitorExperience({
       <div className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-[clamp(440px,42vw,640px)]">
         <PhotoHero />
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
-          <Sparkles size={160} />
+          <NerouAiMark size={160} strokeWidth={1.2} />
         </div>
 
         <div className="relative z-10 pt-24 max-w-7xl mx-auto px-4 md:px-6">
@@ -973,13 +979,13 @@ export default function VisitorExperience({
               { key: "projects", label: isRtl ? "المشاريع الكبرى" : "Masterplans", Icon: Map, active: currentTab === "PROJECTS",
                 go: () => setCurrentTab("PROJECTS") }
             ];
-            const secondary: [string, string, string][] = [
-              ["PLANS", isRtl ? "الباقات" : "Plans", "PLANS"],
-              ["HELP_CENTER", isRtl ? "مركز المساعدة" : "Help Center", "HELP_CENTER"],
-              ["CAREERS", isRtl ? "وظائف" : "Careers", "CAREERS"],
-              ["PRESS", isRtl ? "الصحافة" : "Press", "PRESS"],
-              ["PARTNERSHIPS", isRtl ? "شركاؤنا" : "Our Partners", "PARTNERSHIPS"],
-              ["LEGAL", isRtl ? "الوثائق القانونية" : "Legal Policies", "LEGAL"]
+            const secondary: [string, string, React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>][] = [
+              ["PLANS", isRtl ? "الباقات" : "Plans", Gem],
+              ["HELP_CENTER", isRtl ? "مركز المساعدة" : "Help Center", LifeBuoy],
+              ["CAREERS", isRtl ? "وظائف" : "Careers", Briefcase],
+              ["PRESS", isRtl ? "الصحافة" : "Press", Newspaper],
+              ["PARTNERSHIPS", isRtl ? "شركاؤنا" : "Our Partners", Handshake],
+              ["LEGAL", isRtl ? "الوثائق القانونية" : "Legal Policies", Scale]
             ];
             return (
               <div className="pt-2 pb-3 flex flex-col gap-3">
@@ -989,7 +995,7 @@ export default function VisitorExperience({
                     onClick={() => openAiChat()}
                     className="group flex items-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-bold text-black bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] shadow-[0_8px_26px_rgba(191,155,48,0.5)] hover:shadow-[0_10px_32px_rgba(191,155,48,0.65)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer whitespace-nowrap"
                   >
-                    <Sparkles size={16} strokeWidth={2.4} className="transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
+                    <NerouAiMark size={18} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
                     <span>{isRtl ? "اسأل الذكاء الاصطناعي" : "Ask AI"}</span>
                   </button>
                   <nav aria-label={isRtl ? "تصفح العقارات" : "Browse"} className="max-w-full overflow-x-auto scrollbar-none">
@@ -1029,21 +1035,27 @@ export default function VisitorExperience({
                   </button>
                 </div>
 
-                <nav aria-label={isRtl ? "الشركة والمساعدة" : "Company and help"} className="self-start flex flex-wrap items-center gap-x-0.5 gap-y-1 px-2 py-1 rounded-full bg-black/35 backdrop-blur-md border border-white/10 text-[12px]">
-                  {secondary.map(([key, label, tab], i) => (
-                    <React.Fragment key={key}>
-                      {i > 0 && <span className="text-white/25" aria-hidden="true">·</span>}
-                      <button
-                        onClick={() => setCurrentTab(tab as typeof currentTab)}
-                        aria-current={currentTab === tab ? "page" : undefined}
-                        className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
-                          currentTab === tab ? "text-gold bg-white/10" : "text-white/85 hover:text-white hover:bg-white/10"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    </React.Fragment>
-                  ))}
+                <nav aria-label={isRtl ? "الشركة والمساعدة" : "Company and help"} className="max-w-full overflow-x-auto scrollbar-none">
+                  <div className="inline-flex items-center gap-2 pb-1">
+                    {secondary.map(([key, label, Icon]) => {
+                      const on = currentTab === key;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setCurrentTab(key as typeof currentTab)}
+                          aria-current={on ? "page" : undefined}
+                          className={`group flex items-center gap-2 px-3.5 py-2 rounded-full text-[12.5px] font-semibold whitespace-nowrap backdrop-blur-md border transition-all duration-200 cursor-pointer ${
+                            on
+                              ? "bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] text-black border-transparent shadow-[0_4px_16px_rgba(191,155,48,0.45)]"
+                              : "bg-black/35 text-white/90 border-white/15 hover:bg-black/55 hover:border-gold/60 hover:text-white hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
+                          }`}
+                        >
+                          <Icon size={14} strokeWidth={on ? 2.4 : 1.9} className={on ? "text-black" : "text-gold transition-transform duration-200 group-hover:scale-110"} />
+                          <span>{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </nav>
               </div>
             );
@@ -1101,7 +1113,7 @@ export default function VisitorExperience({
                   onClick={() => openAiChat()}
                   className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-black bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] shadow-[0_4px_16px_rgba(191,155,48,0.45)] hover:shadow-[0_6px_22px_rgba(191,155,48,0.6)] transition-shadow cursor-pointer ${isRtl ? "" : "uppercase tracking-wider"}`}
                 >
-                  <Sparkles size={14} />
+                  <NerouAiMark size={15} strokeWidth={2.2} />
                   <span>{t.aiTitle}</span>
                 </button>
                 {/* The page's one H1: here on the home page, or in the landing block on a landing page. */}
@@ -1114,7 +1126,7 @@ export default function VisitorExperience({
                 {/* The question box: asking opens the assistant already answering it */}
                 <form onSubmit={(e) => { e.preventDefault(); openAiChat(aiPrompt); }} className="mt-4 space-y-3">
                   <div className="flex items-center gap-2 p-1.5 ps-4 rounded-2xl bg-black/45 backdrop-blur-md border border-white/20 focus-within:border-gold/80 shadow-[0_10px_34px_rgba(0,0,0,0.4)] transition-colors">
-                    <Sparkles size={18} className="text-gold shrink-0" />
+                    <NerouAiMark size={20} className="text-gold shrink-0" />
                     <input
                       type="text"
                       value={aiPrompt}
@@ -1125,9 +1137,9 @@ export default function VisitorExperience({
                     />
                     <button
                       type="submit"
-                      className="px-5 py-2.5 rounded-xl bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] text-black font-bold text-sm flex items-center gap-2 shadow-[0_4px_14px_rgba(191,155,48,0.45)] hover:shadow-[0_6px_20px_rgba(191,155,48,0.6)] transition-shadow cursor-pointer whitespace-nowrap"
+                      className="px-3.5 sm:px-5 py-2.5 rounded-xl bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] text-black font-bold text-sm flex items-center gap-2 shadow-[0_4px_14px_rgba(191,155,48,0.45)] hover:shadow-[0_6px_20px_rgba(191,155,48,0.6)] transition-shadow cursor-pointer whitespace-nowrap"
                     >
-                      <span>{isRtl ? "اسأل" : "Ask AI"}</span>
+                      <span className="hidden sm:inline">{isRtl ? "اسأل" : "Ask AI"}</span>
                       <ArrowUp size={16} strokeWidth={2.6} />
                     </button>
                   </div>
@@ -1675,6 +1687,25 @@ export default function VisitorExperience({
           onClose={() => setAiChat(null)}
           onOpenProperty={(p) => { setAiChat(null); setSelectedProperty(p); }}
         />
+      )}
+
+      {/* A floating way into Nerou Find AI from anywhere on the public site */}
+      {!aiChat && (
+        <button
+          type="button"
+          onClick={() => openAiChat()}
+          aria-label={isRtl ? "اسأل مساعد نيرو الذكي" : "Ask Nerou AI"}
+          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-14 min-w-14 justify-center sm:ps-4 sm:pe-5 rounded-full text-black bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] shadow-[0_10px_30px_rgba(191,155,48,0.55)] hover:shadow-[0_14px_38px_rgba(191,155,48,0.7)] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 cursor-pointer"
+        >
+          <span className="relative flex">
+            <NerouAiMark size={24} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
+            <span className="absolute -top-1 -end-1 flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-black/40 opacity-70 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-black/80" />
+            </span>
+          </span>
+          <span className="hidden sm:inline text-sm font-bold whitespace-nowrap">{isRtl ? "اسأل نيرو AI" : "Ask Nerou AI"}</span>
+        </button>
       )}
 
       {/* 5. Detailed Property Overlay Modal Drawer */}

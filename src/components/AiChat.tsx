@@ -4,7 +4,8 @@
  */
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowUp, Bath, Bed, Maximize2, MapPin, RotateCcw, Sparkles, SquarePen, X, Building2, Home, KeyRound, HardHat } from "lucide-react";
+import { ArrowUp, Bath, Bed, Maximize2, MapPin, RotateCcw, SquarePen, X, Building2, Home, KeyRound, HardHat, ChevronRight, ChevronLeft } from "lucide-react";
+import NerouAiMark from "./NerouAiMark.js";
 import { Property, TransactionType } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
 import { getThumbnailUrl } from "../lib/image.js";
@@ -41,6 +42,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
   const [conversationId, setConversationId] = useState(() => saved?.conversationId ?? newConversationId());
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [slow, setSlow] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
   const startedRef = useRef(false);
@@ -73,11 +75,16 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
     requestAnimationFrame(grow);
     setMessages(m => [...m, { id: newId(), role: "user", text: question }]);
     setBusy(true);
+    setSlow(false);
+    const slowTimer = setTimeout(() => setSlow(true), 10_000);
+    const abort = new AbortController();
+    const giveUp = setTimeout(() => abort.abort(), 70_000);
     try {
       const res = await fetch("/api/ai/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: question, conversationId })
+        body: JSON.stringify({ prompt: question, conversationId }),
+        signal: abort.signal
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.error) throw new Error(data.error || "failed");
@@ -103,6 +110,9 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
         text: t("Sorry, I could not complete that search just now. Please try again in a moment.", "عذراً، تعذّر إكمال البحث الآن. يرجى المحاولة بعد قليل.")
       }]);
     } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(giveUp);
+      setSlow(false);
       setBusy(false);
       boxRef.current?.focus();
     }
@@ -156,7 +166,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6 py-3 border-b border-white/10 bg-black/30 backdrop-blur-md">
         <div className="flex items-center gap-3 min-w-0">
           <span className={`w-9 h-9 shrink-0 rounded-xl ${gold} flex items-center justify-center shadow-[0_4px_16px_rgba(191,155,48,0.45)]`}>
-            <Sparkles size={18} className="text-black" />
+            <NerouAiMark size={20} strokeWidth={2.1} className="text-black" />
           </span>
           <div className="min-w-0 leading-tight">
             <p className="font-serif text-base font-semibold truncate">Nerou Find AI</p>
@@ -183,7 +193,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
             <div className="pt-6 sm:pt-12 text-center space-y-8">
               <div className="space-y-4">
                 <span className={`mx-auto w-16 h-16 rounded-2xl ${gold} flex items-center justify-center shadow-[0_10px_40px_rgba(191,155,48,0.45)]`}>
-                  <Sparkles size={30} className="text-black" />
+                  <NerouAiMark size={34} strokeWidth={2} className="text-black" />
                 </span>
                 <h2 className="text-2xl sm:text-4xl font-serif font-medium leading-tight">
                   {t("What kind of property are you looking for?", "ما نوع العقار الذي تبحث عنه؟")}
@@ -196,9 +206,12 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-start">
                 {starters.map(([Icon, label]) => (
                   <button key={label} onClick={() => ask(label)}
-                    className="group flex items-start gap-3 p-4 rounded-2xl bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-gold/50 transition-all cursor-pointer">
+                    className="group flex items-start gap-3 p-4 rounded-2xl bg-white/[0.05] border border-white/15 hover:bg-white/[0.09] hover:border-gold/60 hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer">
                     <Icon size={18} className="text-gold mt-0.5 shrink-0 transition-transform group-hover:scale-110" />
-                    <span className="text-sm text-white/90 leading-snug">{label}</span>
+                    <span className="flex-1 text-sm text-white/90 leading-snug">{label}</span>
+                    {isRtl
+                      ? <ChevronLeft size={16} className="text-white/30 mt-0.5 shrink-0 transition-all group-hover:text-gold group-hover:-translate-x-0.5" />
+                      : <ChevronRight size={16} className="text-white/30 mt-0.5 shrink-0 transition-all group-hover:text-gold group-hover:translate-x-0.5" />}
                   </button>
                 ))}
               </div>
@@ -211,7 +224,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
             </div>
           ) : (
             <div key={m.id} className="flex gap-3">
-              <span className={`w-8 h-8 shrink-0 rounded-lg ${gold} flex items-center justify-center mt-0.5`}><Sparkles size={15} className="text-black" /></span>
+              <span className={`w-8 h-8 shrink-0 rounded-lg ${gold} flex items-center justify-center mt-0.5`}><NerouAiMark size={17} strokeWidth={2.1} className="text-black" /></span>
               <div className="min-w-0 flex-1 space-y-4">
                 <p className="text-[15px] leading-relaxed text-white/95 whitespace-pre-wrap break-words">{m.text}</p>
                 {m.failed && (
@@ -265,12 +278,14 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
 
           {busy && (
             <div className="flex gap-3" role="status" aria-live="polite">
-              <span className={`w-8 h-8 shrink-0 rounded-lg ${gold} flex items-center justify-center mt-0.5`}><Sparkles size={15} className="text-black animate-pulse" /></span>
+              <span className={`w-8 h-8 shrink-0 rounded-lg ${gold} flex items-center justify-center mt-0.5`}><NerouAiMark size={17} strokeWidth={2.1} className="text-black animate-pulse" /></span>
               <div className="flex items-center gap-3 pt-1.5">
                 <span className="flex gap-1.5" aria-hidden="true">
                   {[0, 150, 300].map(d => <span key={d} className="w-2 h-2 rounded-full bg-gold animate-bounce" style={{ animationDelay: `${d}ms` }} />)}
                 </span>
-                <span className="text-xs text-white/55">{t("Searching the live listings...", "جارٍ البحث في العقارات المتاحة...")}</span>
+                <span className="text-xs text-white/55">{slow
+                  ? t("Still searching, this is taking a little longer than usual...", "ما زلت أبحث، الأمر يستغرق وقتاً أطول قليلاً من المعتاد...")
+                  : t("Searching the live listings...", "جارٍ البحث في العقارات المتاحة...")}</span>
               </div>
             </div>
           )}

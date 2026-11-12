@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import NerouAiMark from "./components/NerouAiMark.js";
 import { COMPANY, companyCrLabel } from "./companyInfo.js";
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
 import VisitorExperience from "./components/VisitorExperience.js";
@@ -22,7 +23,6 @@ import {
   UserCheck,
   Eye,
   ShieldCheck,
-  Sparkles,
   Building2,
   LogIn,
   LogOut,
@@ -726,7 +726,7 @@ export default function App() {
                   : "bg-gradient-to-r from-ink-inverse to-[#f8f2e0] border border-gold/40 text-gold-active"
               }`}
             >
-              <Sparkles size={11} className="text-gold animate-pulse" />
+              <NerouAiMark size={12} className="text-gold animate-pulse" />
               <span>{isRtl ? "الذكاء الاصطناعي نشط" : "AI-Powered Search"}</span>
             </div>
           </div>
