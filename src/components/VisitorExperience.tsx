@@ -182,7 +182,6 @@ export default function VisitorExperience({
   // of sight. So after a choice the page glides down to the new content and the blocks rise into place one
   // after another, instead of leaving the visitor to wonder whether anything happened.
   const heroRef = React.useRef<HTMLDivElement>(null);
-  const [heroNavEl, setHeroNavEl] = useState<HTMLDivElement | null>(null); // state, not a ref: the observer must start when the element exists
   const chipsRef = React.useRef<HTMLDivElement>(null);
   const STICKY_CLEARANCE = 132; // the 64px header plus the slim bar under it
   // Agents / Agencies / Developers show their list inside the hero: bring the choice row to the top so the list is in view
@@ -999,16 +998,6 @@ export default function VisitorExperience({
     ];
 
   const [navMore, setNavMore] = useState(false);
-  const [stickyNav, setStickyNav] = useState(false);
-  useEffect(() => {
-    // the slim bar takes over once the big navigation has scrolled up under the header
-    const el = heroNavEl;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([entry]) => setStickyNav(!entry.isIntersecting), { rootMargin: "-68px 0px 0px 0px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, [heroNavEl]);
-  useEffect(() => { if (!stickyNav) setNavMore(false); }, [stickyNav]);
   useEffect(() => {
     const id = window.setTimeout(preloadDirectorySearch, 1500);
     return () => window.clearTimeout(id);
@@ -1040,76 +1029,8 @@ export default function VisitorExperience({
           <NerouAiMark size={160} strokeWidth={1.2} />
         </div>
 
-        <div className="relative z-10 pt-24 max-w-7xl mx-auto px-4 md:px-6 flex flex-col min-h-[clamp(600px,46vw,700px)]">
-          {/* Premium navigation: the five places people browse come first as a frosted-glass bar with
-              icons; the company and help pages are quieter links beneath it. Same destinations as before. */}
-          {(() => {
-            const primary = navPrimary;
-            const secondary = navSecondary;
-            return (
-              <div ref={setHeroNavEl} className="pt-2 pb-3 flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <nav aria-label={isRtl ? "تصفح العقارات" : "Browse"} className="w-full sm:w-auto max-w-full">
-                    <div className="grid grid-cols-5 sm:inline-flex items-stretch sm:items-center gap-1 p-1.5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/15 shadow-[0_10px_34px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.08)]">
-                      {primary.map(({ key, label, Icon, active, go }) => (
-                        <button
-                          key={key}
-                          onClick={() => { go(); revealContent(); }}
-                          aria-current={active ? "page" : undefined}
-                          className={`group relative flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10.5px] sm:text-[13px] leading-tight text-center font-semibold sm:whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95 ${
-                            active
-                              ? "nav-pop bg-white text-[#1a1714] shadow-[0_4px_16px_rgba(0,0,0,0.38)]"
-                              : "text-white/85 hover:text-white hover:bg-white/10"
-                          }`}
-                        >
-                          <Icon size={16} strokeWidth={active ? 2.4 : 1.9} className={active ? "text-[#1a1714]" : "text-white/75 transition-transform duration-200 group-hover:scale-110"} />
-                          <span className={isRtl ? "" : "tracking-wide"}>{label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </nav>
-
-                  <button
-                    onClick={() => { setCurrentTab("SUPPORT_TICKETS"); revealContent(); }}
-                    className={`px-3.5 py-2 rounded-full border text-[12px] font-semibold backdrop-blur-sm transition-all cursor-pointer active:scale-95 flex items-center gap-2 ${
-                      currentTab === "SUPPORT_TICKETS"
-                        ? "bg-red-500/15 text-red-200 border-red-400/50"
-                        : "bg-black/25 border-white/15 text-white/80 hover:bg-white/10 hover:text-white"
-                    }`}
-                  >
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-60 animate-ping"></span>
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
-                    </span>
-                    <span>{isRtl ? "تذاكر الدعم" : "My Support Desk"}</span>
-                  </button>
-                </div>
-
-                <nav aria-label={isRtl ? "الشركة والمساعدة" : "Company and help"} className="max-w-full">
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                    {secondary.map(([key, label, Icon]) => {
-                      const on = currentTab === key;
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => { setCurrentTab(key as typeof currentTab); revealContent(); }}
-                          aria-current={on ? "page" : undefined}
-                          className={`group flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-full text-[11.5px] sm:text-[12.5px] font-semibold whitespace-nowrap backdrop-blur-md border transition-all duration-200 cursor-pointer active:scale-95 ${
-                            on
-                              ? "nav-pop bg-white text-[#1a1714] border-transparent shadow-[0_4px_16px_rgba(0,0,0,0.38)]"
-                              : "bg-black/35 text-white/90 border-white/15 hover:bg-black/55 hover:border-white/50 hover:text-white hover:-translate-y-0.5 hover:shadow-[0_6px_18px_rgba(0,0,0,0.35)]"
-                          }`}
-                        >
-                          <Icon size={14} strokeWidth={on ? 2.4 : 1.9} className={on ? "text-[#1a1714]" : "text-white/75 transition-transform duration-200 group-hover:scale-110"} />
-                          <span>{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </nav>
-              </div>
-            );
-          })()}
+        <div className="relative z-10 pt-32 max-w-7xl mx-auto px-4 md:px-6 flex flex-col min-h-[clamp(600px,46vw,700px)]">
+          {/* The navigation lives in the bar fixed under the header (below): the hero keeps the headline, the AI button and the choice row. */}
 
           {currentTab === "MARKETPLACE" && (
             <div className="mt-auto text-white pt-10 pb-8 md:pb-12">
@@ -2378,9 +2299,9 @@ export default function VisitorExperience({
         />
       )}
 
-      {/* Slim navigation: appears once the hero has scrolled away, so the choices never disappear from the screen */}
-      {stickyNav && (
-        <div style={{ marginTop: 0 }} className="fixed top-16 inset-x-0 z-30 animate-in fade-in slide-in-from-top-2 duration-300">
+      {/* The site's navigation: always on screen, fixed under the header, on every tab */}
+      {(
+        <div style={{ marginTop: 0 }} className="fixed top-16 inset-x-0 z-30">
           <div className="bg-[#14110f]/90 backdrop-blur-md border-b border-white/10 shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
             <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-2 flex items-center gap-2">
               <nav aria-label={isRtl ? "التنقل السريع" : "Quick navigation"} className="grid grid-cols-6 sm:flex items-center gap-1 flex-1 min-w-0">
@@ -2397,13 +2318,13 @@ export default function VisitorExperience({
                     <span>{label}</span>
                   </button>
                 ))}
-                <span className="hidden xl:block w-px h-6 bg-white/15 mx-1" aria-hidden="true" />
+                <span className="hidden 2xl:block w-px h-6 bg-white/15 mx-1" aria-hidden="true" />
                 {navSecondary.map(([key, label, Icon]) => (
                   <button
                     key={key}
                     onClick={() => { setCurrentTab(key as typeof currentTab); setNavMore(false); revealContent(); }}
                     aria-current={currentTab === key ? "page" : undefined}
-                    className={`hidden xl:flex items-center gap-2 px-3 py-2 rounded-xl text-[12.5px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95 ${
+                    className={`hidden 2xl:flex items-center gap-2 px-3 py-2 rounded-xl text-[12.5px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95 ${
                       currentTab === key ? "bg-white text-[#1a1714]" : "text-white/85 hover:text-white hover:bg-white/10"
                     }`}
                   >
@@ -2412,10 +2333,20 @@ export default function VisitorExperience({
                   </button>
                 ))}
                 <button
+                  onClick={() => { setCurrentTab("SUPPORT_TICKETS"); setNavMore(false); revealContent(); }}
+                  aria-current={currentTab === "SUPPORT_TICKETS" ? "page" : undefined}
+                  className={`hidden 2xl:flex ms-auto items-center gap-2 px-3 py-2 rounded-xl text-[12.5px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95 ${
+                    currentTab === "SUPPORT_TICKETS" ? "bg-white text-[#1a1714]" : "text-white/85 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-red-500" aria-hidden="true" />
+                  <span>{isRtl ? "تذاكر الدعم" : "My Support Desk"}</span>
+                </button>
+                <button
                   onClick={() => setNavMore(v => !v)}
                   aria-expanded={navMore}
                   aria-label={isRtl ? "المزيد" : "More"}
-                  className={`xl:hidden group flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 px-1 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[12.5px] leading-tight font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
+                  className={`2xl:hidden group flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 px-1 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[12.5px] leading-tight font-semibold transition-all duration-200 cursor-pointer active:scale-95 ${
                     navMore || navSecondary.some(([k]) => k === currentTab) ? "bg-white/15 text-white" : "text-white/85 hover:text-white hover:bg-white/10"
                   }`}
                 >
@@ -2425,7 +2356,7 @@ export default function VisitorExperience({
               </nav>
             </div>
             {navMore && (
-              <div className="xl:hidden border-t border-white/10 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="2xl:hidden border-t border-white/10 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap gap-2">
                   {navSecondary.map(([key, label, Icon]) => (
                     <button
