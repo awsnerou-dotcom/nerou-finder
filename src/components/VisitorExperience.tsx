@@ -2302,7 +2302,7 @@ export default function VisitorExperience({
       {/* The site's navigation: always on screen, fixed under the header, on every tab */}
       {(
         <div style={{ marginTop: 0 }} className="fixed top-16 inset-x-0 z-30">
-          <div className="bg-[#14110f]/90 backdrop-blur-md border-b border-white/10 shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
+          <div className="bg-[linear-gradient(180deg,rgba(16,32,56,0.96)_0%,rgba(10,22,40,0.93)_100%)] backdrop-blur-md border-b border-[#d9c58b]/30 shadow-[0_10px_28px_rgba(6,14,28,0.38)]">
             <div className="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-2 flex items-center gap-2">
               <nav aria-label={isRtl ? "التنقل السريع" : "Quick navigation"} className="grid grid-cols-6 sm:flex items-center gap-1 flex-1 min-w-0">
                 {navPrimary.map(({ key, label, Icon, active, go }) => (
@@ -2311,10 +2311,10 @@ export default function VisitorExperience({
                     onClick={() => { go(); setNavMore(false); revealContent(); }}
                     aria-current={active ? "page" : undefined}
                     className={`group flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-2 px-1 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-[12.5px] leading-tight text-center font-semibold sm:whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95 ${
-                      active ? "bg-white text-[#1a1714]" : "text-white/85 hover:text-white hover:bg-white/10"
+                      active ? "bg-white text-[#0e1b2e]" : "text-white/85 hover:text-white hover:bg-white/10"
                     }`}
                   >
-                    <Icon size={15} strokeWidth={active ? 2.4 : 1.9} className={active ? "text-[#1a1714]" : "text-white/75 group-hover:text-white"} />
+                    <Icon size={15} strokeWidth={active ? 2.4 : 1.9} className={active ? "text-[#0e1b2e]" : "text-white/75 group-hover:text-white"} />
                     <span>{label}</span>
                   </button>
                 ))}
@@ -2325,10 +2325,10 @@ export default function VisitorExperience({
                     onClick={() => { setCurrentTab(key as typeof currentTab); setNavMore(false); revealContent(); }}
                     aria-current={currentTab === key ? "page" : undefined}
                     className={`hidden 2xl:flex items-center gap-2 px-3 py-2 rounded-xl text-[12.5px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95 ${
-                      currentTab === key ? "bg-white text-[#1a1714]" : "text-white/85 hover:text-white hover:bg-white/10"
+                      currentTab === key ? "bg-white text-[#0e1b2e]" : "text-white/85 hover:text-white hover:bg-white/10"
                     }`}
                   >
-                    <Icon size={14} strokeWidth={currentTab === key ? 2.4 : 1.9} className={currentTab === key ? "text-[#1a1714]" : "text-white/75"} />
+                    <Icon size={14} strokeWidth={currentTab === key ? 2.4 : 1.9} className={currentTab === key ? "text-[#0e1b2e]" : "text-white/75"} />
                     <span>{label}</span>
                   </button>
                 ))}
@@ -2336,7 +2336,7 @@ export default function VisitorExperience({
                   onClick={() => { setCurrentTab("SUPPORT_TICKETS"); setNavMore(false); revealContent(); }}
                   aria-current={currentTab === "SUPPORT_TICKETS" ? "page" : undefined}
                   className={`hidden 2xl:flex ms-auto items-center gap-2 px-3 py-2 rounded-xl text-[12.5px] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer active:scale-95 ${
-                    currentTab === "SUPPORT_TICKETS" ? "bg-white text-[#1a1714]" : "text-white/85 hover:text-white hover:bg-white/10"
+                    currentTab === "SUPPORT_TICKETS" ? "bg-white text-[#0e1b2e]" : "text-white/85 hover:text-white hover:bg-white/10"
                   }`}
                 >
                   <span className="w-2 h-2 rounded-full bg-red-500" aria-hidden="true" />
@@ -2356,7 +2356,7 @@ export default function VisitorExperience({
               </nav>
             </div>
             {navMore && (
-              <div className="2xl:hidden border-t border-white/10 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="2xl:hidden border-t border-[#d9c58b]/15 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap gap-2">
                   {navSecondary.map(([key, label, Icon]) => (
                     <button
@@ -2364,10 +2364,10 @@ export default function VisitorExperience({
                       onClick={() => { setCurrentTab(key as typeof currentTab); setNavMore(false); revealContent(); }}
                       aria-current={currentTab === key ? "page" : undefined}
                       className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-[12.5px] font-semibold whitespace-nowrap border transition-all duration-200 cursor-pointer active:scale-95 ${
-                        currentTab === key ? "bg-white text-[#1a1714] border-transparent" : "bg-white/10 text-white/90 border-white/15 hover:bg-white/20"
+                        currentTab === key ? "bg-white text-[#0e1b2e] border-transparent" : "bg-white/10 text-white/90 border-white/15 hover:bg-white/20"
                       }`}
                     >
-                      <Icon size={14} strokeWidth={1.9} className={currentTab === key ? "text-[#1a1714]" : "text-white/75"} />
+                      <Icon size={14} strokeWidth={1.9} className={currentTab === key ? "text-[#0e1b2e]" : "text-white/75"} />
                       <span>{label}</span>
                     </button>
                   ))}
@@ -2391,7 +2391,7 @@ export default function VisitorExperience({
           type="button"
           onClick={() => openAiChat()}
           aria-label={isRtl ? "اسأل مساعد نيرو الذكي" : "Ask Nerou AI"}
-          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-14 min-w-14 justify-center sm:ps-4 sm:pe-5 rounded-full text-white bg-[#1a1714] ring-1 ring-[#bf9b30]/55 border border-white/15 shadow-[0_12px_32px_rgba(0,0,0,0.45)] hover:ring-[#bf9b30] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 cursor-pointer"
+          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-14 min-w-14 justify-center sm:ps-4 sm:pe-5 rounded-full text-white bg-[#0e1b2e] ring-1 ring-[#d9c58b]/55 border border-white/15 shadow-[0_12px_32px_rgba(0,0,0,0.45)] hover:ring-[#bf9b30] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 cursor-pointer"
         >
           <span className="relative flex">
             <NerouAiMark size={24} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
