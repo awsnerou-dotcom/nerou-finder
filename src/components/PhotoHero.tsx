@@ -62,7 +62,7 @@ function HeroPicture({ base, focus, first }: { base: string; focus: string; firs
         fetchPriority={first ? "high" : "low"}
         decoding="async"
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ objectPosition: focus }}
+        style={{ objectPosition: focus, filter: "saturate(1.1) contrast(1.04)" }}
         draggable={false}
       />
     </picture>
@@ -101,15 +101,16 @@ export default function PhotoHero() {
       {/* Header-legibility gradient: protects the logo/nav specifically, independent of any
           other overlay layers rendered by the parent panel. */}
       <div
-        className="absolute top-0 inset-x-0 h-[120px] pointer-events-none z-10"
-        style={{ background: "linear-gradient(180deg, rgba(10,8,6,0.5) 0%, rgba(10,8,6,0) 100%)" }}
+        className="absolute top-0 inset-x-0 h-[150px] pointer-events-none z-10"
+        style={{ background: "linear-gradient(180deg, rgba(10,8,6,0.68) 0%, rgba(10,8,6,0.3) 55%, rgba(10,8,6,0) 100%)" }}
       />
 
-      {/* Legibility scrim for the white headline and search UI. Kept light so the photos keep their
-          colour and contrast: a soft darkening on the text side (start edge) fading to almost
-          nothing on the far side, plus a gentle top/bottom vignette. */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/10 to-black/35 pointer-events-none z-10" />
-      <div className="absolute inset-0 bg-gradient-to-r rtl:bg-gradient-to-l from-black/35 via-black/10 to-transparent pointer-events-none z-10" />
+      {/* Legibility: the photos stay bright and clear on top, and only the lower part, where the headline sits,
+          fades to dark. (The old scrim darkened the whole picture.) */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-x-0 bottom-0 h-[68%] bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none z-10" />
+      {/* a faint warm tint toward the corner, to make the picture feel richer */}
+      <div className="absolute inset-0 bg-[radial-gradient(80%_60%_at_85%_0%,rgba(191,155,48,0.14),transparent)] pointer-events-none z-10" />
     </div>
   );
 }

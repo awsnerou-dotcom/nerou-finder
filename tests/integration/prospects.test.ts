@@ -223,26 +223,33 @@ describe("the email that receives the reminders", () => {
 
   it("the daily digest and the new-request alert go to the chosen address, and back to the sign-in email once cleared", async (ctx) => {
     if (!dbReady) return ctx.skip();
-    // other test files write to the same mock email log at the same time, so look only at what is new
+    // Other test files append to the same mock email log at the same moment, and a write can overwrite
+    // another's entry. So each step is tried a few times (each try creates fresh work to email about)
+    // until its email shows up among the entries that are new.
     const log = async () => (await request(app).get("/api/admin/emails").set(admin()).expect(200)).body as { id: string; to: string; subject: string }[];
-    const newSince = async (seen: Set<string>, part: string) => (await log()).filter(e => !seen.has(e.id) && e.subject.includes(part)).map(e => e.to);
+    const emailedTo = async (subjectPart: string, trigger: () => Promise<unknown>) => {
+      const seen = new Set((await log()).map(e => e.id));
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await trigger();
+        const sent = (await log()).filter(e => !seen.has(e.id) && e.subject.includes(subjectPart)).map(e => e.to);
+        if (sent.length > 0) return sent;
+      }
+      return [];
+    };
+    const digest = () => emailedTo("Sales pipeline:", async () => {
+      await add({ nextFollowUp: "2020-01-01" });
+      await request(app).post("/api/admin/prospects/send-reminders").set(admin()).expect(200);
+    });
     const login = (await request(app).get("/api/admin/prospects").set(admin())).body.reminderEmail.login as string;
 
     await request(app).patch("/api/admin/prospects/reminder-email").set(admin()).send({ email: "inbox@sales.example.com" }).expect(200);
-    let seen = new Set((await log()).map(e => e.id));
-    await add({ nextFollowUp: "2020-01-01" });
-    await request(app).post("/api/admin/prospects/send-reminders").set(admin()).expect(200);
-    expect(await newSince(seen, "Sales pipeline:")).toContain("inbox@sales.example.com");
-    seen = new Set((await log()).map(e => e.id));
-    await request(app).post("/api/plan-requests").set("X-Forwarded-For", uniqueIp())
-      .send({ fullName: "Omar", email: uniqueEmail("alert"), phone: "+974 5555 4321", planId: "plan-basic", consent: true }).expect(200);
-    expect(await newSince(seen, "New subscription request")).toContain("inbox@sales.example.com");
+    expect(await digest()).toContain("inbox@sales.example.com");
+    expect(await emailedTo("New subscription request", () => request(app).post("/api/plan-requests").set("X-Forwarded-For", uniqueIp())
+      .send({ fullName: "Omar", email: uniqueEmail("alert"), phone: "+974 5555 4321", planId: "plan-basic", consent: true }).expect(200)))
+      .toContain("inbox@sales.example.com");
 
     await request(app).patch("/api/admin/prospects/reminder-email").set(admin()).send({ email: "" }).expect(200);
-    seen = new Set((await log()).map(e => e.id));
-    await add({ nextFollowUp: "2020-01-02" });
-    await request(app).post("/api/admin/prospects/send-reminders").set(admin()).expect(200);
-    const after = await newSince(seen, "Sales pipeline:");
+    const after = await digest();
     expect(after).toContain(login);
     expect(after).not.toContain("inbox@sales.example.com");
   });

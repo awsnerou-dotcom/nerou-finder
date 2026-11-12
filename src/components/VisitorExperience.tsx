@@ -35,6 +35,7 @@ import {
   Bookmark,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Info,
   Clock,
   ArrowUpDown,
@@ -60,7 +61,6 @@ import {
   HardHat,
   UserRound,
   Home as HomeIcon,
-  ArrowUp,
   Gem,
   LifeBuoy,
   Briefcase,
@@ -173,10 +173,9 @@ export default function VisitorExperience({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalNavigation]);
 
-  // Nerou Find AI opens as its own full-screen conversation (AiChat.tsx); this is just the box on the home page
-  const [aiPrompt, setAiPrompt] = useState<string>("");
+  // Nerou Find AI opens as its own full-screen conversation (AiChat.tsx), from the hero button, the floating button or a link
   const [aiChat, setAiChat] = useState<{ prompt: string } | null>(null);
-  const openAiChat = (prompt = "") => { setAiChat({ prompt: prompt.trim() }); setAiPrompt(""); };
+  const openAiChat = (prompt = "") => setAiChat({ prompt: prompt.trim() });
 
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   // Area Guide overlay state (see AreaGuideView.tsx / GET /api/areas/:slug) - mutually
@@ -956,13 +955,13 @@ export default function VisitorExperience({
           no sense once it's flush against the browser window edge; the inner content below is
           re-wrapped in the original max-w-7xl container so the foreground (nav/search) still
           lines up with the rest of the page. */}
-      <div className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-[clamp(440px,42vw,640px)]">
+      <div className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-[clamp(600px,46vw,700px)]">
         <PhotoHero />
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <NerouAiMark size={160} strokeWidth={1.2} />
         </div>
 
-        <div className="relative z-10 pt-24 max-w-7xl mx-auto px-4 md:px-6">
+        <div className="relative z-10 pt-24 max-w-7xl mx-auto px-4 md:px-6 flex flex-col min-h-[clamp(600px,46vw,700px)]">
           {/* Premium navigation: the five places people browse come first as a frosted-glass bar with
               icons; the company and help pages are quieter links beneath it. Same destinations as before. */}
           {(() => {
@@ -990,14 +989,6 @@ export default function VisitorExperience({
             return (
               <div className="pt-2 pb-3 flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-2 flex-wrap max-w-full">
-                  <button
-                    onClick={() => openAiChat()}
-                    className="group flex items-center gap-2 px-4 py-3 rounded-2xl text-[13px] font-bold text-black bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] shadow-[0_8px_26px_rgba(191,155,48,0.5)] hover:shadow-[0_10px_32px_rgba(191,155,48,0.65)] hover:-translate-y-0.5 transition-all duration-200 cursor-pointer whitespace-nowrap"
-                  >
-                    <NerouAiMark size={18} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
-                    <span>{isRtl ? "اسأل الذكاء الاصطناعي" : "Ask AI"}</span>
-                  </button>
                   <nav aria-label={isRtl ? "تصفح العقارات" : "Browse"} className="max-w-full overflow-x-auto scrollbar-none">
                     <div className="inline-flex items-center gap-1 p-1.5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/15 shadow-[0_10px_34px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.08)]">
                       {primary.map(({ key, label, Icon, active, go }) => (
@@ -1017,7 +1008,6 @@ export default function VisitorExperience({
                       ))}
                     </div>
                   </nav>
-                  </div>
 
                   <button
                     onClick={() => setCurrentTab("SUPPORT_TICKETS")}
@@ -1062,7 +1052,7 @@ export default function VisitorExperience({
           })()}
 
           {currentTab === "MARKETPLACE" && (
-            <div className="border-t border-white/10 text-white p-6 md:p-8">
+            <div className="mt-auto text-white pt-10 pb-8 md:pb-12">
               {/* Search mode toggle - "Properties" keeps the existing filter/AI search
                   entirely unchanged; the other three switch to a separate agent/agency/
                   developer identity lookup (DirectorySearch.tsx), not a property search. */}
@@ -1107,54 +1097,22 @@ export default function VisitorExperience({
                   />
                 </div>
               ) : (
-              <div className="max-w-3xl space-y-4">
-                <button
-                  type="button"
-                  onClick={() => openAiChat()}
-                  className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold text-black bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] shadow-[0_4px_16px_rgba(191,155,48,0.45)] hover:shadow-[0_6px_22px_rgba(191,155,48,0.6)] transition-shadow cursor-pointer ${isRtl ? "" : "uppercase tracking-wider"}`}
-                >
-                  <NerouAiMark size={15} strokeWidth={2.2} />
-                  <span>{t.aiTitle}</span>
-                </button>
+              <div className="max-w-3xl space-y-5">
                 {/* The page's one H1: here on the home page, or in the landing block on a landing page. */}
                 {React.createElement(
                   landingPathRef.current ? "h2" : "h1",
-                  { className: "text-2xl md:text-3xl font-serif tracking-tight font-medium" },
+                  { className: "text-3xl md:text-5xl font-serif tracking-tight font-medium leading-[1.15] drop-shadow-[0_2px_20px_rgba(0,0,0,0.55)]" },
                   t.aiSubtitle
                 )}
-
-                {/* The question box: asking opens the assistant already answering it */}
-                <form onSubmit={(e) => { e.preventDefault(); openAiChat(aiPrompt); }} className="mt-4 space-y-3">
-                  <div className="flex items-center gap-2 p-1.5 ps-4 rounded-2xl bg-black/45 backdrop-blur-md border border-white/20 focus-within:border-gold/80 shadow-[0_10px_34px_rgba(0,0,0,0.4)] transition-colors">
-                    <NerouAiMark size={20} className="text-gold shrink-0" />
-                    <input
-                      type="text"
-                      value={aiPrompt}
-                      onChange={(e) => setAiPrompt(e.target.value)}
-                      placeholder={t.aiPlaceholder}
-                      aria-label={t.aiTitle}
-                      className="flex-1 min-w-0 bg-transparent text-white placeholder-white/50 py-2.5 focus:outline-none font-sans text-base"
-                    />
-                    <button
-                      type="submit"
-                      className="px-3.5 sm:px-5 py-2.5 rounded-xl bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] text-black font-bold text-sm flex items-center gap-2 shadow-[0_4px_14px_rgba(191,155,48,0.45)] hover:shadow-[0_6px_20px_rgba(191,155,48,0.6)] transition-shadow cursor-pointer whitespace-nowrap"
-                    >
-                      <span className="hidden sm:inline">{isRtl ? "اسأل" : "Ask AI"}</span>
-                      <ArrowUp size={16} strokeWidth={2.6} />
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(isRtl
-                      ? ["شقة للإيجار في لوسيل", "فيلا للبيع في الريان", "استوديو مفروش"]
-                      : ["Apartment to rent in Lusail", "Villa for sale in Al Rayyan", "Furnished studio"]
-                    ).map((q) => (
-                      <button key={q} type="button" onClick={() => openAiChat(q)}
-                        className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-black/35 backdrop-blur-sm border border-white/15 text-white/85 hover:text-white hover:border-gold/60 hover:bg-black/50 transition-colors cursor-pointer">
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                </form>
+                <button
+                  type="button"
+                  onClick={() => openAiChat()}
+                  className="group inline-flex items-center gap-2.5 px-5 py-3 rounded-full text-sm font-bold text-black bg-[linear-gradient(180deg,#e3c964_0%,#bf9b30_100%)] shadow-[0_8px_28px_rgba(191,155,48,0.55)] hover:shadow-[0_12px_36px_rgba(191,155,48,0.7)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer"
+                >
+                  <NerouAiMark size={18} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
+                  <span>{t.aiTitle}</span>
+                  {isRtl ? <ChevronLeft size={16} strokeWidth={2.6} /> : <ChevronRight size={16} strokeWidth={2.6} />}
+                </button>
               </div>
               )}
             </div>
