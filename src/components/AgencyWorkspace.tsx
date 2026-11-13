@@ -45,6 +45,7 @@ import { Button } from "./ui/Button.js";
 import { compressImage } from "../lib/image.js";
 import { getActingUserId } from "../lib/auth.js";
 import StatCard from "./StatCard.js";
+import { SubscriptionAlertBanner } from "./WorkspaceWidgets.js";
 import DashboardChart from "./DashboardChart.js";
 import { Badge } from "./ui/Badge.js";
 import { buildDailySumSeries, datesToDayRecord, isThisMonth, listingStatusTone } from "../lib/dashboardMetrics.js";
@@ -831,7 +832,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   );
 
   return (
-    <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
+    <div className="ws space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Agency Header Banner */}
       <div className="bg-surface p-6 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
@@ -851,72 +852,72 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
         {/* Workspace tabs navigator */}
         <div className="flex items-center gap-2 flex-wrap">
           <NotificationBell isRtl={isRtl} onClick={() => setActiveTab("leads")} />
-          <div className="flex flex-wrap bg-surface-2 p-0.5 rounded-lg text-xs font-medium">
+          <div className="flex flex-wrap bg-surface-2/70 p-1 gap-0.5 rounded-xl border border-border/60 text-[13px] font-semibold">
           <button
             data-tour="agency-dashboard-tab"
             onClick={() => setActiveTab("dashboard")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "dashboard" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "dashboard" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "لوحة القيادة" : "Dashboard"}
           </button>
           <button
             data-tour="agency-team-tab"
             onClick={() => setActiveTab("team")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "team" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "team" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "فريق العمل" : "Agents Team"}
           </button>
           <button
             data-tour="agency-listings-tab"
             onClick={() => setActiveTab("listings")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "listings" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "listings" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "العقارات المدرجة" : "Listings"}
           </button>
           <button
             data-tour="agency-leads-tab"
             onClick={() => setActiveTab("leads")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "leads" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "leads" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "إدارة العملاء" : "Leads Panel"}
           </button>
           <button
             data-tour="agency-salesdesk-tab"
             onClick={() => setActiveTab("salesdesk")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "salesdesk" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "salesdesk" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "مكتب المبيعات" : "Sales Desk"}
           </button>
           <button
             onClick={() => setActiveTab("routing")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "routing" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "routing" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "توزيع العملاء" : "Lead Routing"}
           </button>
           <button
             data-tour="agency-campaigns-tab"
             onClick={() => setActiveTab("campaigns")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "campaigns" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "campaigns" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الحملات الإعلانية" : "Ad Campaigns"}
           </button>
           <button
             onClick={() => setActiveTab("subscription")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "subscription" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "subscription" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الاشتراكات SaaS" : "SaaS Billing"}
           </button>
           <button
             data-tour="agency-verification-tab"
             onClick={() => setActiveTab("verification")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "verification" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "verification" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
           <button
             data-tour="agency-profile-tab"
             onClick={() => setActiveTab("profile")}
-            className={`px-3 py-1.5 rounded-md cursor-pointer transition-colors ${activeTab === "profile" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "profile" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الإعدادات" : "Profile"}
           </button>
@@ -927,6 +928,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
       {/* DASHBOARD TAB */}
       {activeTab === "dashboard" && (
         <div className="space-y-6">
+          <SubscriptionAlertBanner expiry={agency.subscriptionExpiry} isRtl={isRtl} onOpen={() => setActiveTab("subscription")} />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               icon={Users}

@@ -5,6 +5,8 @@
 
 import { getVideoEmbedUrl } from "../lib/video.js";
 import { NEARBY_TYPES, NEARBY_UNITS, MAX_NEARBY_PLACES } from "../lib/propertyNearby.js";
+import { agentChecklist } from "../lib/workspaceReadiness.js";
+import { SubscriptionAlertBanner, ReadinessCard } from "./WorkspaceWidgets.js";
 import React, { useState, useEffect } from "react";
 import {
   Property,
@@ -1275,11 +1277,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const leadsPerDaySeries = buildDailyCountSeries(leads.map(l => l.createdDate), 30, isRtl);
 
   return (
-    <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
+    <div className="ws space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Workspace Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h2 className="text-2xl font-serif text-ink font-medium">
+          <h2 className="text-3xl font-serif text-ink font-medium">
             {isRtl ? "مساحة عمل الوكيل العقاري" : "Agent Workspace"}
           </h2>
           <p className="text-xs text-ink-muted mt-0.5">
@@ -1294,39 +1296,39 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
         <div className="flex items-center gap-2">
           <NotificationBell isRtl={isRtl} onClick={() => setActiveTab("leads")} />
-          <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
+          <div className="flex bg-surface-2/70 p-1 gap-0.5 rounded-xl border border-border/60 text-[13px] font-semibold overflow-x-auto scrollbar-none max-w-full">
           <button
             data-tour="agent-dashboard-tab"
             onClick={() => setActiveTab("dashboard")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "لوحة القيادة" : "Stats Center"}
           </button>
           <button
             data-tour="agent-leads-tab"
             onClick={() => setActiveTab("leads")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "العملاء المحتملون" : "Leads Panel"}
           </button>
           <button
             data-tour="agent-salesdesk-tab"
             onClick={() => setActiveTab("salesdesk")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "salesdesk" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "salesdesk" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "مكتب المبيعات" : "Sales Desk"}
           </button>
           <button
             data-tour="agent-properties-tab"
             onClick={() => setActiveTab("properties")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "properties" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "properties" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "عقاراتي" : "My Listings"}
           </button>
           <button
             data-tour="agent-verification-tab"
             onClick={() => setActiveTab("verification")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
@@ -1335,7 +1337,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           {effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
             <button
               onClick={() => setActiveTab("subscription")}
-              className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "subscription" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+              className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "subscription" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
             >
               {isRtl ? "الاشتراك" : "Subscription"}
             </button>
@@ -1343,14 +1345,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           <button
             data-tour="agent-reviews-tab"
             onClick={() => setActiveTab("reviews")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "reviews" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "reviews" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التقييمات" : "Reviews"}
           </button>
           <button
             data-tour="agent-profile-tab"
             onClick={() => setActiveTab("profile")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الحساب" : "My Profile"}
           </button>
@@ -1459,6 +1461,15 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               </span>
             </button>
           )}
+
+          {effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
+            <SubscriptionAlertBanner expiry={agent.subscriptionExpiry} isRtl={isRtl} onOpen={() => setActiveTab("subscription")} />
+          )}
+          <ReadinessCard
+            checklist={agentChecklist(agent, { listings: properties.length, published: activeListings })}
+            isRtl={isRtl}
+            onGo={(tab) => { setActiveTab(tab); }}
+          />
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

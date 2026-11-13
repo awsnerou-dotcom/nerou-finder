@@ -102,12 +102,12 @@ export default function StatCard({
       `.replace(/\s+/g, " ").trim()}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
-        <span className={`text-[10px] font-bold uppercase tracking-wider ${dark ? "text-gray-400" : "text-ink-muted"}`}>
+        <span className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${dark ? "text-gray-400" : "text-ink-muted"}`}>
           {label}
         </span>
         {Icon && (
           <span
-            className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+            className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${
               dark ? "bg-white/10 text-gold" : "bg-gold-soft text-gold-active"
             }`}
           >
@@ -115,16 +115,16 @@ export default function StatCard({
           </span>
         )}
       </div>
-      <h3 className={`text-2xl font-serif font-bold leading-tight ${dark ? "text-gold" : "text-ink"}`}>{value}</h3>
+      <h3 className={`text-[1.75rem] font-serif font-medium leading-tight tabular-nums ${dark ? "text-gold" : "text-ink"}`}>{value}</h3>
       {(subtitle || trend) && (
         <div className="mt-1.5 flex items-center gap-2 flex-wrap">
           {trend && (
-            <span className={`text-[10px] font-bold flex items-center gap-0.5 ${trendTextClass}`}>
+            <span className={`text-[11px] font-semibold flex items-center gap-0.5 ${trendTextClass}`}>
               <span aria-hidden="true">{TREND_GLYPH[trend.direction]}</span>
               <span>{trend.label}</span>
             </span>
           )}
-          {subtitle && <span className={`text-[10px] ${dark ? "text-gray-400" : "text-ink-muted"}`}>{subtitle}</span>}
+          {subtitle && <span className={`text-xs ${dark ? "text-gray-400" : "text-ink-muted"}`}>{subtitle}</span>}
         </div>
       )}
     </Card>

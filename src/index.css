@@ -358,3 +358,14 @@ table, .font-mono {
 @media (prefers-reduced-motion: reduce) {
   .nav-pop { animation: none; }
 }
+
+/* The agent and subscriber workspaces (class "ws" on their root) are dense tools built from many 9-12px labels. Without
+   touching every one of those labels, this lifts the smallest sizes to something comfortable to read all day and
+   rounds the cards a little more. Descendant selectors beat the single-class utilities. */
+.ws .text-\[9px\] { font-size: 11px; }
+.ws .text-\[10px\] { font-size: 11.5px; }
+.ws .text-\[11px\] { font-size: 12px; }
+.ws .text-xs { font-size: 13px; line-height: 1.55; }
+.ws .rounded-xl { border-radius: 1rem; }
+.ws h2.font-serif, .ws h3.font-serif { letter-spacing: -0.012em; }
+[dir="rtl"].ws h2.font-serif, [dir="rtl"].ws h3.font-serif, [dir="rtl"] .ws h2.font-serif, [dir="rtl"] .ws h3.font-serif { letter-spacing: 0; }

@@ -41,6 +41,7 @@ import CmaReportButton from "./CmaReportButton.js";
 import { compressImage } from "../lib/image.js";
 import { getActingUserId } from "../lib/auth.js";
 import StatCard from "./StatCard.js";
+import { SubscriptionAlertBanner } from "./WorkspaceWidgets.js";
 import DashboardChart from "./DashboardChart.js";
 import { Badge } from "./ui/Badge.js";
 import { EmptyState } from "./ui/EmptyState.js";
@@ -727,7 +728,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
   });
 
   return (
-    <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
+    <div className="ws space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Developer Header Profile */}
       <div className="bg-surface p-6 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
@@ -747,53 +748,53 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
         {/* Tab switcher */}
         <div className="flex items-center gap-2">
           <NotificationBell isRtl={isRtl} onClick={() => setActiveTab("leads")} />
-          <div className="flex bg-surface-2 p-0.5 rounded-lg text-xs font-medium overflow-x-auto scrollbar-none max-w-full">
+          <div className="flex bg-surface-2/70 p-1 gap-0.5 rounded-xl border border-border/60 text-[13px] font-semibold overflow-x-auto scrollbar-none max-w-full">
           <button
             data-tour="developer-dashboard-tab"
             onClick={() => setActiveTab("dashboard")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "لوحة القيادة" : "Dashboard"}
           </button>
           <button
             data-tour="developer-projects-tab"
             onClick={() => setActiveTab("projects")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "projects" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "projects" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "المشاريع الكبرى" : "Master Projects"}
           </button>
           <button
             data-tour="developer-inventory-tab"
             onClick={() => setActiveTab("inventory")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "inventory" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "inventory" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "مخزون الوحدات" : "Units Inventory"}
           </button>
           <button
             data-tour="developer-leads-tab"
             onClick={() => setActiveTab("leads")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "العملاء المحتملون" : "Leads"}
           </button>
           <button
             data-tour="developer-salesdesk-tab"
             onClick={() => setActiveTab("salesdesk")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "salesdesk" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "salesdesk" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "مكتب المبيعات" : "Sales Desk"}
           </button>
           <button
             data-tour="developer-verification-tab"
             onClick={() => setActiveTab("verification")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "التوثيق" : "Verification"}
           </button>
           <button
             data-tour="developer-profile-tab"
             onClick={() => setActiveTab("profile")}
-            className={`px-3 py-2 md:py-1.5 rounded-md cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-surface text-ink" : "text-ink-muted hover:text-ink"}`}
+            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
           >
             {isRtl ? "الإعدادات" : "Profile"}
           </button>
@@ -804,6 +805,7 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
       {/* DASHBOARD TAB */}
       {activeTab === "dashboard" && (
         <div className="space-y-6">
+          <SubscriptionAlertBanner expiry={developer.subscriptionExpiry} isRtl={isRtl} />
           {developer.verificationStatus !== VerificationStatus.APPROVED && (
             <button
               type="button"
