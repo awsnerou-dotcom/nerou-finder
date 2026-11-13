@@ -28,6 +28,7 @@ import {
   Bookmark,
   Shield,
   Eye,
+  ExternalLink,
   ChevronLeft,
   X,
   Maximize2,
@@ -825,6 +826,18 @@ export default function PropertyDetailView({
               <span className="mx-2">•</span>
               <span>{isRtl ? "رخصة الوكيل" : "Broker ID"}: {property.agentId}</span>
             </div>
+            {property.virtualTourUrl && (
+              <a
+                href={property.virtualTourUrl}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-chrome hover:bg-chrome-hover text-white text-sm font-semibold transition-colors"
+              >
+                <Eye size={16} />
+                <span>{isRtl ? "جولة افتراضية ثلاثية الأبعاد" : "Take the 3D tour"}</span>
+                <ExternalLink size={14} className="opacity-70" />
+              </a>
+            )}
           </div>
 
           {/* PHOTO GALLERY - full width, above the details (large hero + full-screen viewer) */}

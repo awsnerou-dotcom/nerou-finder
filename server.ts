@@ -117,6 +117,8 @@ import { validateShowcaseInput, sortShowcase } from "./src/lib/showcase.js";
 import { validatePlanRequest, describePlanRequest } from "./src/lib/planRequest.js";
 import { compareWithMarket } from "./src/lib/marketComparison.js";
 import { sanitizeNearbyPlaces } from "./src/lib/propertyNearby.js";
+import { priceDrop, listedDaysAgo } from "./src/lib/propertySearch.js";
+import { cleanTourUrl } from "./src/lib/virtualTour.js";
 import { publicPlan } from "./src/data/plans.js";
 import {
   Lang as SeoLang,
@@ -1945,8 +1947,12 @@ app.get("/api/properties", (req, res) => {
     maxPrice,
     bedrooms,
     bathrooms,
+    minBedrooms,
+    minBathrooms,
     minArea,
     furnished,
+    priceReduced,
+    listedWithinDays,
     verifiedOnly,
     orgId,
     searchQuery,
@@ -1985,11 +1991,29 @@ app.get("/api/properties", (req, res) => {
   if (bathrooms) {
     properties = properties.filter(p => p.bathrooms === Number(bathrooms));
   }
+  // "N or more", the way portals filter beds and baths (the exact-match params above are kept for older callers)
+  if (minBedrooms !== undefined && Number.isFinite(Number(minBedrooms)) && String(minBedrooms) !== "") {
+    properties = properties.filter(p => p.bedrooms >= Number(minBedrooms));
+  }
+  if (minBathrooms !== undefined && Number.isFinite(Number(minBathrooms)) && String(minBathrooms) !== "") {
+    properties = properties.filter(p => p.bathrooms >= Number(minBathrooms));
+  }
   if (minArea) {
     properties = properties.filter(p => p.area >= Number(minArea));
   }
   if (furnished) {
     properties = properties.filter(p => p.furnished === furnished);
+  }
+  // listings whose price has recently come down, and listings published in the last N days
+  if (priceReduced === "true") {
+    properties = properties.filter(p => priceDrop(p) !== null);
+  }
+  if (listedWithinDays !== undefined && Number(listedWithinDays) > 0) {
+    const limit = Number(listedWithinDays);
+    properties = properties.filter(p => {
+      const days = listedDaysAgo(p.createdDate);
+      return days !== null && days <= limit;
+    });
   }
   if (verifiedOnly === "true") {
     properties = properties.filter(p => p.verificationStatus === VerificationStatus.APPROVED);
@@ -2520,6 +2544,7 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       priceHistory,
       qualityScore,
       // nearby places are cleaned on the way in; leaving the field out keeps what is stored, sending [] clears it
+      virtualTourUrl: "virtualTourUrl" in propData ? cleanTourUrl(propData.virtualTourUrl) : existing.virtualTourUrl,
       nearbyPlaces: "nearbyPlaces" in propData
         ? (sanitizeNearbyPlaces(propData.nearbyPlaces).length > 0 ? sanitizeNearbyPlaces(propData.nearbyPlaces) : undefined)
         : existing.nearbyPlaces,
@@ -2590,6 +2615,7 @@ app.post("/api/properties", authMiddleware, (req, res) => {
         "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80"
       ],
       videoUrl: propData.videoUrl || undefined,
+      virtualTourUrl: cleanTourUrl(propData.virtualTourUrl),
       agentId: actorId, // Link automatically to logged-in user
       // An INDEPENDENT_AGENT has no orgId by design - do not fall back to a hardcoded
       // organization, or every independently-listed property would be silently misattributed.
@@ -2922,6 +2948,18 @@ async function checkAndIncrementSavedSearches(property: Property) {
       }
 
       if (filters.beds && property.bedrooms < Number(filters.beds)) {
+        matches = false;
+      }
+
+      if (filters.baths && property.bathrooms < Number(filters.baths)) {
+        matches = false;
+      }
+
+      if (filters.minArea && property.area < Number(filters.minArea)) {
+        matches = false;
+      }
+
+      if (filters.furnished && property.furnished !== filters.furnished) {
         matches = false;
       }
 

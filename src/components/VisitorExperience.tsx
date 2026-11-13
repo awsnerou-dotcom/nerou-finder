@@ -62,6 +62,8 @@ import {
   UserRound,
   Home as HomeIcon,
   Gem,
+  SlidersHorizontal,
+  TrendingDown,
   LifeBuoy,
   Briefcase,
   Newspaper,
@@ -94,6 +96,7 @@ import {
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
 import { homeTitle, listingTitle } from "../lib/pageTitle.js";
+import { priceDrop, listedDaysAgo, isNewListing, listedLabel, NEW_LISTING_DAYS } from "../lib/propertySearch.js";
 import { LandingIntro, LandingFaq } from "./LandingSeoContent.js";
 import CardImageSlideshow from "./CardImageSlideshow.js";
 import SubscribersShowcase from "./SubscribersShowcase.js";
@@ -140,6 +143,13 @@ export default function VisitorExperience({
   const [minPrice, setMinPrice] = useState<string>("");
   const [maxPrice, setMaxPrice] = useState<string>("");
   const [beds, setBeds] = useState<string>("");
+  // the rest of what portals let a visitor narrow by: bathrooms, furnishing, size, and two quick filters
+  const [baths, setBaths] = useState<string>("");
+  const [furnishedFilter, setFurnishedFilter] = useState<string>("");
+  const [minArea, setMinArea] = useState<string>("");
+  const [priceReducedOnly, setPriceReducedOnly] = useState<boolean>(false);
+  const [newOnly, setNewOnly] = useState<boolean>(false);
+  const [showMoreFilters, setShowMoreFilters] = useState<boolean>(false);
   // Wires up GET /api/properties's existing `verifiedOnly` server-side filter, which had no
   // UI control anywhere in the marketplace despite being fully implemented server-side.
   const [verifiedOnly, setVerifiedOnly] = useState<boolean>(false);
@@ -314,7 +324,7 @@ export default function VisitorExperience({
 
   useEffect(() => {
     fetchProperties();
-  }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, verifiedOnly, debouncedSearchQuery, locations]);
+  }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, baths, furnishedFilter, minArea, priceReducedOnly, newOnly, verifiedOnly, debouncedSearchQuery, locations]);
 
   useEffect(() => {
     if (selectedProperty) {
@@ -539,7 +549,12 @@ export default function VisitorExperience({
       if (transType) params.append("transactionType", transType);
       if (minPrice) params.append("minPrice", minPrice);
       if (maxPrice) params.append("maxPrice", maxPrice);
-      if (beds) params.append("bedrooms", beds);
+      if (beds) params.append("minBedrooms", beds);
+      if (baths) params.append("minBathrooms", baths);
+      if (furnishedFilter) params.append("furnished", furnishedFilter);
+      if (minArea) params.append("minArea", minArea);
+      if (priceReducedOnly) params.append("priceReduced", "true");
+      if (newOnly) params.append("listedWithinDays", String(NEW_LISTING_DAYS));
       if (debouncedSearchQuery) params.append("searchQuery", debouncedSearchQuery);
       if (verifiedOnly) params.append("verifiedOnly", "true");
 
@@ -682,7 +697,10 @@ export default function VisitorExperience({
       transType,
       minPrice,
       maxPrice,
-      beds
+      beds,
+      baths,
+      furnished: furnishedFilter,
+      minArea
     };
 
     try {
@@ -1220,6 +1238,102 @@ export default function VisitorExperience({
 
           </div>
 
+          {/* More ways to narrow the list, as on the other property portals: price, bedrooms, bathrooms, furnishing, size, and
+              two quick filters for what is new and what has come down in price */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowMoreFilters(v => !v)}
+              aria-expanded={showMoreFilters}
+              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[13px] font-semibold transition-colors cursor-pointer ${
+                showMoreFilters ? "bg-chrome text-white border-chrome" : "bg-canvas border-border text-ink hover:border-gold/60"
+              }`}
+            >
+              <SlidersHorizontal size={15} />
+              <span>{isRtl ? "مزيد من الفلاتر" : "More filters"}</span>
+              {([minPrice, maxPrice, beds, baths, furnishedFilter, minArea].filter(Boolean).length + (priceReducedOnly ? 1 : 0) + (newOnly ? 1 : 0)) > 0 && (
+                <span className={`min-w-5 h-5 px-1 rounded-full text-[11px] leading-5 text-center ${showMoreFilters ? "bg-white text-chrome" : "bg-chrome text-white"}`}>
+                  {[minPrice, maxPrice, beds, baths, furnishedFilter, minArea].filter(Boolean).length + (priceReducedOnly ? 1 : 0) + (newOnly ? 1 : 0)}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPriceReducedOnly(v => !v)}
+              aria-pressed={priceReducedOnly}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-[13px] font-semibold transition-colors cursor-pointer ${
+                priceReducedOnly ? "bg-success text-white border-success" : "bg-canvas border-border text-ink hover:border-gold/60"
+              }`}
+            >
+              <TrendingDown size={15} />
+              <span>{isRtl ? "سعر مخفّض" : "Price reduced"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setNewOnly(v => !v)}
+              aria-pressed={newOnly}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-[13px] font-semibold transition-colors cursor-pointer ${
+                newOnly ? "bg-chrome text-white border-chrome" : "bg-canvas border-border text-ink hover:border-gold/60"
+              }`}
+            >
+              <Clock size={15} />
+              <span>{isRtl ? "جديد هذا الأسبوع" : "New this week"}</span>
+            </button>
+            {([minPrice, maxPrice, beds, baths, furnishedFilter, minArea].filter(Boolean).length + (priceReducedOnly ? 1 : 0) + (newOnly ? 1 : 0)) > 0 && (
+              <button
+                type="button"
+                onClick={() => { setMinPrice(""); setMaxPrice(""); setBeds(""); setBaths(""); setFurnishedFilter(""); setMinArea(""); setPriceReducedOnly(false); setNewOnly(false); }}
+                className="inline-flex items-center gap-1 px-2.5 py-2 text-[13px] font-semibold text-gold-active hover:text-gold cursor-pointer"
+              >
+                <X size={14} />
+                <span>{isRtl ? "مسح الفلاتر" : "Clear filters"}</span>
+              </button>
+            )}
+          </div>
+
+          {showMoreFilters && (
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 p-4 rounded-xl border border-border bg-canvas animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="col-span-2 md:col-span-2">
+                <label className="block text-xs font-medium text-ink-muted mb-1">{isRtl ? "السعر (ر.ق)" : "Price (QAR)"}</label>
+                <div className="flex items-center gap-2">
+                  <input type="number" inputMode="numeric" min="0" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} placeholder={isRtl ? "من" : "Min"} aria-label={isRtl ? "أقل سعر" : "Minimum price"}
+                    className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink tabular-nums" />
+                  <span className="text-ink-faint">-</span>
+                  <input type="number" inputMode="numeric" min="0" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} placeholder={isRtl ? "إلى" : "Max"} aria-label={isRtl ? "أعلى سعر" : "Maximum price"}
+                    className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink tabular-nums" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-ink-muted mb-1">{isRtl ? "غرف النوم" : "Bedrooms"}</label>
+                <select value={beds} onChange={(e) => setBeds(e.target.value)} className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink">
+                  <option value="">{isRtl ? "الكل" : "Any"}</option>
+                  {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}+</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-ink-muted mb-1">{isRtl ? "الحمامات" : "Bathrooms"}</label>
+                <select value={baths} onChange={(e) => setBaths(e.target.value)} className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink">
+                  <option value="">{isRtl ? "الكل" : "Any"}</option>
+                  {[1, 2, 3, 4].map(n => <option key={n} value={n}>{n}+</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-ink-muted mb-1">{isRtl ? "التأثيث" : "Furnishing"}</label>
+                <select value={furnishedFilter} onChange={(e) => setFurnishedFilter(e.target.value)} className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink">
+                  <option value="">{isRtl ? "الكل" : "Any"}</option>
+                  <option value="YES">{isRtl ? "مؤثث" : "Furnished"}</option>
+                  <option value="PARTLY">{isRtl ? "شبه مؤثث" : "Partly furnished"}</option>
+                  <option value="NO">{isRtl ? "غير مؤثث" : "Unfurnished"}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-ink-muted mb-1">{isRtl ? "المساحة من (م²)" : "Min size (sqm)"}</label>
+                <input type="number" inputMode="numeric" min="0" value={minArea} onChange={(e) => setMinArea(e.target.value)} placeholder="e.g. 100"
+                  className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink tabular-nums" />
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
             <label className="flex items-center gap-2 px-3 py-1.5 bg-canvas border border-border rounded-lg text-xs font-medium text-ink cursor-pointer select-none">
               <input
@@ -1411,6 +1525,8 @@ export default function VisitorExperience({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {getSortedProperties().map((property) => {
             const feat = isFeatured(property.id);
+            const drop = priceDrop(property);
+            const listedDays = listedDaysAgo(property.createdDate);
 
             return (
               <div
@@ -1530,6 +1646,7 @@ export default function VisitorExperience({
 
                   <div className="p-5 space-y-4">
                     <div className="flex items-end justify-between gap-3">
+                      <div className="min-w-0">
                       <p className="font-serif text-[1.55rem] font-semibold leading-none text-ink tabular-nums">
                         {formatPrice(property.price, isRtl)}
                         {property.transactionType === TransactionType.FOR_RENT && (
@@ -1538,6 +1655,14 @@ export default function VisitorExperience({
                           </span>
                         )}
                       </p>
+                        {drop && (
+                          <p className="mt-1.5 flex items-center gap-1.5 text-[12px] font-semibold text-success">
+                            <TrendingDown size={13} />
+                            <span>{isRtl ? `خُفّض ${drop.percent}٪` : `Reduced ${drop.percent}%`}</span>
+                            <span className="font-normal text-ink-faint line-through tabular-nums">{formatPrice(drop.previous, isRtl)}</span>
+                          </p>
+                        )}
+                      </div>
                       <div className="flex gap-1.5 shrink-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleWhatsAppAction(property); }}
@@ -1566,6 +1691,14 @@ export default function VisitorExperience({
                         <MapPin size={13} className="shrink-0" />
                         <span className="truncate">{property.district}, {property.city}</span>
                       </div>
+                      {listedDays !== null && (
+                        <div className="flex items-center gap-2 text-[12px] text-ink-faint">
+                          {isNewListing(listedDays) && (
+                            <span className="px-2 py-0.5 rounded-full bg-gold-soft text-gold-active font-semibold uppercase tracking-wide text-[10px]">{isRtl ? "جديد" : "New"}</span>
+                          )}
+                          <span>{listedLabel(listedDays, isRtl)}</span>
+                        </div>
+                      )}
                       {/* verified agent / company, clickable to the public profile without leaving the results */}
                       {(() => {
                         const listingAgent = users.find(u => u.id === property.agentId);

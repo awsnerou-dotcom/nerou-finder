@@ -6,6 +6,7 @@
 import { getVideoEmbedUrl } from "../lib/video.js";
 import { NEARBY_TYPES, NEARBY_UNITS, MAX_NEARBY_PLACES } from "../lib/propertyNearby.js";
 import { agentChecklist } from "../lib/workspaceReadiness.js";
+import { cleanTourUrl } from "../lib/virtualTour.js";
 import { SubscriptionAlertBanner, ReadinessCard } from "./WorkspaceWidgets.js";
 import React, { useState, useEffect } from "react";
 import {
@@ -341,6 +342,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [uploading, setUploading] = useState<boolean>(false);
   const [listingAmenities, setListingAmenities] = useState<string>("Pool, Gym, Parking");
   // places near the property, entered by the agent and shown to visitors as given (nothing is guessed from the map)
+  const [listingTourUrl, setListingTourUrl] = useState<string>("");
   const [listingNearby, setListingNearby] = useState<{ type: string; name: string; nameAr: string; value: string; unit: string }[]>([]);
   const [listingVideoUrl, setListingVideoUrl] = useState<string>("");
 
@@ -1001,6 +1003,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             .map(p => ({ type: p.type, name: p.name.trim(), nameAr: p.nameAr.trim() || undefined, value: Number(p.value), unit: p.unit })),
           // "" on purpose when blank: on an edit it clears a previously saved video link.
           videoUrl: listingVideoUrl.trim(),
+          virtualTourUrl: listingTourUrl.trim(),
           agentId: agent.id,
           orgId: agent.orgId,
           projectId: resolvedProjectId,
@@ -1042,6 +1045,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         setListingParkingSpaces("");
         setListingTenureType("");
         setListingNearby([]);
+        setListingTourUrl("");
         setLinkedProjectId("");
         setCreatingNewProject(false);
         setNewProjectName("");
@@ -1157,6 +1161,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     setListingAmenities((prop.amenities || []).join(", "));
     setListingNearby((prop.nearbyPlaces || []).map(p => ({ type: p.type, name: p.name, nameAr: p.nameAr || "", value: String(p.value), unit: p.unit })));
     setListingVideoUrl(prop.videoUrl || "");
+    setListingTourUrl(prop.virtualTourUrl || "");
     setWizardStep(1);
     setIsAddingListing(true);
     setPossibleDuplicates([]);
@@ -2257,6 +2262,24 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       placeholder="e.g. Pool, Gym, Parking, Balcony"
                       className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                     />
+                  </div>
+
+                  <div>
+                    <label className="block font-medium text-ink-muted mb-1">
+                      {isRtl ? "رابط جولة افتراضية ثلاثية الأبعاد (اختياري)" : "Virtual / 3D tour link (optional)"}
+                    </label>
+                    <input
+                      type="url"
+                      value={listingTourUrl}
+                      onChange={(e) => setListingTourUrl(e.target.value)}
+                      placeholder="https://my.matterport.com/show/?m=..."
+                      className={`w-full px-3 py-2 bg-ink-inverse border rounded-lg ${listingTourUrl.trim() && !cleanTourUrl(listingTourUrl) ? "border-red-400" : "border-border"}`}
+                    />
+                    <p className={`text-[10px] mt-1 ${listingTourUrl.trim() && !cleanTourUrl(listingTourUrl) ? "text-red-500" : "text-ink-muted"}`}>
+                      {listingTourUrl.trim() && !cleanTourUrl(listingTourUrl)
+                        ? (isRtl ? "الرابط غير صالح - يجب أن يبدأ بـ https" : "Not a valid link - it must start with https")
+                        : (isRtl ? "رابط Matterport أو Kuula أو أي عارض 360. يظهر زر \"جولة ثلاثية الأبعاد\" في صفحة العقار." : "A Matterport, Kuula or any 360 viewer link. A \"3D tour\" button appears on the listing page.")}
+                    </p>
                   </div>
 
                   <div className="space-y-2">
