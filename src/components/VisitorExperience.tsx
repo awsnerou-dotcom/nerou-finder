@@ -155,6 +155,8 @@ export default function VisitorExperience({
   const [priceReducedOnly, setPriceReducedOnly] = useState<boolean>(false);
   const [newOnly, setNewOnly] = useState<boolean>(false);
   const [belowMarketOnly, setBelowMarketOnly] = useState<boolean>(false);
+  // "Search this area" on the map: south,west,north,east (only applies while the map is showing)
+  const [mapBounds, setMapBounds] = useState<string | null>(null);
   // how many live listings each city / district has (shown beside the names in the search boxes)
   const [facets, setFacets] = useState<{ cities: { name: string; count: number }[]; districts: { city: string; name: string; count: number }[] }>({ cities: [], districts: [] });
   useEffect(() => {
@@ -342,7 +344,7 @@ export default function VisitorExperience({
 
   useEffect(() => {
     fetchProperties();
-  }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, baths, furnishedFilter, minArea, priceReducedOnly, newOnly, belowMarketOnly, verifiedOnly, debouncedSearchQuery, locations]);
+  }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, baths, furnishedFilter, minArea, priceReducedOnly, newOnly, belowMarketOnly, verifiedOnly, debouncedSearchQuery, locations, mapBounds, viewFormat]);
 
   useEffect(() => {
     if (selectedProperty) {
@@ -574,6 +576,7 @@ export default function VisitorExperience({
       if (priceReducedOnly) params.append("priceReduced", "true");
       if (newOnly) params.append("listedWithinDays", String(NEW_LISTING_DAYS));
       if (belowMarketOnly) params.append("belowMarket", "true");
+      if (viewFormat === "MAP" && mapBounds) params.append("bounds", mapBounds);
       if (debouncedSearchQuery) params.append("searchQuery", debouncedSearchQuery);
       if (verifiedOnly) params.append("verifiedOnly", "true");
 
@@ -1534,7 +1537,7 @@ export default function VisitorExperience({
             </div>
           ))}
         </div>
-      ) : getSortedProperties().length === 0 ? (
+      ) : getSortedProperties().length === 0 && !(viewFormat === "MAP" && mapBounds) ? (
         <div className="text-center py-20 bg-surface border border-border rounded-xl">
           <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-[#faf6ea] border border-gold/30 flex items-center justify-center">
             <Info size={24} className="text-gold" />
@@ -1551,6 +1554,9 @@ export default function VisitorExperience({
           properties={getSortedProperties()}
           onPropertyClick={setSelectedProperty}
           isRtl={isRtl}
+          onSearchArea={setMapBounds}
+          areaActive={mapBounds !== null}
+          onClearArea={() => setMapBounds(null)}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

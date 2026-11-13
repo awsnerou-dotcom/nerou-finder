@@ -7,6 +7,8 @@ import { getVideoEmbedUrl } from "../lib/video.js";
 import { NEARBY_TYPES, NEARBY_UNITS, MAX_NEARBY_PLACES } from "../lib/propertyNearby.js";
 import { agentChecklist } from "../lib/workspaceReadiness.js";
 import { cleanTourUrl } from "../lib/virtualTour.js";
+import { hasExactPin, type Pin } from "../lib/mapPin.js";
+import PinPicker from "./PinPicker.js";
 import { SubscriptionAlertBanner, ReadinessCard } from "./WorkspaceWidgets.js";
 import React, { useState, useEffect } from "react";
 import {
@@ -343,6 +345,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [listingAmenities, setListingAmenities] = useState<string>("Pool, Gym, Parking");
   // places near the property, entered by the agent and shown to visitors as given (nothing is guessed from the map)
   const [listingTourUrl, setListingTourUrl] = useState<string>("");
+  // the exact spot the agent put on the map (null = none; sent as "pin" so an edit can place or remove it)
+  const [listingPin, setListingPin] = useState<Pin | null>(null);
   const [listingNearby, setListingNearby] = useState<{ type: string; name: string; nameAr: string; value: string; unit: string }[]>([]);
   const [listingVideoUrl, setListingVideoUrl] = useState<string>("");
 
@@ -1004,6 +1008,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           // "" on purpose when blank: on an edit it clears a previously saved video link.
           videoUrl: listingVideoUrl.trim(),
           virtualTourUrl: listingTourUrl.trim(),
+          pin: listingPin,
           agentId: agent.id,
           orgId: agent.orgId,
           projectId: resolvedProjectId,
@@ -1046,6 +1051,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         setListingTenureType("");
         setListingNearby([]);
         setListingTourUrl("");
+        setListingPin(null);
         setLinkedProjectId("");
         setCreatingNewProject(false);
         setNewProjectName("");
@@ -1162,6 +1168,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     setListingNearby((prop.nearbyPlaces || []).map(p => ({ type: p.type, name: p.name, nameAr: p.nameAr || "", value: String(p.value), unit: p.unit })));
     setListingVideoUrl(prop.videoUrl || "");
     setListingTourUrl(prop.virtualTourUrl || "");
+    setListingPin(hasExactPin(prop) ? { latitude: prop.latitude, longitude: prop.longitude } : null);
     setWizardStep(1);
     setIsAddingListing(true);
     setPossibleDuplicates([]);
@@ -2069,6 +2076,18 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                         <option key={area.id} value={area.id}>{area.name}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <PinPicker
+                      value={listingPin}
+                      onChange={setListingPin}
+                      isRtl={isRtl}
+                      center={(() => {
+                        const area = locations.find(l => l.id === selectedArea) || locations.find(l => l.id === selectedMunicipality);
+                        return area && area.latitude && area.longitude ? { latitude: area.latitude, longitude: area.longitude } : null;
+                      })()}
+                    />
                   </div>
                 </div>
               )}

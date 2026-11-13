@@ -295,6 +295,8 @@ export interface Property {
   videoUrl?: string;
   // A link to a 3D / virtual tour, opened in a new tab; https only (see src/lib/virtualTour.ts).
   virtualTourUrl?: string;
+  /** true only when the agent placed the exact pin on the map; otherwise latitude/longitude are a placeholder (see src/lib/mapPin.ts) */
+  exactLocation?: boolean;
   // Added to search results (never stored): where the price stands against the market around it (src/lib/marketPosition.ts).
   marketPosition?: { percent: number; position: "below" | "in-line" | "above" };
   agentId: string;

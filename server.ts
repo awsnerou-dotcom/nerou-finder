@@ -122,6 +122,7 @@ import { cleanTourUrl } from "./src/lib/virtualTour.js";
 import { computeMarketPositions, isBelowMarket } from "./src/lib/marketPosition.js";
 import { estimateValue, validateValuationInput } from "./src/lib/valuation.js";
 import { publicAgentPerformance } from "./src/lib/agentPerformance.js";
+import { cleanPin, hasExactPin, inBounds, parseBounds, PLACEHOLDER_PIN } from "./src/lib/mapPin.js";
 import { publicPlan } from "./src/data/plans.js";
 import {
   Lang as SeoLang,
@@ -1957,6 +1958,7 @@ app.get("/api/properties", (req, res) => {
     priceReduced,
     listedWithinDays,
     belowMarket,
+    bounds,
     verifiedOnly,
     orgId,
     searchQuery,
@@ -2091,6 +2093,14 @@ app.get("/api/properties", (req, res) => {
     properties = properties.filter(p => isBelowMarket(positions.get(p.id)));
   }
   properties = properties.map(p => (positions.has(p.id) ? { ...p, marketPosition: positions.get(p.id) } : p));
+
+  // "Search this area" on the map: "bounds=south,west,north,east" keeps only the listings whose agent placed an exact pin
+  // inside the box. A listing without a real pin is never matched by its placeholder spot.
+  if (bounds !== undefined) {
+    const box = parseBounds(bounds);
+    if (!box) return res.status(400).json({ error: "bounds must be south,west,north,east" });
+    properties = properties.filter(p => hasExactPin(p) && inBounds({ latitude: p.latitude, longitude: p.longitude }, box));
+  }
 
   // Optional, backward-compatible pagination - only applied when the caller explicitly asks
   // for it via ?limit=, so every existing caller that expects the full array back keeps
@@ -2634,6 +2644,13 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       descriptionAr: resolvedDescriptionAr,
       priceHistory,
       qualityScore,
+      // the map pin is only ever what cleanPin accepts: sending "pin" places it, "pin: null" removes it, leaving it out keeps it
+      ...("pin" in propData
+        ? (() => {
+            const pin = cleanPin(propData.pin);
+            return pin ? { ...pin, exactLocation: true } : { ...PLACEHOLDER_PIN, exactLocation: false };
+          })()
+        : { latitude: existing.latitude, longitude: existing.longitude, exactLocation: existing.exactLocation }),
       // nearby places are cleaned on the way in; leaving the field out keeps what is stored, sending [] clears it
       virtualTourUrl: "virtualTourUrl" in propData ? cleanTourUrl(propData.virtualTourUrl) : existing.virtualTourUrl,
       nearbyPlaces: "nearbyPlaces" in propData
@@ -2694,8 +2711,10 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       sizeUnit: propData.sizeUnit || "SQM",
       city: propData.city,
       district: propData.district,
-      latitude: propData.latitude || 25.3,
-      longitude: propData.longitude || 51.5,
+      ...(() => {
+        const pin = cleanPin(propData.pin);
+        return pin ? { ...pin, exactLocation: true } : { ...PLACEHOLDER_PIN, exactLocation: false };
+      })(),
       bedrooms: Number(propData.bedrooms),
       bathrooms: Number(propData.bathrooms),
       furnished: propData.furnished || "NO",
