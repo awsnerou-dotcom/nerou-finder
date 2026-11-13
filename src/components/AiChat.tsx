@@ -158,7 +158,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Nerou Find AI" dir={isRtl ? "rtl" : "ltr"}
-      className="fixed inset-0 z-[150] flex flex-col bg-[#0f0d0b] text-white font-sans animate-in fade-in duration-200">
+      className="fixed inset-0 z-[150] flex flex-col bg-[#0a1220] text-white font-sans animate-in fade-in duration-200">
       {/* soft light from the top, purely decorative */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(255,255,255,0.07),transparent)]" />
 
@@ -239,7 +239,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
                       <article key={p.id} className="group flex flex-col rounded-2xl overflow-hidden bg-white/[0.04] border border-white/10 hover:border-white/40 transition-colors">
                         <button onClick={() => onOpenProperty(p)} className="relative block aspect-[16/10] overflow-hidden bg-black/40 cursor-pointer" aria-label={p.title}>
                           {p.images?.[0] && <img src={getThumbnailUrl(p.images[0])} alt="" loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />}
-                          <span className={`absolute top-3 ${isRtl ? "right-3" : "left-3"} px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white text-[#1a1714]`}>{badge(p)}</span>
+                          <span className={`absolute top-3 ${isRtl ? "right-3" : "left-3"} px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide bg-white text-[#0e1b2e]`}>{badge(p)}</span>
                         </button>
                         <div className="p-4 flex flex-col gap-2.5 flex-1">
                           <div className="flex items-start justify-between gap-3">
@@ -294,7 +294,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
       </main>
 
       {/* composer */}
-      <footer className="relative z-10 px-4 sm:px-6 pt-2 pb-4 bg-gradient-to-t from-[#0f0d0b] via-[#0f0d0b] to-transparent">
+      <footer className="relative z-10 px-4 sm:px-6 pt-2 pb-4 bg-gradient-to-t from-[#0a1220] via-[#0a1220] to-transparent">
         <form onSubmit={e => { e.preventDefault(); ask(input); }} className="max-w-3xl mx-auto">
           <div className="flex items-end gap-2 p-2 ps-4 rounded-3xl bg-white/[0.07] backdrop-blur-md border border-white/15 focus-within:border-white/40 shadow-[0_8px_30px_rgba(0,0,0,0.35)] transition-colors">
             <textarea
@@ -309,7 +309,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
               className="flex-1 bg-transparent resize-none outline-none py-2.5 text-[15px] leading-relaxed placeholder:text-white/40 max-h-40 overflow-y-hidden"
             />
             <button type="submit" disabled={!input.trim() || busy} aria-label={t("Send", "إرسال")}
-              className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition-all ${input.trim() && !busy ? `bg-white text-[#1a1714] shadow-[0_4px_14px_rgba(0,0,0,0.4)] cursor-pointer hover:scale-105` : "bg-white/10 text-white/35"}`}>
+              className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition-all ${input.trim() && !busy ? `bg-white text-[#0e1b2e] shadow-[0_4px_14px_rgba(0,0,0,0.4)] cursor-pointer hover:scale-105` : "bg-white/10 text-white/35"}`}>
               <ArrowUp size={18} strokeWidth={2.6} />
             </button>
           </div>

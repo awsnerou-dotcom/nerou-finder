@@ -83,7 +83,7 @@ export default function HelpCenterView({ isRtl }: HelpCenterViewProps) {
               placeholder={isRtl ? "ابحث في المقالات والمواضيع الموثقة..." : "Search documentation and FAQs..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-[#2c2925] border border-[#44403a] rounded-lg text-xs focus:outline-none focus:border-gold"
+              className="w-full pl-10 pr-4 py-2 bg-[#16233a] border border-[#2c3f5c] rounded-lg text-xs focus:outline-none focus:border-gold"
             />
             <Search size={14} className="absolute left-3 top-3 text-gray-400" />
           </div>

@@ -1054,11 +1054,11 @@ export default function VisitorExperience({
                     onTouchStart={preloadDirectorySearch}
                     className={`group flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold backdrop-blur-sm border transition-all duration-200 cursor-pointer active:scale-95 ${isRtl ? "" : "tracking-wide"} ${
                       searchMode === mode
-                        ? "nav-pop bg-white text-[#1a1714] border-transparent shadow-[0_4px_14px_rgba(0,0,0,0.38)]"
+                        ? "nav-pop bg-white text-[#0e1b2e] border-transparent shadow-[0_4px_14px_rgba(0,0,0,0.38)]"
                         : "bg-black/30 text-white/85 border-white/15 hover:bg-white/15 hover:text-white hover:border-white/30"
                     }`}
                   >
-                    <Icon size={14} strokeWidth={searchMode === mode ? 2.4 : 1.9} className={searchMode === mode ? "text-[#1a1714]" : "text-white/75"} />
+                    <Icon size={14} strokeWidth={searchMode === mode ? 2.4 : 1.9} className={searchMode === mode ? "text-[#0e1b2e]" : "text-white/75"} />
                     {label}
                   </button>
                 ))}
@@ -1091,9 +1091,9 @@ export default function VisitorExperience({
                 <button
                   type="button"
                   onClick={() => openAiChat()}
-                  className="group inline-flex items-center gap-2.5 px-5 py-3 rounded-full text-sm font-bold text-[#1a1714] bg-white shadow-[0_8px_28px_rgba(0,0,0,0.38)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.38)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer"
+                  className="group inline-flex items-center gap-2.5 px-5 py-3 rounded-full text-sm font-bold text-[#0e1b2e] bg-white shadow-[0_8px_28px_rgba(0,0,0,0.38)] hover:shadow-[0_12px_36px_rgba(0,0,0,0.38)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer"
                 >
-                  <span className="w-8 h-8 -ms-2 rounded-full bg-[#1a1714] text-white flex items-center justify-center transition-transform duration-300 group-hover:scale-105"><NerouAiMark size={17} strokeWidth={2.1} /></span>
+                  <span className="w-8 h-8 -ms-2 rounded-full bg-[#0e1b2e] text-white flex items-center justify-center transition-transform duration-300 group-hover:scale-105"><NerouAiMark size={17} strokeWidth={2.1} /></span>
                   <span>{t.aiTitle}</span>
                   {isRtl ? <ChevronLeft size={16} strokeWidth={2.6} /> : <ChevronRight size={16} strokeWidth={2.6} />}
                 </button>
@@ -2391,13 +2391,13 @@ export default function VisitorExperience({
           type="button"
           onClick={() => openAiChat()}
           aria-label={isRtl ? "اسأل مساعد نيرو الذكي" : "Ask Nerou AI"}
-          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-14 min-w-14 justify-center sm:ps-4 sm:pe-5 rounded-full text-white bg-[#0e1b2e] ring-1 ring-[#d9c58b]/55 border border-white/15 shadow-[0_12px_32px_rgba(0,0,0,0.45)] hover:ring-[#bf9b30] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 cursor-pointer"
+          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-14 min-w-14 justify-center sm:ps-4 sm:pe-5 rounded-full text-white bg-[#0e1b2e] ring-1 ring-[#d9c58b]/55 border border-white/15 shadow-[0_12px_32px_rgba(0,0,0,0.45)] hover:ring-[#d4b878] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 cursor-pointer"
         >
           <span className="relative flex">
             <NerouAiMark size={24} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
             <span className="absolute -top-1 -end-1 flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-[#bf9b30] opacity-70 animate-ping" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#bf9b30]" />
+              <span className="absolute inline-flex h-full w-full rounded-full bg-[#d4b878] opacity-70 animate-ping" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#d4b878]" />
             </span>
           </span>
           <span className="hidden sm:inline text-sm font-bold whitespace-nowrap">{isRtl ? "اسأل نيرو AI" : "Ask Nerou AI"}</span>

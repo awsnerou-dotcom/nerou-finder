@@ -718,13 +718,13 @@ export default function App() {
               onClick={() => setViewMode("MARKETPLACE")}
             >
               <span className={`font-serif text-lg tracking-[0.2em] font-semibold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-ink"}`}>NEROU</span>
-              <span className="font-serif text-lg tracking-wider text-gold font-bold">FINDER</span>
+              <span className={`font-serif text-lg tracking-wider font-bold transition-colors duration-300 ${heroTransparent ? "text-[#dcc48e]" : "text-gold"}`}>FINDER</span>
             </div>
             <div
               className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide transition-colors duration-300 ${
                 heroTransparent
                   ? "bg-white/10 backdrop-blur-sm border border-white/30 text-white"
-                  : "bg-gradient-to-r from-ink-inverse to-[#f8f2e0] border border-gold/40 text-gold-active"
+                  : "bg-gold-soft border border-gold/40 text-gold-active"
               }`}
             >
               <NerouAiMark size={12} className="text-gold animate-pulse" />
@@ -1028,7 +1028,7 @@ export default function App() {
           <div className="col-span-2 md:col-span-1 space-y-3">
             <div dir="ltr" className="flex items-center gap-2">
               <span className="font-serif text-lg tracking-[0.2em] text-white font-semibold">NEROU</span>
-              <span className="font-serif text-lg tracking-wider text-gold font-bold">FINDER</span>
+              <span className="font-serif text-lg tracking-wider text-[#dcc48e] font-bold">FINDER</span>
             </div>
             <p className="text-xs text-gray-400 leading-relaxed">
               {isRtl
@@ -1141,7 +1141,7 @@ export default function App() {
               <CinematicSkyline />
               <div className="relative z-10">
                 <span className="font-serif text-xl tracking-[0.2em] font-semibold text-white">NEROU</span>
-                <span className="font-serif text-xl tracking-wider font-bold text-gold ml-1.5">FINDER</span>
+                <span className="font-serif text-xl tracking-wider font-bold text-[#dcc48e] ml-1.5">FINDER</span>
                 <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold mt-1">
                   {isRtl ? "بوابة الشركاء" : "Partner Portal"}
                 </p>
@@ -1488,7 +1488,7 @@ export default function App() {
               <CinematicSkyline />
               <div className="relative z-10">
                 <span className="font-serif text-xl tracking-[0.2em] font-semibold text-white">NEROU</span>
-                <span className="font-serif text-xl tracking-wider font-bold text-gold ml-1.5">FINDER</span>
+                <span className="font-serif text-xl tracking-wider font-bold text-[#dcc48e] ml-1.5">FINDER</span>
                 <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-gold mt-1">
                   {isRtl ? "تسجيل الشركاء" : "Partner Registration"}
                 </p>
