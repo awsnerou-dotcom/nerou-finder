@@ -115,6 +115,7 @@ import {
 } from "./src/lib/prospects.js";
 import { validateShowcaseInput, sortShowcase } from "./src/lib/showcase.js";
 import { validatePlanRequest, describePlanRequest } from "./src/lib/planRequest.js";
+import { compareWithMarket } from "./src/lib/marketComparison.js";
 import { publicPlan } from "./src/data/plans.js";
 import {
   Lang as SeoLang,
@@ -2249,6 +2250,15 @@ app.get("/api/properties/:id", (req, res) => {
     return res.status(404).json({ error: "Property not found" });
   }
   res.json(property);
+});
+
+// How this listing's price per square metre compares with the other live listings in its district (see
+// src/lib/marketComparison.ts). Public like the listing itself; it only reads what a visitor can already see.
+app.get("/api/properties/:id/market-comparison", (req, res) => {
+  const db = readDb();
+  const property = db.properties.find(p => p.id === req.params.id);
+  if (!property) return res.status(404).json({ error: "Property not found" });
+  res.json(compareWithMarket(property, db.properties));
 });
 
 // FIX 8: real view tracking. `fingerprint` is a stable per-browser id the client generates

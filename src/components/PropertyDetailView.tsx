@@ -36,6 +36,7 @@ import {
   Building,
   DollarSign,
   Activity,
+  TrendingUp,
   Award,
   Download,
   CheckCircle,
@@ -162,7 +163,7 @@ export default function PropertyDetailView({
             ? "RENT"
             : "SALE";
         const match = data.groups.find(
-          (g: any) => g.transactionType === bucket && g.district.toLowerCase() === property.district.toLowerCase()
+          (g: any) => g.transactionType === bucket && (g.district || "").toLowerCase() === (property.district || "").toLowerCase()
         );
         if (match?.avgPricePerSqm && !match.lowConfidence) {
           const ownPerSqm = property.price / property.area;
@@ -634,7 +635,7 @@ export default function PropertyDetailView({
       if (p.propertyType !== property.propertyType) return false;
 
       // 5. Location matching (same district or city)
-      const sameLocation = p.district.toLowerCase() === property.district.toLowerCase() || p.city.toLowerCase() === property.city.toLowerCase();
+      const sameLocation = (p.district || "").toLowerCase() === (property.district || "").toLowerCase() || (p.city || "").toLowerCase() === (property.city || "").toLowerCase();
       if (!sameLocation) return false;
 
       // 6. Price range matching (±20% variance)
@@ -656,7 +657,7 @@ export default function PropertyDetailView({
         const isTargetRent = p.transactionType === TransactionType.FOR_RENT || p.transactionType === TransactionType.COMMERCIAL_LEASE;
         if (isCurrentRent !== isTargetRent) return false;
 
-        return p.propertyType === property.propertyType || p.city.toLowerCase() === property.city.toLowerCase();
+        return p.propertyType === property.propertyType || (p.city || "").toLowerCase() === (property.city || "").toLowerCase();
       })
       .slice(0, 3 - finalSimilarListings.length);
     finalSimilarListings = [...finalSimilarListings, ...extraListings];
@@ -866,25 +867,8 @@ export default function PropertyDetailView({
             {/* LEFT COLUMN: MULTIMEDIA & DEEP DETAILS */}
             <div className="lg:col-span-8 space-y-6">
               
-              {/* DYNAMIC SMART MATCHING CARD */}
-              <div className="bg-surface p-5 rounded-xl border border-gold/30 shadow-sm space-y-3 relative overflow-hidden">
-                <div className="absolute top-0 right-0 left-0 h-1 bg-gold"></div>
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-gold/10 rounded-lg text-gold shrink-0">
-                    <Activity size={20} className="animate-pulse" />
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="font-serif text-sm font-semibold text-ink">
-                      {isRtl ? "مؤشر الذكاء الاصطناعي لمطابقة الميزانية" : "AI Market Budget Analysis"}
-                    </h3>
-                    <p className="text-xs text-ink-muted leading-relaxed">
-                      {isRtl 
-                        ? `هذا العقار يطابق الميزانية العامة للحي في ${property.district} بنسبة ٩٧٪. متوسط سعر القدم المربع في المنطقة هو ${(property.price / (property.area || 1) * 0.09).toFixed(1)} ريال قطري، مما يجعله استثماراً ممتازاً بقيمة عادلة.`
-                        : `This property aligns with average pricing guidelines in ${property.district} at 97% affinity. The square meter rate is calculated at QAR ${(property.price / (property.area || 1)).toFixed(0)} / SQM, which sits strictly within the optimal standard.`}
-                    </p>
-                  </div>
-                </div>
-              </div>
+              {/* How this price compares with the other live listings around it: real data, or nothing */}
+              <MarketComparisonCard propertyId={property.id} isRtl={isRtl} formatPrice={formatPrice} />
 
               {/* MAIN DETAILS GRID (BEDS, BATHS, SIZE) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -974,7 +958,7 @@ export default function PropertyDetailView({
                           : property.tenureType === "USUFRUCT"
                           ? (isRtl ? "حق الانتفاع" : "Usufruct")
                           : (isRtl ? "تملك للمواطنين فقط" : "Local Ownership Only")
-                        : property.district.toLowerCase().includes("pearl") || property.district.toLowerCase().includes("lusail") || property.district.toLowerCase().includes("west bay")
+                        : (property.district || "").toLowerCase().includes("pearl") || (property.district || "").toLowerCase().includes("lusail") || (property.district || "").toLowerCase().includes("west bay")
                         ? (isRtl ? "تملك حر للأجانب" : "Freehold (Qatar Foreign Ownership)")
                         : (isRtl ? "حق منفعة / إيجار" : "Leasehold Status")}
                     </span>
@@ -1870,6 +1854,124 @@ export default function PropertyDetailView({
         )}
 
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// "How this price compares": the listing's price per square metre against the median of the other live listings in
+// the same district (GET /api/properties/:id/market-comparison). Everything shown comes from that data; when there
+// are too few similar listings it says so instead of inventing a figure. Draws nothing until the answer arrives, and
+// nothing at all if the request fails.
+// ---------------------------------------------------------------------------------------------------------------
+type ComparisonReply =
+  | { comparable: false; deal: "RENT" | "SALE" | null; district: string; comparableCount: number; listingPricePerSqm: number | null }
+  | {
+      comparable: true; deal: "RENT" | "SALE"; district: string; city: string; propertyType: string;
+      basis: "same-type" | "any-type"; comparableCount: number; listingPricePerSqm: number; medianPricePerSqm: number;
+      differencePercent: number; position: "below" | "in-line" | "above"; lowConfidence: boolean; perMonth: boolean;
+    };
+
+function MarketComparisonCard({ propertyId, isRtl, formatPrice }: { propertyId: string; isRtl: boolean; formatPrice: (n: number, rtl: boolean) => string }) {
+  const [data, setData] = useState<ComparisonReply | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setData(null);
+    fetch(`/api/properties/${encodeURIComponent(propertyId)}/market-comparison`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancelled && d && typeof d.comparable === "boolean") setData(d); })
+      .catch(() => { /* no comparison is better than a wrong one */ });
+    return () => { cancelled = true; };
+  }, [propertyId]);
+  if (!data) return null;
+  const t = (en: string, ar: string) => (isRtl ? ar : en);
+
+  const shell = "bg-surface p-5 rounded-2xl border border-border space-y-4 relative overflow-hidden";
+  const head = (
+    <div className="flex items-center gap-2.5">
+      <span className="w-9 h-9 rounded-xl bg-gold-soft text-gold-active flex items-center justify-center shrink-0"><TrendingUp size={17} /></span>
+      <h3 className="font-serif text-lg font-medium text-ink">{t("How this price compares", "كيف يقارن هذا السعر")}</h3>
+    </div>
+  );
+  const perSqm = (n: number, month: boolean) => `${formatPrice(n, isRtl)} / ${t("sqm", "م²")}${month ? ` ${t("per month", "شهرياً")}` : ""}`;
+  const source = t(
+    "Calculated from the live listings on Nerou Finder. It is a comparison of advertised prices, not a valuation.",
+    "محسوب من العقارات المعروضة حالياً على نيرو فايندر. هو مقارنة بالأسعار المعلنة وليس تقييماً للعقار."
+  );
+
+  if (!data.comparable) {
+    return (
+      <div className={shell}>
+        {head}
+        <p className="text-sm text-ink-muted leading-relaxed">
+          {t(
+            `There are not enough similar listings in ${data.district || "this area"} yet to compare this price fairly.`,
+            `لا توجد حتى الآن عقارات مماثلة كافية في ${data.district || "هذه المنطقة"} لمقارنة هذا السعر بإنصاف.`
+          )}
+          {data.listingPricePerSqm !== null && (
+            <> {t("This listing is", "سعر هذا العقار")} <strong className="text-ink font-semibold">{perSqm(data.listingPricePerSqm, data.deal === "RENT")}</strong>.</>
+          )}
+        </p>
+        <p className="text-[11px] text-ink-faint">{source}</p>
+      </div>
+    );
+  }
+
+  const abs = Math.abs(data.differencePercent);
+  const headline = data.position === "in-line"
+    ? t("In line with the area median", "قريب من متوسط المنطقة")
+    : data.position === "below"
+      ? t(`${abs}% below the area median`, `أقل من متوسط المنطقة بنسبة ${abs}٪`)
+      : t(`${abs}% above the area median`, `أعلى من متوسط المنطقة بنسبة ${abs}٪`);
+  const tone = data.position === "below" ? "text-success" : data.position === "above" ? "text-warning" : "text-ink";
+  const dot = data.position === "below" ? "bg-success" : data.position === "above" ? "bg-warning" : "bg-ink";
+  // the median sits in the middle of the track; the listing's mark is placed by its price relative to it
+  const ratio = data.listingPricePerSqm / data.medianPricePerSqm;
+  const pos = Math.min(94, Math.max(6, (ratio / 2) * 100));
+  const dealWord = data.deal === "RENT" ? t("for rent", "للإيجار") : t("for sale", "للبيع");
+  const typeWord = data.basis === "same-type" ? `${String(data.propertyType).replace(/_/g, " ").toLowerCase()} ` : "";
+
+  return (
+    <div className={shell}>
+      {head}
+      <div className="space-y-1">
+        <p className={`font-serif text-2xl font-medium ${tone}`}>{headline}</p>
+        <p className="text-sm text-ink-muted">
+          {t(
+            `Compared with ${data.comparableCount} other live ${typeWord}listings ${dealWord} in ${data.district}.`,
+            `مقارنة بـ ${data.comparableCount} عقارات معروضة أخرى ${dealWord} في ${data.district}.`
+          )}
+        </p>
+      </div>
+
+      <div className="space-y-2" aria-hidden="true">
+        <div className="relative h-2 rounded-full bg-surface-2">
+          <span className="absolute inset-y-0 start-1/2 w-px bg-ink-faint" />
+          <span
+            className={`absolute top-1/2 w-4 h-4 rounded-full border-2 border-surface shadow ${dot}`}
+            style={{ [isRtl ? "right" : "left"]: `${pos}%`, transform: isRtl ? "translate(50%, -50%)" : "translate(-50%, -50%)" }}
+          />
+        </div>
+        <div className="flex justify-between text-[10px] uppercase tracking-wider text-ink-faint">
+          <span>{t("Lower", "أقل")}</span><span>{t("Area median", "متوسط المنطقة")}</span><span>{t("Higher", "أعلى")}</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-xl bg-canvas border border-border p-3">
+          <p className="text-[10px] uppercase tracking-wider text-ink-faint mb-1">{t("This listing", "هذا العقار")}</p>
+          <p className="font-semibold text-ink tabular-nums">{perSqm(data.listingPricePerSqm, data.perMonth)}</p>
+        </div>
+        <div className="rounded-xl bg-canvas border border-border p-3">
+          <p className="text-[10px] uppercase tracking-wider text-ink-faint mb-1">{t("Area median", "متوسط المنطقة")}</p>
+          <p className="font-semibold text-ink tabular-nums">{perSqm(data.medianPricePerSqm, data.perMonth)}</p>
+        </div>
+      </div>
+
+      {data.lowConfidence && (
+        <p className="text-xs text-warning">{t("Based on only a few listings, so treat it as a rough guide.", "مبني على عدد قليل من العقارات، فاعتبره مؤشراً تقريبياً.")}</p>
+      )}
+      <p className="text-[11px] text-ink-faint">{source}</p>
     </div>
   );
 }
