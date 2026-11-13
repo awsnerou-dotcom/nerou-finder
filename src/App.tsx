@@ -766,7 +766,7 @@ export default function App() {
             {/* Language Toggle */}
             <button
               onClick={toggleLanguage}
-              className="p-2 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-ink flex items-center gap-1.5 text-xs font-bold"
+              className="px-3 py-1.5 bg-surface/70 backdrop-blur-sm border border-border hover:border-gold/60 hover:bg-surface-2 rounded-full transition-colors cursor-pointer text-ink flex items-center gap-1.5 text-xs font-semibold"
               title={isRtl ? "Switch to English" : "تحويل إلى العربية"}
             >
               <Globe size={14} />
@@ -776,7 +776,7 @@ export default function App() {
             {/* Dark mode toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-ink"
+              className="p-2 bg-surface/70 backdrop-blur-sm border border-border hover:border-gold/60 hover:bg-surface-2 rounded-full transition-colors cursor-pointer text-ink"
               title={
                 resolvedTheme === "dark"
                   ? (isRtl ? "التحويل إلى الوضع الفاتح" : "Switch to light mode")
@@ -788,7 +788,7 @@ export default function App() {
             </button>
 
             {/* Currency Selector */}
-            <div className="flex items-center bg-ink-inverse border border-border rounded-lg p-0.5 shadow-xs">
+            <div className="flex items-center bg-surface/70 backdrop-blur-sm border border-border rounded-full p-0.5">
               {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => {
                 const config = CURRENCIES[code];
                 const active = activeCurrency === code;
@@ -796,9 +796,9 @@ export default function App() {
                   <button
                     key={code}
                     onClick={() => setActiveCurrency(code)}
-                    className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide transition-all cursor-pointer ${
                       active
-                        ? "bg-chrome text-gold shadow-xs"
+                        ? "bg-chrome text-white shadow-sm"
                         : "text-ink-muted hover:text-ink"
                     }`}
                   >
@@ -876,7 +876,7 @@ export default function App() {
 
         {/* Mobile Nav Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-border bg-surface px-4 py-4 space-y-4 max-h-[calc(100vh-4rem)] overflow-y-auto">
+          <div className="md:hidden border-t border-border bg-surface px-5 py-5 space-y-5 max-h-[calc(100vh-4rem)] overflow-y-auto shadow-[0_28px_40px_-28px_rgba(14,27,46,0.5)] animate-in fade-in slide-in-from-top-2 duration-200">
 
             {/* View switcher for logged in users */}
             {currentUser && (
@@ -906,47 +906,52 @@ export default function App() {
               </div>
             )}
 
-            {/* Language Toggle */}
-            <button
-              onClick={toggleLanguage}
-              className="w-full p-3 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-ink flex items-center justify-center gap-2 text-sm font-bold"
-            >
-              <Globe size={16} />
-              <span>{isRtl ? "English" : "العربية"}</span>
-            </button>
+            {/* Language and appearance */}
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={toggleLanguage} className="group text-start p-3.5 rounded-2xl border border-border bg-ink-inverse hover:border-gold/60 hover:bg-surface-2 transition-all cursor-pointer active:scale-[0.98]">
+                <span className={`block text-[10px] font-semibold text-ink-faint uppercase mb-2 ${isRtl ? "" : "tracking-[0.14em]"}`}>{isRtl ? "اللغة" : "Language"}</span>
+                <span className="flex items-center gap-2.5">
+                  <span className="w-9 h-9 rounded-xl bg-chrome text-white flex items-center justify-center shrink-0"><Globe size={17} /></span>
+                  <span className="text-sm font-semibold text-ink leading-tight">{isRtl ? "English" : "العربية"}</span>
+                </span>
+              </button>
+              <button onClick={toggleTheme} className="group text-start p-3.5 rounded-2xl border border-border bg-ink-inverse hover:border-gold/60 hover:bg-surface-2 transition-all cursor-pointer active:scale-[0.98]">
+                <span className={`block text-[10px] font-semibold text-ink-faint uppercase mb-2 ${isRtl ? "" : "tracking-[0.14em]"}`}>{isRtl ? "المظهر" : "Appearance"}</span>
+                <span className="flex items-center gap-2.5">
+                  <span className="w-9 h-9 rounded-xl bg-chrome text-white flex items-center justify-center shrink-0">
+                    {resolvedTheme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+                  </span>
+                  <span className="text-sm font-semibold text-ink leading-tight">
+                    {resolvedTheme === "dark"
+                      ? (isRtl ? "الوضع الفاتح" : "Light mode")
+                      : (isRtl ? "الوضع الداكن" : "Dark mode")}
+                  </span>
+                </span>
+              </button>
+            </div>
 
-            {/* Dark mode toggle */}
-            <button
-              onClick={toggleTheme}
-              className="w-full p-3 bg-ink-inverse border border-border hover:bg-surface-2 rounded-lg transition-colors cursor-pointer text-ink flex items-center justify-center gap-2 text-sm font-bold"
-            >
-              {resolvedTheme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-              <span>
-                {resolvedTheme === "dark"
-                  ? (isRtl ? "الوضع الفاتح" : "Light Mode")
-                  : (isRtl ? "الوضع الداكن" : "Dark Mode")}
-              </span>
-            </button>
-
-            {/* Currency Selector */}
-            <div className="flex items-center bg-ink-inverse border border-border rounded-lg p-1 shadow-xs">
-              {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => {
-                const config = CURRENCIES[code];
-                const active = activeCurrency === code;
-                return (
-                  <button
-                    key={code}
-                    onClick={() => setActiveCurrency(code)}
-                    className={`flex-1 px-2 py-2.5 rounded-md text-xs font-bold transition-all cursor-pointer ${
-                      active
-                        ? "bg-chrome text-gold shadow-xs"
-                        : "text-ink-muted hover:text-ink"
-                    }`}
-                  >
-                    {isRtl ? config.symbolAr : config.code}
-                  </button>
-                );
-              })}
+            {/* Currency */}
+            <div>
+              <span className={`block text-[10px] font-semibold text-ink-faint uppercase mb-2 ${isRtl ? "" : "tracking-[0.14em]"}`}>{isRtl ? "العملة" : "Currency"}</span>
+              <div className="flex items-center bg-ink-inverse border border-border rounded-2xl p-1">
+                {(Object.keys(CURRENCIES) as CurrencyCode[]).map((code) => {
+                  const config = CURRENCIES[code];
+                  const active = activeCurrency === code;
+                  return (
+                    <button
+                      key={code}
+                      onClick={() => setActiveCurrency(code)}
+                      className={`flex-1 px-2 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        active
+                          ? "bg-chrome text-white shadow-sm"
+                          : "text-ink-muted hover:text-ink"
+                      }`}
+                    >
+                      {isRtl ? config.symbolAr : config.code}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Auth Buttons / User info */}
@@ -954,14 +959,14 @@ export default function App() {
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => { setIsLoginOpen(true); setIsMobileMenuOpen(false); }}
-                  className="w-full px-3 py-3 text-sm font-bold border border-border hover:bg-surface-2 rounded-lg text-ink flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full px-3 py-3.5 text-sm font-semibold border border-border hover:border-gold/60 hover:bg-surface-2 rounded-xl text-ink flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.98]"
                 >
                   <LogIn size={16} />
                   <span>{isRtl ? "تسجيل دخول" : "Log In"}</span>
                 </button>
                 <button
                   onClick={() => { setIsSignupOpen(true); setIsMobileMenuOpen(false); }}
-                  className="w-full px-3 py-3 text-sm font-bold bg-chrome hover:bg-chrome-hover text-white rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full px-3 py-3.5 text-sm font-semibold bg-chrome hover:bg-chrome-hover text-white rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_20px_-10px_rgba(14,27,46,0.6)] transition-all cursor-pointer active:scale-[0.98]"
                 >
                   <UserPlus size={16} />
                   <span>{isRtl ? "شريك جديد" : "Sign Up"}</span>

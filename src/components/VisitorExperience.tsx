@@ -1426,10 +1426,10 @@ export default function VisitorExperience({
                     setSelectedProperty(property);
                   }
                 }}
-                className={`bg-surface rounded-xl border transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col justify-between hover:shadow-xl hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-gold focus-visible:outline-offset-2 ${
+                className={`bg-surface rounded-2xl border transition-all duration-300 overflow-hidden group cursor-pointer flex flex-col justify-between hover:-translate-y-1 hover:shadow-[0_22px_44px_-20px_rgba(14,27,46,0.4)] focus-visible:outline-2 focus-visible:outline-gold focus-visible:outline-offset-2 ${
                   feat
-                    ? "border-gold bg-gold/2 shadow-md hover:border-gold-hover ring-1 ring-gold/20"
-                    : "border-border hover:border-gold shadow-sm"
+                    ? "border-gold/70 shadow-md ring-1 ring-gold/25"
+                    : "border-border hover:border-gold/50 shadow-[0_1px_2px_rgba(14,27,46,0.05)]"
                 }`}
               >
                 <div>
@@ -1438,13 +1438,14 @@ export default function VisitorExperience({
                     <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-500">
                       <CardImageSlideshow images={property.images} alt={property.title} />
                     </div>
-                    <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/45 to-transparent" />
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/35 to-transparent" />
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/35 to-transparent" />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0a1220]/55 to-transparent" />
                     <div className="absolute top-3 left-3 right-3 flex justify-between items-center">
-                      <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md text-white shadow-sm ${
-                        property.transactionType === TransactionType.FOR_RENT ? "bg-blue-600" :
-                        property.transactionType === TransactionType.FOR_SALE ? "bg-green-600" : "bg-gold"
-                      }`}>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] rounded-full text-white bg-[#0e1b2e]/80 backdrop-blur-md border border-white/15 shadow-sm">
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          property.transactionType === TransactionType.FOR_RENT ? "bg-sky-300" :
+                          property.transactionType === TransactionType.FOR_SALE ? "bg-emerald-300" : "bg-[#d4b878]"
+                        }`} />
                         {property.transactionType === TransactionType.FOR_RENT ? (isRtl ? "إيجار" : "Rent") :
                          property.transactionType === TransactionType.FOR_SALE ? (isRtl ? "بيع" : "Buy") : (isRtl ? "على المخطط" : "Off-Plan")}
                       </span>
@@ -1463,28 +1464,26 @@ export default function VisitorExperience({
                               setComparedPropertyIds([...comparedPropertyIds, property.id]);
                             }
                           }}
-                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full shadow-md text-[10px] font-bold hover:scale-105 transition-transform cursor-pointer ${
+                          className={`inline-flex items-center justify-center w-9 h-9 rounded-full shadow-md backdrop-blur-md hover:scale-105 transition-all cursor-pointer ${
                             comparedPropertyIds.includes(property.id)
                               ? "bg-gold text-gold-ink"
-                              : "bg-white text-gray-900"
+                              : "bg-white/90 text-[#0e1b2e] hover:bg-white"
                           }`}
                           title={isRtl ? "مقارنة العقار" : "Compare Side-by-Side"}
                           aria-label={isRtl ? "مقارنة العقار" : "Compare property"}
                         >
-                          <GitCompare size={13} />
-                          <span>{isRtl ? "قارن" : "Compare"}</span>
+                          <GitCompare size={15} />
                         </button>
 
                         <button
                           onClick={(e) => toggleSaveProperty(property.id, e)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white rounded-full shadow-md text-[10px] font-bold text-gray-900 hover:scale-105 transition-transform cursor-pointer"
+                          className="inline-flex items-center justify-center w-9 h-9 bg-white/90 hover:bg-white backdrop-blur-md rounded-full shadow-md text-[#0e1b2e] hover:scale-105 transition-all cursor-pointer"
                           aria-label={isRtl ? "حفظ العقار" : "Save property"}
                         >
                           <Bookmark
-                            size={13}
-                            className={savedPropertyIds.includes(property.id) ? "fill-gold text-gold" : "text-gray-900"}
+                            size={15}
+                            className={savedPropertyIds.includes(property.id) ? "fill-gold text-gold" : "text-[#0e1b2e]"}
                           />
-                          <span>{savedPropertyIds.includes(property.id) ? (isRtl ? "محفوظ" : "Saved") : (isRtl ? "حفظ" : "Save")}</span>
                         </button>
                       </div>
                     </div>
@@ -1492,8 +1491,8 @@ export default function VisitorExperience({
                     <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center gap-1.5">
                       <div className="flex items-center gap-1.5">
                         {property.verificationStatus === VerificationStatus.APPROVED && (
-                          <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-gray-900 flex items-center gap-1 shadow-xs border border-gold/30">
-                            <CheckCircle size={12} className="text-gold" />
+                          <div className="bg-[#0e1b2e]/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide text-white flex items-center gap-1.5 border border-white/15">
+                            <CheckCircle size={12} className="text-[#d4b878]" />
                             <span>{t.verified}</span>
                           </div>
                         )}
@@ -1506,14 +1505,14 @@ export default function VisitorExperience({
                             as a verdict against a listing sitting next to a badge calling it
                             verified. */}
                         {isAvailabilityConfirmed(property.lastConfirmedAvailableDate) ? (
-                          <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-emerald-700 flex items-center gap-1 shadow-xs border border-emerald-300">
+                          <div className="bg-[#0e1b2e]/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide text-emerald-200 flex items-center gap-1.5 border border-emerald-300/30">
                             <CheckCircle size={12} />
                             <span>
                               {t.availabilityConfirmed} · {formatConfirmedDate(property.lastConfirmedAvailableDate, isRtl)}
                             </span>
                           </div>
                         ) : getAvailabilityStaleDays(property.lastConfirmedAvailableDate || property.createdDate) >= AVAILABILITY_UNCONFIRMED_DAYS ? (
-                          <div className="bg-white/95 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-amber-700 flex items-center gap-1 shadow-xs border border-amber-300">
+                          <div className="bg-[#0e1b2e]/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide text-amber-200 flex items-center gap-1.5 border border-amber-300/30">
                             <Clock size={12} />
                             <span>{t.availabilityPending}</span>
                           </div>
@@ -1521,7 +1520,7 @@ export default function VisitorExperience({
                       </div>
 
                       {feat && (
-                        <div className="bg-gold text-black px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs border border-white ml-auto">
+                        <div className="bg-[linear-gradient(180deg,#e6cf93_0%,#c9a95f_100%)] text-[#0e1b2e] px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-[0.12em] flex items-center gap-1.5 shadow-sm ms-auto">
                           <Award size={12} className="shrink-0" />
                           <span>{isRtl ? "مميز" : "Featured"}</span>
                         </div>
@@ -1529,19 +1528,45 @@ export default function VisitorExperience({
                     </div>
                   </div>
 
-                  <div className="p-4 space-y-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-                        <MapPin size={12} />
-                        <span>{property.district}, {property.city}</span>
+                  <div className="p-5 space-y-4">
+                    <div className="flex items-end justify-between gap-3">
+                      <p className="font-serif text-[1.55rem] font-semibold leading-none text-ink tabular-nums">
+                        {formatPrice(property.price, isRtl)}
+                        {property.transactionType === TransactionType.FOR_RENT && (
+                          <span className="font-sans text-xs font-medium text-ink-muted ms-1.5">
+                            {({ YEARLY: isRtl ? "/ سنة" : "/ year", WEEKLY: isRtl ? "/ أسبوع" : "/ week", DAILY: isRtl ? "/ يوم" : "/ day" } as Record<string, string>)[property.rentalPeriod || ""] || (isRtl ? "/ شهر" : "/ month")}
+                          </span>
+                        )}
+                      </p>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleWhatsAppAction(property); }}
+                          className="w-9 h-9 flex items-center justify-center bg-success-soft hover:bg-success/20 text-success rounded-full transition-colors cursor-pointer"
+                          title={t.whatsappCTA}
+                          aria-label={t.whatsappCTA}
+                        >
+                          <MessageCircle size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleCallAction(property); }}
+                          className="w-9 h-9 flex items-center justify-center bg-chrome hover:bg-chrome-hover text-white rounded-full transition-colors cursor-pointer"
+                          title={t.callCTA}
+                          aria-label={t.callCTA}
+                        >
+                          <Phone size={15} />
+                        </button>
                       </div>
-                      <h4 className="font-serif text-lg font-medium text-ink line-clamp-1 group-hover:text-gold transition-colors">
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <h4 className="font-serif text-[1.1rem] font-medium leading-snug text-ink line-clamp-1 group-hover:text-gold-active transition-colors">
                         {isRtl ? property.titleAr : property.title}
                       </h4>
-                      {/* FIX 4: verified badge on search-result cards too, showing the agent's
-                          actual company rather than a generic "Nerou" claim. Clickable so the
-                          agent's name/company on the card links straight to their public profile
-                          (directory search Fix 4) without leaving the results grid. */}
+                      <div className="flex items-center gap-1.5 text-[13px] text-ink-muted">
+                        <MapPin size={13} className="shrink-0" />
+                        <span className="truncate">{property.district}, {property.city}</span>
+                      </div>
+                      {/* verified agent / company, clickable to the public profile without leaving the results */}
                       {(() => {
                         const listingAgent = users.find(u => u.id === property.agentId);
                         if (!listingAgent || listingAgent.verificationStatus !== VerificationStatus.APPROVED) return null;
@@ -1552,7 +1577,7 @@ export default function VisitorExperience({
                               e.stopPropagation();
                               setSelectedAgentProfile(listingAgent);
                             }}
-                            className="text-[10px] text-gold-active font-semibold truncate hover:text-gold hover:underline cursor-pointer text-left rtl:text-right"
+                            className="text-[11px] text-gold-active font-semibold truncate max-w-full hover:text-gold hover:underline cursor-pointer text-left rtl:text-right"
                           >
                             {getVerifiedBadgeLabel(listingAgent, organizations.find(o => o.id === listingAgent.orgId)?.name, isRtl)}
                           </button>
@@ -1560,55 +1585,25 @@ export default function VisitorExperience({
                       })()}
                     </div>
 
-                    <div className="flex items-center gap-4 text-xs text-ink-muted border-y border-surface-2 py-2">
-                      <div className="flex items-center gap-1">
-                        <Bed size={13} />
-                        <span>{property.bedrooms} {t.beds}</span>
+                    <div className="flex items-center gap-5 text-[13px] font-medium text-ink pt-3.5 border-t border-border">
+                      <div className="flex items-center gap-1.5">
+                        <Bed size={15} className="text-gold" />
+                        <span>{property.bedrooms} <span className="font-normal text-ink-muted">{t.beds}</span></span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Bath size={13} />
-                        <span>{property.bathrooms} {t.baths}</span>
+                      <div className="flex items-center gap-1.5">
+                        <Bath size={15} className="text-gold" />
+                        <span>{property.bathrooms} <span className="font-normal text-ink-muted">{t.baths}</span></span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Maximize2 size={13} />
-                        <span>{property.area} {t.sqm}</span>
+                      <div className="flex items-center gap-1.5">
+                        <Maximize2 size={14} className="text-gold" />
+                        <span>{property.area} <span className="font-normal text-ink-muted">{t.sqm}</span></span>
                       </div>
-                      {/* Honest, real view count - sourced from Property.views (the running
-                          total maintained by POST /api/properties/:id/view), never fabricated. */}
-                      <div className="flex items-center gap-1 ml-auto" title={isRtl ? "عدد المشاهدات" : "View count"}>
+                      {/* Honest, real view count - Property.views, never fabricated. */}
+                      <div className="flex items-center gap-1 ms-auto text-ink-faint" title={isRtl ? "عدد المشاهدات" : "View count"}>
                         <Eye size={13} />
-                        <span>{property.views || 0}</span>
+                        <span className="text-xs font-normal">{property.views || 0}</span>
                       </div>
                     </div>
-
-                  </div>
-                </div>
-
-                <div className="px-4 pb-4 pt-2 flex items-center justify-between gap-2 border-t border-surface-2">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] text-ink-muted block uppercase tracking-wider">
-                      {property.transactionType === TransactionType.FOR_RENT ? (isRtl ? "قيمة الإيجار" : "Rent Price") : (isRtl ? "القيمة الإجمالية" : "Total Cost")}
-                    </span>
-                    <span className="font-serif text-xl font-semibold text-ink">
-                      {formatPrice(property.price, isRtl)}
-                    </span>
-                  </div>
-
-                  <div className="flex gap-1.5">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleWhatsAppAction(property); }}
-                      className="p-2 bg-success-soft hover:bg-success/20 text-success rounded-full transition-colors cursor-pointer"
-                      title={t.whatsappCTA}
-                    >
-                      <MessageCircle size={16} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleCallAction(property); }}
-                      className="p-2 bg-gold-soft hover:bg-gold/25 text-gold-active rounded-full transition-colors cursor-pointer"
-                      title={t.callCTA}
-                    >
-                      <Phone size={16} />
-                    </button>
                   </div>
                 </div>
               </div>

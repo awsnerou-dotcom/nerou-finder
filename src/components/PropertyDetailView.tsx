@@ -809,48 +809,45 @@ export default function PropertyDetailView({
           
           {/* HEADER HERO TITLE SECTION */}
           <div className="bg-surface p-4 sm:p-6 border-b border-border">
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="px-2 py-0.5 bg-chrome text-white text-[10px] font-bold uppercase tracking-wider rounded-sm">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] rounded-full bg-chrome text-white">
                 {isRtl
                   ? property.transactionType === TransactionType.FOR_RENT ? "للإيجار" : "للبيع"
                   : property.transactionType === TransactionType.FOR_RENT ? "FOR RENT" : "FOR SALE"}
               </span>
-              <span className="px-2 py-0.5 bg-gold/10 text-gold text-[10px] font-bold uppercase rounded-sm">
+              <span className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] rounded-full bg-gold-soft text-gold-active border border-gold/25">
                 {property.propertyType}
               </span>
               {property.verificationStatus === VerificationStatus.APPROVED && (
-                <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold flex items-center gap-1 rounded-sm">
-                  <Shield size={10} fill="currentColor" />
-                  {/* Was "مؤكد ومعتمد" in Arabic - "confirmed and approved", which reads as a
-                      statement about availability and so collided with the availability badge
-                      beside it. The English already named its subject; now both do. */}
+                <span className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] rounded-full border border-gold/40 text-gold-active flex items-center gap-1.5">
+                  <Shield size={11} fill="currentColor" />
                   {isRtl ? "قائمة موثّقة على المنصة" : "Verified Portal Listing"}
                 </span>
               )}
               {/* Availability stated in both directions, matching the listing cards. */}
               {isAvailabilityConfirmed(property.lastConfirmedAvailableDate) ? (
-                <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold flex items-center gap-1 rounded-sm">
-                  <CheckCircle size={10} />
+                <span className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] rounded-full bg-success-soft text-success flex items-center gap-1.5">
+                  <CheckCircle size={11} />
                   {isRtl ? "مؤكّد متاح" : "Available"} ·{" "}
                   {formatConfirmedDate(property.lastConfirmedAvailableDate, isRtl)}
                 </span>
               ) : isAvailabilityUnconfirmed ? (
-                <span className="px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold flex items-center gap-1 rounded-sm">
-                  <Clock size={10} />
+                <span className="px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] rounded-full bg-warning-soft text-warning flex items-center gap-1.5">
+                  <Clock size={11} />
                   {isRtl ? "بانتظار تأكيد التوفّر" : "Awaiting availability check"}
                 </span>
               ) : null}
-              <span className="text-[10px] font-mono text-ink-muted ml-auto">
+              <span className="text-[11px] font-mono text-ink-faint ms-auto">
                 Ref: {property.listingId || `N-${property.id.substr(-5)}`}
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-serif font-medium text-ink">
+            <h1 className="text-3xl sm:text-4xl font-serif font-medium text-ink leading-[1.15]">
               {isRtl ? property.titleAr || property.title : property.title}
             </h1>
 
-            <div className="flex items-center gap-1 text-xs text-ink-muted mt-2">
-              <MapPin size={14} className="text-gold" />
+            <div className="flex items-center gap-1.5 text-sm text-ink-muted mt-3">
+              <MapPin size={15} className="text-gold" />
               <span>
                 {property.district}, {property.city}
               </span>
@@ -891,11 +888,11 @@ export default function PropertyDetailView({
 
               {/* MAIN DETAILS GRID (BEDS, BATHS, SIZE) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="bg-surface p-4 rounded-xl border border-border text-center space-y-1">
-                  <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
+                <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
+                  <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
                     {isRtl ? "المساحة الكلية" : "TOTAL SIZE"}
                   </span>
-                  <strong className="text-lg text-ink block">
+                  <strong className="font-serif text-xl font-medium text-ink block">
                     {getAreaDisplay(property.area)}
                   </strong>
                   <button
@@ -906,11 +903,11 @@ export default function PropertyDetailView({
                   </button>
                 </div>
 
-                <div className="bg-surface p-4 rounded-xl border border-border text-center space-y-1">
-                  <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
+                <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
+                  <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
                     {isRtl ? "غرف النوم" : "BEDROOMS"}
                   </span>
-                  <strong className="text-lg text-ink block">
+                  <strong className="font-serif text-xl font-medium text-ink block">
                     {property.bedrooms} {isRtl ? "غرف" : "Rooms"}
                   </strong>
                   <span className="text-[10px] text-ink-muted">
@@ -918,11 +915,11 @@ export default function PropertyDetailView({
                   </span>
                 </div>
 
-                <div className="bg-surface p-4 rounded-xl border border-border text-center space-y-1">
-                  <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
+                <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
+                  <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
                     {isRtl ? "الحمامات" : "BATHROOMS"}
                   </span>
-                  <strong className="text-lg text-ink block">
+                  <strong className="font-serif text-xl font-medium text-ink block">
                     {property.bathrooms} {isRtl ? "حمامات" : "Baths"}
                   </strong>
                   <span className="text-[10px] text-ink-muted">
@@ -930,11 +927,11 @@ export default function PropertyDetailView({
                   </span>
                 </div>
 
-                <div className="bg-surface p-4 rounded-xl border border-border text-center space-y-1">
-                  <span className="text-[10px] font-bold text-ink-muted tracking-wider uppercase block">
+                <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
+                  <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
                     {isRtl ? "حالة التأثيث" : "FURNISHED"}
                   </span>
-                  <strong className="text-lg text-ink block">
+                  <strong className="font-serif text-xl font-medium text-ink block">
                     {property.furnished === "YES" ? (isRtl ? "مؤثث بالكامل" : "Fully Furnished") :
                      property.furnished === "NO" ? (isRtl ? "غير مؤثث" : "Unfurnished") : (isRtl ? "شبه مؤثث" : "Partly Furnished")}
                   </strong>
@@ -946,21 +943,21 @@ export default function PropertyDetailView({
 
               {/* OVERVIEW / DESCRIPTION */}
               <div className="bg-surface p-6 rounded-xl border border-border space-y-3">
-                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
+                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3">
                   {isRtl ? "الوصف التفصيلي للعقار" : "Executive Property Overview"}
                 </h3>
-                <p className="text-xs text-ink-muted leading-relaxed whitespace-pre-line">
+                <p className="text-[15px] text-ink-muted leading-7 whitespace-pre-line">
                   {isRtl ? property.descriptionAr || property.description : property.description}
                 </p>
               </div>
 
               {/* DEEP SPECIFICATIONS (BASED ON PROPERTY TYPE) */}
               <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
-                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
+                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3">
                   {isRtl ? "المواصفات الفنية المعتمدة" : "Professional Architectural Specs"}
                 </h3>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs text-ink-muted">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-[13px] text-ink-muted">
                   
                   {/* Common Rent/Sale specs */}
                   <div className="flex justify-between py-1.5 border-b border-surface-2">
@@ -1186,7 +1183,7 @@ export default function PropertyDetailView({
 
               {/* LISTING AMENITIES */}
               <div className="bg-surface p-6 rounded-xl border border-border space-y-3">
-                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
+                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3">
                   {isRtl ? "المرافق والخدمات المتاحة" : "Exclusive Amenities & Conveniences"}
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -1253,7 +1250,7 @@ export default function PropertyDetailView({
 
               {/* LOCATION INTELLIGENCE & MAPS */}
               <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
-                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
+                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3">
                   {isRtl ? "تحليل الموقع والمرافق المجاورة" : "Location Intelligence & Transit Landmarks"}
                 </h3>
 
@@ -1319,7 +1316,7 @@ export default function PropertyDetailView({
 
               {/* SAVED & PROPERTY HISTORY TREND */}
               <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
-                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2">
+                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3">
                   {isRtl ? "الشفافية وسجل المعاملات المحدث" : "Listing Freshness & Transaction Logs"}
                 </h3>
 
@@ -1371,7 +1368,7 @@ export default function PropertyDetailView({
                 property.transactionType === TransactionType.COMMERCIAL_SALE ||
                 property.transactionType === TransactionType.LAND_SALE) && (
               <div className="bg-surface p-6 rounded-xl border border-border space-y-6">
-                <h3 className="font-serif text-lg font-medium text-ink border-b border-surface-2 pb-2 flex items-center gap-2">
+                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3 flex items-center gap-2">
                   <Calculator size={18} className="text-gold" />
                   <span>{isRtl ? "أدوات التخطيط المالي والاستثماري" : "Interactive Financial Planning Suite"}</span>
                 </h3>
