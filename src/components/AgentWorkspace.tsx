@@ -4,6 +4,7 @@
  */
 
 import { getVideoEmbedUrl } from "../lib/video.js";
+import { NEARBY_TYPES, NEARBY_UNITS, MAX_NEARBY_PLACES } from "../lib/propertyNearby.js";
 import React, { useState, useEffect } from "react";
 import {
   Property,
@@ -337,6 +338,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [listingImages, setListingImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState<boolean>(false);
   const [listingAmenities, setListingAmenities] = useState<string>("Pool, Gym, Parking");
+  // places near the property, entered by the agent and shown to visitors as given (nothing is guessed from the map)
+  const [listingNearby, setListingNearby] = useState<{ type: string; name: string; nameAr: string; value: string; unit: string }[]>([]);
   const [listingVideoUrl, setListingVideoUrl] = useState<string>("");
 
   // Non-blocking duplicate-listing warning surfaced after a successful create (Part 2 of the
@@ -393,6 +396,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       setListingDescAr(draft.listingDescAr || "");
       setListingImages(draft.listingImages || []);
       setListingAmenities(draft.listingAmenities || "Pool, Gym, Parking");
+      setListingNearby(Array.isArray(draft.listingNearby) ? draft.listingNearby : []);
       setListingVideoUrl(draft.listingVideoUrl || "");
       setIsAddingListing(true);
       setToastMessage(isRtl ? "تم استرجاع مسودة الإعلان المحفوظة." : "Restored your saved listing draft.");
@@ -413,7 +417,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
         listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
         listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
-        selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingVideoUrl
+        selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingNearby, listingVideoUrl
       };
       localStorage.setItem(listingDraftKey, JSON.stringify(draft));
     } catch (e) {
@@ -423,7 +427,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     isAddingListing, editingPropertyId, wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
     listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
     listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
-    selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingVideoUrl, listingDraftKey
+    selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingNearby, listingVideoUrl, listingDraftKey
   ]);
 
   useEffect(() => {
@@ -989,6 +993,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           descriptionAr: listingDescAr,
           images: listingImages,
           amenities: listingAmenities.split(",").map(a => a.trim()),
+          // the server cleans these again; an empty list on an edit clears the places
+          nearbyPlaces: listingNearby
+            .filter(p => p.name.trim() && p.value.trim())
+            .map(p => ({ type: p.type, name: p.name.trim(), nameAr: p.nameAr.trim() || undefined, value: Number(p.value), unit: p.unit })),
           // "" on purpose when blank: on an edit it clears a previously saved video link.
           videoUrl: listingVideoUrl.trim(),
           agentId: agent.id,
@@ -1031,6 +1039,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         setListingParkingType("");
         setListingParkingSpaces("");
         setListingTenureType("");
+        setListingNearby([]);
         setLinkedProjectId("");
         setCreatingNewProject(false);
         setNewProjectName("");
@@ -1144,6 +1153,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     setListingDescAr(prop.descriptionAr && prop.descriptionAr !== prop.description ? prop.descriptionAr : "");
     setListingImages(prop.images || []);
     setListingAmenities((prop.amenities || []).join(", "));
+    setListingNearby((prop.nearbyPlaces || []).map(p => ({ type: p.type, name: p.name, nameAr: p.nameAr || "", value: String(p.value), unit: p.unit })));
     setListingVideoUrl(prop.videoUrl || "");
     setWizardStep(1);
     setIsAddingListing(true);
@@ -2236,6 +2246,56 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       placeholder="e.g. Pool, Gym, Parking, Balcony"
                       className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="block font-medium text-ink-muted">
+                        {isRtl ? "أماكن قريبة من العقار (اختياري)" : "Places near the property (optional)"}
+                      </label>
+                      <button
+                        type="button"
+                        disabled={listingNearby.length >= MAX_NEARBY_PLACES}
+                        onClick={() => setListingNearby([...listingNearby, { type: "SCHOOL", name: "", nameAr: "", value: "", unit: "WALK_MIN" }])}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-border bg-ink-inverse hover:border-gold/60 text-[11px] font-semibold text-ink disabled:opacity-40 cursor-pointer"
+                      >
+                        <Plus size={12} />
+                        <span>{isRtl ? "إضافة مكان" : "Add a place"}</span>
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-ink-muted">
+                      {isRtl
+                        ? "أضف ما تعرفه فعلاً (مدرسة، مركز تسوق، مترو...). يظهر للزوار كما تكتبه، ولا يُحسب تلقائياً. يمكنك إضافة حتى 8 أماكن."
+                        : "Add what you really know (a school, a mall, the metro...). Visitors see it exactly as you write it; nothing is worked out automatically. Up to 8 places."}
+                    </p>
+                    {listingNearby.map((place, i) => {
+                      const patch = (p: Partial<typeof place>) => setListingNearby(listingNearby.map((x, j) => (j === i ? { ...x, ...p } : x)));
+                      return (
+                        <div key={i} className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg border border-border bg-canvas">
+                          <select value={place.type} onChange={(e) => patch({ type: e.target.value })} aria-label={isRtl ? "النوع" : "Type"}
+                            className="col-span-6 sm:col-span-2 px-2 py-2 bg-ink-inverse border border-border rounded-lg">
+                            {NEARBY_TYPES.map(t => <option key={t.type} value={t.type}>{isRtl ? t.ar : t.en}</option>)}
+                          </select>
+                          <input type="text" value={place.name} maxLength={80} onChange={(e) => patch({ name: e.target.value })}
+                            placeholder={isRtl ? "الاسم (إنجليزي)" : "Name"} aria-label={isRtl ? "الاسم" : "Name"}
+                            className="col-span-12 sm:col-span-3 px-2.5 py-2 bg-ink-inverse border border-border rounded-lg" />
+                          <input type="text" dir="rtl" value={place.nameAr} maxLength={80} onChange={(e) => patch({ nameAr: e.target.value })}
+                            placeholder={isRtl ? "الاسم بالعربي (اختياري)" : "Arabic name (optional)"} aria-label={isRtl ? "الاسم بالعربي" : "Arabic name"}
+                            className="col-span-12 sm:col-span-3 px-2.5 py-2 bg-ink-inverse border border-border rounded-lg" />
+                          <input type="number" inputMode="decimal" min="0" value={place.value} onChange={(e) => patch({ value: e.target.value })}
+                            placeholder="5" aria-label={isRtl ? "المسافة" : "Distance"}
+                            className="col-span-4 sm:col-span-1 px-2 py-2 bg-ink-inverse border border-border rounded-lg" />
+                          <select value={place.unit} onChange={(e) => patch({ unit: e.target.value })} aria-label={isRtl ? "الوحدة" : "Unit"}
+                            className="col-span-6 sm:col-span-2 px-2 py-2 bg-ink-inverse border border-border rounded-lg">
+                            {NEARBY_UNITS.map(u => <option key={u.unit} value={u.unit}>{isRtl ? u.ar : u.en}</option>)}
+                          </select>
+                          <button type="button" onClick={() => setListingNearby(listingNearby.filter((_, j) => j !== i))}
+                            aria-label={isRtl ? "حذف" : "Remove"} className="col-span-2 sm:col-span-1 p-2 rounded-lg text-ink-muted hover:text-danger hover:bg-danger-soft cursor-pointer justify-self-end">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div>

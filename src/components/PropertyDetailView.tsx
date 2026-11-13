@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Property,
+  NearbyPlace,
   VerificationStatus,
   TransactionType,
   PropertyType,
@@ -15,7 +16,8 @@ import {
   formatConfirmedDate
 } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
-import { getNearbyPlaces, LandmarkType } from "../lib/nearbyPlaces.js";
+import { buildSpecRows } from "../lib/propertySpecs.js";
+import { AboutCard, SpecsCard, PaymentPlanCard, NearbyList, ListingRecordCard, InvestmentPlanner } from "./PropertyDetailSections.js";
 import PropertyGallery, { GalleryGroup } from "./PropertyGallery.js";
 import { getVideoEmbedUrl } from "../lib/video.js";
 import { formatPhoneForDisplay } from "../lib/phone.js";
@@ -31,10 +33,8 @@ import {
   Maximize2,
   GitCompare,
   FileText,
-  Calculator,
   AlertTriangle,
   Building,
-  DollarSign,
   Activity,
   TrendingUp,
   Award,
@@ -44,30 +44,8 @@ import {
   MessageCircle,
   Phone,
   Check,
-  Clock,
-  School,
-  TrainFront,
-  ShoppingBag
+  Clock
 } from "lucide-react";
-
-const NEARBY_TYPE_ICON: Record<LandmarkType, React.ComponentType<{ size?: number; className?: string }>> = {
-  EDUCATION: School,
-  METRO: TrainFront,
-  MALL: ShoppingBag,
-  LANDMARK: MapPin
-};
-const NEARBY_TYPE_LABEL_EN: Record<LandmarkType, string> = {
-  EDUCATION: "SCHOOLS & CARE",
-  METRO: "METRO ACCESS",
-  MALL: "LIFESTYLE MALLS",
-  LANDMARK: "LANDMARKS"
-};
-const NEARBY_TYPE_LABEL_AR: Record<LandmarkType, string> = {
-  EDUCATION: "المدارس القريبة",
-  METRO: "محطات المترو",
-  MALL: "التسوق والترفيه",
-  LANDMARK: "معالم قريبة"
-};
 
 interface PropertyDetailViewProps {
   property: Property;
@@ -99,9 +77,6 @@ export default function PropertyDetailView({
   const { activeCurrency, formatPrice, convertPrice, getCurrencySymbol } = useCurrency();
 
   // Interactive Tools State
-  const [downpaymentPercent, setDownpaymentPercent] = useState(20);
-  const [interestRate, setInterestRate] = useState(4.25);
-  const [loanTenure, setLoanTenure] = useState(25);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportReason, setReportReason] = useState<string>("");
   const [reportDetails, setReportDetails] = useState<string>("");
@@ -596,18 +571,13 @@ export default function PropertyDetailView({
         ? "Availability confirmed yesterday"
         : `Availability confirmed ${availabilityStaleDays} days ago`;
 
-  // Mortgage calculation: M = P [ i(1+i)^n ] / [ (1+i)^n - 1 ]
-  const principal = propertyPrice * (1 - downpaymentPercent / 100);
-  const monthlyInterest = interestRate / 100 / 12;
-  const numberOfPayments = loanTenure * 12;
-  const estimatedMonthlyMortgage = principal > 0 && monthlyInterest > 0
-    ? (principal * monthlyInterest * Math.pow(1 + monthlyInterest, numberOfPayments)) / (Math.pow(1 + monthlyInterest, numberOfPayments) - 1)
-    : 0;
-
-  // Nearby places genuinely computed from this property's own coordinates (see
-  // src/lib/nearbyPlaces.ts) - previously this panel showed the same 3 hardcoded place
-  // names/distances on every single listing regardless of its actual location.
-  const nearbyPlaces = getNearbyPlaces(property.latitude, property.longitude, 3);
+  // Places near the property: only what the agent entered (plus the metro station when they gave one).
+  const nearbyForVisitors: NearbyPlace[] = [
+    ...(property.metroStation && property.metroWalkingMinutes !== undefined && !(property.nearbyPlaces || []).some(p => p.type === "METRO")
+      ? [{ type: "METRO" as const, name: property.metroStation, value: property.metroWalkingMinutes, unit: "WALK_MIN" as const }]
+      : []),
+    ...(property.nearbyPlaces || [])
+  ];
 
   // SQM to SQFT calculation
   const getAreaDisplay = (areaSqm: number) => {
@@ -925,262 +895,31 @@ export default function PropertyDetailView({
                 </div>
               </div>
 
-              {/* OVERVIEW / DESCRIPTION */}
-              <div className="bg-surface p-6 rounded-xl border border-border space-y-3">
-                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3">
-                  {isRtl ? "الوصف التفصيلي للعقار" : "Executive Property Overview"}
-                </h3>
-                <p className="text-[15px] text-ink-muted leading-7 whitespace-pre-line">
-                  {isRtl ? property.descriptionAr || property.description : property.description}
-                </p>
-              </div>
+              <AboutCard text={isRtl ? property.descriptionAr || property.description : property.description} isRtl={isRtl} />
 
-              {/* DEEP SPECIFICATIONS (BASED ON PROPERTY TYPE) */}
-              <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
-                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3">
-                  {isRtl ? "المواصفات الفنية المعتمدة" : "Professional Architectural Specs"}
-                </h3>
+              <SpecsCard rows={buildSpecRows(property, isRtl, { area: getAreaDisplay, money: (n) => formatPrice(n, isRtl) })} isRtl={isRtl} />
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-[13px] text-ink-muted">
-                  
-                  {/* Common Rent/Sale specs */}
-                  <div className="flex justify-between py-1.5 border-b border-surface-2">
-                    <span className="font-medium">{isRtl ? "معرف الإعلان في البوابة" : "Portal Reference ID"}</span>
-                    <span className="text-ink font-mono font-bold">{property.listingId || `N-${property.id.substr(-5)}`}</span>
-                  </div>
-
-                  <div className="flex justify-between py-1.5 border-b border-surface-2">
-                    <span className="font-medium">{isRtl ? "الملكية" : "Ownership Type"}</span>
-                    <span className="text-ink font-bold">
-                      {property.tenureType
-                        ? property.tenureType === "FREEHOLD"
-                          ? (isRtl ? "تملك حر" : "Freehold")
-                          : property.tenureType === "USUFRUCT"
-                          ? (isRtl ? "حق الانتفاع" : "Usufruct")
-                          : (isRtl ? "تملك للمواطنين فقط" : "Local Ownership Only")
-                        : (property.district || "").toLowerCase().includes("pearl") || (property.district || "").toLowerCase().includes("lusail") || (property.district || "").toLowerCase().includes("west bay")
-                        ? (isRtl ? "تملك حر للأجانب" : "Freehold (Qatar Foreign Ownership)")
-                        : (isRtl ? "حق منفعة / إيجار" : "Leasehold Status")}
-                    </span>
-                  </div>
-
-                  {/* Qatar-specific specification fields */}
-                  {property.completionYear !== undefined && (
-                    <div className="flex justify-between py-1.5 border-b border-surface-2">
-                      <span className="font-medium">{isRtl ? "سنة الإنجاز" : "Completion Year"}</span>
-                      <span className="text-ink font-bold">{property.completionYear}</span>
-                    </div>
-                  )}
-
-                  {property.furnishingStatus && (
-                    <div className="flex justify-between py-1.5 border-b border-surface-2">
-                      <span className="font-medium">{isRtl ? "حالة التأثيث التفصيلية" : "Furnishing Status"}</span>
-                      <span className="text-ink font-bold">
-                        {property.furnishingStatus === "FULLY_FURNISHED"
-                          ? (isRtl ? "مؤثث بالكامل" : "Fully Furnished")
-                          : property.furnishingStatus === "SEMI_FURNISHED"
-                          ? (isRtl ? "مؤثث جزئياً" : "Semi Furnished")
-                          : (isRtl ? "غير مؤثث" : "Unfurnished")}
-                      </span>
-                    </div>
-                  )}
-
-                  {property.metroStation && (
-                    <div className="flex justify-between py-1.5 border-b border-surface-2">
-                      <span className="font-medium">{isRtl ? "أقرب محطة مترو" : "Nearest Metro Station"}</span>
-                      <span className="text-ink font-bold">
-                        {property.metroStation}
-                        {property.metroWalkingMinutes !== undefined
-                          ? ` (${property.metroWalkingMinutes} ${isRtl ? "دقيقة مشي" : "min walk"})`
-                          : ""}
-                      </span>
-                    </div>
-                  )}
-
-                  {property.utilitiesIncluded && (
-                    <div className="flex justify-between py-1.5 border-b border-surface-2">
-                      <span className="font-medium">{isRtl ? "المرافق مشمولة" : "Utilities Included"}</span>
-                      <span className={`font-bold ${property.utilitiesIncluded === "YES" ? "text-emerald-600" : property.utilitiesIncluded === "PARTIAL" ? "text-gold" : "text-amber-600"}`}>
-                        {property.utilitiesIncluded === "YES"
-                          ? (isRtl ? "نعم" : "Yes")
-                          : property.utilitiesIncluded === "PARTIAL"
-                          ? (isRtl ? "جزئياً" : "Partial")
-                          : (isRtl ? "لا" : "No")}
-                      </span>
-                    </div>
-                  )}
-
-                  {property.parkingType && (
-                    <div className="flex justify-between py-1.5 border-b border-surface-2">
-                      <span className="font-medium">{isRtl ? "نوع مواقف السيارات" : "Parking Type"}</span>
-                      <span className="text-ink font-bold">
-                        {property.parkingType === "COVERED"
-                          ? (isRtl ? "مغطى" : "Covered")
-                          : property.parkingType === "UNCOVERED"
-                          ? (isRtl ? "مكشوف" : "Uncovered")
-                          : property.parkingType === "GARAGE"
-                          ? (isRtl ? "كراج" : "Garage")
-                          : (isRtl ? "لا يوجد" : "None")}
-                        {property.parkingSpaces !== undefined ? ` (${property.parkingSpaces})` : ""}
-                      </span>
-                    </div>
-                  )}
-
-                  {isRent && (
-                    <>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "مبلغ الوديعة / التأمين" : "Security Deposit Amount"}</span>
-                        <span className="text-ink font-bold">
-                          {property.deposit ? `${property.deposit.toLocaleString()} ${currencySymbol}` : (isRtl ? "شهر واحد تأمين" : "1 Month Equivalent")}
-                        </span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "رسوم الوكالة المعلنة" : "Listing Agency Fee"}</span>
-                        <span className="text-ink font-bold">
-                          {property.commissions ? `${property.commissions.toLocaleString()} ${currencySymbol}` : (isRtl ? "نصف شهر" : "Half Month Rent")}
-                        </span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "عدد الشيكات السنوية" : "Post-Dated Cheques Requirement"}</span>
-                        <span className="text-ink font-bold">
-                          {property.cheques || "12 Cheques"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "فواتير كهرماء مشمولة؟" : "Electricity/Water Included (Kahramaa)"}</span>
-                        <span className={`font-bold ${property.kahramaa ? "text-emerald-600" : "text-amber-600"}`}>
-                          {property.kahramaa ? (isRtl ? "نعم، شاملة كلياً" : "Yes, Fully Covered") : (isRtl ? "لا، تدفع منفصلة" : "No, Paid Separately")}
-                        </span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "التبريد (مشمول)؟" : "District Cooling (Chiller Included)"}</span>
-                        <span className={`font-bold ${property.cooling ? "text-emerald-600" : "text-gold"}`}>
-                          {property.cooling ? (isRtl ? "مشمول بالكامل" : "Included") : (isRtl ? "يدفع بواسطة المستأجر" : "Excluding Qatar Cool")}
-                        </span>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Size specifics */}
-                  <div className="flex justify-between py-1.5 border-b border-surface-2">
-                    <span className="font-medium">{isRtl ? "مساحة البناء" : "Built-up Area (BUA)"}</span>
-                    <span className="text-ink font-bold">{getAreaDisplay(property.builtUpArea || property.area)}</span>
-                  </div>
-
-                  {/* APARTMENT / TOWNHOUSE SPECIFICS */}
-                  {property.propertyType === PropertyType.APARTMENT && (
-                    <>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "رقم الطابق" : "Floor Level"}</span>
-                        <span className="text-ink font-bold">{property.floorNumber ? `${property.floorNumber} Floor` : (isRtl ? "طابق مرتفع" : "High Floor")}</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "الإطلالة" : "Visual View Scenery"}</span>
-                        <span className="text-ink font-bold">{property.viewType || (isRtl ? "إطلالة بانورامية على البحر" : "Sea & Skyline View")}</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "رسوم الخدمات السنوية" : "Service Maintenance Charges"}</span>
-                        <span className="text-ink font-bold">{property.serviceCharges ? `${property.serviceCharges} QAR/Year` : (isRtl ? "مشمولة كلياً" : "Fully Covered")}</span>
-                      </div>
-                    </>
-                  )}
-
-                  {/* VILLA SPECIFICS */}
-                  {property.propertyType === PropertyType.VILLA && (
-                    <>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "تصنيف الفيلا" : "Villa Structural Type"}</span>
-                        <span className="text-ink font-bold">{property.villaType || (isRtl ? "فيلا مستقلة فاخرة" : "Standalone Residential Mansion")}</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "المجلس الخارجي" : "Majlis Outdoor Pavilion"}</span>
-                        <span className="text-emerald-600 font-bold">{property.majlis ? (isRtl ? "متوفر" : "Available") : (isRtl ? "غير متوفر" : "N/A")}</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "المطبخ الخارجي" : "Separate Catering Kitchen"}</span>
-                        <span className="text-emerald-600 font-bold">{property.outdoorKitchen ? (isRtl ? "موجود" : "Equipped Outside") : (isRtl ? "داخلي فقط" : "N/A")}</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "بركة سباحة خاصة" : "Private Heated Swimming Pool"}</span>
-                        <span className="text-gold font-bold">{property.privatePool ? (isRtl ? "موجودة" : "Private Pool") : (isRtl ? "لا توجد" : "N/A")}</span>
-                      </div>
-                    </>
-                  )}
-
-                  {/* COMMERCIAL SPECIFICS */}
-                  {(property.propertyType === PropertyType.OFFICE || property.propertyType === PropertyType.RETAIL || property.propertyType === PropertyType.SHOP || property.propertyType === PropertyType.WAREHOUSE) && (
-                    <>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "درجة وتصنيف المكتب" : "Commercial Grade Class"}</span>
-                        <span className="text-ink font-bold">{property.officeGrade || "Grade A (Prime Office Space)"}</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "حالة التشطيب" : "Commercial Fitting Status"}</span>
-                        <span className="text-ink font-bold">{property.fittedStatus || "Fully Fitted & Handover Ready"}</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "الأنشطة المسموحة" : "Permitted License Activities"}</span>
-                        <span className="text-ink font-bold">{property.commercialLicense || "Multi-Corporate Usage License"}</span>
-                      </div>
-                    </>
-                  )}
-
-                  {/* OFF-PLAN PAYMENT INFORMATION */}
-                  {property.transactionType === TransactionType.OFF_PLAN && (
-                    <>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "المطور الإنشائي" : "Structural Master Developer"}</span>
-                        <span className="text-gold font-bold">{property.developer || "Qatar Real Estate Development Group"}</span>
-                      </div>
-                      <div className="flex justify-between py-1.5 border-b border-surface-2">
-                        <span className="font-medium">{isRtl ? "تاريخ تسليم المشروع" : "Expected Delivery Date"}</span>
-                        <span className="text-ink font-bold">{property.completionDate || "Q4 2027 Handover"}</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Off-plan payment schedule visual */}
-                {property.transactionType === TransactionType.OFF_PLAN && (
-                  <div className="p-4 bg-canvas border border-border rounded-lg space-y-3">
-                    <h4 className="font-serif text-xs font-bold text-ink uppercase tracking-wider flex items-center gap-1.5">
-                      <DollarSign size={13} className="text-gold" />
-                      <span>{isRtl ? "شروط خطة الدفع الإنشائية" : "Master Project Installment Plan"}</span>
-                    </h4>
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="p-2 bg-surface rounded border border-border">
-                        <span className="block text-ink-muted text-[10px]">{isRtl ? "عند الحجز" : "Reservation Downpay"}</span>
-                        <strong className="text-ink text-sm">10%</strong>
-                      </div>
-                      <div className="p-2 bg-surface rounded border border-border">
-                        <span className="block text-ink-muted text-[10px]">{isRtl ? "خلال الإنشاء" : "Construction Stage"}</span>
-                        <strong className="text-ink text-sm">40%</strong>
-                      </div>
-                      <div className="p-2 bg-surface rounded border border-border">
-                        <span className="block text-ink-muted text-[10px]">{isRtl ? "عند التسليم" : "Handover Installment"}</span>
-                        <strong className="text-ink text-sm">50%</strong>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {property.transactionType === TransactionType.OFF_PLAN && property.paymentPlan && (
+                <PaymentPlanCard plan={property.paymentPlan} isRtl={isRtl} />
+              )}
 
               {/* LISTING AMENITIES */}
-              <div className="bg-surface p-6 rounded-xl border border-border space-y-3">
-                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3">
-                  {isRtl ? "المرافق والخدمات المتاحة" : "Exclusive Amenities & Conveniences"}
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {property.amenities.map((amenity, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs text-ink-muted">
-                      <div className="w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                        <CheckCircle size={12} fill="currentColor" className="text-white" />
-                      </div>
-                      <span className="font-medium text-ink">{amenity}</span>
-                    </div>
-                  ))}
+              {(property.amenities || []).filter(a => a && a.trim()).length > 0 && (
+                <div className="bg-surface p-6 sm:p-8 rounded-2xl border border-border">
+                  <div className="flex items-center gap-3 mb-5">
+                    <span className="h-px w-8 bg-gold shrink-0" aria-hidden="true" />
+                    <h3 className="font-serif text-xl font-medium text-ink">{isRtl ? "المرافق والخدمات" : "Amenities"}</h3>
+                  </div>
+                  <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3.5">
+                    {property.amenities.filter(a => a && a.trim()).map((amenity, idx) => (
+                      <li key={idx} className="flex items-center gap-2.5 text-sm text-ink">
+                        <CheckCircle size={15} className="text-gold shrink-0" />
+                        <span>{amenity.trim()}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
+              )}
 
               {/* INTERACTIVE FLOOR PLAN GALLERY */}
               <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
@@ -1235,7 +974,7 @@ export default function PropertyDetailView({
               {/* LOCATION INTELLIGENCE & MAPS */}
               <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
                 <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3">
-                  {isRtl ? "تحليل الموقع والمرافق المجاورة" : "Location Intelligence & Transit Landmarks"}
+                  {isRtl ? "الموقع" : "Location"}
                 </h3>
 
                 {/* Mock Privacy Map approximation */}
@@ -1246,7 +985,6 @@ export default function PropertyDetailView({
                       <path d="M0,20 Q40,30 80,10 T100,50" fill="none" stroke="#FFFFFF" strokeWidth="2" />
                       <path d="M20,0 Q30,50 10,90 T80,100" fill="none" stroke="#FFFFFF" strokeWidth="1.5" />
                       <rect x="35" y="45" width="30" height="15" rx="2" fill="#D3CFC9" />
-                      <text x="38" y="54" fontSize="3" fill="#6E6B66" className="font-bold">West Bay</text>
                     </svg>
 
                     {/* Approximation Circle */}
@@ -1266,162 +1004,17 @@ export default function PropertyDetailView({
                   </div>
                 </div>
 
-                {/* Nearby places - genuinely computed (haversine distance) from this property's
-                    own stored coordinates against a real Doha landmarks list, not the same
-                    static three places shown on every listing regardless of location. */}
-                <div className="space-y-2 text-xs">
-                  <h4 className="font-bold text-ink uppercase tracking-wider text-[10px]">{isRtl ? "مؤشر المسافات والمرافق الحيوية" : "Verified Commutes & Facilities"}</h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {nearbyPlaces.map((place) => {
-                      const NearbyIcon = NEARBY_TYPE_ICON[place.type];
-                      return (
-                      <div key={place.name} className="p-3 bg-canvas border border-border rounded-lg">
-                        <span className="text-[10px] font-bold text-ink-muted uppercase mb-1 flex items-center gap-1">
-                          <NearbyIcon size={11} />
-                          <span>{isRtl ? NEARBY_TYPE_LABEL_AR[place.type] : NEARBY_TYPE_LABEL_EN[place.type]}</span>
-                        </span>
-                        <p className="font-bold text-ink">{isRtl ? place.nameAr : place.name}</p>
-                        <span className="text-ink-muted text-[10px]">
-                          {place.distanceKm < 1.2
-                            ? (isRtl
-                                ? `${place.walkingMinutes} دقيقة سيراً (${Math.round(place.distanceKm * 1000)} متر)`
-                                : `${place.walkingMinutes} min walk (${Math.round(place.distanceKm * 1000)} m)`)
-                            : (isRtl
-                                ? `${place.drivingMinutes} دقيقة بالسيارة (${place.distanceKm.toFixed(1)} كم)`
-                                : `${place.drivingMinutes} min drive (${place.distanceKm.toFixed(1)} km)`)}
-                        </span>
-                      </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <NearbyList places={nearbyForVisitors} isRtl={isRtl} />
               </div>
 
-              {/* SAVED & PROPERTY HISTORY TREND */}
-              <div className="bg-surface p-6 rounded-xl border border-border space-y-4">
-                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3">
-                  {isRtl ? "الشفافية وسجل المعاملات المحدث" : "Listing Freshness & Transaction Logs"}
-                </h3>
+              <ListingRecordCard property={property} isRtl={isRtl} formatPrice={formatPrice} />
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center text-xs">
-                  <div className="p-2 border border-surface-2 rounded bg-canvas">
-                    <span className="text-ink-muted block text-[10px]">{isRtl ? "تاريخ النشر الأولي" : "First Published"}</span>
-                    <strong className="text-ink">2026-07-05</strong>
-                  </div>
-                  <div className="p-2 border border-surface-2 rounded bg-canvas">
-                    <span className="text-ink-muted block text-[10px]">{isRtl ? "آخر تحديث للبيانات" : "Last Catalogued"}</span>
-                    <strong className="text-ink">{property.updatedDate ? property.updatedDate.split("T")[0] : "Today"}</strong>
-                  </div>
-                  <div className="p-2 border border-surface-2 rounded bg-canvas">
-                    <span className="text-ink-muted block text-[10px]">{isRtl ? "معدل الحفظ والاهتمام" : "Bookmark Inquiries"}</span>
-                    <strong className="text-ink">48 {isRtl ? "مستخدم" : "Users"}</strong>
-                  </div>
-                  <div className="p-2 border border-surface-2 rounded bg-canvas">
-                    <span className="text-ink-muted block text-[10px]">{isRtl ? "مستوى اكتمال البيانات" : "Quality Completeness"}</span>
-                    <strong className="text-emerald-600 font-bold">{property.qualityScore || 95}%</strong>
-                  </div>
-                </div>
-
-                {/* Price change timeline */}
-                <div className="space-y-2">
-                  <h4 className="font-bold text-ink uppercase tracking-wider text-[10px]">{isRtl ? "سجل التغيرات السعرية" : "Price History Audits"}</h4>
-                  <div className="relative border-l-2 border-border pl-4 ml-2 space-y-3">
-                    <div className="relative">
-                      <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-gold"></div>
-                      <span className="text-[10px] font-mono text-ink-muted block">2026-07-20</span>
-                      <span className="text-xs font-bold text-ink">{formatPrice(property.price, isRtl)} </span>
-                      <span className="text-[10px] text-emerald-600">({isRtl ? "السعر الحالي المحدث" : "Latest Certified Price"})</span>
-                    </div>
-                    {property.priceHistory && property.priceHistory.length > 1 && property.priceHistory.slice(0, -1).reverse().map((hist, idx) => (
-                      <div className="relative" key={idx}>
-                        <div className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-ink-muted"></div>
-                        <span className="text-[10px] font-mono text-ink-muted block">{hist.date}</span>
-                        <span className="text-xs text-ink-muted line-through">{formatPrice(hist.price, isRtl)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* INVESTMENT YIELD AND MORTGAGE TOOLS - a mortgage/downpayment calculator makes
-                  no sense for a rental (no one takes out a mortgage on a lease), so this whole
-                  suite is hidden entirely (not just disabled) for FOR_RENT/COMMERCIAL_LEASE. */}
+              {/* A financing and rental-return planner only makes sense for a purchase, so it is not drawn for rentals. */}
               {(property.transactionType === TransactionType.FOR_SALE ||
                 property.transactionType === TransactionType.OFF_PLAN ||
                 property.transactionType === TransactionType.COMMERCIAL_SALE ||
                 property.transactionType === TransactionType.LAND_SALE) && (
-              <div className="bg-surface p-6 rounded-xl border border-border space-y-6">
-                <h3 className="font-serif text-xl font-medium text-ink border-b border-border pb-3 flex items-center gap-2">
-                  <Calculator size={18} className="text-gold" />
-                  <span>{isRtl ? "أدوات التخطيط المالي والاستثماري" : "Interactive Financial Planning Suite"}</span>
-                </h3>
-
-                <div className="grid grid-cols-1 gap-6">
-
-                  {/* Mortgage Calculator */}
-                  <div className="space-y-4">
-                    <h4 className="font-serif text-sm font-bold text-ink flex items-center gap-1.5">
-                      <DollarSign size={15} />
-                      <span>{isRtl ? "حاسبة التمويل العقاري" : "Hypothecary Mortgage Estimator"}</span>
-                    </h4>
-
-                    <div className="space-y-3 text-xs text-ink-muted">
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span>{isRtl ? "الدفعة الأولى (%)" : "Downpayment (%)"}</span>
-                          <span className="font-bold text-ink">{downpaymentPercent}% ({formatPrice((property.price * downpaymentPercent) / 100, isRtl)})</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="10"
-                          max="80"
-                          value={downpaymentPercent}
-                          onChange={(e) => setDownpaymentPercent(Number(e.target.value))}
-                          className="w-full accent-gold"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span>{isRtl ? "معدل الفائدة السنوية (%)" : "Annual Interest Rate (%)"}</span>
-                          <span className="font-bold text-ink">{interestRate}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="1.5"
-                          max="10"
-                          step="0.25"
-                          value={interestRate}
-                          onChange={(e) => setInterestRate(Number(e.target.value))}
-                          className="w-full accent-gold"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="flex justify-between">
-                          <span>{isRtl ? "فترة التمويل (سنة)" : "Loan Tenure (Years)"}</span>
-                          <span className="font-bold text-ink">{loanTenure} {isRtl ? "سنة" : "Years"}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="5"
-                          max="30"
-                          value={loanTenure}
-                          onChange={(e) => setLoanTenure(Number(e.target.value))}
-                          className="w-full accent-gold"
-                        />
-                      </div>
-
-                      <div className="p-3 bg-canvas border border-border rounded-lg text-center mt-2">
-                        <span className="text-[10px] text-ink-muted uppercase block mb-1">{isRtl ? "القسط الشهري المقدر" : "ESTIMATED MONTHLY INSTALLMENT"}</span>
-                        <strong className="text-xl text-gold">{Math.round(estimatedMonthlyMortgage).toLocaleString()} QAR / {isRtl ? "شهر" : "Mo"}</strong>
-                        <p className="text-[9px] text-ink-muted mt-1">{isRtl ? "هذا الحساب مبدئي ويخضع لموافقة البنك" : "Calculated purely based on central banking baseline guidelines"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                <InvestmentPlanner property={property} isRtl={isRtl} formatPrice={formatPrice} />
               )}
 
               {/* REPORT PROPERTY BUTTON */}

@@ -116,6 +116,7 @@ import {
 import { validateShowcaseInput, sortShowcase } from "./src/lib/showcase.js";
 import { validatePlanRequest, describePlanRequest } from "./src/lib/planRequest.js";
 import { compareWithMarket } from "./src/lib/marketComparison.js";
+import { sanitizeNearbyPlaces } from "./src/lib/propertyNearby.js";
 import { publicPlan } from "./src/data/plans.js";
 import {
   Lang as SeoLang,
@@ -2518,6 +2519,10 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       descriptionAr: resolvedDescriptionAr,
       priceHistory,
       qualityScore,
+      // nearby places are cleaned on the way in; leaving the field out keeps what is stored, sending [] clears it
+      nearbyPlaces: "nearbyPlaces" in propData
+        ? (sanitizeNearbyPlaces(propData.nearbyPlaces).length > 0 ? sanitizeNearbyPlaces(propData.nearbyPlaces) : undefined)
+        : existing.nearbyPlaces,
       updatedDate: new Date().toISOString()
     };
 
@@ -2580,6 +2585,7 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       furnished: propData.furnished || "NO",
       parking: !!propData.parking,
       amenities: propData.amenities || [],
+      nearbyPlaces: sanitizeNearbyPlaces(propData.nearbyPlaces).length > 0 ? sanitizeNearbyPlaces(propData.nearbyPlaces) : undefined,
       images: propData.images && propData.images.length > 0 ? propData.images : [
         "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80"
       ],

@@ -258,6 +258,16 @@ export interface PriceHistoryItem {
   date: string;
 }
 
+export type NearbyPlaceType = "SCHOOL" | "HOSPITAL" | "MALL" | "SUPERMARKET" | "MOSQUE" | "PARK" | "BEACH" | "METRO" | "RESTAURANT" | "OTHER";
+export type NearbyDistanceUnit = "WALK_MIN" | "DRIVE_MIN" | "KM";
+export interface NearbyPlace {
+  type: NearbyPlaceType;
+  name: string;
+  nameAr?: string;
+  value: number; // minutes for WALK_MIN / DRIVE_MIN, kilometres for KM
+  unit: NearbyDistanceUnit;
+}
+
 export interface Property {
   id: string;
   listingId: string;
@@ -359,7 +369,8 @@ export interface Property {
   completionDate?: string;
   paymentPlan?: { reservation: number; installments: string; details: string };
   floorPlans?: string[];
-  nearbyPlaces?: { type: string; name: string; distance: string }[];
+  // Entered by the agent who lists the property (see src/lib/propertyNearby.ts); shown only when present.
+  nearbyPlaces?: NearbyPlace[];
   savedCount?: number;
   reportCount?: number;
   imageCategories?: string[];
