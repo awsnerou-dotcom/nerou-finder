@@ -119,6 +119,9 @@ import { compareWithMarket } from "./src/lib/marketComparison.js";
 import { sanitizeNearbyPlaces } from "./src/lib/propertyNearby.js";
 import { priceDrop, listedDaysAgo } from "./src/lib/propertySearch.js";
 import { cleanTourUrl } from "./src/lib/virtualTour.js";
+import { computeMarketPositions, isBelowMarket } from "./src/lib/marketPosition.js";
+import { estimateValue, validateValuationInput } from "./src/lib/valuation.js";
+import { publicAgentPerformance } from "./src/lib/agentPerformance.js";
 import { publicPlan } from "./src/data/plans.js";
 import {
   Lang as SeoLang,
@@ -1953,6 +1956,7 @@ app.get("/api/properties", (req, res) => {
     furnished,
     priceReduced,
     listedWithinDays,
+    belowMarket,
     verifiedOnly,
     orgId,
     searchQuery,
@@ -2079,6 +2083,14 @@ app.get("/api/properties", (req, res) => {
       return a.penalized === b.penalized ? a.idx - b.idx : a.penalized ? 1 : -1;
     })
     .map(x => x.p);
+
+  // Where each result's price stands against the market (computed over the whole catalogue, so a filtered list still
+  // compares against everything); "belowMarket=true" keeps only the ones at least 10% under the median.
+  const positions = computeMarketPositions(db.properties);
+  if (belowMarket === "true") {
+    properties = properties.filter(p => isBelowMarket(positions.get(p.id)));
+  }
+  properties = properties.map(p => (positions.has(p.id) ? { ...p, marketPosition: positions.get(p.id) } : p));
 
   // Optional, backward-compatible pagination - only applied when the caller explicitly asks
   // for it via ?limit=, so every existing caller that expects the full array back keeps
@@ -2275,6 +2287,85 @@ app.get("/api/properties/:id", (req, res) => {
     return res.status(404).json({ error: "Property not found" });
   }
   res.json(property);
+});
+
+// How many live listings each city and each district has, so the search boxes can say "Doha (20)". Public; counts only
+// what a visitor could find.
+app.get("/api/search/facets", (req, res) => {
+  const db = readDb();
+  const cities = new Map<string, { name: string; count: number }>();
+  const districts = new Map<string, { city: string; name: string; count: number }>();
+  for (const p of db.properties) {
+    if (p.listingStatus !== ListingStatus.PUBLISHED || p.verificationStatus !== VerificationStatus.APPROVED) continue;
+    const city = (p.city || "").trim();
+    const district = (p.district || "").trim();
+    if (city) {
+      const c = cities.get(city.toLowerCase()) || { name: city, count: 0 };
+      c.count += 1;
+      cities.set(city.toLowerCase(), c);
+    }
+    if (city && district) {
+      const key = `${city.toLowerCase()}|${district.toLowerCase()}`;
+      const d = districts.get(key) || { city, name: district, count: 0 };
+      d.count += 1;
+      districts.set(key, d);
+    }
+  }
+  res.json({
+    cities: [...cities.values()].sort((a, b) => b.count - a.count),
+    districts: [...districts.values()].sort((a, b) => b.count - a.count)
+  });
+});
+
+// "What is my property worth?": an estimate worked out only from the live listings (src/lib/valuation.ts), plus the verified
+// agents who have the most live listings in that district, for the owner to talk to. Public; nothing is stored.
+app.post("/api/valuation", publicWriteRateLimiter, (req, res) => {
+  const checked = validateValuationInput((req.body || {}) as Record<string, unknown>);
+  if ("error" in checked) return res.status(400).json({ error: checked.error });
+  const db = readDb();
+  const result = estimateValue(checked.value, db.properties);
+
+  const city = checked.value.city.trim().toLowerCase();
+  const district = checked.value.district.trim().toLowerCase();
+  const counts = new Map<string, number>();
+  for (const p of db.properties) {
+    if (p.listingStatus !== ListingStatus.PUBLISHED || p.verificationStatus !== VerificationStatus.APPROVED) continue;
+    if ((p.city || "").trim().toLowerCase() !== city || (p.district || "").trim().toLowerCase() !== district) continue;
+    counts.set(p.agentId, (counts.get(p.agentId) || 0) + 1);
+  }
+  const agents = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([id, listings]) => ({ user: db.users.find(u => u.id === id), listings }))
+    .filter(x => x.user && x.user.role === UserRole.AGENT && x.user.verificationStatus === VerificationStatus.APPROVED)
+    .slice(0, 3)
+    .map(({ user, listings }) => ({
+      id: user!.id,
+      fullName: user!.fullName,
+      avatarUrl: user!.avatarUrl,
+      company: db.organizations.find(o => o.id === user!.orgId)?.name,
+      listings
+    }));
+  const performance = computeAgentPerformance(db);
+  res.json({ result, agents: agents.map(a => ({ ...a, performance: performance[a.id] })) });
+});
+
+// Reply-speed badges ("Replies within an hour", "Top agent"), worked out from the enquiries the platform already records
+// (src/lib/agentPerformance.ts). Only agents who earned a badge appear; no contact details or lead data leave the server.
+function computeAgentPerformance(db: ReturnType<typeof readDb>) {
+  const live = new Map<string, number>();
+  for (const p of db.properties) {
+    if (p.listingStatus !== ListingStatus.PUBLISHED || p.verificationStatus !== VerificationStatus.APPROVED) continue;
+    live.set(p.agentId, (live.get(p.agentId) || 0) + 1);
+  }
+  const agents = db.users
+    .filter(u => u.role === UserRole.AGENT)
+    .map(u => ({ id: u.id, verified: u.verificationStatus === VerificationStatus.APPROVED, liveListings: live.get(u.id) || 0 }));
+  // an enquiry a person added by hand is not one that came in through the platform
+  return publicAgentPerformance(db.leads.filter(l => !l.addedManually), agents);
+}
+
+app.get("/api/agents/performance", (_req, res) => {
+  res.json(computeAgentPerformance(readDb()));
 });
 
 // How this listing's price per square metre compares with the other live listings in its district (see
@@ -9166,6 +9257,20 @@ const SEO_PAGES: Record<string, { en: SeoPageText; ar: SeoPageText }> = {
     en: { title: "New Property Projects in Qatar | Nerou Finder", description: "Off-plan and new development projects in Qatar from verified developers.", h1: "New property projects in Qatar", intro: "Off-plan and new development projects in Qatar from verified developers." },
     ar: { title: "مشاريع عقارية جديدة في قطر | نيرو فايندر", description: "مشاريع على الخريطة وتطويرات جديدة في قطر من مطورين موثّقين.", h1: "مشاريع عقارية جديدة في قطر", intro: "مشاريع على الخريطة وتطويرات جديدة في قطر من مطورين موثّقين." }
   },
+  "/property-valuation": {
+    en: {
+      title: "What Is My Property Worth? Free Property Valuation in Qatar | Nerou Finder",
+      description: "Get a free estimate of what your apartment, villa or property is worth in Qatar, worked out from the real listings in your area. A range, not a guess, with the listings it is based on.",
+      h1: "What is your property worth?",
+      intro: "Enter your area, property type and size to see an estimated sale price or monthly rent, calculated from the live listings around you, and talk to a verified agent in your area."
+    },
+    ar: {
+      title: "كم يساوي عقاري؟ تقييم عقاري مجاني في قطر | نيرو فايندر",
+      description: "احصل على تقدير مجاني لقيمة شقتك أو فيلتك أو عقارك في قطر، محسوب من العقارات المعروضة فعلاً في منطقتك. نطاق سعري مبني على عقارات حقيقية وليس تخميناً.",
+      h1: "كم يساوي عقارك؟",
+      intro: "أدخل المنطقة ونوع العقار ومساحته لتعرف السعر التقديري للبيع أو الإيجار الشهري، محسوباً من العقارات المعروضة حولك، وتواصل مع وسيط موثّق في منطقتك."
+    }
+  },
   "/area-guides": {
     en: { title: "Qatar Area Guides: Neighbourhoods, Lifestyle and Property | Nerou Finder", description: "Guides to Doha's neighbourhoods: West Bay, The Pearl, Lusail, Al Sadd and more, with the properties available in each.", h1: "Qatar area guides", intro: "Guides to Doha's neighbourhoods, with the properties available in each." },
     ar: { title: "أدلة مناطق قطر: الأحياء ونمط الحياة والعقارات | نيرو فايندر", description: "أدلة لأحياء الدوحة: الخليج الغربي واللؤلؤة ولوسيل والسد وغيرها، مع العقارات المتاحة في كل منها.", h1: "أدلة مناطق قطر", intro: "أدلة لأحياء الدوحة، مع العقارات المتاحة في كل منها." }
@@ -9235,6 +9340,7 @@ function seoPageHtml(db: DatabaseState, pagePath: string, lang: SeoLang, origin:
     { path: "/plans-pricing", label: SEO_PAGES["/plans-pricing"][lang].h1 },
     { path: "/help-center", label: SEO_PAGES["/help-center"][lang].h1 },
     { path: "/area-guides", label: SEO_PAGES["/area-guides"][lang].h1 },
+    { path: "/property-valuation", label: SEO_PAGES["/property-valuation"][lang].h1 },
     { path: "/careers", label: SEO_PAGES["/careers"][lang].h1 },
     { path: "/press", label: SEO_PAGES["/press"][lang].h1 },
     { path: "/legal", label: SEO_PAGES["/legal"][lang].h1 }

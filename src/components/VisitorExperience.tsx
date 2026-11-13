@@ -63,6 +63,7 @@ import {
   Home as HomeIcon,
   Gem,
   SlidersHorizontal,
+  Calculator,
   TrendingDown,
   LifeBuoy,
   Briefcase,
@@ -91,12 +92,16 @@ import {
   PartnershipsView,
   PlansPricingView,
   AiChat,
+  ValuationView,
   preloadDirectorySearch
 } from "./lazyViews.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
 import { homeTitle, listingTitle } from "../lib/pageTitle.js";
 import { priceDrop, listedDaysAgo, isNewListing, listedLabel, NEW_LISTING_DAYS } from "../lib/propertySearch.js";
+import { isBelowMarket } from "../lib/marketPosition.js";
+import type { AgentPerformance } from "../lib/agentPerformance.js";
+import AgentBadges from "./AgentBadges.js";
 import { LandingIntro, LandingFaq } from "./LandingSeoContent.js";
 import CardImageSlideshow from "./CardImageSlideshow.js";
 import SubscribersShowcase from "./SubscribersShowcase.js";
@@ -149,6 +154,19 @@ export default function VisitorExperience({
   const [minArea, setMinArea] = useState<string>("");
   const [priceReducedOnly, setPriceReducedOnly] = useState<boolean>(false);
   const [newOnly, setNewOnly] = useState<boolean>(false);
+  const [belowMarketOnly, setBelowMarketOnly] = useState<boolean>(false);
+  // how many live listings each city / district has (shown beside the names in the search boxes)
+  const [facets, setFacets] = useState<{ cities: { name: string; count: number }[]; districts: { city: string; name: string; count: number }[] }>({ cities: [], districts: [] });
+  useEffect(() => {
+    fetch("/api/search/facets").then(r => (r.ok ? r.json() : null)).then(d => { if (d && Array.isArray(d.cities)) setFacets(d); }).catch(() => {});
+  }, []);
+  // reply-speed badges, by agent id (only agents who earned one are listed)
+  const [agentPerformance, setAgentPerformance] = useState<Record<string, AgentPerformance>>({});
+  useEffect(() => {
+    fetch("/api/agents/performance").then(r => (r.ok ? r.json() : null)).then(d => { if (d && typeof d === "object") setAgentPerformance(d); }).catch(() => {});
+  }, []);
+  const cityCount = (name: string) => facets.cities.find(c => c.name.toLowerCase() === name.toLowerCase())?.count;
+  const districtCount = (city: string, name: string) => facets.districts.find(d => d.city.toLowerCase() === city.toLowerCase() && d.name.toLowerCase() === name.toLowerCase())?.count;
   const [showMoreFilters, setShowMoreFilters] = useState<boolean>(false);
   // Wires up GET /api/properties's existing `verifiedOnly` server-side filter, which had no
   // UI control anywhere in the marketplace despite being fully implemented server-side.
@@ -324,7 +342,7 @@ export default function VisitorExperience({
 
   useEffect(() => {
     fetchProperties();
-  }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, baths, furnishedFilter, minArea, priceReducedOnly, newOnly, verifiedOnly, debouncedSearchQuery, locations]);
+  }, [selectedMunicipality, selectedArea, propType, transType, minPrice, maxPrice, beds, baths, furnishedFilter, minArea, priceReducedOnly, newOnly, belowMarketOnly, verifiedOnly, debouncedSearchQuery, locations]);
 
   useEffect(() => {
     if (selectedProperty) {
@@ -555,6 +573,7 @@ export default function VisitorExperience({
       if (minArea) params.append("minArea", minArea);
       if (priceReducedOnly) params.append("priceReduced", "true");
       if (newOnly) params.append("listedWithinDays", String(NEW_LISTING_DAYS));
+      if (belowMarketOnly) params.append("belowMarket", "true");
       if (debouncedSearchQuery) params.append("searchQuery", debouncedSearchQuery);
       if (verifiedOnly) params.append("verifiedOnly", "true");
 
@@ -1012,7 +1031,8 @@ export default function VisitorExperience({
       ["CAREERS", isRtl ? "وظائف" : "Careers", Briefcase],
       ["PRESS", isRtl ? "الصحافة" : "Press", Newspaper],
       ["PARTNERSHIPS", isRtl ? "شركاؤنا" : "Our Partners", Handshake],
-      ["LEGAL", isRtl ? "الوثائق القانونية" : "Legal Policies", Scale]
+      ["VALUATION", isRtl ? "قيّم عقارك" : "Valuation", Calculator],
+              ["LEGAL", isRtl ? "الوثائق القانونية" : "Legal Policies", Scale]
     ];
 
   const [navMore, setNavMore] = useState(false);
@@ -1041,13 +1061,13 @@ export default function VisitorExperience({
           no sense once it's flush against the browser window edge; the inner content below is
           re-wrapped in the original max-w-7xl container so the foreground (nav/search) still
           lines up with the rest of the page. */}
-      <div ref={heroRef} className="bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] min-h-[clamp(600px,46vw,700px)]">
+      <div ref={heroRef} className={`bg-chrome shadow-sm relative overflow-hidden -mt-24 w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] ${currentTab === "MARKETPLACE" ? "min-h-[clamp(600px,46vw,700px)]" : "min-h-[220px]"}`}>
         <PhotoHero />
         <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
           <NerouAiMark size={160} strokeWidth={1.2} />
         </div>
 
-        <div className="relative z-10 pt-32 max-w-7xl mx-auto px-4 md:px-6 flex flex-col min-h-[clamp(600px,46vw,700px)]">
+        <div className={`relative z-10 pt-32 max-w-7xl mx-auto px-4 md:px-6 flex flex-col ${currentTab === "MARKETPLACE" ? "min-h-[clamp(600px,46vw,700px)]" : "min-h-[220px]"}`}>
           {/* The navigation lives in the bar fixed under the header (below): the hero keeps the headline, the AI button and the choice row. */}
 
           {currentTab === "MARKETPLACE" && (
@@ -1162,7 +1182,7 @@ export default function VisitorExperience({
                 <option value="">{isRtl ? "كل البلديات" : "All Municipalities"}</option>
                 {municipalities.map(muni => (
                   <option key={muni.id} value={muni.id}>
-                    {isRtl ? muni.nameAr : muni.name}
+                    {isRtl ? muni.nameAr : muni.name}{cityCount(muni.name) ? ` (${cityCount(muni.name)})` : ""}
                   </option>
                 ))}
               </select>
@@ -1182,7 +1202,7 @@ export default function VisitorExperience({
                 <option value="">{isRtl ? "كل المناطق" : "All Areas"}</option>
                 {filteredAreas.map(area => (
                   <option key={area.id} value={area.id}>
-                    {isRtl ? area.nameAr : area.name}
+                    {isRtl ? area.nameAr : area.name}{(() => { const m = locations.find(l => l.id === selectedMunicipality); const c = m ? districtCount(m.name, area.name) : undefined; return c ? ` (${c})` : ""; })()}
                   </option>
                 ))}
               </select>
@@ -1251,9 +1271,9 @@ export default function VisitorExperience({
             >
               <SlidersHorizontal size={15} />
               <span>{isRtl ? "مزيد من الفلاتر" : "More filters"}</span>
-              {([minPrice, maxPrice, beds, baths, furnishedFilter, minArea].filter(Boolean).length + (priceReducedOnly ? 1 : 0) + (newOnly ? 1 : 0)) > 0 && (
+              {([minPrice, maxPrice, beds, baths, furnishedFilter, minArea].filter(Boolean).length + (priceReducedOnly ? 1 : 0) + (newOnly ? 1 : 0) + (belowMarketOnly ? 1 : 0)) > 0 && (
                 <span className={`min-w-5 h-5 px-1 rounded-full text-[11px] leading-5 text-center ${showMoreFilters ? "bg-white text-chrome" : "bg-chrome text-white"}`}>
-                  {[minPrice, maxPrice, beds, baths, furnishedFilter, minArea].filter(Boolean).length + (priceReducedOnly ? 1 : 0) + (newOnly ? 1 : 0)}
+                  {[minPrice, maxPrice, beds, baths, furnishedFilter, minArea].filter(Boolean).length + (priceReducedOnly ? 1 : 0) + (newOnly ? 1 : 0) + (belowMarketOnly ? 1 : 0)}
                 </span>
               )}
             </button>
@@ -1270,6 +1290,17 @@ export default function VisitorExperience({
             </button>
             <button
               type="button"
+              onClick={() => setBelowMarketOnly(v => !v)}
+              aria-pressed={belowMarketOnly}
+              className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-[13px] font-semibold transition-colors cursor-pointer ${
+                belowMarketOnly ? "bg-success text-white border-success" : "bg-canvas border-border text-ink hover:border-gold/60"
+              }`}
+            >
+              <Scale size={15} />
+              <span>{isRtl ? "أقل من السوق" : "Below market"}</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setNewOnly(v => !v)}
               aria-pressed={newOnly}
               className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-[13px] font-semibold transition-colors cursor-pointer ${
@@ -1279,10 +1310,10 @@ export default function VisitorExperience({
               <Clock size={15} />
               <span>{isRtl ? "جديد هذا الأسبوع" : "New this week"}</span>
             </button>
-            {([minPrice, maxPrice, beds, baths, furnishedFilter, minArea].filter(Boolean).length + (priceReducedOnly ? 1 : 0) + (newOnly ? 1 : 0)) > 0 && (
+            {([minPrice, maxPrice, beds, baths, furnishedFilter, minArea].filter(Boolean).length + (priceReducedOnly ? 1 : 0) + (newOnly ? 1 : 0) + (belowMarketOnly ? 1 : 0)) > 0 && (
               <button
                 type="button"
-                onClick={() => { setMinPrice(""); setMaxPrice(""); setBeds(""); setBaths(""); setFurnishedFilter(""); setMinArea(""); setPriceReducedOnly(false); setNewOnly(false); }}
+                onClick={() => { setMinPrice(""); setMaxPrice(""); setBeds(""); setBaths(""); setFurnishedFilter(""); setMinArea(""); setPriceReducedOnly(false); setNewOnly(false); setBelowMarketOnly(false); }}
                 className="inline-flex items-center gap-1 px-2.5 py-2 text-[13px] font-semibold text-gold-active hover:text-gold cursor-pointer"
               >
                 <X size={14} />
@@ -1662,6 +1693,12 @@ export default function VisitorExperience({
                             <span className="font-normal text-ink-faint line-through tabular-nums">{formatPrice(drop.previous, isRtl)}</span>
                           </p>
                         )}
+                        {isBelowMarket(property.marketPosition) && (
+                          <p className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-success-soft text-success text-[11px] font-semibold">
+                            <Scale size={12} />
+                            <span>{isRtl ? `أقل من السوق بنسبة ${Math.abs(property.marketPosition!.percent)}٪` : `${Math.abs(property.marketPosition!.percent)}% below market`}</span>
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-1.5 shrink-0">
                         <button
@@ -1704,16 +1741,19 @@ export default function VisitorExperience({
                         const listingAgent = users.find(u => u.id === property.agentId);
                         if (!listingAgent || listingAgent.verificationStatus !== VerificationStatus.APPROVED) return null;
                         return (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedAgentProfile(listingAgent);
-                            }}
-                            className="text-[11px] text-gold-active font-semibold truncate max-w-full hover:text-gold hover:underline cursor-pointer text-left rtl:text-right"
-                          >
-                            {getVerifiedBadgeLabel(listingAgent, organizations.find(o => o.id === listingAgent.orgId)?.name, isRtl)}
-                          </button>
+                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedAgentProfile(listingAgent);
+                              }}
+                              className="text-[11px] text-gold-active font-semibold truncate max-w-full hover:text-gold hover:underline cursor-pointer text-left rtl:text-right"
+                            >
+                              {getVerifiedBadgeLabel(listingAgent, organizations.find(o => o.id === listingAgent.orgId)?.name, isRtl)}
+                            </button>
+                            <AgentBadges performance={agentPerformance[listingAgent.id]} isRtl={isRtl} />
+                          </div>
                         );
                       })()}
                     </div>
@@ -1743,6 +1783,23 @@ export default function VisitorExperience({
             );
           })}
         </div>
+      )}
+
+      {currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && (
+        <button
+          type="button"
+          onClick={() => { setCurrentTab("VALUATION"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          className="group w-full flex items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-chrome text-white text-start hover:bg-chrome-hover transition-colors cursor-pointer"
+        >
+          <span className="flex items-center gap-4 min-w-0">
+            <span className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center shrink-0"><Calculator size={20} className="text-[#e6cf93]" /></span>
+            <span className="min-w-0">
+              <span className="block font-serif text-lg sm:text-xl font-medium">{isRtl ? "هل تملك عقاراً في قطر؟ اعرف كم يساوي" : "Own a property in Qatar? Find out what it is worth"}</span>
+              <span className="block text-[13px] text-white/65 mt-0.5">{isRtl ? "تقدير مجاني وفوري من العقارات المعروضة حول عقارك." : "A free, instant estimate from the live listings around it."}</span>
+            </span>
+          </span>
+          <span className="shrink-0 text-sm font-semibold text-[#e6cf93] group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform">{isRtl ? "ابدأ ←" : "Start →"}</span>
+        </button>
       )}
 
       {landingPathRef.current && currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && (
@@ -1836,6 +1893,18 @@ export default function VisitorExperience({
       )}
 
       {currentTab === "PROJECTS" && <ProjectsView isRtl={isRtl} organizations={organizations} users={users} />}
+      {currentTab === "VALUATION" && (
+        <ValuationView
+          isRtl={isRtl}
+          locations={locations}
+          onOpenProperty={(id) => {
+            const known = properties.find(p => p.id === id);
+            if (known) { setSelectedProperty(known); return; }
+            fetch(`/api/properties/${encodeURIComponent(id)}`).then(r => (r.ok ? r.json() : null)).then(d => { if (d) setSelectedProperty(d); }).catch(() => {});
+          }}
+          onSelectAgent={(id) => { const agent = users.find(u => u.id === id); if (agent) setSelectedAgentProfile(agent); }}
+        />
+      )}
       {currentTab === "PLANS" && (
         <PlansPricingView
           isRtl={isRtl}
@@ -1954,6 +2023,7 @@ export default function VisitorExperience({
                   <span className="text-[10px] bg-gold/10 text-gold px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider block w-max">
                     {selectedAgentProfile.role.replace("_", " ")}
                   </span>
+                  <AgentBadges performance={agentPerformance[selectedAgentProfile.id]} isRtl={isRtl} size="md" />
                   <div className="flex items-center gap-1 text-xs text-ink-muted">
                     <Building2 size={12} />
                     <span>

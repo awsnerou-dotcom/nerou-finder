@@ -295,6 +295,8 @@ export interface Property {
   videoUrl?: string;
   // A link to a 3D / virtual tour, opened in a new tab; https only (see src/lib/virtualTour.ts).
   virtualTourUrl?: string;
+  // Added to search results (never stored): where the price stands against the market around it (src/lib/marketPosition.ts).
+  marketPosition?: { percent: number; position: "below" | "in-line" | "above" };
   agentId: string;
   orgId: string; // Agency or Developer organization ID
   projectId?: string; // If off-plan / developer project

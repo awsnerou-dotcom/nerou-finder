@@ -22,6 +22,7 @@ import type PressViewT from "./PressView.js";
 import type PartnershipsViewT from "./PartnershipsView.js";
 import type PlansPricingViewT from "./PlansPricingView.js";
 import type AiChatT from "./AiChat.js";
+import type ValuationViewT from "./ValuationView.js";
 
 // Screens a visitor does not see when the home page first opens (a listing's detail page, the map,
 // the compare table, the plans page, help, careers...) are loaded only when they are opened. They
@@ -94,3 +95,4 @@ export const PlansPricingView = lazyView<typeof PlansPricingViewT>(() => import(
 export const AiChat = lazyView<typeof AiChatT>(() => import("./AiChat.js"), overlayLoading);
 // Agents / Agencies / Developers: start the download early so choosing one shows it at once (no loading spinner)
 export const preloadDirectorySearch = () => { void import("./DirectorySearch.js"); };
+export const ValuationView = lazyView<typeof ValuationViewT>(() => import("./ValuationView.js"));
