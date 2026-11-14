@@ -7,6 +7,8 @@ import type { Property } from "../types.js";
 import type { Lang, Landing, LandingText } from "./seo.js";
 import { SITE_NAME, SITE_NAME_AR, withLang } from "./seo.js";
 import type { PublicProfile } from "./publicProfile.js";
+import { bedroomsLabel, qar, roundedFigure } from "./priceReports.js";
+import type { PriceReport, ReportText } from "./priceReports.js";
 
 export function esc(value: unknown): string {
   return String(value ?? "")
@@ -301,4 +303,73 @@ export function profileJsonLd(p: PublicProfile, o: { origin: string; url: string
     ...(p.rating.count > 0 ? { aggregateRating: { "@type": "AggregateRating", ratingValue: p.rating.average, reviewCount: p.rating.count, bestRating: 5, worstRating: 1 } } : {})
   };
   return data;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Price report pages ("Average rent in Lusail")
+// ---------------------------------------------------------------------------------------------
+
+/** The readable content of a price report: the figures, the bedroom table, the cheapest listings, the answers and the links. */
+export function reportBodyHtml(i: {
+  report: PriceReport;
+  text: ReportText;
+  lang: Lang;
+  /** the cheapest live listings, in full, for the cards */
+  listings: Property[];
+  related: { path: string; label: string }[];
+  links: { path: string; label: string }[];
+}): string {
+  const { report: r, text, lang } = i;
+  const ar = lang === "ar";
+  const rent = r.deal === "RENT";
+  const per = rent ? (ar ? " شهرياً" : " / month") : "";
+  const fig = (n: number) => `${qar(roundedFigure(r.deal, n))}${per}`;
+  return `<main dir="${ar ? "rtl" : "ltr"}" style="max-width:1100px;margin:0 auto;padding:16px;font-family:system-ui,sans-serif">
+    <nav aria-label="${ar ? "مسار التنقل" : "Breadcrumb"}"><ol style="list-style:none;display:flex;gap:8px;padding:0;flex-wrap:wrap">${text.breadcrumbs.map(b => `<li><a href="${esc(withLang(b.path, lang))}">${esc(b.name)}</a></li>`).join("<li aria-hidden=\"true\">/</li>")}</ol></nav>
+    <h1>${esc(text.h1)}</h1>
+    <p>${esc(text.intro)}</p>
+    <h2>${ar ? "الأرقام الأساسية" : "Key figures"}</h2>
+    <ul>
+      <li>${ar ? "المعتاد" : "Typical"}: ${esc(fig(r.median))}</li>
+      <li>${ar ? "المتوسط الحسابي" : "Average"}: ${esc(fig(r.average))}</li>
+      <li>${ar ? "المدى المعتاد" : "Usual range"}: ${esc(fig(r.p25))} - ${esc(fig(r.p75))}</li>
+      <li>${ar ? "الأدنى والأعلى" : "Lowest and highest"}: ${esc(fig(r.min))} - ${esc(fig(r.max))}</li>
+      <li>${ar ? "عدد الإعلانات" : "Live listings"}: ${r.count}</li>
+    </ul>
+    ${r.byBedrooms.length ? `<h2>${ar ? (rent ? "الإيجار حسب عدد الغرف" : "السعر حسب عدد الغرف") : (rent ? "Rent by number of bedrooms" : "Price by number of bedrooms")}</h2>
+    <table><thead><tr><th>${ar ? "الغرف" : "Bedrooms"}</th><th>${ar ? "المعتاد" : "Typical"}</th><th>${ar ? "من - إلى" : "Range"}</th><th>${ar ? "الإعلانات" : "Listings"}</th></tr></thead><tbody>
+    ${r.byBedrooms.map(b => `<tr><td>${esc(bedroomsLabel(b.bedrooms, lang))}</td><td>${esc(fig(b.median))}</td><td>${esc(fig(b.min))} - ${esc(fig(b.max))}</td><td>${b.count}</td></tr>`).join("\n    ")}
+    </tbody></table>` : ""}
+    ${i.listings.length ? `<h2>${ar ? "أرخص المعروض الآن" : "Cheapest available now"}</h2><section style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">${i.listings.map(l => listingCardHtml(l, lang)).join("")}</section>` : ""}
+    <p><a href="${esc(withLang("/price-check", lang))}">${ar ? "هل السعر الذي عُرض عليك عادل؟ افحصه مجاناً" : "Was the price you were offered fair? Check it for free"}</a></p>
+    <h2>${ar ? "أسئلة شائعة" : "Frequently asked questions"}</h2>
+    ${text.faq.map(f => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
+    ${i.links.length ? `<section><h2>${ar ? "ابحث في العقارات" : "Browse listings"}</h2>${linkList(i.links, lang)}</section>` : ""}
+    ${i.related.length ? `<section><h2>${ar ? "مناطق أخرى" : "Other areas"}</h2>${linkList(i.related, lang)}</section>` : ""}
+    <p>${ar ? "الأرقام من الإعلانات المنشورة الآن على نيرو فايندر، وهي أسعار معروضة وليست صفقات مكتملة." : "Figures come from the listings live now on Nerou Finder. They are asking prices, not completed deals."}${r.updated ? ` ${ar ? "آخر تحديث" : "Last updated"}: ${esc(r.updated)}.` : ""}</p>
+  </main>`;
+}
+
+/** FAQ and breadcrumb structured data for a price report. */
+export function reportJsonLd(i: { text: ReportText; lang: Lang; origin: string; url: string; updated: string | null }): unknown[] {
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: i.text.faq.map(f => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } }))
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: i.text.breadcrumbs.map((b, n) => ({ "@type": "ListItem", position: n + 1, name: b.name, item: `${i.origin}${withLang(b.path, i.lang)}` }))
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: i.text.title,
+      url: i.url,
+      inLanguage: i.lang,
+      ...(i.updated ? { dateModified: i.updated } : {})
+    }
+  ];
 }

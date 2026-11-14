@@ -16,7 +16,8 @@ export type VisitorTab =
   | "LEGAL"
   | "PLANS"
   | "AREA_GUIDES"
-  | "VALUATION";
+  | "VALUATION"
+  | "PRICE_CHECK";
 
 // Real URLs for the full-page tabs. Until these existed, robots.txt and sitemap.xml
 // advertised /plans-pricing, /help-center, /careers and /press while visiting any of them
@@ -36,7 +37,8 @@ export const STATIC_TAB_PATHS: Partial<Record<VisitorTab, string>> = {
   LEGAL: "/legal",
   PROJECTS: "/projects",
   AREA_GUIDES: "/area-guides",
-  VALUATION: "/property-valuation"
+  VALUATION: "/property-valuation",
+  PRICE_CHECK: "/price-check"
 };
 
 const PATH_TO_STATIC_TAB: Record<string, VisitorTab> = Object.fromEntries(

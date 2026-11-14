@@ -157,3 +157,107 @@ export async function renderShareCard(i: ShareCardInput): Promise<Blob> {
     }
   });
 }
+
+// ---------------------------------------------------------------------------------------------
+// The verdict card: "Is this price fair?" as a picture to send or post
+// ---------------------------------------------------------------------------------------------
+
+export interface VerdictCardInput {
+  /** "13% above the market" */
+  headline: string;
+  /** a short line under it, e.g. "Well above market" */
+  verdict: string;
+  /** "dark red", "amber", "green", "blue": the accent of the verdict */
+  accent: string;
+  asked: string;
+  typical: string;
+  place: string;
+  facts: string[];
+  site: string;
+  isRtl: boolean;
+}
+
+/** Draws the verdict card (portrait, like the listing card) and returns it as a PNG. */
+export async function renderVerdictCard(i: VerdictCardInput): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas is not available.");
+  try { await (document as any).fonts?.ready; } catch { /* fonts are a nicety */ }
+  const serif = `"Playfair Display", "Noto Naskh Arabic", Georgia, serif`;
+  const sans = `"Manrope", "Noto Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif`;
+  const rtl = i.isRtl;
+  ctx.direction = rtl ? "rtl" : "ltr";
+  ctx.textAlign = rtl ? "right" : "left";
+  const x = rtl ? W - 72 : 72;
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, "#0e1b2e");
+  bg.addColorStop(1, "#16243d");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+  // a soft glow in the verdict's colour
+  const glow = ctx.createRadialGradient(W / 2, 360, 20, W / 2, 360, 620);
+  glow.addColorStop(0, `${i.accent}55`);
+  glow.addColorStop(1, `${i.accent}00`);
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, 900);
+
+  ctx.fillStyle = "#e3c26a";
+  ctx.font = `700 34px ${sans}`;
+  ctx.fillText(rtl ? "هل هذا السعر عادل؟" : "IS THIS PRICE FAIR?", x, 120);
+
+  // the verdict, large
+  ctx.fillStyle = i.accent;
+  ctx.font = `700 120px ${serif}`;
+  const head = wrapLines(i.headline, W - 144, s => ctx.measureText(s).width, 2);
+  head.forEach((l, n) => ctx.fillText(l, x, 330 + n * 132));
+  const afterHead = 330 + (head.length - 1) * 132;
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `600 54px ${serif}`;
+  ctx.fillText(i.verdict, x, afterHead + 100);
+
+  // asked vs typical
+  const boxTop = afterHead + 170;
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.fillRect(56, boxTop, W - 112, 250);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = `600 30px ${sans}`;
+  ctx.fillText(rtl ? "السعر المعروض عليّ" : "Price I was offered", x, boxTop + 62);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `700 52px ${serif}`;
+  ctx.fillText(i.asked, x, boxTop + 128);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = `600 30px ${sans}`;
+  ctx.fillText(rtl ? "المعتاد في السوق" : "Typical in the market", x, boxTop + 184);
+  ctx.fillStyle = "#e3c26a";
+  ctx.font = `700 40px ${serif}`;
+  ctx.fillText(i.typical, x, boxTop + 232);
+
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = `500 34px ${sans}`;
+  ctx.fillText(i.place, x, boxTop + 320);
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = `500 30px ${sans}`;
+  i.facts.slice(0, 3).forEach((f, n) => ctx.fillText(f, x, boxTop + 372 + n * 48));
+
+  ctx.fillStyle = "rgba(255,255,255,0.08)";
+  ctx.fillRect(0, H - 150, W, 150);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `700 36px ${sans}`;
+  ctx.fillText(rtl ? "افحص سعرك مجاناً" : "Check your price for free", x, H - 78);
+  ctx.fillStyle = "#e3c26a";
+  ctx.font = `700 34px ${sans}`;
+  ctx.textAlign = rtl ? "left" : "right";
+  ctx.direction = "ltr";
+  ctx.fillText(i.site, rtl ? 72 : W - 72, H - 78);
+
+  return new Promise((resolve, reject) => {
+    try {
+      canvas.toBlob(b => (b ? resolve(b) : reject(new Error("Could not create the image."))), "image/png");
+    } catch (e) {
+      reject(e);
+    }
+  });
+}

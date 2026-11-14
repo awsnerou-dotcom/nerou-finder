@@ -118,7 +118,7 @@ import { withDescendants } from "./src/lib/locations.js";
 import { validateContractInput, contractStats, MAX_CONTRACTS_PER_CLIENT } from "./src/lib/contracts.js";
 import { validateShowcaseInput, sortShowcase } from "./src/lib/showcase.js";
 import { validatePlanRequest, describePlanRequest } from "./src/lib/planRequest.js";
-import { compareWithMarket } from "./src/lib/marketComparison.js";
+import { compareWithMarket, dealOf } from "./src/lib/marketComparison.js";
 import { sanitizeNearbyPlaces } from "./src/lib/propertyNearby.js";
 import { priceDrop, listedDaysAgo } from "./src/lib/propertySearch.js";
 import { cleanTourUrl } from "./src/lib/virtualTour.js";
@@ -129,6 +129,9 @@ import { buildPublicProfile, isPublicAgent, isPublicOrg, agentSlug, orgSlug, pro
 import { bumpDay, profilePath } from "./src/lib/profiles.js";
 import type { ProfileKind } from "./src/lib/profiles.js";
 import { buildShareStats } from "./src/lib/shareStats.js";
+import { checkPrice, validatePriceCheckInput } from "./src/lib/priceCheck.js";
+import { buildPriceReports, findReport, parseReportPath, reportPath, reportText, COUNTRY_SLUG } from "./src/lib/priceReports.js";
+import type { PriceReport } from "./src/lib/priceReports.js";
 import { cleanPin, hasExactPin, inBounds, parseBounds, PLACEHOLDER_PIN } from "./src/lib/mapPin.js";
 import { publicPlan } from "./src/data/plans.js";
 import {
@@ -160,7 +163,9 @@ import {
   propertyBodyHtml,
   areaBodyHtml,
   profileBodyHtml,
-  profileJsonLd
+  profileJsonLd,
+  reportBodyHtml,
+  reportJsonLd
 } from "./src/lib/seoHtml.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
@@ -2368,6 +2373,44 @@ app.post("/api/valuation", publicWriteRateLimiter, (req, res) => {
     }));
   const performance = computeAgentPerformance(db);
   res.json({ result, agents: agents.map(a => ({ ...a, performance: performance[a.id] })) });
+});
+
+// "Is this price fair?": a verdict on a price someone was offered, from the live listings (src/lib/priceCheck.ts). Public; nothing
+// is stored. Also returns the address of the area's price report when one exists, so the answer can link to the evidence.
+const priceCheckRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 90,
+  message: { error: "Too many checks. Please try again in a few minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.post("/api/price-check", priceCheckRateLimiter, (req, res) => {
+  const checked = validatePriceCheckInput((req.body || {}) as Record<string, unknown>);
+  if ("error" in checked) return res.status(400).json({ error: checked.error });
+  const db = readDb();
+  const result = checkPrice(checked.value, db.properties);
+  const slug = slugify(checked.value.district);
+  const report = findReport(buildPriceReports(db.properties, db.locations), checked.value.deal, slug);
+  res.json({ result, reportPath: report ? reportPath(checked.value.deal, slug) : null });
+});
+
+// The numbers behind a price report page, for the app's own view of it (the server also renders the same page as HTML for search engines).
+app.get("/api/price-reports/:deal/:slug", (req, res) => {
+  const deal = req.params.deal === "rent" ? "RENT" : req.params.deal === "sale" ? "SALE" : null;
+  if (!deal) return res.status(404).json({ error: "Report not found." });
+  const db = readDb();
+  const reports = buildPriceReports(db.properties, db.locations);
+  const report = findReport(reports, deal, req.params.slug);
+  if (!report) return res.status(404).json({ error: "Report not found." });
+  const cheapestIds = new Set(report.cheapest.map(c => c.id));
+  res.json({
+    report,
+    country: findReport(reports, deal, COUNTRY_SLUG) || null,
+    areas: reports.filter(r => r.deal === deal && r.scope === "area" && r.slug !== report.slug).sort((a, b) => b.count - a.count).slice(0, 12)
+      .map(r => ({ slug: r.slug, district: r.district, districtAr: r.districtAr, median: r.median, count: r.count })),
+    counterpart: findReport(reports, deal === "RENT" ? "SALE" : "RENT", report.slug) ? reportPath(deal === "RENT" ? "SALE" : "RENT", report.slug) : null,
+    listings: db.properties.filter(p => cheapestIds.has(p.id))
+  });
 });
 
 // Reply-speed badges ("Replies within an hour", "Top agent"), worked out from the enquiries the platform already records
@@ -9494,6 +9537,20 @@ const SEO_PAGES: Record<string, { en: SeoPageText; ar: SeoPageText }> = {
     en: { title: "New Property Projects in Qatar | Nerou Finder", description: "Off-plan and new development projects in Qatar from verified developers.", h1: "New property projects in Qatar", intro: "Off-plan and new development projects in Qatar from verified developers." },
     ar: { title: "مشاريع عقارية جديدة في قطر | نيرو فايندر", description: "مشاريع على الخريطة وتطويرات جديدة في قطر من مطورين موثّقين.", h1: "مشاريع عقارية جديدة في قطر", intro: "مشاريع على الخريطة وتطويرات جديدة في قطر من مطورين موثّقين." }
   },
+  "/price-check": {
+    en: {
+      title: "Is This Rent or Price Fair? Free Price Check for Qatar | Nerou Finder",
+      description: "Check whether the rent or price you were offered in Qatar is fair. Compared with the live listings in the same area, with the cheaper alternatives and a warning when a price looks too good to be true.",
+      h1: "Is this price fair?",
+      intro: "Enter the area, the property type and the price you were offered, even if it is from another website or a social media post. We compare it with the live listings in the same area and tell you if it is below, in line with or above the market, how many comparable listings are cheaper, and what a fair figure would be."
+    },
+    ar: {
+      title: "هل هذا الإيجار أو السعر عادل؟ فحص مجاني للأسعار في قطر | نيرو فايندر",
+      description: "تحقق إن كان الإيجار أو السعر الذي عُرض عليك في قطر عادلاً. مقارنة مع العقارات المعروضة فعلاً في المنطقة نفسها، مع البدائل الأرخص وتحذير حين يكون السعر أرخص من أن يكون حقيقياً.",
+      h1: "هل هذا السعر عادل؟",
+      intro: "أدخل المنطقة ونوع العقار والسعر الذي عُرض عليك، حتى لو كان من موقع آخر أو منشور على وسائل التواصل. نقارنه بالعقارات المعروضة فعلاً في المنطقة نفسها ونخبرك هل هو أقل من السوق أو مناسب أو أعلى منه، وكم عقاراً مماثلاً أرخص منه، وما السعر العادل."
+    }
+  },
   "/property-valuation": {
     en: {
       title: "What Is My Property Worth? Free Property Valuation in Qatar | Nerou Finder",
@@ -9567,6 +9624,39 @@ export function renderLandingPage(db: DatabaseState, landing: Landing, lang: Seo
   return html;
 }
 
+/** One price report page ("Average rent in Lusail") as full HTML: head, figures, tables, answers and links. */
+export function renderReportPage(db: DatabaseState, reports: PriceReport[], report: PriceReport, lang: SeoLang, origin: string, shell: string): string {
+  const year = new Date().getFullYear();
+  const country = findReport(reports, report.deal, COUNTRY_SLUG);
+  const text = reportText(report, lang, { year, country: country && country !== report ? country : undefined });
+  const path = reportPath(report.deal, report.slug);
+  const alternates = { en: `${origin}${path}`, ar: `${origin}${withLang(path, "ar")}` };
+  const url = lang === "ar" ? alternates.ar : alternates.en;
+  const cheapestIds = new Set(report.cheapest.map(c => c.id));
+  const listings = db.properties.filter(p => cheapestIds.has(p.id)).sort((a, b) => a.price - b.price);
+
+  const sameDeal = reports.filter(r => r.deal === report.deal && r.scope === "area" && r.slug !== report.slug).sort((a, b) => b.count - a.count).slice(0, 10);
+  const related = sameDeal.map(r => ({ path: reportPath(r.deal, r.slug), label: lang === "ar" ? (report.deal === "RENT" ? `متوسط الإيجار في ${r.districtAr}` : `أسعار العقارات في ${r.districtAr}`) : (report.deal === "RENT" ? `Average rent in ${r.district}` : `Property prices in ${r.district}`) }));
+  const other = findReport(reports, report.deal === "RENT" ? "SALE" : "RENT", report.slug);
+  if (other) related.unshift({ path: reportPath(other.deal, other.slug), label: lang === "ar" ? (other.deal === "RENT" ? `متوسط الإيجار في ${other.districtAr}` : `أسعار العقارات في ${other.districtAr}`) : (other.deal === "RENT" ? `Average rent in ${other.district}` : `Property prices in ${other.district}`) });
+  if (report.scope === "area") related.push({ path: reportPath(report.deal, COUNTRY_SLUG), label: lang === "ar" ? (report.deal === "RENT" ? "متوسط الإيجار في قطر" : "أسعار العقارات في قطر") : (report.deal === "RENT" ? "Average rent in Qatar" : "Property prices in Qatar") });
+  const links: { path: string; label: string }[] = [];
+  if (report.scope === "area") {
+    const landing = buildLandingPages(db.properties).find(l => l.indexable && l.spec.area === report.slug && !l.spec.type && l.spec.tx === (report.deal === "RENT" ? "rent" : "sale"));
+    if (landing) links.push({ path: landing.path, label: landingLabel(landing, lang, db.locations) });
+    const guide = seoAreaGuideFor(report.slug);
+    if (guide) links.push({ path: `/areas/${guide.slug}`, label: lang === "ar" ? guide.titleAr : guide.title });
+  }
+  links.push({ path: "/property-valuation", label: SEO_PAGES["/property-valuation"][lang].h1 });
+
+  let html = applyHead(shell, {
+    lang, title: text.title, description: text.description, canonical: url, alternates,
+    jsonLd: reportJsonLd({ text, lang, origin, url, updated: report.updated })
+  });
+  html = applyRootContent(html, reportBodyHtml({ report, text, lang, listings, related, links }));
+  return html;
+}
+
 function seoPageHtml(db: DatabaseState, pagePath: string, lang: SeoLang, origin: string, shell: string): string | null {
   const page = SEO_PAGES[pagePath];
   if (!page) return null;
@@ -9578,6 +9668,9 @@ function seoPageHtml(db: DatabaseState, pagePath: string, lang: SeoLang, origin:
     { path: "/help-center", label: SEO_PAGES["/help-center"][lang].h1 },
     { path: "/area-guides", label: SEO_PAGES["/area-guides"][lang].h1 },
     { path: "/property-valuation", label: SEO_PAGES["/property-valuation"][lang].h1 },
+    { path: "/price-check", label: SEO_PAGES["/price-check"][lang].h1 },
+    { path: reportPath("RENT", COUNTRY_SLUG), label: lang === "ar" ? "متوسط الإيجار في قطر" : "Average rent in Qatar" },
+    { path: reportPath("SALE", COUNTRY_SLUG), label: lang === "ar" ? "أسعار العقارات في قطر" : "Property prices in Qatar" },
     { path: "/careers", label: SEO_PAGES["/careers"][lang].h1 },
     { path: "/press", label: SEO_PAGES["/press"][lang].h1 },
     { path: "/legal", label: SEO_PAGES["/legal"][lang].h1 }
@@ -9639,6 +9732,14 @@ app.use((req, res, next) => {
     const landing = buildLandingPages(db.properties).find(l => l.path === landingPath(parsed.spec));
     if (!landing) return next(); // nothing to show here: a genuine 404
     return res.type("html").set("Cache-Control", "no-cache").send(renderLandingPage(db, landing, parsed.lang, origin, shell));
+  }
+
+  const wanted = parseReportPath(p);
+  if (wanted) {
+    const reports = buildPriceReports(db.properties, db.locations);
+    const report = findReport(reports, wanted.deal, wanted.slug);
+    if (!report) return next(); // not enough listings for a page: a genuine 404
+    return res.type("html").set("Cache-Control", "no-cache").send(renderReportPage(db, reports, report, lang, origin, shell));
   }
 
   if (SEO_PAGES[p]) {
@@ -9727,6 +9828,8 @@ app.get("/sitemap.xml", (req, res) => {
     entries.push({ path: `/properties/${prop.id}`, lastmod: (prop.updatedDate || prop.createdDate || "").slice(0, 10) || undefined, hasAr: true });
   }
   for (const g of AREA_GUIDES) entries.push({ path: `/areas/${g.slug}`, hasAr: true });
+  // price reports: only the ones the live listings can back up
+  for (const r of buildPriceReports(db.properties, db.locations)) entries.push({ path: reportPath(r.deal, r.slug), lastmod: r.updated || undefined, hasAr: true });
   // a profile page is worth indexing once there is something on it: a live listing
   for (const u of db.users) {
     if (u.role === UserRole.AGENT && isPublicAgent(u, db) && live.some(p => p.agentId === u.id)) entries.push({ path: `/agents/${agentSlug(u)}`, hasAr: true });
@@ -9777,6 +9880,11 @@ app.get("/llms.txt", (req, res) => {
 - [Plans for agents, companies and developers](${origin}/plans-pricing): unlimited listings and every feature; request a plan, or start a 60-day free trial
 - [Area guides](${origin}/area-guides): neighbourhood guides for Doha and Qatar
 - [Help Center](${origin}/help-center)
+- [Is this price fair? Free price check](${origin}/price-check): compare a rent or price with the live listings in the same area
+- [Average rent in Qatar](${origin}${reportPath("RENT", COUNTRY_SLUG)}) and [property prices in Qatar](${origin}${reportPath("SALE", COUNTRY_SLUG)}): live figures by area, bedrooms and type
+
+## Rent and price reports by area (live figures, updated as listings change)
+${buildPriceReports(db.properties, db.locations).filter(r => r.scope === "area").sort((a, b) => b.count - a.count).slice(0, 30).map(r => `- [${r.deal === "RENT" ? "Average rent" : "Property prices"} in ${r.district}](${origin}${reportPath(r.deal, r.slug)})`).join("\n") || "- (not enough listings yet)"}
 
 ## Popular searches
 ${popular.map(p => `- [${p.label}](${origin}${p.path})`).join("\n") || "- (no listings published yet)"}
@@ -9994,6 +10102,11 @@ app.post("/api/admin/seo/indexnow", async (req, res) => {
   db.properties.filter(isPublishedListing).forEach(p => paths.add(`/properties/${p.id}`));
   AREA_GUIDES.forEach(g => paths.add(`/areas/${g.slug}`));
   buildLandingPages(db.properties).filter(l => l.indexable).forEach(l => paths.add(l.path));
+  // the price reports, and the public pages of agents and agencies that have something live
+  buildPriceReports(db.properties, db.locations).forEach(r => paths.add(reportPath(r.deal, r.slug)));
+  const liveNow = db.properties.filter(isPublishedListing);
+  db.users.forEach(u => { if (u.role === UserRole.AGENT && isPublicAgent(u, db) && liveNow.some(p => p.agentId === u.id)) paths.add(`/agents/${agentSlug(u)}`); });
+  db.organizations.forEach(o => { if (isPublicOrg(o, db) && liveNow.some(p => p.orgId === o.id)) paths.add(`/agencies/${orgSlug(o)}`); });
   const urlList: string[] = [];
   for (const p of paths) { urlList.push(`${origin}${p === "/" ? "/" : p}`); urlList.push(`${origin}${withLang(p, "ar")}`); }
   try {
@@ -10533,10 +10646,15 @@ async function startServer() {
         // Links up to the landing pages this listing belongs to (crawlable internal links), then the
         // Arabic variant / alternates and a readable body for crawlers.
         const own = buildLandingPages(db.properties).filter(l => l.indexable && l.listings.some(x => x.id === property.id));
-        const linksFor = (l: SeoLang) => own
-          .sort((x, y) => y.listings.length - x.listings.length)
-          .slice(0, 6)
-          .map(x => ({ path: x.path, label: landingLabel(x, l, db.locations) }));
+        const propDeal = dealOf(property.transactionType);
+        const propReport = propDeal ? findReport(buildPriceReports(db.properties, db.locations), propDeal, slugify(property.district || "")) : undefined;
+        const linksFor = (l: SeoLang) => [
+          ...(propReport ? [{ path: reportPath(propReport.deal, propReport.slug), label: l === "ar" ? (propReport.deal === "RENT" ? `متوسط الإيجار في ${propReport.districtAr}` : `أسعار العقارات في ${propReport.districtAr}`) : (propReport.deal === "RENT" ? `Average rent in ${propReport.district}` : `Property prices in ${propReport.district}`) }] : []),
+          ...own
+            .sort((x, y) => y.listings.length - x.listings.length)
+            .slice(0, 6)
+            .map(x => ({ path: x.path, label: landingLabel(x, l, db.locations) }))
+        ];
         return res.send(seoFinish(html, req, res, {
           enPath: `/properties/${property.id}`,
           arTitle: `${rawTitle} | ${SITE_NAME_AR}`,

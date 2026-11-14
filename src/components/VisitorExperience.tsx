@@ -94,8 +94,11 @@ import {
   AiChat,
   ValuationView,
   PublicProfileView,
+  PriceCheckView,
+  PriceReportView,
   preloadDirectorySearch
 } from "./lazyViews.js";
+import { parseReportPath } from "../lib/priceReports.js";
 import { profileSlug } from "../lib/profiles.js";
 import type { ProfileKind } from "../lib/profiles.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
@@ -275,6 +278,8 @@ export default function VisitorExperience({
   const [profileView, setProfileView] = useState<{ kind: ProfileKind; slug: string } | null>(null);
   // true only when the page was opened by a link asking for a review (?review=1): it then scrolls to the review form
   const [profileOpenReview, setProfileOpenReview] = useState(false);
+  // An open price report ("Average rent in Lusail"), by its address: /average-rent-in-lusail, /property-prices-in-lusail
+  const [priceReportPath, setPriceReportPath] = useState<string | null>(null);
   const setSelectedAgentProfile = (u: User | null) =>
     setProfileView(u ? { kind: "agents", slug: profileSlug("agents", { id: u.id, name: u.fullName }) } : null);
   const setSelectedOrgProfile = (o: Organization | null) =>
@@ -378,6 +383,15 @@ export default function VisitorExperience({
     }
   }, []);
 
+  // And for the price reports: /average-rent-in-<area>, /property-prices-in-<area>
+  const reportDeepLinkConsumedRef = React.useRef(false);
+  useEffect(() => {
+    if (reportDeepLinkConsumedRef.current) return;
+    reportDeepLinkConsumedRef.current = true;
+    const path = appPath().replace(/\/+$/, "");
+    if (parseReportPath(path)) setPriceReportPath(path);
+  }, []);
+
   // Same deep-link pattern as above, for /areas/:slug (see AreaGuideView.tsx / GET
   // /api/areas/:slug). Area guide content is static/curated, so - unlike the property fetch
   // above - there's no 404 case worth distinguishing here: AreaGuideView itself renders a
@@ -439,6 +453,7 @@ export default function VisitorExperience({
     appPath().match(/^\/properties\/[^/]+\/?$/) ||
     appPath().match(/^\/areas\/[^/]+\/?$/) ||
     appPath().match(/^\/(agents|agencies)\/[^/]+\/?$/) ||
+    parseReportPath(appPath()) ||
     staticTabForPath(appPath()) ||
     landingPathRef.current
       ? appPath()
@@ -454,6 +469,8 @@ export default function VisitorExperience({
       ? `/areas/${selectedAreaGuideSlug}`
       : profileView
       ? `/${profileView.kind}/${profileView.slug}`
+      : priceReportPath
+      ? priceReportPath
       : STATIC_TAB_PATHS[currentTab] ?? (landingPathRef.current || "/");
     if (!syncStartedRef.current) {
       syncStartedRef.current = true;
@@ -468,7 +485,7 @@ export default function VisitorExperience({
     if (window.location.pathname !== fullPath) {
       window.history.pushState(null, "", fullPath);
     }
-  }, [selectedProperty, selectedAreaGuideSlug, profileView, currentTab, isRtl]);
+  }, [selectedProperty, selectedAreaGuideSlug, profileView, priceReportPath, currentTab, isRtl]);
 
   // Browser-tab title follows the open listing (the server wrote the right one for the first page
   // load; this covers opening a listing from inside the app).
@@ -491,7 +508,16 @@ export default function VisitorExperience({
       const propMatch = appPath().match(/^\/properties\/([^/]+)\/?$/);
       const areaMatch = appPath().match(/^\/areas\/([^/]+)\/?$/);
       const profileMatch = appPath().match(/^\/(agents|agencies)\/([^/]+)\/?$/);
-      if (profileMatch) {
+      const reportMatch = parseReportPath(appPath().replace(/\/+$/, ""));
+      if (reportMatch) {
+        const rp = appPath().replace(/\/+$/, "");
+        lastSyncedPathRef.current = rp;
+        setSelectedProperty(null);
+        setSelectedAreaGuideSlug(null);
+        setProfileView(null);
+        setPriceReportPath(rp);
+      } else if (profileMatch) {
+        setPriceReportPath(null);
         lastSyncedPathRef.current = `/${profileMatch[1]}/${profileMatch[2]}`;
         setSelectedProperty(null);
         setSelectedAreaGuideSlug(null);
@@ -501,6 +527,7 @@ export default function VisitorExperience({
         lastSyncedPathRef.current = `/properties/${id}`;
         setSelectedAreaGuideSlug(null);
         setProfileView(null);
+        setPriceReportPath(null);
         const known = properties.find(p => p.id === id);
         if (known) {
           setSelectedProperty(known);
@@ -514,6 +541,7 @@ export default function VisitorExperience({
         lastSyncedPathRef.current = `/areas/${areaMatch[1]}`;
         setSelectedProperty(null);
         setProfileView(null);
+        setPriceReportPath(null);
         setSelectedAreaGuideSlug(areaMatch[1]);
       } else {
         // Also restores the static tabs (see STATIC_TAB_PATHS): Back out of a listing opened
@@ -523,6 +551,7 @@ export default function VisitorExperience({
         setSelectedProperty(null);
         setSelectedAreaGuideSlug(null);
         setProfileView(null);
+        setPriceReportPath(null);
         setCurrentTab(staticTab ?? "MARKETPLACE");
       }
     };
@@ -1055,6 +1084,7 @@ export default function VisitorExperience({
       ["CAREERS", isRtl ? "وظائف" : "Careers", Briefcase],
       ["PRESS", isRtl ? "الصحافة" : "Press", Newspaper],
       ["PARTNERSHIPS", isRtl ? "شركاؤنا" : "Our Partners", Handshake],
+      ["PRICE_CHECK", isRtl ? "هل السعر عادل؟" : "Price check", Scale],
       ["VALUATION", isRtl ? "قيّم عقارك" : "Valuation", Calculator],
               ["LEGAL", isRtl ? "الوثائق القانونية" : "Legal Policies", Scale]
     ];
@@ -1815,6 +1845,23 @@ export default function VisitorExperience({
       {currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && (
         <button
           type="button"
+          onClick={() => { setCurrentTab("PRICE_CHECK"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          className="group w-full flex items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-gold-soft to-surface border border-gold/40 text-start hover:border-gold transition-colors cursor-pointer"
+        >
+          <span className="flex items-center gap-4 min-w-0">
+            <span className="w-11 h-11 rounded-xl bg-chrome flex items-center justify-center shrink-0"><Scale size={20} className="text-[#e6cf93]" /></span>
+            <span className="min-w-0">
+              <span className="block font-serif text-lg sm:text-xl font-medium text-ink">{isRtl ? "عُرض عليك إيجار أو سعر؟ اعرف هل هو عادل" : "Offered a rent or a price? Find out if it is fair"}</span>
+              <span className="block text-[13px] text-ink-muted mt-0.5">{isRtl ? "قارنه مجاناً بالعقارات المعروضة فعلاً في المنطقة، حتى لو كان من موقع آخر." : "Compare it for free with the live listings in the area, even if it is from another site."}</span>
+            </span>
+          </span>
+          <span className="shrink-0 text-sm font-semibold text-gold-active group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 transition-transform">{isRtl ? "افحص ←" : "Check →"}</span>
+        </button>
+      )}
+
+      {currentTab === "MARKETPLACE" && searchMode === "PROPERTIES" && (
+        <button
+          type="button"
           onClick={() => { setCurrentTab("VALUATION"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
           className="group w-full flex items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-chrome text-white text-start hover:bg-chrome-hover transition-colors cursor-pointer"
         >
@@ -1920,6 +1967,23 @@ export default function VisitorExperience({
       )}
 
       {currentTab === "PROJECTS" && <ProjectsView isRtl={isRtl} organizations={organizations} users={users} />}
+      {currentTab === "PRICE_CHECK" && (
+        <PriceCheckView
+          isRtl={isRtl}
+          locations={locations}
+          currentUser={currentUser}
+          onLoginTrigger={onLoginTrigger}
+          onOpenProperty={(id) => {
+            const known = properties.find(p => p.id === id);
+            if (known) { setSelectedProperty(known); return; }
+            fetch(`/api/properties/${encodeURIComponent(id)}`).then(r => (r.ok ? r.json() : null)).then(d => { if (d) setSelectedProperty(d); }).catch(() => {});
+          }}
+          onOpenReport={(path) => setPriceReportPath(path)}
+          onSeeMatches={(district) => handleViewListingsInDistrict(district)}
+          onOpenValuation={() => { setCurrentTab("VALUATION"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onAlertCreated={() => fetchSavedSearches()}
+        />
+      )}
       {currentTab === "VALUATION" && (
         <ValuationView
           isRtl={isRtl}
@@ -2022,6 +2086,19 @@ export default function VisitorExperience({
             )}
           </div>
         </div>
+      )}
+
+      {/* A price report: "Average rent in Lusail" */}
+      {priceReportPath && (
+        <PriceReportView
+          path={priceReportPath}
+          isRtl={isRtl}
+          onClose={() => setPriceReportPath(null)}
+          onOpenProperty={(prop) => { setSelectedProperty(prop); setPriceReportPath(null); }}
+          onOpenReport={(path) => setPriceReportPath(path)}
+          onCheckPrice={() => { setPriceReportPath(null); setCurrentTab("PRICE_CHECK"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onSeeMatches={(district) => { setPriceReportPath(null); handleViewListingsInDistrict(district); }}
+        />
       )}
 
       {/* The public page of an agent or an agency */}
