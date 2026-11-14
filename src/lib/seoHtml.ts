@@ -6,6 +6,7 @@
 import type { Property } from "../types.js";
 import type { Lang, Landing, LandingText } from "./seo.js";
 import { SITE_NAME, SITE_NAME_AR, withLang } from "./seo.js";
+import type { PublicProfile } from "./publicProfile.js";
 
 export function esc(value: unknown): string {
   return String(value ?? "")
@@ -258,4 +259,46 @@ export function addAlternates(html: string, alts: { en?: string; ar?: string }, 
   if (alts.en || alts.ar) parts.push(`<link rel="alternate" hreflang="x-default" href="${esc(alts.en || alts.ar!)}" />`);
   const block = parts.join("\n    ");
   return html.includes("</head>") ? html.replace("</head>", () => `    ${block}\n  </head>`) : html + block;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Agent and agency profile pages
+// ---------------------------------------------------------------------------------------------
+
+/** The readable content of a profile page: who they are, their live listings, their approved reviews, their team. */
+export function profileBodyHtml(p: PublicProfile, lang: Lang): string {
+  const ar = lang === "ar";
+  const name = ar && p.nameAr ? p.nameAr : p.name;
+  const sub = ar ? p.subtitle.ar : p.subtitle.en;
+  const badge = ar ? p.verifiedLabelAr : p.verifiedLabel;
+  return wrap(lang, `
+    <h1>${esc(name)}</h1>
+    <p>${esc(sub)}${p.verified ? ` · ${esc(badge || (ar ? "موثّق" : "Verified"))}` : ""}</p>
+    ${p.image ? `<img src="${esc(p.image)}" alt="${esc(name)}" width="120" height="120" />` : ""}
+    ${p.bio ? `<p>${esc(p.bio.replace(/\s+/g, " ").trim().slice(0, 1200))}</p>` : ""}
+    ${p.specialties.length ? `<p>${ar ? "التخصصات: " : "Specialities: "}${esc(p.specialties.join(", "))}</p>` : ""}
+    ${p.languages.length ? `<p>${ar ? "اللغات: " : "Languages: "}${esc(p.languages.join(", "))}</p>` : ""}
+    ${p.rating.count > 0 ? `<p>${ar ? `التقييم ${p.rating.average} من 5 (${p.rating.count} تقييم)` : `Rated ${p.rating.average} out of 5 from ${p.rating.count} review${p.rating.count === 1 ? "" : "s"}`}</p>` : ""}
+    ${p.listings.length ? `<h2>${ar ? "العقارات المنشورة" : "Live listings"}</h2><section style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">${p.listings.slice(0, 24).map(l => listingCardHtml(l, lang)).join("")}</section>` : ""}
+    ${p.reviews.length ? `<h2>${ar ? "آراء العملاء" : "Client reviews"}</h2>${p.reviews.slice(0, 10).map(r => `<blockquote><p>${"★".repeat(Math.max(1, Math.min(5, Math.round(r.rating))))} ${esc(r.comment)}</p><footer>${esc(r.reviewerName)}</footer></blockquote>`).join("")}` : ""}
+    ${p.team && p.team.length ? `<h2>${ar ? "فريق العمل" : "Team"}</h2><ul>${p.team.map(t => `<li><a href="${esc(withLang(`/agents/${t.slug}`, lang))}">${esc(t.name)}</a></li>`).join("")}</ul>` : ""}
+    ${p.org ? `<p><a href="${esc(withLang(`/agencies/${p.org.slug}`, lang))}">${esc(p.org.name)}</a></p>` : ""}`);
+}
+
+/** schema.org data for a profile; the rating appears only when there are real approved reviews. */
+export function profileJsonLd(p: PublicProfile, o: { origin: string; url: string; lang: Lang }): unknown {
+  const name = o.lang === "ar" && p.nameAr ? p.nameAr : p.name;
+  const data: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    name,
+    url: o.url,
+    areaServed: { "@type": "Country", name: "Qatar" },
+    ...(p.image ? { image: absoluteUrl(o.origin, p.image) } : {}),
+    ...(p.bio ? { description: p.bio.replace(/\s+/g, " ").trim().slice(0, 300) } : {}),
+    ...(p.kind === "agents" && p.org ? { worksFor: { "@type": "Organization", name: p.org.name } } : {}),
+    ...(p.website ? { sameAs: [p.website] } : {}),
+    ...(p.rating.count > 0 ? { aggregateRating: { "@type": "AggregateRating", ratingValue: p.rating.average, reviewCount: p.rating.count, bestRating: 5, worstRating: 1 } } : {})
+  };
+  return data;
 }

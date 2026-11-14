@@ -125,6 +125,10 @@ import { cleanTourUrl } from "./src/lib/virtualTour.js";
 import { computeMarketPositions, isBelowMarket } from "./src/lib/marketPosition.js";
 import { estimateValue, validateValuationInput } from "./src/lib/valuation.js";
 import { publicAgentPerformance } from "./src/lib/agentPerformance.js";
+import { buildPublicProfile, isPublicAgent, isPublicOrg, agentSlug, orgSlug, profileSummary } from "./src/lib/publicProfile.js";
+import { bumpDay, profilePath } from "./src/lib/profiles.js";
+import type { ProfileKind } from "./src/lib/profiles.js";
+import { buildShareStats } from "./src/lib/shareStats.js";
 import { cleanPin, hasExactPin, inBounds, parseBounds, PLACEHOLDER_PIN } from "./src/lib/mapPin.js";
 import { publicPlan } from "./src/data/plans.js";
 import {
@@ -154,7 +158,9 @@ import {
   homeBodyHtml,
   simpleBodyHtml,
   propertyBodyHtml,
-  areaBodyHtml
+  areaBodyHtml,
+  profileBodyHtml,
+  profileJsonLd
 } from "./src/lib/seoHtml.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
@@ -2381,6 +2387,98 @@ function computeAgentPerformance(db: ReturnType<typeof readDb>) {
 
 app.get("/api/agents/performance", (_req, res) => {
   res.json(computeAgentPerformance(readDb()));
+});
+
+// ---------------------------------------------------------------------------------------------
+// Public profile pages (/agents/:slug, /agencies/:slug) and the share kit that sends people to them.
+// What a page shows is assembled by src/lib/publicProfile.ts from data that is already public; the counters below are
+// private to the owner (see GET /api/me/share-stats).
+// ---------------------------------------------------------------------------------------------
+const isProfileKind = (k: string): k is ProfileKind => k === "agents" || k === "agencies";
+
+app.get("/api/public/profile/:kind/:slug", (req, res) => {
+  const { kind, slug } = req.params;
+  if (!isProfileKind(kind)) return res.status(404).json({ error: "Profile not found." });
+  const db = readDb();
+  const profile = buildPublicProfile(db, kind, slug, computeAgentPerformance(db));
+  if (!profile) return res.status(404).json({ error: "Profile not found." });
+  res.json(profile);
+});
+
+// A refresh or a bot loop must not inflate the numbers: the same visitor is counted once per page per half hour.
+const VISIT_DEDUP_MS = 30 * 60 * 1000;
+const recentVisits = new Map<string, number>();
+function isFreshVisit(key: string, now = Date.now()): boolean {
+  if (recentVisits.size > 5000) for (const [k, t] of recentVisits) if (now - t > VISIT_DEDUP_MS) recentVisits.delete(k);
+  const last = recentVisits.get(key);
+  if (last !== undefined && now - last < VISIT_DEDUP_MS) return false;
+  recentVisits.set(key, now);
+  return true;
+}
+const visitRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { error: "Too many requests. Please try again in a few minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.post("/api/public/profile/:kind/:id/visit", visitRateLimiter, (req, res) => {
+  const { kind, id } = req.params;
+  if (!isProfileKind(kind)) return res.status(404).json({ error: "Profile not found." });
+  const db = readDb();
+  if (kind === "agents") {
+    const u = db.users.find(x => x.id === id);
+    if (!u || !isPublicAgent(u, db)) return res.status(404).json({ error: "Profile not found." });
+    if (isFreshVisit(`${req.ip}|agent|${id}`)) { u.profileViewsByDay = bumpDay(u.profileViewsByDay, Date.now()); writeDb(db); }
+  } else {
+    const o = db.organizations.find(x => x.id === id);
+    if (!o || !isPublicOrg(o, db)) return res.status(404).json({ error: "Profile not found." });
+    if (isFreshVisit(`${req.ip}|org|${id}`)) { o.profileViewsByDay = bumpDay(o.profileViewsByDay, Date.now()); writeDb(db); }
+  }
+  res.json({ success: true });
+});
+
+// A visit that came through a shared listing link (the link carries ?sh=1).
+app.post("/api/properties/:id/share-visit", visitRateLimiter, (req, res) => {
+  const db = readDb();
+  const property = db.properties.find(p => p.id === req.params.id);
+  if (!property || !isPublishedListing(property)) return res.status(404).json({ error: "Property not found" });
+  if (isFreshVisit(`${req.ip}|share|${property.id}`)) { property.shareVisitsByDay = bumpDay(property.shareVisitsByDay, Date.now()); writeDb(db); }
+  res.json({ success: true });
+});
+
+// The owner's own numbers: visits to their page and visitors that came through the links they shared (last 30 days).
+app.get("/api/me/share-stats", authMiddleware, (req, res) => {
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  if (!actor) return res.status(401).json({ error: "Not signed in." });
+  let kind: ProfileKind;
+  let slug: string;
+  let profileViewsByDay: Record<string, number> | undefined;
+  let listings: typeof db.properties;
+  if (actor.role === UserRole.AGENT) {
+    kind = "agents";
+    slug = agentSlug(actor);
+    profileViewsByDay = actor.profileViewsByDay;
+    listings = db.properties.filter(p => p.agentId === actor.id);
+  } else if ((actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN) && actor.orgId) {
+    const org = db.organizations.find(o => o.id === actor.orgId);
+    if (!org) return res.status(404).json({ error: "Organization not found." });
+    kind = "agencies";
+    slug = orgSlug(org);
+    profileViewsByDay = org.profileViewsByDay;
+    listings = db.properties.filter(p => p.orgId === org.id);
+  } else {
+    return res.status(403).json({ error: "Only agents and agencies have a public page." });
+  }
+  res.json({
+    kind,
+    slug,
+    path: profilePath(kind, slug),
+    ...buildShareStats({ profileViewsByDay, listings: listings.map(p => ({ id: p.id, title: p.title, viewsByDay: p.viewsByDay, shareVisitsByDay: p.shareVisitsByDay })), now: Date.now() })
+  });
 });
 
 // How this listing's price per square metre compares with the other live listings in its district (see
@@ -9529,7 +9627,7 @@ app.use((req, res, next) => {
   const origin = requestOrigin(req);
 
   // /ar/properties/:id and /ar/areas/:slug are served by the same handlers as the English pages.
-  if (lang === "ar" && /^\/(properties|areas)\/[^/]+$/.test(p)) {
+  if (lang === "ar" && /^\/(properties|areas|agents|agencies)\/[^/]+$/.test(p)) {
     res.locals.seoLang = "ar";
     req.url = p + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
     return next();
@@ -9581,6 +9679,42 @@ Sitemap: ${origin}/sitemap.xml
 app.get("/plans", (req, res) => res.redirect(301, "/plans-pricing"));
 app.get("/ar/plans", (req, res) => res.redirect(301, "/ar/plans-pricing"));
 
+// Public profile pages: the first response already carries the person's name, summary, listings and reviews for
+// search engines and link previews; the app takes over for people (and tracks the visit).
+const profileHandler = (kind: ProfileKind): express.RequestHandler => (req, res, next) => {
+  const db = readDb();
+  const profile = buildPublicProfile(db, kind, req.params.slug, computeAgentPerformance(db));
+  if (!profile) return next();
+  const lang: SeoLang = (res.locals.seoLang as SeoLang) || "en";
+  // an old or mistyped name part: send them to the current address
+  if (req.params.slug !== profile.slug) {
+    return res.redirect(301, profilePath(kind, profile.slug, lang === "ar"));
+  }
+  const shell = seoShell();
+  if (!shell) return next();
+  const origin = requestOrigin(req);
+  const enUrl = `${origin}${profilePath(kind, profile.slug)}`;
+  const arUrl = `${origin}${profilePath(kind, profile.slug, true)}`;
+  const name = lang === "ar" && profile.nameAr ? profile.nameAr : profile.name;
+  const role = kind === "agents"
+    ? (lang === "ar" ? "وكيل عقاري في قطر" : "Property agent in Qatar")
+    : (lang === "ar" ? profile.subtitle.ar + " في قطر" : `${profile.subtitle.en} in Qatar`);
+  const title = `${name} | ${role} | ${lang === "ar" ? SITE_NAME_AR : "Nerou Finder"}`;
+  let html = applyHead(shell, {
+    lang,
+    title,
+    description: profileSummary(profile, lang),
+    canonical: lang === "ar" ? arUrl : enUrl,
+    alternates: { en: enUrl, ar: arUrl },
+    image: profile.image ? absoluteUrl(origin, profile.image) : undefined,
+    jsonLd: [profileJsonLd(profile, { origin, url: lang === "ar" ? arUrl : enUrl, lang })]
+  });
+  html = applyRootContent(html, profileBodyHtml(profile, lang));
+  res.type("html").set("Cache-Control", "no-cache").send(html);
+};
+app.get("/agents/:slug", profileHandler("agents"));
+app.get("/agencies/:slug", profileHandler("agencies"));
+
 app.get("/sitemap.xml", (req, res) => {
   const db = readDb();
   const origin = requestOrigin(req);
@@ -9593,6 +9727,13 @@ app.get("/sitemap.xml", (req, res) => {
     entries.push({ path: `/properties/${prop.id}`, lastmod: (prop.updatedDate || prop.createdDate || "").slice(0, 10) || undefined, hasAr: true });
   }
   for (const g of AREA_GUIDES) entries.push({ path: `/areas/${g.slug}`, hasAr: true });
+  // a profile page is worth indexing once there is something on it: a live listing
+  for (const u of db.users) {
+    if (u.role === UserRole.AGENT && isPublicAgent(u, db) && live.some(p => p.agentId === u.id)) entries.push({ path: `/agents/${agentSlug(u)}`, hasAr: true });
+  }
+  for (const o of db.organizations) {
+    if (isPublicOrg(o, db) && live.some(p => p.orgId === o.id)) entries.push({ path: `/agencies/${orgSlug(o)}`, hasAr: true });
+  }
   for (const l of buildLandingPages(db.properties)) {
     if (!l.indexable) continue;
     const newest = l.listings.map(p => (p.updatedDate || p.createdDate || "").slice(0, 10)).filter(Boolean).sort().pop();

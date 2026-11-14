@@ -57,6 +57,8 @@ import WorkspaceShell, { AttentionPanel, QuickActions, TopListingsPanel, Workspa
 import type { NavGroup } from "./WorkspaceShell.js";
 import { agencyAttention, topListings, waitingLeads } from "../lib/workspaceAttention.js";
 import { SectionHeader, StatStrip, LeadCard, ListingCard } from "./WorkspaceParts.js";
+import { PublicPagePanel } from "./ReachPanel.js";
+import ShareListingButton from "./ShareKit.js";
 
 import DashboardChart from "./DashboardChart.js";
 import { Badge } from "./ui/Badge.js";
@@ -958,6 +960,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
             ]}
           />
           <AttentionPanel items={attention} onGo={(tab) => setActiveTab(tab as typeof activeTab)} isRtl={isRtl} />
+          <PublicPagePanel isRtl={isRtl} name={isRtl ? agency.nameAr || agency.name : agency.name} />
 
           {/* Leads + views trend chart */}
           <div className="bg-surface rounded-xl border border-border p-4">
@@ -1306,6 +1309,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                       <TrendingUp size={14} />
                       <span>{isRtl ? "الأداء" : "Performance"}</span>
                     </button>
+                    <ShareListingButton property={prop} isRtl={isRtl} agentName={agency.name} agentLine={agents.find(a => a.id === prop.agentId)?.fullName} />
                     <CmaReportButton property={prop} agent={currentUser} orgName={agency.name} isRtl={isRtl} />
                     <button
                       type="button"

@@ -93,8 +93,11 @@ import {
   PlansPricingView,
   AiChat,
   ValuationView,
+  PublicProfileView,
   preloadDirectorySearch
 } from "./lazyViews.js";
+import { profileSlug } from "../lib/profiles.js";
+import type { ProfileKind } from "../lib/profiles.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
 import { homeTitle, listingTitle } from "../lib/pageTitle.js";
@@ -267,35 +270,17 @@ export default function VisitorExperience({
   const [customSearchName, setCustomSearchName] = useState<string>("");
 
   
-  // In-depth representative profiles modals
-  const [selectedAgentProfile, setSelectedAgentProfile] = useState<User | null>(null);
-  const [selectedOrgProfile, setSelectedOrgProfile] = useState<Organization | null>(null);
-  // Real listing count + rating summary shown together at the top of the profile modal (the
-  // closest thing this app has to a public agent/agency profile "page" - there's no client-side
-  // routing anywhere in this app to give it a real shareable URL, so this enriches the existing
-  // modal rather than inventing a routing subsystem). Rating/count reuses the same
-  // GET /api/reviews/summary endpoint ProfileReviewsSection already calls further down.
-  const [profileStatsSummary, setProfileStatsSummary] = useState<{ average: number; count: number } | null>(null);
-  useEffect(() => {
-    const targetType = selectedAgentProfile ? "AGENT" : selectedOrgProfile ? "AGENCY" : null;
-    const targetId = selectedAgentProfile?.id || selectedOrgProfile?.id;
-    if (!targetType || !targetId) {
-      setProfileStatsSummary(null);
-      return;
-    }
-    let cancelled = false;
-    fetch(`/api/reviews/summary?targetType=${targetType}&targetId=${targetId}`)
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => {
-        if (!cancelled && data) setProfileStatsSummary(data);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedAgentProfile, selectedOrgProfile]);
+  // The public page of an agent or agency (/agents/:slug, /agencies/:slug). Opening one anywhere in the app (the directory, a
+  // listing's agent card, an agency's team) goes through these two setters, which only have to say who.
+  const [profileView, setProfileView] = useState<{ kind: ProfileKind; slug: string } | null>(null);
+  // true only when the page was opened by a link asking for a review (?review=1): it then scrolls to the review form
+  const [profileOpenReview, setProfileOpenReview] = useState(false);
+  const setSelectedAgentProfile = (u: User | null) =>
+    setProfileView(u ? { kind: "agents", slug: profileSlug("agents", { id: u.id, name: u.fullName }) } : null);
+  const setSelectedOrgProfile = (o: Organization | null) =>
+    setProfileView(o ? { kind: "agencies", slug: profileSlug("agencies", { id: o.id, name: o.name }) } : null);
 
-  // Sorting
+    // Sorting
   const [sortBy, setSortBy] = useState<string>("default");
 
   // Debounced separately from `searchQuery` itself so the input stays instantly responsive
@@ -369,12 +354,28 @@ export default function VisitorExperience({
     deepLinkConsumedRef.current = true;
     const match = appPath().match(/^\/properties\/([^/]+)\/?$/);
     if (!match) return;
+    // a link someone shared carries ?sh=1: count the visit for the person who shared it
+    if (new URLSearchParams(window.location.search).get("sh") === "1") {
+      fetch(`/api/properties/${match[1]}/share-visit`, { method: "POST" }).catch(() => {});
+    }
     fetch(`/api/properties/${match[1]}`)
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
         if (data) setSelectedProperty(data);
       })
       .catch(() => {});
+  }, []);
+
+  // Same again for /agents/:slug and /agencies/:slug: the page loads itself from the slug.
+  const profileDeepLinkConsumedRef = React.useRef(false);
+  useEffect(() => {
+    if (profileDeepLinkConsumedRef.current) return;
+    profileDeepLinkConsumedRef.current = true;
+    const match = appPath().match(/^\/(agents|agencies)\/([^/]+)\/?$/);
+    if (match) {
+      setProfileOpenReview(new URLSearchParams(window.location.search).get("review") === "1");
+      setProfileView({ kind: match[1] as ProfileKind, slug: match[2] });
+    }
   }, []);
 
   // Same deep-link pattern as above, for /areas/:slug (see AreaGuideView.tsx / GET
@@ -437,11 +438,13 @@ export default function VisitorExperience({
   const lastSyncedPathRef = React.useRef<string | null>(
     appPath().match(/^\/properties\/[^/]+\/?$/) ||
     appPath().match(/^\/areas\/[^/]+\/?$/) ||
+    appPath().match(/^\/(agents|agencies)\/[^/]+\/?$/) ||
     staticTabForPath(appPath()) ||
     landingPathRef.current
       ? appPath()
       : null
   );
+  const syncStartedRef = React.useRef(false);
   useEffect(() => {
     // Overlays win over the tab underneath them: opening a listing from /plans-pricing
     // should show /properties/:id, and closing it returns to /plans-pricing rather than "/".
@@ -449,7 +452,15 @@ export default function VisitorExperience({
       ? `/properties/${selectedProperty.id}`
       : selectedAreaGuideSlug
       ? `/areas/${selectedAreaGuideSlug}`
+      : profileView
+      ? `/${profileView.kind}/${profileView.slug}`
       : STATIC_TAB_PATHS[currentTab] ?? (landingPathRef.current || "/");
+    if (!syncStartedRef.current) {
+      syncStartedRef.current = true;
+      // the very first run happens before a deep link's page has opened (its state arrives a moment later); pushing "/"
+      // here would wipe the address (and its ?query) that the person came with
+      if (lastSyncedPathRef.current && lastSyncedPathRef.current !== targetPath) return;
+    }
     if (lastSyncedPathRef.current === targetPath) return;
     lastSyncedPathRef.current = targetPath;
     // the Arabic version of the site keeps its /ar prefix as you move around
@@ -457,7 +468,7 @@ export default function VisitorExperience({
     if (window.location.pathname !== fullPath) {
       window.history.pushState(null, "", fullPath);
     }
-  }, [selectedProperty, selectedAreaGuideSlug, currentTab, isRtl]);
+  }, [selectedProperty, selectedAreaGuideSlug, profileView, currentTab, isRtl]);
 
   // Browser-tab title follows the open listing (the server wrote the right one for the first page
   // load; this covers opening a listing from inside the app).
@@ -479,10 +490,17 @@ export default function VisitorExperience({
     const onPopState = () => {
       const propMatch = appPath().match(/^\/properties\/([^/]+)\/?$/);
       const areaMatch = appPath().match(/^\/areas\/([^/]+)\/?$/);
-      if (propMatch) {
+      const profileMatch = appPath().match(/^\/(agents|agencies)\/([^/]+)\/?$/);
+      if (profileMatch) {
+        lastSyncedPathRef.current = `/${profileMatch[1]}/${profileMatch[2]}`;
+        setSelectedProperty(null);
+        setSelectedAreaGuideSlug(null);
+        setProfileView({ kind: profileMatch[1] as ProfileKind, slug: profileMatch[2] });
+      } else if (propMatch) {
         const id = propMatch[1];
         lastSyncedPathRef.current = `/properties/${id}`;
         setSelectedAreaGuideSlug(null);
+        setProfileView(null);
         const known = properties.find(p => p.id === id);
         if (known) {
           setSelectedProperty(known);
@@ -495,6 +513,7 @@ export default function VisitorExperience({
       } else if (areaMatch) {
         lastSyncedPathRef.current = `/areas/${areaMatch[1]}`;
         setSelectedProperty(null);
+        setProfileView(null);
         setSelectedAreaGuideSlug(areaMatch[1]);
       } else {
         // Also restores the static tabs (see STATIC_TAB_PATHS): Back out of a listing opened
@@ -503,6 +522,7 @@ export default function VisitorExperience({
         lastSyncedPathRef.current = staticTab ? appPath() : (landingPathRef.current && appPath() === landingPathRef.current ? appPath() : "/");
         setSelectedProperty(null);
         setSelectedAreaGuideSlug(null);
+        setProfileView(null);
         setCurrentTab(staticTab ?? "MARKETPLACE");
       }
     };
@@ -2004,302 +2024,18 @@ export default function VisitorExperience({
         </div>
       )}
 
-      {/* 6. FULLY FUNCTIONAL AGENT PROFILE OVERLAY MODAL */}
-      {selectedAgentProfile && (
-        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-canvas rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <button
-              onClick={() => setSelectedAgentProfile(null)}
-              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-surface-2 rounded-full border border-border text-ink cursor-pointer"
-            >
-              <X size={15} />
-            </button>
-
-            <div className="p-6 md:p-8 space-y-6 max-h-[85vh] overflow-y-auto">
-              {/* Profile card Header */}
-              <div className="flex items-start gap-4">
-                <img
-                  src={selectedAgentProfile.avatarUrl || "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=150&h=150&q=80"}
-                  alt={selectedAgentProfile.fullName}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-gold"
-                />
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-lg font-serif font-bold text-ink">{selectedAgentProfile.fullName}</h3>
-                  </div>
-                  <span className="text-[10px] bg-gold/10 text-gold px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider block w-max">
-                    {selectedAgentProfile.role.replace("_", " ")}
-                  </span>
-                  <AgentBadges performance={agentPerformance[selectedAgentProfile.id]} isRtl={isRtl} size="md" />
-                  <div className="flex items-center gap-1 text-xs text-ink-muted">
-                    <Building2 size={12} />
-                    <span>
-                      {selectedAgentProfile.verificationStatus === VerificationStatus.APPROVED
-                        ? getVerifiedBadgeLabel(selectedAgentProfile, organizations.find(o => o.id === selectedAgentProfile.orgId)?.name, isRtl)
-                        : (organizations.find(o => o.id === selectedAgentProfile.orgId)?.name || (isRtl ? "وكيل مستقل" : "Independent Agent"))}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* At-a-glance stats: real listing count + rating/review count together, so a
-                  visitor doesn't have to scroll to the reviews section below to see them. */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-ink">
-                  <Building2 size={13} className="text-gold" />
-                  <span>{properties.filter(p => p.agentId === selectedAgentProfile.id).length}</span>
-                  <span className="text-ink-muted font-medium">{isRtl ? "عقار نشط" : "active listings"}</span>
-                </span>
-                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-ink">
-                  <Award size={13} className="text-gold" />
-                  <span>{profileStatsSummary && profileStatsSummary.count > 0 ? profileStatsSummary.average.toFixed(1) : "—"}</span>
-                  <span className="text-ink-muted font-medium">
-                    ({profileStatsSummary?.count || 0} {isRtl ? "تقييم" : "reviews"})
-                  </span>
-                </span>
-              </div>
-
-              {/* Contact methods */}
-              <div className="bg-surface p-4 rounded-xl border border-border space-y-2.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-ink-muted font-medium">{isRtl ? "الهاتف المباشر" : "Direct Telephone"}</span>
-                  <a href={`tel:${selectedAgentProfile.phone}`} className="font-bold text-ink hover:text-gold flex items-center gap-1">
-                    <Phone size={12} />
-                    <span>{selectedAgentProfile.phone}</span>
-                  </a>
-                </div>
-                <div className="flex items-center justify-between text-xs border-t border-surface-2 pt-2.5">
-                  <span className="text-ink-muted font-medium">{isRtl ? "البريد الإلكتروني" : "Direct Email"}</span>
-                  <a href={`mailto:${selectedAgentProfile.email}`} className="font-bold text-ink hover:text-gold flex items-center gap-1">
-                    <Mail size={12} />
-                    <span>{selectedAgentProfile.email}</span>
-                  </a>
-                </div>
-              </div>
-
-              {/* Bio details */}
-              <div className="space-y-2">
-                <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block">
-                  {isRtl ? "نبذة تعريفية" : "Professional Profile"}
-                </span>
-                <p className="text-xs text-ink-muted leading-relaxed">
-                  {selectedAgentProfile.bio || "Registered broker partner serving the Qatar real estate market with professional solutions."}
-                </p>
-              </div>
-
-              {/* Specialties / languages */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block">
-                    {isRtl ? "مناطق التخصص" : "Specialties"}
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedAgentProfile.specialties?.map((s, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-surface border border-border rounded text-[10px] font-semibold text-ink-muted">
-                        {s}
-                      </span>
-                    )) || <span className="text-[10px] text-gray-400">General Qatar</span>}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block">
-                    {isRtl ? "اللغات" : "Languages"}
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {selectedAgentProfile.languages?.map((l, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-surface border border-border rounded text-[10px] font-semibold text-ink-muted">
-                        {l}
-                      </span>
-                    )) || <span className="text-[10px] text-gray-400">English, Arabic</span>}
-                  </div>
-                </div>
-              </div>
-
-              <ProfileReviewsSection
-                targetType="AGENT"
-                targetId={selectedAgentProfile.id}
-                currentUser={currentUser}
-                isRtl={isRtl}
-              />
-
-              {/* Other Listings managed by this Agent */}
-              <div className="space-y-3 pt-3 border-t border-border">
-                <span className="text-[10px] font-bold text-ink uppercase tracking-wider block">
-                  {isRtl ? "العقارات التي يديرها هذا المستشار" : "Active Listings Under Management"}
-                </span>
-                
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {properties.filter(p => p.agentId === selectedAgentProfile.id).length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">No other properties listed currently.</p>
-                  ) : (
-                    properties
-                      .filter(p => p.agentId === selectedAgentProfile.id)
-                      .map(prop => (
-                        <div
-                          key={prop.id}
-                          onClick={() => { setSelectedProperty(prop); setSelectedAgentProfile(null); }}
-                          className="p-2 bg-surface hover:bg-gold/5 border border-border hover:border-gold/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
-                        >
-                          <div className="flex items-center gap-2 overflow-hidden">
-                            <img
-                              src={getThumbnailUrl(prop.images[0])}
-                              onError={(e) => { if (e.currentTarget.src !== prop.images[0]) e.currentTarget.src = prop.images[0]; }}
-                              alt=""
-                              className="w-8 h-8 rounded object-cover flex-shrink-0"
-                            />
-                            <span className="font-medium text-ink truncate">{isRtl ? prop.titleAr : prop.title}</span>
-                          </div>
-                          <span className="font-bold text-gold flex-shrink-0">{formatPrice(prop.price, isRtl)}</span>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 7. FULLY FUNCTIONAL AGENCY/DEVELOPER PROFILE OVERLAY MODAL */}
-      {selectedOrgProfile && (
-        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-canvas rounded-xl border border-border w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <button
-              onClick={() => setSelectedOrgProfile(null)}
-              className="absolute top-4 right-4 p-1.5 bg-surface hover:bg-surface-2 rounded-full border border-border text-ink cursor-pointer"
-            >
-              <X size={15} />
-            </button>
-
-            <div className="p-6 md:p-8 space-y-6 max-h-[85vh] overflow-y-auto">
-              {/* Profile Card Header */}
-              <div className="flex items-start gap-4">
-                <img
-                  src={selectedOrgProfile.logoUrl || "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=150&h=150&q=80"}
-                  alt={selectedOrgProfile.name}
-                  className="w-16 h-16 rounded-lg object-cover border border-border"
-                />
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-lg font-serif font-bold text-ink">
-                      {isRtl && selectedOrgProfile.nameAr ? selectedOrgProfile.nameAr : selectedOrgProfile.name}
-                    </h3>
-                    {selectedOrgProfile.verificationStatus === VerificationStatus.APPROVED && (
-                      <span className="p-0.5 bg-gold-soft text-gold-active border border-gold/30 rounded-md" title="Accredited Partner">
-                        <CheckCircle size={12} className="fill-gold text-white" />
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] bg-neutral-100 text-neutral-800 px-2.5 py-0.5 rounded-md font-bold uppercase tracking-wider block w-max">
-                    {selectedOrgProfile.type}
-                  </span>
-                  <div className="text-xs text-gold font-semibold">
-                    {
-                      // Was a plan-premium/else binary that mislabeled every other plan
-                      // (including plan-basic) as "Master Developer SaaS Tier" - covers all
-                      // real plan ids now, with a generic fallback for any future/unknown one.
-                      {
-                        "plan-basic": "Standard SaaS Tier",
-                        "plan-premium": "Enterprise SaaS Tier",
-                        "plan-developer": "Master Developer SaaS Tier",
-                        "plan-trial": "Free Trial Tier"
-                      }[selectedOrgProfile.subscriptionPlanId] || "SaaS Tier"
-                    }
-                  </div>
-                </div>
-              </div>
-
-              {/* At-a-glance stats: real listing count + rating/review count together. */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-ink">
-                  <Building2 size={13} className="text-gold" />
-                  <span>{properties.filter(p => p.orgId === selectedOrgProfile.id).length}</span>
-                  <span className="text-ink-muted font-medium">{isRtl ? "عقار نشط" : "active listings"}</span>
-                </span>
-                <span className="flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-bold text-ink">
-                  <Award size={13} className="text-gold" />
-                  <span>{profileStatsSummary && profileStatsSummary.count > 0 ? profileStatsSummary.average.toFixed(1) : "—"}</span>
-                  <span className="text-ink-muted font-medium">
-                    ({profileStatsSummary?.count || 0} {isRtl ? "تقييم" : "reviews"})
-                  </span>
-                </span>
-              </div>
-
-              {/* Contact methods */}
-              <div className="bg-surface p-4 rounded-xl border border-border space-y-2.5 shadow-2xs">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-ink-muted font-medium">{isRtl ? "هاتف المكتب الرئيسي" : "Main HQ Telephone"}</span>
-                  <a href={`tel:${selectedOrgProfile.phone}`} className="font-bold text-ink hover:text-gold flex items-center gap-1">
-                    <Phone size={12} />
-                    <span>{selectedOrgProfile.phone}</span>
-                  </a>
-                </div>
-                <div className="flex items-center justify-between text-xs border-t border-surface-2 pt-2.5">
-                  <span className="text-ink-muted font-medium">{isRtl ? "البريد الإلكتروني للعمليات" : "Corporate Operations Email"}</span>
-                  <a href={`mailto:${selectedOrgProfile.email}`} className="font-bold text-ink hover:text-gold flex items-center gap-1">
-                    <Mail size={12} />
-                    <span>{selectedOrgProfile.email}</span>
-                  </a>
-                </div>
-                {selectedOrgProfile.website && (
-                  <div className="flex items-center justify-between text-xs border-t border-surface-2 pt-2.5">
-                    <span className="text-ink-muted font-medium">{isRtl ? "الموقع الإلكتروني" : "Official Website"}</span>
-                    <a href={selectedOrgProfile.website} target="_blank" rel="noreferrer" className="font-bold text-gold hover:underline flex items-center gap-1">
-                      <ExternalLink size={12} />
-                      <span>Visit Site</span>
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              <ProfileReviewsSection
-                targetType="AGENCY"
-                targetId={selectedOrgProfile.id}
-                currentUser={currentUser}
-                isRtl={isRtl}
-              />
-
-              {/* Other Listings catalogued by this Enterprise */}
-              <div className="space-y-3 pt-3 border-t border-border">
-                <span className="text-[10px] font-bold text-ink uppercase tracking-wider block">
-                  {selectedOrgProfile.type === "DEVELOPER"
-                    ? (isRtl ? "المشاريع والوحدات العقارية الحالية" : "Active Real Estate Project Inventory")
-                    : (isRtl ? "العقارات المدرجة من قبل هذا المكتب" : "Active Agency Portfolio")}
-                </span>
-                
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                  {properties.filter(p => p.orgId === selectedOrgProfile.id).length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">No other properties catalogued currently.</p>
-                  ) : (
-                    properties
-                      .filter(p => p.orgId === selectedOrgProfile.id)
-                      .map(prop => (
-                        <div
-                          key={prop.id}
-                          onClick={() => { setSelectedProperty(prop); setSelectedOrgProfile(null); }}
-                          className="p-2 bg-surface hover:bg-gold/5 border border-border hover:border-gold/50 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-3 text-xs"
-                        >
-                          <div className="flex items-center gap-2 overflow-hidden">
-                            <img
-                              src={getThumbnailUrl(prop.images[0])}
-                              onError={(e) => { if (e.currentTarget.src !== prop.images[0]) e.currentTarget.src = prop.images[0]; }}
-                              alt=""
-                              className="w-8 h-8 rounded object-cover flex-shrink-0"
-                            />
-                            <span className="font-medium text-ink truncate">{isRtl ? prop.titleAr : prop.title}</span>
-                          </div>
-                          <span className="font-bold text-gold flex-shrink-0">{formatPrice(prop.price, isRtl)}</span>
-                        </div>
-                      ))
-                  )}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </div>
+      {/* The public page of an agent or an agency */}
+      {profileView && (
+        <PublicProfileView
+          kind={profileView.kind}
+          slug={profileView.slug}
+          isRtl={isRtl}
+          currentUser={currentUser}
+          openReview={profileOpenReview}
+          onClose={() => { setProfileView(null); setProfileOpenReview(false); }}
+          onOpenProperty={(prop) => { setSelectedProperty(prop); setProfileView(null); setProfileOpenReview(false); }}
+          onOpenProfile={(kind, slug) => { setProfileView({ kind, slug }); setProfileOpenReview(false); }}
+        />
       )}
 
       {/* Saved Searches Drawer */}

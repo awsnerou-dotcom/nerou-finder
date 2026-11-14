@@ -111,6 +111,8 @@ export enum OrganizationType {
 
 export interface User {
   id: string;
+  /** visits to this person's public page by day (YYYY-MM-DD), kept for 120 days; private to the owner */
+  profileViewsByDay?: Record<string, number>;
   email: string;
   fullName: string;
   phone: string;
@@ -234,6 +236,8 @@ export function getVerifiedBadgeLabel(
 
 export interface Organization {
   id: string;
+  /** visits to the public page by day (YYYY-MM-DD), kept for 120 days; private to the owner */
+  profileViewsByDay?: Record<string, number>;
   name: string;
   nameAr?: string;
   type: OrganizationType;
@@ -404,6 +408,8 @@ export interface Property {
   views?: number;
   uniqueViews?: number;
   viewsByDay?: Record<string, number>;
+  /** visits that arrived through a link someone shared (the link carries ?sh=1), by day */
+  shareVisitsByDay?: Record<string, number>;
   recentViewers?: { fingerprint: string; ts: number }[];
   // ---------------------------------------------------------------------------
   // Partner Feed Import

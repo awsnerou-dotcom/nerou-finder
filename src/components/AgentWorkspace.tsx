@@ -14,6 +14,9 @@ import { SubscriptionAlertBanner, ReadinessCard } from "./WorkspaceWidgets.js";
 import WorkspaceShell, { AttentionPanel, QuickActions, TopListingsPanel, WorkspaceHero } from "./WorkspaceShell.js";
 import type { NavGroup } from "./WorkspaceShell.js";
 import { SectionHeader, StatStrip, LeadCard, ListingCard } from "./WorkspaceParts.js";
+import { PublicPagePanel, ReviewInvitePanel } from "./ReachPanel.js";
+import ShareListingButton from "./ShareKit.js";
+import { profileSlug } from "../lib/profiles.js";
 import { leadStatusLabel } from "../lib/statusLabels.js";
 import { agentAttention, topListings, waitingLeads } from "../lib/workspaceAttention.js";
 import React, { useState, useEffect } from "react";
@@ -1543,6 +1546,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             ]}
           />
           <AttentionPanel items={attention} onGo={(tab) => setActiveTab(tab as typeof activeTab)} isRtl={isRtl} />
+          <PublicPagePanel isRtl={isRtl} name={agent.fullName} />
           <ReadinessCard
             checklist={agentChecklist(agent, { listings: properties.length, published: activeListings })}
             isRtl={isRtl}
@@ -2879,6 +2883,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       <TrendingUp size={14} />
                       <span>{isRtl ? "الأداء" : "Performance"}</span>
                     </button>
+                    <ShareListingButton property={prop} isRtl={isRtl} agentName={agent.fullName} agentLine={agent.phone} />
                     <CmaReportButton property={prop} agent={agent} orgName={agencyOrg?.name} isRtl={isRtl} />
                     <button
                       type="button"
@@ -2939,6 +2944,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {/* REVIEWS & RATINGS TAB (FIX 10) */}
       {activeTab === "reviews" && (
         <div className="space-y-4">
+          <ReviewInvitePanel leads={leads} agentName={agent.fullName} slug={profileSlug("agents", { id: agent.id, name: agent.fullName })} isRtl={isRtl} />
           <div className="bg-surface p-5 rounded-xl border border-border flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-center sm:text-left">
               <p className="text-5xl font-serif font-bold text-gold-active leading-none">{myReviewSummary?.average.toFixed(1) || "0.0"}</p>

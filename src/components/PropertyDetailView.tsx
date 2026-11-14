@@ -21,6 +21,7 @@ import { AboutCard, SpecsCard, PaymentPlanCard, NearbyList, ListingRecordCard, I
 import PropertyGallery, { GalleryGroup } from "./PropertyGallery.js";
 import { getVideoEmbedUrl } from "../lib/video.js";
 import { formatPhoneForDisplay } from "../lib/phone.js";
+import { listingShareUrl } from "../lib/profiles.js";
 import {
   MapPin,
   Calendar,
@@ -435,8 +436,12 @@ export default function PropertyDetailView({
   // even if this view is ever rendered somewhere that doesn't do that syncing.
   const shareLink = `${window.location.origin}/properties/${property.id}`;
 
+  // The link people pass on carries ?sh=1 so the agent can see how many visitors their sharing brings; the enquiry
+  // message to the agent keeps the plain link.
+  const sharedLink = listingShareUrl(window.location.origin, property.id, isRtl);
+
   const handleShare = () => {
-    navigator.clipboard.writeText(shareLink);
+    navigator.clipboard.writeText(sharedLink);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   };
@@ -447,8 +452,8 @@ export default function PropertyDetailView({
     const titleText = isRtl ? (property.titleAr || property.title) : property.title;
     const priceText = formatPrice(property.price, isRtl);
     const text = isRtl
-      ? `شاهد هذا العقار على Nerou Finder:\n${titleText} - ${priceText}\n${shareLink}`
-      : `Check out this property on Nerou Finder:\n${titleText} - ${priceText}\n${shareLink}`;
+      ? `شاهد هذا العقار على Nerou Finder:\n${titleText} - ${priceText}\n${sharedLink}`
+      : `Check out this property on Nerou Finder:\n${titleText} - ${priceText}\n${sharedLink}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
   };
 
