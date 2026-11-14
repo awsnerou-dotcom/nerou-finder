@@ -17,6 +17,7 @@ import { SectionHeader, StatStrip, LeadCard, ListingCard } from "./WorkspacePart
 import { PublicPagePanel, ReviewInvitePanel } from "./ReachPanel.js";
 import ShareListingButton from "./ShareKit.js";
 import AddListingsHub from "./AddListingsHub.js";
+const GuideView = React.lazy(() => import("./GuideView.js"));
 import type { ParsedListing } from "../lib/listingFromText.js";
 import { profileSlug } from "../lib/profiles.js";
 import { leadStatusLabel } from "../lib/statusLabels.js";
@@ -80,7 +81,8 @@ import {
   LayoutDashboard,
   Inbox,
   UserCircle,
-  CalendarCheck
+  CalendarCheck,
+  BookOpen
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -178,7 +180,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [showArchivedLeads, setShowArchivedLeads] = useState<boolean>(false);
   const [leadPropertyPreview, setLeadPropertyPreview] = useState<Property | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "salesdesk" | "properties" | "verification" | "subscription" | "profile" | "reviews">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "salesdesk" | "properties" | "verification" | "subscription" | "profile" | "reviews" | "guide">("dashboard");
 
   // FIX1: derive the agent's effective type defensively - existing accounts created before
   // AgentType existed have agentType === undefined, so fall back to orgId-based inference
@@ -1393,6 +1395,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         { id: "reviews", label: { en: "Reviews", ar: "التقييمات" }, icon: Star, accent: "rose" as const, tourId: "agent-reviews-tab" },
         { id: "profile", label: { en: "My Profile", ar: "الحساب" }, icon: UserCircle, accent: "fuchsia" as const, tourId: "agent-profile-tab" }
       ]
+    },
+    {
+      id: "help",
+      label: { en: "Help", ar: "المساعدة" },
+      items: [{ id: "guide", label: { en: "Guide", ar: "دليل الاستخدام" }, icon: BookOpen, accent: "gold", tourId: "agent-guide-tab" }]
     }
   ];
 
@@ -1462,6 +1469,19 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               : "Your agency's subscription is not currently active. Contact your agency administrator."}
           </span>
         </div>
+      )}
+
+      {activeTab === "guide" && (
+        <React.Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="animate-spin text-gold" size={28} /></div>}>
+          <GuideView
+            persona={effectiveAgentType === AgentType.INDEPENDENT_AGENT ? "independent" : "agencyAgent"}
+            userId={agent.id}
+            isRtl={isRtl}
+            facts={{ verified: agent.verificationStatus === VerificationStatus.APPROVED, listings: properties.length, waitingLeads: waitingCount, profileFilled: !!(agent.avatarUrl && agent.bio) }}
+            onGo={(tab) => { setActiveTab(tab as typeof activeTab); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            onStartTour={() => { setTourMode("full"); setShowTour(true); setActiveTab("dashboard"); }}
+          />
+        </React.Suspense>
       )}
 
       {activeTab === "verification" && (

@@ -41,7 +41,8 @@ import {
   Megaphone,
   Receipt,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  BookOpen
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -58,6 +59,7 @@ import type { NavGroup } from "./WorkspaceShell.js";
 import { agencyAttention, topListings, waitingLeads } from "../lib/workspaceAttention.js";
 import { SectionHeader, StatStrip, LeadCard, ListingCard } from "./WorkspaceParts.js";
 import { PublicPagePanel } from "./ReachPanel.js";
+const GuideView = React.lazy(() => import("./GuideView.js"));
 import ShareListingButton from "./ShareKit.js";
 
 import DashboardChart from "./DashboardChart.js";
@@ -83,7 +85,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   const [agents, setAgents] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "team" | "listings" | "campaigns" | "subscription" | "leads" | "salesdesk" | "verification" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "team" | "listings" | "campaigns" | "subscription" | "leads" | "salesdesk" | "verification" | "profile" | "guide">("dashboard");
   // Listings tab (FIX 3): edit-in-place form state, submitted back to POST /api/properties
   // with the listing's own id so it updates rather than creates a new one.
   const [editingListingId, setEditingListingId] = useState<string | null>(null);
@@ -861,6 +863,11 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
         { id: "verification", label: { en: "Verification", ar: "التوثيق" }, icon: ShieldCheck, accent: "indigo", tourId: "agency-verification-tab" },
         { id: "profile", label: { en: "Settings", ar: "الإعدادات" }, icon: Settings, accent: "gold", tourId: "agency-profile-tab" }
       ]
+    },
+    {
+      id: "help",
+      label: { en: "Help", ar: "المساعدة" },
+      items: [{ id: "guide", label: { en: "Guide", ar: "دليل الاستخدام" }, icon: BookOpen, accent: "gold", tourId: "agency-guide-tab" }]
     }
   ];
 
@@ -916,6 +923,19 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
         }}
         isRtl={isRtl}
       >
+
+      {activeTab === "guide" && (
+        <React.Suspense fallback={<div className="flex justify-center py-16"><Loader2 className="animate-spin text-gold" size={28} /></div>}>
+          <GuideView
+            persona="agencyAdmin"
+            userId={currentUser.id}
+            isRtl={isRtl}
+            facts={{ verified: agency.verificationStatus === "APPROVED", listings: orgProperties.length, waitingLeads: waitingCount, profileFilled: !!agency.logoUrl, teamSize: agents.length }}
+            onGo={(tab) => { setActiveTab(tab as typeof activeTab); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            onStartTour={() => { setTourMode("full"); setShowTour(true); setActiveTab("dashboard"); }}
+          />
+        </React.Suspense>
+      )}
 
       {/* DASHBOARD TAB */}
       {activeTab === "dashboard" && (
