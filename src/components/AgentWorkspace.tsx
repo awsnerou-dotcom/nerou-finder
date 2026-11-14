@@ -16,7 +16,7 @@ import type { NavGroup } from "./WorkspaceShell.js";
 import { SectionHeader, StatStrip, LeadCard, ListingCard } from "./WorkspaceParts.js";
 import { PublicPagePanel, ReviewInvitePanel } from "./ReachPanel.js";
 import ShareListingButton from "./ShareKit.js";
-import PasteAdPanel from "./PasteAdPanel.js";
+import AddListingsHub from "./AddListingsHub.js";
 import type { ParsedListing } from "../lib/listingFromText.js";
 import { profileSlug } from "../lib/profiles.js";
 import { leadStatusLabel } from "../lib/statusLabels.js";
@@ -1934,7 +1934,27 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               </button>
             }
           />
-          {!editingPropertyId && (!isAddingListing || wizardStep === 1) && <PasteAdPanel isRtl={isRtl} locations={locations} onApply={applyPastedAd} />}
+          {!editingPropertyId && (!isAddingListing || wizardStep === 1) && (
+            <AddListingsHub
+              isRtl={isRtl}
+              locations={locations}
+              onApplyPaste={applyPastedAd}
+              onManual={startNewListing}
+              onImported={fetchLeadsAndProperties}
+              draftsReady={properties.filter(p => p.isFeedImported && p.listingStatus === ListingStatus.DRAFT && !p.importIncomplete && p.area > 0).length}
+              onPublishDrafts={async () => {
+                try {
+                  const res = await fetch("/api/listings/publish-imported", { method: "POST", headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+                  const d = await res.json().catch(() => ({}));
+                  if (!res.ok) return d.error || (isRtl ? "تعذّر النشر." : "Could not publish.");
+                  await fetchLeadsAndProperties();
+                  return isRtl ? `تم نشر ${d.published} عقاراً.${d.waiting ? ` و${d.waiting} تحتاج تفاصيل أولاً.` : ""}` : `Published ${d.published}.${d.waiting ? ` ${d.waiting} still need details.` : ""}`;
+                } catch {
+                  return isRtl ? "تعذّر الاتصال بالخادم." : "Could not reach the server.";
+                }
+              }}
+            />
+          )}
           <StatStrip
             items={[
               { label: isRtl ? "إجمالي العقارات" : "Total listings", value: properties.length, icon: Building, accent: "sky" },
@@ -2833,6 +2853,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   isRtl={isRtl}
                   notice={
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      {prop.importPhotos === "PENDING" && <Badge tone="info" className="!normal-case">{isRtl ? "الصور قيد التحميل" : "Photos loading"}</Badge>}
+                      {prop.importIncomplete && prop.listingStatus === ListingStatus.DRAFT && <Badge tone="warning" className="!normal-case">{isRtl ? "يحتاج تفاصيل" : "Needs details"}</Badge>}
                       <Badge tone={prop.verificationStatus === VerificationStatus.APPROVED ? "success" : "warning"} className="!normal-case">
                         {prop.verificationStatus === VerificationStatus.APPROVED ? (isRtl ? "موثّق" : "Verified") : (isRtl ? "بانتظار التوثيق" : "Pending verification")}
                       </Badge>

@@ -15,9 +15,9 @@ import { propertyTypeLabel } from "../lib/propertySpecs.js";
 const SAMPLE_EN = "Luxury 2BR apartment for rent in West Bay\n120 sqm, 2 bathrooms, fully furnished\nQAR 9,500 per month";
 const SAMPLE_AR = "شقة للايجار في لوسيل\n3 غرف نوم و3 حمامات\n160 متر\nالسعر 12000 ريال شهريا\nمفروشة";
 
-export default function PasteAdPanel({ isRtl, locations, onApply }: { isRtl: boolean; locations: PlaceRef[]; onApply: (p: ParsedListing) => void }) {
+export default function PasteAdPanel({ isRtl, locations, onApply, embedded = false }: { isRtl: boolean; locations: PlaceRef[]; onApply: (p: ParsedListing) => void; /** shown inside the add-listings hub: already open, no close button */ embedded?: boolean }) {
   const t = (en: string, ar: string) => (isRtl ? ar : en);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [text, setText] = useState("");
   const [picked, setPicked] = useState(0);
   const [read, setRead] = useState(false);
@@ -65,7 +65,7 @@ export default function PasteAdPanel({ isRtl, locations, onApply }: { isRtl: boo
             <p className="text-[13px] text-ink-muted mt-0.5">{t("We read the deal, type, price, size, bedrooms and area. Anything we cannot find stays empty for you to fill in.", "نقرأ نوع الصفقة والعقار والسعر والمساحة والغرف والمنطقة. وما لا نجده يبقى فارغاً لتكمله.")}</p>
           </div>
         </div>
-        <button type="button" onClick={() => { setOpen(false); setRead(false); }} aria-label={t("Close", "إغلاق")} className="p-1.5 rounded-lg text-ink-muted hover:bg-surface-2 cursor-pointer"><X size={18} /></button>
+        {!embedded && <button type="button" onClick={() => { setOpen(false); setRead(false); }} aria-label={t("Close", "إغلاق")} className="p-1.5 rounded-lg text-ink-muted hover:bg-surface-2 cursor-pointer"><X size={18} /></button>}
       </div>
 
       <textarea

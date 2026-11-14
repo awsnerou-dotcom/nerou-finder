@@ -130,6 +130,11 @@ import { bumpDay, profilePath } from "./src/lib/profiles.js";
 import type { ProfileKind } from "./src/lib/profiles.js";
 import { buildShareStats } from "./src/lib/shareStats.js";
 import { checkPrice, validatePriceCheckInput } from "./src/lib/priceCheck.js";
+import { lookup as dnsLookup } from "node:dns/promises";
+import { fetchPublic, UnsafeUrlError } from "./src/lib/safeFetch.js";
+import type { Lookup } from "./src/lib/safeFetch.js";
+import { readImportContent, IMPORT_MAX_BYTES, IMPORT_MAX_IMAGES } from "./src/lib/listingImport.js";
+import type { ImportedListing } from "./src/lib/listingImport.js";
 import { buildPriceReports, findReport, parseReportPath, reportPath, reportText, COUNTRY_SLUG } from "./src/lib/priceReports.js";
 import type { PriceReport } from "./src/lib/priceReports.js";
 import { cleanPin, hasExactPin, inBounds, parseBounds, PLACEHOLDER_PIN } from "./src/lib/mapPin.js";
@@ -2779,6 +2784,8 @@ app.post("/api/properties", authMiddleware, (req, res) => {
     const updatedProp: Property = {
       ...existing,
       ...propData,
+      // the agent has been through this listing: it no longer counts as an incomplete import
+      importIncomplete: undefined,
       // agentId/orgId are ownership fields, not editable listing content - never let them
       // be overwritten from client-supplied propData (that's how a listing gets hijacked).
       agentId: existing.agentId,
@@ -7426,6 +7433,332 @@ export async function runFeedSourceSyncSweep(): Promise<void> {
 
 // Create a new partner feed source (platform admin only, gated by the /api/admin
 // authMiddleware/requireRole([PLATFORM_ADMIN]) applied above - never re-checked here).
+// -----------------------------------------------------------------------------
+// AGENT SELF-SERVICE IMPORT: a file the agent uploads, or a feed link the agent connects
+// -----------------------------------------------------------------------------
+// The agent's own listings, from their spreadsheet (CSV) or their own feed (JSON or XML): each record is read by
+// src/lib/listingImport.ts, and the listings are created (or updated, matched by the agent's own reference) as the agent's own,
+// by default as DRAFTS to review. Publishing straight away follows the same rule as adding a listing by hand (an independent
+// agent needs an approved authorization letter) and only applies to listings with everything needed to publish. Photos are
+// downloaded afterwards in the background through the same watermark as an uploaded photo. Links are fetched only through
+// src/lib/safeFetch.ts, which refuses anything that is not on the public internet.
+const publicLookup: Lookup = async host => dnsLookup(host, { all: true });
+const IMPORT_ROLES: string[] = [UserRole.AGENT, UserRole.AGENCY_ADMIN, UserRole.DEVELOPER_ADMIN, UserRole.PLATFORM_ADMIN];
+const importSourceId = (userId: string) => `agent-import:${userId}`;
+
+function importPublishBlock(db: DatabaseState, actor: DatabaseState["users"][number]): string | null {
+  if (actor.role === UserRole.AGENT && getEffectiveAgentType(actor) === AgentType.INDEPENDENT_AGENT) {
+    const letter = (db.verificationDocuments || []).find(d => d.userId === actor.id && d.documentType === DocumentType.AGENCY_AUTHORIZATION_LETTER);
+    if (!letter || letter.status !== DocumentStatus.APPROVED) {
+      return "Your Agency Authorization Letter must be approved before listings can be published, so they were saved as drafts.";
+    }
+  }
+  return null;
+}
+
+interface ImportApplied { created: number; updated: number; drafts: number; published: number; photoIds: string[] }
+
+function applyImportedListings(db: DatabaseState, actor: DatabaseState["users"][number], listings: ImportedListing[], publish: boolean): ImportApplied {
+  const source = importSourceId(actor.id);
+  const out: ImportApplied = { created: 0, updated: 0, drafts: 0, published: 0, photoIds: [] };
+  const nowIso = new Date().toISOString();
+  const today = nowIso.split("T")[0];
+  let n = 0;
+  for (const l of listings) {
+    const existing = db.properties.find(p => p.sourceFeedId === source && p.externalListingId === l.externalId && p.agentId === actor.id);
+    const furnished = l.furnishing === "FULLY_FURNISHED" ? "YES" : l.furnishing === "SEMI_FURNISHED" ? "PARTLY" : "NO";
+    if (existing) {
+      const priceHistory = [...existing.priceHistory];
+      if (existing.price !== l.price) priceHistory.push({ price: l.price, date: today });
+      const photosChanged = l.images.length > 0 && JSON.stringify(l.images) !== JSON.stringify(existing.sourceFeedImageUrls);
+      Object.assign(existing, {
+        title: l.title, titleAr: l.titleAr || existing.titleAr || l.title,
+        description: l.description, descriptionAr: l.descriptionAr || existing.descriptionAr || l.description,
+        propertyType: l.propertyType, transactionType: l.transactionType === "FOR_RENT" ? TransactionType.FOR_RENT : TransactionType.FOR_SALE,
+        price: l.price, area: l.area > 0 ? l.area : existing.area,
+        bedrooms: l.bedrooms ?? existing.bedrooms, bathrooms: l.bathrooms ?? existing.bathrooms,
+        city: l.city, district: l.district, furnished, furnishingStatus: l.furnishing ?? existing.furnishingStatus,
+        priceHistory, updatedDate: nowIso,
+        ...(photosChanged ? { sourceFeedImageUrls: l.images, importPhotos: "PENDING" as const } : {})
+      });
+      if (photosChanged) out.photoIds.push(existing.id);
+      out.updated++;
+      continue;
+    }
+    const goLive = publish && l.complete;
+    let qualityScore = 70;
+    if (l.description.length > 100) qualityScore += 10;
+    if (l.images.length >= 3) qualityScore += 10;
+    const id = `prop-${Date.now()}-${(n++).toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    const prop: Property = {
+      id,
+      listingId: `N-${Math.floor(10000 + Math.random() * 90000)}`,
+      title: l.title, titleAr: l.titleAr || l.title,
+      description: l.description, descriptionAr: l.descriptionAr || l.description,
+      propertyType: l.propertyType as PropertyType,
+      transactionType: l.transactionType === "FOR_RENT" ? TransactionType.FOR_RENT : TransactionType.FOR_SALE,
+      price: l.price, currency: "QAR",
+      ...(l.transactionType === "FOR_RENT" ? { rentalPeriod: "MONTHLY" as const } : {}),
+      area: l.area, sizeUnit: "SQM",
+      city: l.city, district: l.district,
+      ...PLACEHOLDER_PIN, exactLocation: false,
+      bedrooms: l.bedrooms ?? 0, bathrooms: l.bathrooms ?? 0,
+      furnished, furnishingStatus: l.furnishing,
+      parking: false, amenities: [],
+      images: ["https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80"],
+      agentId: actor.id,
+      orgId: actor.orgId || undefined,
+      verificationStatus: goLive ? VerificationStatus.APPROVED : VerificationStatus.PENDING,
+      listingStatus: goLive ? ListingStatus.PUBLISHED : ListingStatus.DRAFT,
+      statusChangedDate: nowIso,
+      qualityScore,
+      createdDate: nowIso, updatedDate: nowIso, lastConfirmedAvailableDate: nowIso,
+      priceHistory: [{ price: l.price, date: today }],
+      sourceFeedId: source, externalListingId: l.externalId, isFeedImported: true,
+      sourceFeedImageUrls: l.images,
+      ...(l.images.length > 0 ? { importPhotos: "PENDING" as const } : {}),
+      ...(l.complete ? {} : { importIncomplete: true })
+    } as Property;
+    db.properties.unshift(prop);
+    out.created++;
+    if (goLive) out.published++; else out.drafts++;
+    if (l.images.length > 0) out.photoIds.push(id);
+  }
+  return out;
+}
+
+// Photos are fetched one listing at a time, one import after another, so a big import never starves the server.
+let photoChain: Promise<void> = Promise.resolve();
+function queueImportedPhotos(ids: string[]) {
+  if (ids.length === 0) return;
+  photoChain = photoChain.then(() => processImportedPhotos(ids)).catch(err => console.error("Imported photo processing failed:", err));
+}
+
+async function processImportedPhotos(ids: string[]) {
+  for (const id of ids) {
+    const urls = (readDb().properties.find(p => p.id === id)?.sourceFeedImageUrls || []).slice(0, IMPORT_MAX_IMAGES);
+    const done: string[] = [];
+    for (const url of urls) {
+      try {
+        const r = await fetchPublic(url, { lookup: publicLookup, maxBytes: 8 * 1024 * 1024, timeoutMs: 15000 });
+        if (r.status < 200 || r.status >= 300 || !r.contentType.startsWith("image/")) continue;
+        const ext = r.contentType.includes("png") ? "png" : r.contentType.includes("webp") ? "webp" : "jpg";
+        const filename = `import-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+        const originalPath = path.join(uploadsDir, "original-" + filename);
+        const uploadedPath = path.join(uploadsDir, filename);
+        fs.writeFileSync(originalPath, r.body);
+        await applyWatermark(originalPath, uploadedPath);
+        await generateThumbnail(uploadedPath, path.join(uploadsDir, "thumb-" + filename));
+        done.push(`/assets/uploads/${filename}`);
+      } catch (err) {
+        if (!(err instanceof UnsafeUrlError)) console.error(`Could not fetch/watermark imported photo ${url}:`, err);
+      }
+    }
+    const db = readDb();
+    const p = db.properties.find(x => x.id === id);
+    if (!p) continue;
+    if (done.length > 0) { p.images = done; p.importPhotos = done.length === urls.length ? "DONE" : "PARTIAL"; }
+    else p.importPhotos = "FAILED";
+    p.updatedDate = new Date().toISOString();
+    writeDb(db);
+  }
+}
+
+function importActor(req: express.Request, db: DatabaseState) {
+  const authReq = req as AuthenticatedRequest;
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  return actor && IMPORT_ROLES.includes(actor.role) ? actor : null;
+}
+
+function buildImportPreview(db: DatabaseState, actor: DatabaseState["users"][number], content: string) {
+  const read = readImportContent(content, (db.locations || []) as never);
+  const have = new Set(db.properties.filter(p => p.agentId === actor.id && p.sourceFeedId === importSourceId(actor.id)).map(p => p.externalListingId));
+  const items = read.listings.map(l => ({
+    externalId: l.externalId, title: l.title, transactionType: l.transactionType, propertyType: l.propertyType, price: l.price, area: l.area,
+    bedrooms: l.bedrooms, district: l.district, city: l.city, complete: l.complete, notes: l.notes, photos: l.images.length,
+    action: have.has(l.externalId) ? ("update" as const) : ("create" as const)
+  }));
+  return {
+    format: read.format, total: read.total, truncated: read.truncated, skipped: read.skipped,
+    counts: {
+      create: items.filter(i => i.action === "create").length,
+      update: items.filter(i => i.action === "update").length,
+      complete: items.filter(i => i.complete).length,
+      incomplete: items.filter(i => !i.complete).length,
+      photos: items.reduce((s, i) => s + i.photos, 0)
+    },
+    items: items.slice(0, 60),
+    publishBlock: importPublishBlock(db, actor)
+  };
+}
+
+const importRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 40,
+  message: { error: "Too many imports. Please try again in a few minutes." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+// the file arrives as plain text so it can be bigger than an ordinary JSON request
+const importText = express.text({ type: ["text/plain", "text/csv"], limit: IMPORT_MAX_BYTES });
+
+async function fetchFeedText(url: string): Promise<string> {
+  let r;
+  try {
+    r = await fetchPublic(url, { lookup: publicLookup, maxBytes: IMPORT_MAX_BYTES, timeoutMs: 20000 });
+  } catch (e) {
+    throw new Error(e instanceof UnsafeUrlError ? e.message : "We could not reach that link.");
+  }
+  if (r.status < 200 || r.status >= 300) throw new Error(`That link answered with an error (${r.status}).`);
+  return r.body.toString("utf8");
+}
+
+app.post("/api/listings/import/preview", authMiddleware, importRateLimiter, importText, (req, res) => {
+  const db = readDb();
+  const actor = importActor(req, db);
+  if (!actor) return res.status(403).json({ error: "Your account type cannot import listings." });
+  try {
+    res.json(buildImportPreview(db, actor, typeof req.body === "string" ? req.body : ""));
+  } catch (e: any) {
+    res.status(400).json({ error: e?.message || "We could not read that file." });
+  }
+});
+
+app.post("/api/listings/import/commit", authMiddleware, importRateLimiter, importText, (req, res) => {
+  const db = readDb();
+  const actor = importActor(req, db);
+  if (!actor) return res.status(403).json({ error: "Your account type cannot import listings." });
+  let read;
+  try {
+    read = readImportContent(typeof req.body === "string" ? req.body : "", (db.locations || []) as never);
+  } catch (e: any) {
+    return res.status(400).json({ error: e?.message || "We could not read that file." });
+  }
+  const block = importPublishBlock(db, actor);
+  const wantsPublish = req.query.publish === "1";
+  const applied = applyImportedListings(db, actor, read.listings, wantsPublish && !block);
+  writeDb(db);
+  logAudit(actor.id, actor.fullName, actor.role, "IMPORT_LISTINGS", actor.id, "User", { source: "file", format: read.format, created: applied.created, updated: applied.updated, drafts: applied.drafts, published: applied.published, skipped: read.skipped.length });
+  queueImportedPhotos(applied.photoIds);
+  res.json({ created: applied.created, updated: applied.updated, drafts: applied.drafts, published: applied.published, skipped: read.skipped, photosQueued: applied.photoIds.length, publishBlocked: wantsPublish && block ? block : null });
+});
+
+app.post("/api/listings/import/feed-preview", authMiddleware, importRateLimiter, async (req, res) => {
+  const url = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+  if (!url) return res.status(400).json({ error: "Paste the link of your feed." });
+  try {
+    const content = await fetchFeedText(url);
+    const db = readDb();
+    const actor = importActor(req, db);
+    if (!actor) return res.status(403).json({ error: "Your account type cannot import listings." });
+    res.json(buildImportPreview(db, actor, content));
+  } catch (e: any) {
+    res.status(400).json({ error: e?.message || "We could not read that feed." });
+  }
+});
+
+/** Reads the agent's connected feed now and applies it. Never throws: a failure is stored on the feed for the agent to see. */
+export async function syncAgentFeed(userId: string): Promise<{ ok: true; created: number; updated: number; drafts: number; skipped: number } | { ok: false; error: string }> {
+  const first = readDb().users.find(u => u.id === userId);
+  if (!first?.listingFeed?.active) return { ok: false, error: "No feed is connected." };
+  const fail = (message: string) => {
+    const db = readDb();
+    const u = db.users.find(x => x.id === userId);
+    if (u?.listingFeed) { u.listingFeed.lastError = message; u.listingFeed.lastSyncDate = new Date().toISOString(); writeDb(db); }
+    return { ok: false as const, error: message };
+  };
+  let content: string;
+  try { content = await fetchFeedText(first.listingFeed.url); } catch (e: any) { return fail(e?.message || "We could not read the feed."); }
+  // the state may have changed while we waited for the network: read it again
+  const db = readDb();
+  const user = db.users.find(u => u.id === userId);
+  if (!user?.listingFeed?.active) return { ok: false, error: "No feed is connected." };
+  let read;
+  try { read = readImportContent(content, (db.locations || []) as never); } catch (e: any) { return fail(e?.message || "We could not read the feed."); }
+  // an empty or unusable feed must never change anything (a broken export would otherwise look like "nothing changed")
+  if (read.listings.length === 0) return fail("The feed has no usable listings, so nothing was changed.");
+  const block = importPublishBlock(db, user);
+  const applied = applyImportedListings(db, user, read.listings, user.listingFeed.autoPublish && !block);
+  user.listingFeed.lastSyncDate = new Date().toISOString();
+  user.listingFeed.lastError = undefined;
+  user.listingFeed.lastSyncStats = { created: applied.created, updated: applied.updated, drafts: applied.drafts, skipped: read.skipped.length };
+  writeDb(db);
+  logAudit(user.id, user.fullName, user.role, "IMPORT_LISTINGS", user.id, "User", { source: "feed", format: read.format, created: applied.created, updated: applied.updated, drafts: applied.drafts, published: applied.published, skipped: read.skipped.length });
+  queueImportedPhotos(applied.photoIds);
+  return { ok: true, created: applied.created, updated: applied.updated, drafts: applied.drafts, skipped: read.skipped.length };
+}
+
+export async function runAgentFeedSweep(): Promise<void> {
+  const ids = readDb().users.filter(u => u.listingFeed?.active).map(u => u.id).slice(0, 200);
+  for (const id of ids) {
+    try { await syncAgentFeed(id); } catch (err) { console.error(`Agent feed sweep: unexpected error for ${id}:`, err); }
+  }
+}
+
+// Publishes every imported draft that has everything it needs (the ones the agent has not had to complete are still marked incomplete).
+app.post("/api/listings/publish-imported", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = importActor(req, db);
+  if (!actor) return res.status(403).json({ error: "Your account type cannot import listings." });
+  const block = importPublishBlock(db, actor);
+  if (block) return res.status(403).json({ error: block });
+  const nowIso = new Date().toISOString();
+  let published = 0;
+  let waiting = 0;
+  for (const p of db.properties) {
+    if (p.agentId !== actor.id || !p.isFeedImported || p.listingStatus !== ListingStatus.DRAFT) continue;
+    if (p.importIncomplete || !(p.area > 0)) { waiting++; continue; }
+    p.listingStatus = ListingStatus.PUBLISHED;
+    p.verificationStatus = VerificationStatus.APPROVED;
+    p.statusChangedDate = nowIso;
+    p.updatedDate = nowIso;
+    p.lastConfirmedAvailableDate = nowIso;
+    published++;
+  }
+  if (published > 0) { writeDb(db); logAudit(actor.id, actor.fullName, actor.role, "PUBLISH_IMPORTED_LISTINGS", actor.id, "User", { published, waiting }); }
+  res.json({ published, waiting });
+});
+
+app.get("/api/me/listing-feed", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = importActor(req, db);
+  if (!actor) return res.status(403).json({ error: "Your account type cannot import listings." });
+  res.json({ feed: actor.listingFeed || null, publishBlock: importPublishBlock(db, actor) });
+});
+
+app.put("/api/me/listing-feed", authMiddleware, importRateLimiter, async (req, res) => {
+  const url = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+  if (!/^https:\/\//i.test(url) || url.length > 500) return res.status(400).json({ error: "Paste the https link of your feed." });
+  const db = readDb();
+  const actor = importActor(req, db);
+  if (!actor) return res.status(403).json({ error: "Your account type cannot import listings." });
+  actor.listingFeed = { url, active: true, autoPublish: req.body?.autoPublish === true, connectedDate: new Date().toISOString() };
+  writeDb(db);
+  const result = await syncAgentFeed(actor.id);
+  const fresh = readDb().users.find(u => u.id === actor.id);
+  if ("error" in result) return res.status(400).json({ error: result.error, feed: fresh?.listingFeed || null });
+  res.json({ feed: fresh?.listingFeed || null, result });
+});
+
+app.post("/api/me/listing-feed/sync", authMiddleware, importRateLimiter, async (req, res) => {
+  const actor = importActor(req, readDb());
+  if (!actor) return res.status(403).json({ error: "Your account type cannot import listings." });
+  const result = await syncAgentFeed(actor.id);
+  const fresh = readDb().users.find(u => u.id === actor.id);
+  if ("error" in result) return res.status(400).json({ error: result.error, feed: fresh?.listingFeed || null });
+  res.json({ feed: fresh?.listingFeed || null, result });
+});
+
+// Disconnecting stops the reading; the listings that came in stay where they are.
+app.delete("/api/me/listing-feed", authMiddleware, (req, res) => {
+  const db = readDb();
+  const actor = importActor(req, db);
+  if (!actor) return res.status(403).json({ error: "Your account type cannot import listings." });
+  actor.listingFeed = undefined;
+  writeDb(db);
+  res.json({ success: true });
+});
+
 app.post("/api/admin/feed-sources", (req, res) => {
   const { orgId, name, feedUrl } = req.body;
   if (!orgId || !name || !feedUrl) {
@@ -10543,6 +10876,10 @@ async function startServer() {
   // interval-job pattern as the two sweeps above.
   runFeedSourceSyncSweep();
   setInterval(runFeedSourceSyncSweep, 6 * 60 * 60 * 1000);
+
+  // Agents' own connected listing feeds: read again every six hours (the first pass waits a few minutes after boot).
+  setTimeout(runAgentFeedSweep, 5 * 60 * 1000);
+  setInterval(runAgentFeedSweep, 6 * 60 * 60 * 1000);
 
   // Dynamic SEO meta tags for properties
   app.get("/properties/:id", (req, res, next) => {

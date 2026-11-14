@@ -113,6 +113,17 @@ export interface User {
   id: string;
   /** visits to this person's public page by day (YYYY-MM-DD), kept for 120 days; private to the owner */
   profileViewsByDay?: Record<string, number>;
+  /** a link to the person's own listings feed (CSV, JSON or XML) that is read again every few hours; private to the owner */
+  listingFeed?: {
+    url: string;
+    active: boolean;
+    /** publish the complete listings as they arrive, or keep them as drafts to review first */
+    autoPublish: boolean;
+    connectedDate: string;
+    lastSyncDate?: string;
+    lastSyncStats?: { created: number; updated: number; drafts: number; skipped: number };
+    lastError?: string;
+  };
   email: string;
   fullName: string;
   phone: string;
@@ -410,6 +421,10 @@ export interface Property {
   viewsByDay?: Record<string, number>;
   /** visits that arrived through a link someone shared (the link carries ?sh=1), by day */
   shareVisitsByDay?: Record<string, number>;
+  /** for a listing that came from a file or a feed: whether its photos are still being downloaded */
+  importPhotos?: "PENDING" | "DONE" | "PARTIAL" | "FAILED";
+  /** came in from a file or feed with something missing (size, bedrooms, a known area): stays a draft until the agent edits it */
+  importIncomplete?: boolean;
   recentViewers?: { fingerprint: string; ts: number }[];
   // ---------------------------------------------------------------------------
   // Partner Feed Import

@@ -68,7 +68,7 @@ export function splitAds(text: string): string[] {
     .filter(b => b.length >= 15);
 }
 
-function matchTransaction(f: string): "FOR_RENT" | "FOR_SALE" | undefined {
+export function matchTransaction(f: string): "FOR_RENT" | "FOR_SALE" | undefined {
   const rent = /للايجار|ايجار|\bfor rent\b|\bto let\b|\bfor lease\b|\bto rent\b|\brent\b|\blease\b/.exec(f);
   const sale = /للبيع|\bfor sale\b|\bselling\b|\bto sell\b|\bsale\b|\bبيع\b/.exec(f);
   if (rent && sale) return rent.index <= sale.index ? "FOR_RENT" : "FOR_SALE";
@@ -93,7 +93,7 @@ const TYPES: [RegExp, string][] = [
   [/apartment|\bflat\b|\bapt\b|شقه/, "APARTMENT"]
 ];
 
-function matchType(f: string): string | undefined {
+export function matchType(f: string): string | undefined {
   for (const [re, type] of TYPES) if (re.test(f)) return type;
   return undefined;
 }
@@ -166,7 +166,7 @@ function matchPrice(f: string): number | undefined {
   return undefined;
 }
 
-function matchFurnishing(f: string): ParsedListing["furnishing"] {
+export function matchFurnishing(f: string): ParsedListing["furnishing"] {
   if (/semi[- ]?furnished|نصف مفروش|شبه مفروش|مفروش جزئيا|نصف مؤثث/.test(f)) return "SEMI_FURNISHED";
   if (/unfurnished|غير مفروش|بدون اثاث|بدون فرش|غير مؤثث|فاضي/.test(f)) return "UNFURNISHED";
   if (/furnished|مفروش|مؤثث/.test(f)) return "FULLY_FURNISHED";
@@ -211,7 +211,7 @@ const TYPE_WORD: Record<string, string> = {
   OFFICE: "office", RETAIL: "retail space", SHOP: "shop", WAREHOUSE: "warehouse", BUILDING: "building", LAND: "plot of land", HOTEL_APARTMENT: "hotel apartment", CHALET: "chalet", FARM: "farm", OTHER: "property"
 };
 
-function makeTitle(p: { transaction?: string; propertyType?: string; bedrooms?: number; placeName?: string }, fallback: string): string {
+export function makeTitle(p: { transaction?: string; propertyType?: string; bedrooms?: number; placeName?: string }, fallback: string): string {
   if (!p.propertyType && !p.placeName) return fallback.split(/\n/)[0].trim().slice(0, 80);
   const beds = p.propertyType === "STUDIO" ? "" : p.bedrooms !== undefined ? (p.bedrooms === 0 ? "studio-size " : `${p.bedrooms}-bedroom `) : "";
   const type = TYPE_WORD[p.propertyType || "OTHER"] || "property";
