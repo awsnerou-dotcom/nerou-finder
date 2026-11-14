@@ -16,6 +16,8 @@ import type { NavGroup } from "./WorkspaceShell.js";
 import { SectionHeader, StatStrip, LeadCard, ListingCard } from "./WorkspaceParts.js";
 import { PublicPagePanel, ReviewInvitePanel } from "./ReachPanel.js";
 import ShareListingButton from "./ShareKit.js";
+import PasteAdPanel from "./PasteAdPanel.js";
+import type { ParsedListing } from "../lib/listingFromText.js";
 import { profileSlug } from "../lib/profiles.js";
 import { leadStatusLabel } from "../lib/statusLabels.js";
 import { agentAttention, topListings, waitingLeads } from "../lib/workspaceAttention.js";
@@ -1342,6 +1344,32 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     setActiveTab("properties");
   };
 
+  // "Paste your ad": fill the new-listing form with what was read from the pasted text, leaving the rest empty
+  const applyPastedAd = (p: ParsedListing) => {
+    setEditingPropertyId(null);
+    setWizardStep(1);
+    setListingTitle(p.title);
+    if (p.propertyType) setListingType(p.propertyType as PropertyType);
+    if (p.transaction) setListingTrans(p.transaction === "FOR_RENT" ? TransactionType.FOR_RENT : TransactionType.FOR_SALE);
+    setListingPrice(p.price !== undefined ? String(p.monthlyRent ?? p.price) : "");
+    setListingArea(p.areaSqm !== undefined ? String(p.areaSqm) : "");
+    if (p.bedrooms !== undefined) setListingBeds(String(p.bedrooms));
+    if (p.bathrooms !== undefined) setListingBaths(String(p.bathrooms));
+    setListingDesc(p.description);
+    setListingDescAr(/[\u0600-\u06FF]/.test(p.description) ? p.description : "");
+    setSelectedMunicipality(p.municipalityId || "");
+    setSelectedArea(p.placeType && p.placeType !== "MUNICIPALITY" ? p.placeId || "" : "");
+    setCustomArea("");
+    setListingFurnishingStatus(p.furnishing || "");
+    setListingImages([]);
+    setListingPin(null);
+    setIsAddingListing(true);
+    setActiveTab("properties");
+    setToastMessage(isRtl ? "ملأنا ما وجدناه. أضف الصور والموقع على الخريطة ثم انشر." : "We filled in what we found. Add photos and the map pin, then publish.");
+    setTimeout(() => setToastMessage(""), 6000);
+    requestAnimationFrame(() => document.getElementById("new-listing-form")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
   const navGroups: NavGroup[] = [
     {
       id: "work",
@@ -1906,6 +1934,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               </button>
             }
           />
+          {!editingPropertyId && (!isAddingListing || wizardStep === 1) && <PasteAdPanel isRtl={isRtl} locations={locations} onApply={applyPastedAd} />}
           <StatStrip
             items={[
               { label: isRtl ? "إجمالي العقارات" : "Total listings", value: properties.length, icon: Building, accent: "sky" },
@@ -1969,6 +1998,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
           {isAddingListing && (
             <form
+              id="new-listing-form"
               onSubmit={handleAddListing}
               onKeyDown={(e) => {
                 // Only the final step's submit button should ever fire this form's submission -
