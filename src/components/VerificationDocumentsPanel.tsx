@@ -46,7 +46,7 @@ function statusBadge(status: string | undefined, isRtl: boolean) {
   };
   const entry = status && map[status] ? map[status] : { cls: "bg-gray-100 text-gray-500", icon: <FileText size={12} />, en: "Not Submitted", ar: "لم يتم الرفع" };
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${entry.cls}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${entry.cls}`}>
       {entry.icon}
       {isRtl ? entry.ar : entry.en}
     </span>
@@ -211,13 +211,22 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
           const file = e.dataTransfer.files?.[0];
           if (file) handleUpload(type, file);
         }}
-        className={`p-4 bg-surface border rounded-xl space-y-2 transition-colors ${
+        className={`p-5 bg-surface border rounded-2xl shadow-card space-y-3 transition-colors ${
           isDragOver ? "border-gold border-2 bg-gold/5" : "border-border"
         }`}
       >
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <p className="text-xs font-bold text-ink">{label}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            <span className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+              doc?.status === "APPROVED" ? "bg-emerald-100 text-emerald-700"
+              : doc?.status === "PENDING" ? "bg-amber-100 text-amber-700"
+              : doc?.status === "REJECTED" || doc?.status === "EXPIRED" ? "bg-rose-100 text-rose-700"
+              : "bg-surface-2 text-ink-muted"
+            }`}>
+              {doc?.status === "APPROVED" ? <CheckCircle2 size={22} strokeWidth={2.25} /> : doc?.status === "PENDING" ? <Clock size={22} strokeWidth={2.25} /> : doc?.status === "REJECTED" || doc?.status === "EXPIRED" ? <XCircle size={22} strokeWidth={2.25} /> : <FileText size={22} strokeWidth={2.25} />}
+            </span>
+            <div className="min-w-0">
+            <p className="text-[15px] font-semibold text-ink">{label}</p>
             {doc?.fileUrl && (
               <button
                 type="button"
@@ -227,6 +236,7 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
                 {isRtl ? "عرض الملف الحالي" : "View current file"}
               </button>
             )}
+            </div>
           </div>
           {statusBadge(doc?.status, isRtl)}
         </div>
@@ -250,10 +260,10 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
             type="date"
             value={expiryDrafts[type] || ""}
             onChange={(e) => setExpiryDrafts((prev) => ({ ...prev, [type]: e.target.value }))}
-            className="px-2 py-1.5 bg-ink-inverse border border-border rounded-lg text-[10px] text-ink-muted"
+            className="px-3 py-2 bg-ink-inverse border border-border rounded-xl text-[12px] text-ink-muted"
             title={isRtl ? "تاريخ انتهاء الصلاحية (اختياري)" : "Expiry date (optional)"}
           />
-          <label className={`relative px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${isUploading || !declarationAccepted ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : "bg-chrome hover:bg-gold hover:text-gold-ink text-white border-transparent cursor-pointer"}`}
+          <label className={`relative px-4 py-2 rounded-xl text-[12px] font-semibold border transition-colors ${isUploading || !declarationAccepted ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : "bg-chrome hover:bg-gold hover:text-gold-ink text-white border-transparent cursor-pointer"}`}
             title={!declarationAccepted ? (isRtl ? "وافق على الإقرار أعلاه أولاً" : "Accept the declaration above first") : undefined}>
             {isUploading ? (
               <span className="flex items-center gap-1">
@@ -306,28 +316,33 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
 
   return (
     <div className="space-y-4" dir={isRtl ? "rtl" : "ltr"}>
-      <div className={`p-4 rounded-xl border flex items-center justify-between gap-3 flex-wrap ${verificationStatus === "APPROVED" ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
+      <div className={`p-5 rounded-2xl border flex items-center justify-between gap-3 flex-wrap ${verificationStatus === "APPROVED" ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${verificationStatus === "APPROVED" ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"}`}>
+            {verificationStatus === "APPROVED" ? <ShieldCheck size={24} strokeWidth={2.25} /> : <Clock size={24} strokeWidth={2.25} />}
+          </span>
         <div>
-          <p className="text-xs font-bold text-ink">
+          <p className="text-[15px] font-semibold text-ink">
             {isRtl ? "حالة التوثيق الإجمالية" : "Overall Verification Status"}
           </p>
-          <p className="text-[10px] text-ink-muted mt-0.5">
+          <p className="text-[13px] text-ink-muted mt-0.5">
             {verificationStatus === "APPROVED"
               ? (isRtl ? "تم توثيق حسابك بنجاح. جميع المستندات المطلوبة معتمدة." : "Your account is fully verified. All required documents are approved.")
               : (isRtl ? "يجب رفع واعتماد جميع المستندات المطلوبة لتوثيق الحساب." : "All required documents must be uploaded and approved to verify this account.")}
           </p>
+        </div>
         </div>
         {statusBadge(verificationStatus === "APPROVED" ? "APPROVED" : "PENDING", isRtl)}
       </div>
 
       {/* Accuracy declaration - must be ticked before any file can be uploaded. Wording lives in
           DOCUMENT_DECLARATION (types.ts) so the server records exactly which version was accepted. */}
-      <div className={`p-4 rounded-xl border space-y-3 transition-colors ${declarationAccepted ? "bg-emerald-50 border-emerald-200" : "bg-surface border-border"}`}>
-        <div className="flex items-center gap-2">
-          <ShieldCheck size={16} className="text-gold shrink-0" />
-          <p className="text-xs font-bold text-ink">{isRtl ? DOCUMENT_DECLARATION.titleAr : DOCUMENT_DECLARATION.titleEn}</p>
+      <div className={`p-5 rounded-2xl border shadow-card space-y-3 transition-colors ${declarationAccepted ? "bg-emerald-50 border-emerald-200" : "bg-surface border-border"}`}>
+        <div className="flex items-center gap-3">
+          <span className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0"><ShieldCheck size={20} strokeWidth={2.25} /></span>
+          <p className="text-[15px] font-semibold text-ink">{isRtl ? DOCUMENT_DECLARATION.titleAr : DOCUMENT_DECLARATION.titleEn}</p>
         </div>
-        <ol className="list-decimal ps-5 space-y-1.5 text-[11px] leading-relaxed text-ink-muted">
+        <ol className="list-decimal ps-5 space-y-1.5 text-[13px] leading-relaxed text-ink-muted">
           {(isRtl ? DOCUMENT_DECLARATION.ar : DOCUMENT_DECLARATION.en).map((clause, i) => (
             <li key={i}>{clause}</li>
           ))}

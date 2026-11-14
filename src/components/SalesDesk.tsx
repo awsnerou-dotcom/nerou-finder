@@ -19,6 +19,7 @@ import { BOARD_COLUMNS, LEAD_SOURCES, LEAD_SOURCE_TEXT, addDaysToDate, columnFor
 import type { SnoozeKind } from "../lib/crm.js";
 import { DESK_TAB_EVENT, takePendingDeskTab } from "../lib/tour.js";
 import { Button } from "./ui/Button.js";
+import { StatStrip } from "./WorkspaceParts.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Spinner } from "./ui/Spinner.js";
 import { Input } from "./ui/FormField.js";
@@ -195,37 +196,39 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
   const expected = liveDeals.filter(d => d.commissionStatus === "EXPECTED").reduce((s, d) => s + d.commissionAmount, 0);
 
   const TABS: { id: DeskTab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: "pipeline", label: t("Pipeline", "مسار البيع"), icon: <LayoutGrid size={14} /> },
-    { id: "followups", label: t("Follow-ups", "المتابعات"), icon: <BellRing size={14} />, badge: dueCount },
-    { id: "viewings", label: t("Viewings", "المعاينات"), icon: <CalendarClock size={14} /> },
-    { id: "tasks", label: t("Tasks & renewals", "المهام والتجديدات"), icon: <ListChecks size={14} />, badge: tasksDueCount + renewalsSoonCount },
-    { id: "deals", label: t("Deals & commission", "الصفقات والعمولات"), icon: <Banknote size={14} /> },
-    { id: "reports", label: t("Reports", "التقارير"), icon: <FileDown size={14} /> }
+    { id: "pipeline", label: t("Pipeline", "مسار البيع"), icon: <LayoutGrid size={16} /> },
+    { id: "followups", label: t("Follow-ups", "المتابعات"), icon: <BellRing size={16} />, badge: dueCount },
+    { id: "viewings", label: t("Viewings", "المعاينات"), icon: <CalendarClock size={16} /> },
+    { id: "tasks", label: t("Tasks & renewals", "المهام والتجديدات"), icon: <ListChecks size={16} />, badge: tasksDueCount + renewalsSoonCount },
+    { id: "deals", label: t("Deals & commission", "الصفقات والعمولات"), icon: <Banknote size={16} /> },
+    { id: "reports", label: t("Reports", "التقارير"), icon: <FileDown size={16} /> }
   ];
 
   return (
     <div className="space-y-4">
       {/* header */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h3 className="font-serif text-lg font-semibold text-ink flex items-center gap-2">
-            <TrendingUp size={18} className="text-gold" />
-            {t("Sales Desk", "مكتب المبيعات")}
-          </h3>
-          <p className="text-xs text-ink-muted mt-0.5">
-            {data.isOrgAdmin
-              ? t("Your whole team's clients, viewings and deals in one place.", "عملاء فريقك ومعايناته وصفقاته في مكان واحد.")
-              : t("Your clients, viewings and deals in one place.", "عملاؤك ومعايناتك وصفقاتك في مكان واحد.")}
-          </p>
-          {data.reminderEmail && (
-            <p className="text-[11px] text-ink-muted mt-0.5">
-              {t("Reminders are emailed to ", "تُرسل التذكيرات بالإيميل إلى ")}<bdi dir="ltr" className="font-semibold text-ink">{data.reminderEmail}</bdi>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+            <TrendingUp size={24} strokeWidth={2.25} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h3 className="font-serif text-xl font-semibold text-ink leading-tight">{t("Sales Desk", "مكتب المبيعات")}</h3>
+            <p className="text-[13px] text-ink-muted mt-0.5">
+              {data.isOrgAdmin
+                ? t("Your whole team's clients, viewings and deals in one place.", "عملاء فريقك ومعايناته وصفقاته في مكان واحد.")
+                : t("Your clients, viewings and deals in one place.", "عملاؤك ومعايناتك وصفقاتك في مكان واحد.")}
             </p>
-          )}
+            {data.reminderEmail && (
+              <p className="text-[12px] text-ink-faint mt-0.5">
+                {t("Reminders are emailed to ", "تُرسل التذكيرات بالإيميل إلى ")}<bdi dir="ltr" className="font-semibold text-ink-muted">{data.reminderEmail}</bdi>
+              </p>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <label data-tour="desk-reminders" className="flex items-center gap-2 text-xs font-semibold text-ink-muted cursor-pointer select-none" title={t("Daily follow-up and viewing reminder emails", "إيميلات تذكير بالمتابعة والمعاينات")}>
-            <BellRing size={14} className={data.settings.followUpRemindersEnabled ? "text-gold" : ""} />
+          <label data-tour="desk-reminders" className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface text-[13px] font-semibold text-ink-muted cursor-pointer select-none" title={t("Daily follow-up and viewing reminder emails", "إيميلات تذكير بالمتابعة والمعاينات")}>
+            <BellRing size={16} className={data.settings.followUpRemindersEnabled ? "text-gold-active" : ""} />
             {t("Reminder emails", "إيميلات التذكير")}
             <input
               type="checkbox"
@@ -238,24 +241,26 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
               className="accent-gold w-4 h-4"
             />
           </label>
-          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={13} />} onClick={reload}>{t("Refresh", "تحديث")}</Button>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={14} />} onClick={reload}>{t("Refresh", "تحديث")}</Button>
           <span data-tour="desk-clients" className="inline-flex items-center gap-2">
-            <Button variant="outline" size="sm" leftIcon={<Upload size={13} />} onClick={() => setImportOpen(true)}>{t("Import list", "استيراد قائمة")}</Button>
-            <Button size="sm" leftIcon={<UserPlus size={14} />} onClick={() => setClientCtx({ client: null })}>{t("Add client", "إضافة عميل")}</Button>
+            <Button variant="outline" size="sm" leftIcon={<Upload size={14} />} onClick={() => setImportOpen(true)}>{t("Import list", "استيراد قائمة")}</Button>
+            <Button size="sm" leftIcon={<UserPlus size={15} />} onClick={() => setClientCtx({ client: null })}>{t("Add client", "إضافة عميل")}</Button>
           </span>
         </div>
       </div>
 
       {/* strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kpi label={t("Open clients", "عملاء مفتوحون")} value={String(openLeads.length)} icon={<Users size={15} />} />
-        <Kpi label={t("Follow-ups due", "متابعات مستحقة")} value={String(dueCount)} icon={<BellRing size={15} />} warn={dueCount > 0} onClick={() => setTab("followups")} />
-        <Kpi label={t("Viewings this week", "معاينات هذا الأسبوع")} value={String(viewingsThisWeek)} icon={<CalendarClock size={15} />} onClick={() => setTab("viewings")} />
-        <Kpi label={t("Commission expected", "عمولات متوقعة")} value={fmtMoney(expected, isRtl)} icon={<Banknote size={15} />} onClick={() => setTab("deals")} />
-      </div>
+      <StatStrip
+        items={[
+          { label: t("Open clients", "عملاء مفتوحون"), value: String(openLeads.length), icon: Users, accent: "indigo" },
+          { label: t("Follow-ups due", "متابعات مستحقة"), value: String(dueCount), icon: BellRing, accent: dueCount > 0 ? "rose" : "amber", onClick: () => setTab("followups") },
+          { label: t("Viewings this week", "معاينات هذا الأسبوع"), value: String(viewingsThisWeek), icon: CalendarClock, accent: "sky", onClick: () => setTab("viewings") },
+          { label: t("Commission expected", "عمولات متوقعة"), value: fmtMoney(expected, isRtl), icon: Banknote, accent: "emerald", onClick: () => setTab("deals") }
+        ]}
+      />
 
       {/* tabs */}
-      <div className="flex gap-1 overflow-x-auto scrollbar-none border-b border-border" role="tablist">
+      <div className="flex gap-1 overflow-x-auto scrollbar-none bg-surface border border-border rounded-2xl shadow-card p-1.5" role="tablist">
         {TABS.map(x => (
           <button
             key={x.id}
@@ -263,12 +268,12 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
             data-tour={`desk-tab-${x.id}`}
             aria-selected={tab === x.id}
             onClick={() => setTab(x.id)}
-            className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-bold border-b-2 -mb-px cursor-pointer transition-colors ${
-              tab === x.id ? "border-gold text-ink" : "border-transparent text-ink-muted hover:text-ink"
+            className={`shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold cursor-pointer transition-colors ${
+              tab === x.id ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink hover:bg-surface-2"
             }`}
           >
-            {x.icon}{x.label}
-            {!!x.badge && <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-danger text-white text-[10px] leading-[18px] text-center">{x.badge}</span>}
+            <span className={tab === x.id ? "text-gold" : ""}>{x.icon}</span>{x.label}
+            {!!x.badge && <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-danger text-white text-[11px] font-bold leading-5 text-center">{x.badge}</span>}
           </button>
         ))}
       </div>
@@ -413,23 +418,12 @@ export default function SalesDesk({ isRtl }: { isRtl: boolean }) {
 // ---------------------------------------------------------------------------------------------
 // small pieces
 // ---------------------------------------------------------------------------------------------
-function Kpi({ label, value, icon, warn, onClick }: { label: string; value: string; icon: React.ReactNode; warn?: boolean; onClick?: () => void }) {
-  const Tag: any = onClick ? "button" : "div";
-  return (
-    <Tag type={onClick ? "button" : undefined} onClick={onClick}
-      className={`text-start bg-surface border rounded-xl p-3.5 ${warn ? "border-danger/40" : "border-border"} ${onClick ? "cursor-pointer hover:border-gold transition-colors" : ""}`}>
-      <div className={`flex items-center gap-1.5 text-[11px] font-semibold ${warn ? "text-danger" : "text-ink-muted"}`}>{icon}{label}</div>
-      <div className="mt-1 font-serif text-xl font-semibold text-ink truncate">{value}</div>
-    </Tag>
-  );
-}
-
 function ContactRow({ lead, isRtl }: { lead: DeskLead; isRtl: boolean }) {
   const wa = waLink(leadPhone(lead), isRtl ? `مرحباً ${lead.visitorName}، بخصوص استفساركم العقاري.` : `Hello ${lead.visitorName}, regarding your property inquiry.`);
   return (
-    <div className="flex items-center gap-3 text-[11px] font-semibold">
-      {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900"><MessageCircle size={12} /><bdi dir="ltr">{lead.visitorPhone || "WhatsApp"}</bdi></a>}
-      {lead.visitorPhone && <a href={`tel:${lead.visitorPhone}`} className="inline-flex items-center gap-1 text-ink hover:text-gold" aria-label="call"><Phone size={12} /></a>}
+    <div className="flex items-center gap-2 text-[12px] font-semibold">
+      {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"><MessageCircle size={13} /><bdi dir="ltr">{lead.visitorPhone || "WhatsApp"}</bdi></a>}
+      {lead.visitorPhone && <a href={`tel:${lead.visitorPhone}`} className="inline-flex items-center justify-center w-8 h-7 rounded-lg bg-chrome hover:bg-chrome-hover text-white transition-colors" aria-label="call"><Phone size={13} /></a>}
     </div>
   );
 }
@@ -513,18 +507,18 @@ function PipelineBoard({ leads: allLeads, isRtl, t, showAgent, today, search, on
               onDragOver={e => { e.preventDefault(); setOverCol(col); }}
               onDragLeave={() => setOverCol(c => (c === col ? null : c))}
               onDrop={e => { e.preventDefault(); setOverCol(null); const l = leads.find(x => x.id === dragId); setDragId(null); if (l) onMove(l, col); }}
-              className={`snap-start shrink-0 w-72 rounded-xl border border-t-4 ${STAGE_ACCENT[col]} bg-canvas ${overCol === col ? "border-gold bg-gold/5" : "border-border"}`}>
+              className={`snap-start shrink-0 w-80 rounded-2xl border border-t-4 ${STAGE_ACCENT[col]} bg-surface-2/60 ${overCol === col ? "border-gold bg-gold/5" : "border-border"}`}>
               <header className="px-3 py-2.5 flex items-center justify-between">
-                <h4 className="text-xs font-bold text-ink">{isRtl ? text.ar : text.en}</h4>
-                <span className="text-[11px] font-bold text-ink-muted bg-surface-2 rounded-full px-2 py-0.5">{items.length}</span>
+                <h4 className="text-[13px] font-bold text-ink">{isRtl ? text.ar : text.en}</h4>
+                <span className="text-[12px] font-bold text-ink bg-surface shadow-sm rounded-full min-w-[26px] text-center px-2 py-0.5">{items.length}</span>
               </header>
               <div className="px-2 pb-2 space-y-2 min-h-[80px] max-h-[62vh] overflow-y-auto">
                 {items.map(l => (
                   <article key={l.id} draggable onDragStart={() => setDragId(l.id)} onDragEnd={() => { setDragId(null); setOverCol(null); }}
-                    className={`bg-surface border border-border rounded-lg p-3 space-y-2 cursor-grab active:cursor-grabbing shadow-sm ${dragId === l.id ? "opacity-50" : ""}`}>
+                    className={`bg-surface border border-border rounded-xl p-3.5 space-y-2.5 cursor-grab active:cursor-grabbing shadow-card hover:shadow-popover transition-shadow ${dragId === l.id ? "opacity-50" : ""}`}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <button type="button" onClick={() => onOpen(l)} dir="auto" className="block max-w-full text-start text-sm font-bold text-ink truncate hover:text-gold cursor-pointer" title={t("Open client", "فتح العميل")}>{l.visitorName}</button>
+                        <button type="button" onClick={() => onOpen(l)} dir="auto" className="block max-w-full text-start text-[15px] font-semibold text-ink truncate hover:text-gold-active cursor-pointer" title={t("Open client", "فتح العميل")}>{l.visitorName}</button>
                         {l.propertyTitle && <p dir="auto" className="text-[11px] text-ink-muted truncate">{l.propertyTitle}</p>}
                       </div>
                       <span className="text-[10px] text-ink-muted shrink-0">{ago(l.createdDate, isRtl)}</span>
@@ -547,7 +541,7 @@ function PipelineBoard({ leads: allLeads, isRtl, t, showAgent, today, search, on
                       )}
                     </div>
                     <select aria-label={t("Move to stage", "نقل إلى مرحلة")} value={columnForStatus(l.status)} onChange={e => onMove(l, e.target.value as LeadStatus)}
-                      className="w-full px-2 py-1.5 bg-surface border border-border rounded text-[11px] font-semibold text-ink cursor-pointer">
+                      className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-[12px] font-semibold text-ink cursor-pointer">
                       {BOARD_COLUMNS.map(s => <option key={s} value={s}>{isRtl ? STAGE_TEXT[s].ar : STAGE_TEXT[s].en}</option>)}
                     </select>
                   </article>
@@ -587,7 +581,7 @@ function FollowUps({ leads, isRtl, t, today, showAgent, onSet, onQuick, onMove }
       <p className="text-[11px] text-ink-muted">{t("You get an email reminder the morning a follow-up is due, and a nudge for clients left waiting for days.", "يصلك تذكير بالإيميل صباح موعد المتابعة، وتنبيه للعملاء الذين تُركوا ينتظرون أياماً.")}</p>
       {groups.filter(g => g.items.length > 0).map(g => (
         <section key={g.title}>
-          <h4 className={`text-xs font-bold mb-2 ${g.tone}`}>{g.title} <span className="text-ink-muted font-semibold">({g.items.length})</span></h4>
+          <h4 className={`text-[14px] font-bold mb-2.5 flex items-center gap-2 ${g.tone}`}>{g.title} <span className="text-[12px] text-ink bg-surface-2 rounded-full px-2 py-0.5 font-bold">{g.items.length}</span></h4>
           <div className="bg-surface border border-border rounded-xl divide-y divide-surface-2">
             {g.items.map(l => (
               <div key={l.id} className="p-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -602,11 +596,11 @@ function FollowUps({ leads, isRtl, t, today, showAgent, onSet, onQuick, onMove }
                   <ContactRow lead={l} isRtl={isRtl} />
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                  <button type="button" onClick={() => onMove(l, LeadStatus.CONTACTED)} className="px-2.5 py-1.5 rounded border border-border text-[11px] font-semibold text-ink hover:border-gold cursor-pointer inline-flex items-center gap-1"><Check size={12} />{t("Contacted", "تم التواصل")}</button>
+                  <button type="button" onClick={() => onMove(l, LeadStatus.CONTACTED)} className="px-3 py-2 rounded-lg border border-border text-[11px] font-semibold text-ink hover:border-gold cursor-pointer inline-flex items-center gap-1"><Check size={12} />{t("Contacted", "تم التواصل")}</button>
                   {[[1, t("+1d", "+١ يوم")], [3, t("+3d", "+٣ أيام")], [7, t("+1w", "+أسبوع")]].map(([d, label]) => (
-                    <button key={String(d)} type="button" onClick={() => onQuick(l, d as number)} className="px-2.5 py-1.5 rounded border border-border text-[11px] font-semibold text-ink-muted hover:border-gold hover:text-gold cursor-pointer">{label as string}</button>
+                    <button key={String(d)} type="button" onClick={() => onQuick(l, d as number)} className="px-3 py-2 rounded-lg border border-border text-[11px] font-semibold text-ink-muted hover:border-gold hover:text-gold cursor-pointer">{label as string}</button>
                   ))}
-                  <button type="button" onClick={() => onSet(l)} className="px-2.5 py-1.5 rounded border border-border text-[11px] font-semibold text-ink-muted hover:border-gold hover:text-gold cursor-pointer inline-flex items-center gap-1"><Clock size={12} />{t("Date...", "تاريخ...")}</button>
+                  <button type="button" onClick={() => onSet(l)} className="px-3 py-2 rounded-lg border border-border text-[11px] font-semibold text-ink-muted hover:border-gold hover:text-gold cursor-pointer inline-flex items-center gap-1"><Clock size={12} />{t("Date...", "تاريخ...")}</button>
                 </div>
               </div>
             ))}
@@ -651,10 +645,10 @@ function Viewings({ viewings, isRtl, t, today, showAgent, onNew, onReschedule, o
           </div>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-          {v.status === "REQUESTED" && <button type="button" onClick={() => onStatus(v, "CONFIRMED")} className="px-2.5 py-1.5 rounded bg-gold text-gold-ink text-[11px] font-bold cursor-pointer">{t("Confirm", "تأكيد")}</button>}
-          {live(v) && <button type="button" onClick={() => onReschedule(v)} className="px-2.5 py-1.5 rounded border border-border text-[11px] font-semibold text-ink hover:border-gold cursor-pointer">{t("Reschedule", "إعادة جدولة")}</button>}
-          {v.status === "CONFIRMED" && <button type="button" onClick={() => onStatus(v, "COMPLETED")} className="px-2.5 py-1.5 rounded border border-border text-[11px] font-semibold text-ink hover:border-gold cursor-pointer inline-flex items-center gap-1"><Check size={12} />{t("Done", "تمت")}</button>}
-          {live(v) && <button type="button" onClick={() => onStatus(v, "CANCELLED")} className="px-2.5 py-1.5 rounded border border-border text-[11px] font-semibold text-danger hover:border-danger cursor-pointer inline-flex items-center gap-1"><X size={12} />{t("Cancel", "إلغاء")}</button>}
+          {v.status === "REQUESTED" && <button type="button" onClick={() => onStatus(v, "CONFIRMED")} className="px-3 py-2 rounded-lg bg-gold text-gold-ink text-[11px] font-bold cursor-pointer">{t("Confirm", "تأكيد")}</button>}
+          {live(v) && <button type="button" onClick={() => onReschedule(v)} className="px-3 py-2 rounded-lg border border-border text-[11px] font-semibold text-ink hover:border-gold cursor-pointer">{t("Reschedule", "إعادة جدولة")}</button>}
+          {v.status === "CONFIRMED" && <button type="button" onClick={() => onStatus(v, "COMPLETED")} className="px-3 py-2 rounded-lg border border-border text-[11px] font-semibold text-ink hover:border-gold cursor-pointer inline-flex items-center gap-1"><Check size={12} />{t("Done", "تمت")}</button>}
+          {live(v) && <button type="button" onClick={() => onStatus(v, "CANCELLED")} className="px-3 py-2 rounded-lg border border-border text-[11px] font-semibold text-danger hover:border-danger cursor-pointer inline-flex items-center gap-1"><X size={12} />{t("Cancel", "إلغاء")}</button>}
         </div>
       </div>
     );
@@ -671,7 +665,7 @@ function Viewings({ viewings, isRtl, t, today, showAgent, onNew, onReschedule, o
           description={t("Schedule one for a client, or confirm requests that come in from buyers.", "جدول معاينة لأحد العملاء، أو أكّد الطلبات الواردة من المشترين.")} />
       ) : days.map(d => (
         <section key={d}>
-          <h4 className={`text-xs font-bold mb-2 ${d === today ? "text-gold-active" : "text-ink"}`}>{dayTitle(d)}</h4>
+          <h4 className={`text-[14px] font-bold mb-2.5 ${d === today ? "text-gold-active" : "text-ink"}`}>{dayTitle(d)}</h4>
           <div className="bg-surface border border-border rounded-xl divide-y divide-surface-2">
             {upcoming.filter(v => v.preferredDate === d).map(v => <Row key={v.id} v={v} />)}
           </div>
@@ -706,12 +700,14 @@ function Deals({ deals, isRtl, t, canEdit, showAgent, onNew, onEdit, onReceived,
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kpi label={t("Deals closed", "صفقات مغلقة")} value={String(live.length)} icon={<Check size={15} />} />
-        <Kpi label={t("Total value", "إجمالي القيمة")} value={fmtMoney(volume, isRtl)} icon={<TrendingUp size={15} />} />
-        <Kpi label={t("Commission received", "عمولات مستلمة")} value={fmtMoney(received, isRtl)} icon={<Banknote size={15} />} />
-        <Kpi label={t("Commission expected", "عمولات متوقعة")} value={fmtMoney(expected, isRtl)} icon={<Clock size={15} />} />
-      </div>
+      <StatStrip
+        items={[
+          { label: t("Deals closed", "صفقات مغلقة"), value: String(live.length), icon: Check, accent: "emerald" },
+          { label: t("Total value", "إجمالي القيمة"), value: fmtMoney(volume, isRtl), icon: TrendingUp, accent: "indigo" },
+          { label: t("Commission received", "عمولات مستلمة"), value: fmtMoney(received, isRtl), icon: Banknote, accent: "teal" },
+          { label: t("Commission expected", "عمولات متوقعة"), value: fmtMoney(expected, isRtl), icon: Clock, accent: "amber" }
+        ]}
+      />
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-[11px] text-ink-muted max-w-xl">{t("Your own record of closed deals and what you earn on them.", "سجلّك الخاص بالصفقات المغلقة وما تكسبه منها.")}</p>
         {canEdit && <Button size="sm" leftIcon={<Plus size={14} />} onClick={onNew}>{t("Record a deal", "تسجيل صفقة")}</Button>}
@@ -722,7 +718,7 @@ function Deals({ deals, isRtl, t, canEdit, showAgent, onNew, onEdit, onReceived,
       ) : (
         <div className="bg-surface border border-border rounded-xl overflow-x-auto">
           <table className="w-full text-xs min-w-[760px]">
-            <thead className="bg-ink-inverse text-ink-muted">
+            <thead className="bg-surface-2 text-ink-muted uppercase tracking-wide text-[11px]">
               <tr className="text-start">
                 {[t("Closed", "الإغلاق"), t("Property / client", "العقار / العميل"), t("Type", "النوع"), t("Value", "القيمة"), t("Commission", "العمولة"), t("Status", "الحالة"), ""].map((h, i) => (
                   <th key={i} className="px-3 py-2.5 font-bold text-start">{h}</th>
@@ -731,7 +727,7 @@ function Deals({ deals, isRtl, t, canEdit, showAgent, onNew, onEdit, onReceived,
             </thead>
             <tbody className="divide-y divide-surface-2">
               {sorted.map(d => (
-                <tr key={d.id} className={d.status === "CANCELLED" ? "opacity-50" : ""}>
+                <tr key={d.id} className={`hover:bg-surface-2/50 transition-colors ${d.status === "CANCELLED" ? "opacity-50" : ""}`}>
                   <td className="px-3 py-2.5 whitespace-nowrap">{fmtDay(d.closedDate, isRtl)}</td>
                   <td className="px-3 py-2.5">
                     <div className="font-bold text-ink">{d.propertyTitle}</div>
@@ -844,10 +840,10 @@ function Reports({ deals, leads, isRtl, t, onError }: { deals: DeskDeal[]; leads
 
       {bySource.length > 0 && (
         <section>
-          <h4 className="text-xs font-bold text-ink mb-2">{t("Where your clients come from", "من أين يأتيك عملاؤك")}</h4>
+          <h4 className="text-[14px] font-bold text-ink mb-2.5">{t("Where your clients come from", "من أين يأتيك عملاؤك")}</h4>
           <div className="bg-surface border border-border rounded-xl overflow-x-auto">
             <table className="w-full text-xs min-w-[420px]">
-              <thead className="bg-ink-inverse text-ink-muted">
+              <thead className="bg-surface-2 text-ink-muted uppercase tracking-wide text-[11px]">
                 <tr>{[t("Source", "المصدر"), t("Clients", "العملاء"), t("Won", "تمت الصفقة"), t("Lost", "خسارة"), t("Win rate", "نسبة النجاح")].map(h => <th key={h} className="px-3 py-2.5 font-bold text-start">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-surface-2">
@@ -867,13 +863,13 @@ function Reports({ deals, leads, isRtl, t, onError }: { deals: DeskDeal[]; leads
       )}
 
       <section>
-        <h4 className="text-xs font-bold text-ink mb-2">{t("Commission by month", "العمولات حسب الشهر")}</h4>
+        <h4 className="text-[14px] font-bold text-ink mb-2.5">{t("Commission by month", "العمولات حسب الشهر")}</h4>
         {monthly.length === 0 ? (
           <p className="text-xs text-ink-muted bg-surface border border-dashed border-border rounded-xl p-6 text-center">{t("No closed deals in this period.", "لا توجد صفقات مغلقة في هذه الفترة.")}</p>
         ) : (
           <div className="bg-surface border border-border rounded-xl overflow-x-auto">
             <table className="w-full text-xs min-w-[560px]">
-              <thead className="bg-ink-inverse text-ink-muted">
+              <thead className="bg-surface-2 text-ink-muted uppercase tracking-wide text-[11px]">
                 <tr>{[t("Month", "الشهر"), t("Deals", "الصفقات"), t("Sales", "المبيعات"), t("Rentals", "الإيجارات"), t("Commission", "العمولة"), t("Received", "المستلمة")].map(h => <th key={h} className="px-3 py-2.5 font-bold text-start">{h}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-surface-2">

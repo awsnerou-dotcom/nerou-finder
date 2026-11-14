@@ -102,7 +102,7 @@ export function TasksView({ tasks, deals, leads, isRtl, t, today, showAgent, can
 
       {soon.length > 0 && (
         <section>
-          <h4 className="text-xs font-bold text-ink mb-1 flex items-center gap-1.5"><KeyRound size={14} className="text-gold" />{t("Lease renewals", "تجديد عقود الإيجار")} <span className="text-ink-muted font-semibold">({soon.length})</span></h4>
+          <h4 className="text-[14px] font-bold text-ink mb-1 flex items-center gap-2"><KeyRound size={14} className="text-gold" />{t("Lease renewals", "تجديد عقود الإيجار")} <span className="text-ink-muted font-semibold">({soon.length})</span></h4>
           <p className="text-[11px] text-ink-muted mb-2">{t("A renewal is a new commission with no marketing cost - call before they look elsewhere.", "التجديد عمولة جديدة بلا تكلفة تسويق - اتصل قبل أن يبحث المستأجر عن غيرك.")}</p>
           <div className="bg-surface border border-border rounded-xl divide-y divide-surface-2">
             {soon.map(r => {
@@ -123,9 +123,9 @@ export function TasksView({ tasks, deals, leads, isRtl, t, today, showAgent, can
                   </div>
                   {canEdit && (
                     <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                      <button type="button" onClick={() => onRenewed(r)} className="px-2.5 py-1.5 rounded bg-gold text-gold-ink text-[11px] font-bold cursor-pointer inline-flex items-center gap-1"><Check size={12} />{t("Renewed", "تم التجديد")}</button>
-                      <button type="button" onClick={() => onNotRenewing(r)} className="px-2.5 py-1.5 rounded border border-border text-[11px] font-semibold text-ink hover:border-danger cursor-pointer inline-flex items-center gap-1"><X size={12} />{t("Not renewing", "لن يجدد")}</button>
-                      <button type="button" onClick={() => onEditDeal(r)} className="px-2.5 py-1.5 rounded border border-border text-[11px] font-semibold text-ink-muted hover:border-gold cursor-pointer">{t("Change date", "تغيير التاريخ")}</button>
+                      <button type="button" onClick={() => onRenewed(r)} className="px-3 py-2 rounded-lg bg-gold text-gold-ink text-[11px] font-bold cursor-pointer inline-flex items-center gap-1"><Check size={12} />{t("Renewed", "تم التجديد")}</button>
+                      <button type="button" onClick={() => onNotRenewing(r)} className="px-3 py-2 rounded-lg border border-border text-[11px] font-semibold text-ink hover:border-danger cursor-pointer inline-flex items-center gap-1"><X size={12} />{t("Not renewing", "لن يجدد")}</button>
+                      <button type="button" onClick={() => onEditDeal(r)} className="px-3 py-2 rounded-lg border border-border text-[11px] font-semibold text-ink-muted hover:border-gold cursor-pointer">{t("Change date", "تغيير التاريخ")}</button>
                     </div>
                   )}
                 </div>
@@ -138,7 +138,7 @@ export function TasksView({ tasks, deals, leads, isRtl, t, today, showAgent, can
 
       {groups.filter(g => g.items.length > 0).map(g => (
         <section key={g.title}>
-          <h4 className={`text-xs font-bold mb-2 flex items-center gap-1.5 ${g.tone}`}><AlarmClock size={14} />{g.title} <span className="text-ink-muted font-semibold">({g.items.length})</span></h4>
+          <h4 className={`text-[14px] font-bold mb-2.5 flex items-center gap-2 ${g.tone}`}><AlarmClock size={14} />{g.title} <span className="text-ink-muted font-semibold">({g.items.length})</span></h4>
           <div className="bg-surface border border-border rounded-xl divide-y divide-surface-2">
             {g.items.map(x => <TaskRow key={x.id} x={x} />)}
           </div>
