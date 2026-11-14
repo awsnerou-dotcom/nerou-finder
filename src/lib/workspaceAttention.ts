@@ -150,7 +150,7 @@ export function agencyAttention(input: {
       id: "unassigned-leads",
       tone: "danger",
       count: unowned,
-      tab: "routing",
+      tab: "leads",
       en: `${unowned} ${plural(unowned, "enquiry has", "enquiries have")} no agent assigned`,
       ar: `${unowned} ${plural(unowned, "استفسار بلا وسيط", "استفسارات بلا وسيط")} مسؤول`
     });

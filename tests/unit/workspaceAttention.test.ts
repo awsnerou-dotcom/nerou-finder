@@ -66,7 +66,7 @@ describe("what an agency owner should look at first", () => {
 
   it("separates enquiries nobody owns, which come first, from ones waiting on the team", () => {
     const items = agencyAttention({ ...base, leads: [lead("NEW", 1, { agentId: "a1" }), lead("NEW", 1), lead("NEW", 1)] });
-    expect(items[0]).toMatchObject({ id: "unassigned-leads", count: 2, tone: "danger", tab: "routing" });
+    expect(items[0]).toMatchObject({ id: "unassigned-leads", count: 2, tone: "danger", tab: "leads" });
     expect(items.find(i => i.id === "waiting-leads")).toMatchObject({ count: 1, tab: "leads" });
   });
 

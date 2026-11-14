@@ -81,7 +81,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   const [agents, setAgents] = useState<User[]>([]);
   const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "team" | "listings" | "routing" | "campaigns" | "subscription" | "leads" | "salesdesk" | "verification" | "profile">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "team" | "listings" | "campaigns" | "subscription" | "leads" | "salesdesk" | "verification" | "profile">("dashboard");
   // Listings tab (FIX 3): edit-in-place form state, submitted back to POST /api/properties
   // with the listing's own id so it updates rather than creates a new one.
   const [editingListingId, setEditingListingId] = useState<string | null>(null);
@@ -224,9 +224,6 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   const [confirmNewPassword, setConfirmNewPassword] = useState<string>("");
   const [passwordChanging, setPasswordChanging] = useState<boolean>(false);
 
-  // Lead Routing Config state
-  const [routingMethod, setRoutingMethod] = useState<string>(agency.leadRoutingPolicy || "ROUND_ROBIN");
-
   // Invite Agent State
   const [newAgentEmail, setNewAgentEmail] = useState<string>("");
   const [newAgentName, setNewAgentName] = useState<string>("");
@@ -241,12 +238,6 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   // SaaS upgrade state
   const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
   const [paymentSuccess, setPaymentSuccess] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (agency.leadRoutingPolicy) {
-      setRoutingMethod(agency.leadRoutingPolicy);
-    }
-  }, [agency]);
 
   useEffect(() => {
     fetchAgencyContext();
@@ -465,30 +456,6 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
       console.error(err);
       setToastMessage("Network error sending invitation.");
       setTimeout(() => setToastMessage(""), 4000);
-    }
-  };
-
-  const handleSaveRouting = async () => {
-    try {
-      const res = await fetch(`/api/organizations/${agency.id}/routing`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
-        body: JSON.stringify({ policy: routingMethod })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setToastMessage(isRtl ? "تم حفظ سياسة توزيع العملاء بنجاح!" : "Automated routing rules saved successfully!");
-        setTimeout(() => setToastMessage(""), 4000);
-        onRefreshAll();
-      } else {
-        setToastMessage(data.error || "Failed to save routing policy.");
-        setTimeout(() => setToastMessage(""), 4000);
-      }
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -876,8 +843,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
         { id: "team", label: { en: "Agents Team", ar: "فريق العمل" }, icon: Users, accent: "violet", badge: pendingInvitationsCount, tourId: "agency-team-tab" },
         { id: "listings", label: { en: "Listings", ar: "العقارات المدرجة" }, icon: Building2, accent: "sky", tourId: "agency-listings-tab" },
         { id: "leads", label: { en: "Leads", ar: "إدارة العملاء" }, icon: Inbox, accent: "emerald", badge: waitingCount, tourId: "agency-leads-tab" },
-        { id: "salesdesk", label: { en: "Sales Desk", ar: "مكتب المبيعات" }, icon: Briefcase, accent: "amber", tourId: "agency-salesdesk-tab" },
-        { id: "routing", label: { en: "Lead Routing", ar: "توزيع العملاء" }, icon: Shuffle, accent: "fuchsia" }
+        { id: "salesdesk", label: { en: "Sales Desk", ar: "مكتب المبيعات" }, icon: Briefcase, accent: "amber", tourId: "agency-salesdesk-tab" }
       ]
     },
     {
@@ -1609,73 +1575,6 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
               </button>
             </form>
           </div>
-        </div>
-      )}
-
-      {activeTab === "routing" && (
-        <SectionHeader icon={Shuffle} accent="fuchsia" title={isRtl ? "توزيع العملاء" : "Lead Routing"} description={isRtl ? "حدّد كيف تُوزَّع الاستفسارات الجديدة على وسطائك." : "Decide how new enquiries are shared among your agents."} />
-      )}
-
-      {/* LEAD ROUTING TAB */}
-      {activeTab === "routing" && (
-        <div className="bg-surface p-6 rounded-xl border border-border space-y-6 max-w-2xl text-xs">
-          <div>
-            <h4 className="font-serif text-base font-semibold text-ink">{isRtl ? "توزيع وتوجيه العملاء آليًا" : "SaaS Automated Lead Routing Policy"}</h4>
-            <p className="text-ink-muted mt-1 leading-relaxed">
-              {isRtl ? "اختر السياسة الأنسب لتوجيه الاستفسارات ومعاينات واتساب الواردة إلى الوسطاء التابعين للوكالة تلقائيًا." : "Set target rules on how the system automatically distributes hot leads, viewing reservations, and whatsapp intents."}
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <label className="p-4 bg-ink-inverse border border-gold/40 rounded-xl flex items-center gap-3 cursor-pointer">
-              <input
-                type="radio"
-                name="routing"
-                checked={routingMethod === "ROUND_ROBIN"}
-                onChange={() => setRoutingMethod("ROUND_ROBIN")}
-                className="text-gold focus:ring-gold"
-              />
-              <div>
-                <h5 className="font-bold text-ink">{isRtl ? "التوزيع الدائري المتساوي (Round Robin)" : "Fair Round-Robin Cycle"}</h5>
-                <p className="text-[11px] text-ink-muted mt-0.5">{isRtl ? "يتم توجيه كل عميل جديد إلى الوسيط التالي في القائمة بالتناوب بشكل عادل." : "Every incoming client intent is routed sequentially to the next broker to maximize coverage parity."}</p>
-              </div>
-            </label>
-
-            <label className="p-4 bg-surface border border-border rounded-xl flex items-center gap-3 cursor-pointer hover:border-gray-300">
-              <input
-                type="radio"
-                name="routing"
-                checked={routingMethod === "AREA_BASED"}
-                onChange={() => setRoutingMethod("AREA_BASED")}
-                className="text-gold focus:ring-gold"
-              />
-              <div>
-                <h5 className="font-bold text-ink">{isRtl ? "التوزيع الجغرافي حسب التخصص (Area-based)" : "Geographic Area Specialty"}</h5>
-                <p className="text-[11px] text-ink-muted mt-0.5">{isRtl ? "يتم إسناد العميل إلى الوسيط المتخصص في المنطقة الجغرافية التي يقع فيها العقار." : "Directly routing queries to brokers who listed Pearl Qatar or Lusail district specializations in profiles."}</p>
-              </div>
-            </label>
-
-            <label className="p-4 bg-surface border border-border rounded-xl flex items-center gap-3 cursor-pointer hover:border-gray-300">
-              <input
-                type="radio"
-                name="routing"
-                checked={routingMethod === "PERFORMANCE"}
-                onChange={() => setRoutingMethod("PERFORMANCE")}
-                className="text-gold focus:ring-gold"
-              />
-              <div>
-                <h5 className="font-bold text-ink">{isRtl ? "التوزيع حسب الأداء والسرعة (Performance-based)" : "Broker Performance Priority"}</h5>
-                <p className="text-[11px] text-ink-muted mt-0.5">{isRtl ? "يتم توجيه العميل تلقائيًا إلى الوسيط صاحب أسرع معدل استجابة وأعلى نسبة تحويل صفقات." : "Routes leads preferentially to representatives displaying lower average lead processing times."}</p>
-              </div>
-            </label>
-          </div>
-
-          <button
-            onClick={handleSaveRouting}
-            className="px-6 py-2 bg-chrome hover:bg-gold hover:text-gold-ink text-white font-semibold rounded-lg cursor-pointer"
-          >
-            {isRtl ? "حفظ سياسة التوجيه" : "Save Routing Setup"}
-          </button>
         </div>
       )}
 
