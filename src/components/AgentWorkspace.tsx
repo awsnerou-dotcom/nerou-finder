@@ -11,6 +11,11 @@ import { hasExactPin, type Pin } from "../lib/mapPin.js";
 import PinPicker from "./PinPicker.js";
 import { areaOptions, locationCenter, municipalityOf } from "../lib/locations.js";
 import { SubscriptionAlertBanner, ReadinessCard } from "./WorkspaceWidgets.js";
+import WorkspaceShell, { AttentionPanel, QuickActions, TopListingsPanel, WorkspaceHero } from "./WorkspaceShell.js";
+import type { NavGroup } from "./WorkspaceShell.js";
+import { SectionHeader, StatStrip, LeadCard, ListingCard } from "./WorkspaceParts.js";
+import { leadStatusLabel } from "../lib/statusLabels.js";
+import { agentAttention, topListings, waitingLeads } from "../lib/workspaceAttention.js";
 import React, { useState, useEffect } from "react";
 import {
   Property,
@@ -66,7 +71,11 @@ import {
   Eye,
   Star,
   Heart,
-  ShieldCheck
+  ShieldCheck,
+  LayoutDashboard,
+  Inbox,
+  UserCircle,
+  CalendarCheck
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -289,6 +298,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   // below is unchanged from the original single-page form; only the JSX that renders it (and
   // when handleAddListing fires) changed.
   const [isAddingListing, setIsAddingListing] = useState<boolean>(false);
+  // An agent can have hundreds of listings: show them a page at a time.
+  const [listingLimit, setListingLimit] = useState<number>(20);
   const [wizardStep, setWizardStep] = useState<number>(1);
   // Non-null while the wizard is editing an existing listing in place (reuses the same
   // 5-step form/state as "Add Listing" - submitting POSTs the same id back so the server
@@ -1302,89 +1313,112 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   }, 0);
   const leadsPerDaySeries = buildDailyCountSeries(leads.map(l => l.createdDate), 30, isRtl);
 
+  const waitingCount = waitingLeads(leads).length;
+  const attention = agentAttention({ leads, properties, now: now.getTime() });
+  const hour = now.getHours();
+  const greeting = isRtl
+    ? `${hour < 12 ? "صباح الخير" : hour < 18 ? "مساء الخير" : "مساء النور"}، ${(agent.fullName || "").split(" ")[0]}`
+    : `${hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"}, ${(agent.fullName || "").split(" ")[0]}`;
+
+  // Start a brand-new listing from anywhere: must not carry over a previously edited/cancelled listing's values.
+  const startNewListing = () => {
+    if (editingPropertyId) {
+      setListingTitle("");
+      setListingPrice("");
+      setListingArea("");
+      setListingDesc("");
+      setListingImages([]);
+      setSelectedMunicipality("");
+      setSelectedArea("");
+      setListingAmenities("Pool, Gym, Parking");
+      setListingVideoUrl("");
+      setWizardStep(1);
+    }
+    setEditingPropertyId(null);
+    setIsAddingListing(true);
+    setActiveTab("properties");
+  };
+
+  const navGroups: NavGroup[] = [
+    {
+      id: "work",
+      label: { en: "Work", ar: "العمل" },
+      items: [
+        { id: "dashboard", label: { en: "Dashboard", ar: "لوحة القيادة" }, icon: LayoutDashboard, accent: "indigo", tourId: "agent-dashboard-tab" },
+        { id: "leads", label: { en: "Leads", ar: "العملاء المحتملون" }, icon: Inbox, accent: "emerald", badge: waitingCount, tourId: "agent-leads-tab" },
+        { id: "salesdesk", label: { en: "Sales Desk", ar: "مكتب المبيعات" }, icon: Briefcase, accent: "amber", tourId: "agent-salesdesk-tab" },
+        { id: "properties", label: { en: "My Listings", ar: "عقاراتي" }, icon: Building, accent: "sky", tourId: "agent-properties-tab" }
+      ]
+    },
+    {
+      id: "account",
+      label: { en: "Account", ar: "الحساب" },
+      items: [
+        { id: "verification", label: { en: "Verification", ar: "التوثيق" }, icon: ShieldCheck, accent: "teal", tourId: "agent-verification-tab" },
+        // The subscription tab only applies to INDEPENDENT_AGENT - an AGENCY_AGENT rides on their agency's subscription.
+        ...(effectiveAgentType === AgentType.INDEPENDENT_AGENT
+          ? [{ id: "subscription", label: { en: "Subscription", ar: "الاشتراك" }, icon: CreditCard, accent: "violet" as const }]
+          : []),
+        { id: "reviews", label: { en: "Reviews", ar: "التقييمات" }, icon: Star, accent: "rose" as const, tourId: "agent-reviews-tab" },
+        { id: "profile", label: { en: "My Profile", ar: "الحساب" }, icon: UserCircle, accent: "fuchsia" as const, tourId: "agent-profile-tab" }
+      ]
+    }
+  ];
+
   return (
     <div className="ws space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Workspace Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
-          <h2 className="text-3xl font-serif text-ink font-medium">
-            {isRtl ? "مساحة عمل الوكيل العقاري" : "Agent Workspace"}
-          </h2>
-          <p className="text-xs text-ink-muted mt-0.5">
-            {isRtl ? `الوكيل النشط: ${agent.fullName}` : `Active Representative: ${agent.fullName}`}
-            {agent.verificationStatus === VerificationStatus.APPROVED && (
-              <span className="ml-1.5 font-semibold text-gold">
-                • {getVerifiedBadgeLabel(agent, agencyOrg?.name, isRtl)}
-              </span>
-            )}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <NotificationBell isRtl={isRtl} onClick={() => setActiveTab("leads")} />
-          <div className="flex bg-surface-2/70 p-1 gap-0.5 rounded-xl border border-border/60 text-[13px] font-semibold overflow-x-auto scrollbar-none max-w-full">
-          <button
-            data-tour="agent-dashboard-tab"
-            onClick={() => setActiveTab("dashboard")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "dashboard" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "لوحة القيادة" : "Stats Center"}
-          </button>
-          <button
-            data-tour="agent-leads-tab"
-            onClick={() => setActiveTab("leads")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "leads" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "العملاء المحتملون" : "Leads Panel"}
-          </button>
-          <button
-            data-tour="agent-salesdesk-tab"
-            onClick={() => setActiveTab("salesdesk")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "salesdesk" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "مكتب المبيعات" : "Sales Desk"}
-          </button>
-          <button
-            data-tour="agent-properties-tab"
-            onClick={() => setActiveTab("properties")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "properties" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "عقاراتي" : "My Listings"}
-          </button>
-          <button
-            data-tour="agent-verification-tab"
-            onClick={() => setActiveTab("verification")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "verification" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "التوثيق" : "Verification"}
-          </button>
-          {/* FIX1: Subscription tab only applies to INDEPENDENT_AGENT - an AGENCY_AGENT rides on
-              their agency's subscription and never sees a self-serve subscription tab at all. */}
-          {effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
+      <WorkspaceHero
+        eyebrow={greeting}
+        title={isRtl ? "مساحة عمل الوكيل العقاري" : "Agent Workspace"}
+        subtitle={isRtl ? `الوكيل النشط: ${agent.fullName}` : `Active Representative: ${agent.fullName}`}
+        actions={
+          <>
+            <NotificationBell isRtl={isRtl} onClick={() => setActiveTab("leads")} />
             <button
-              onClick={() => setActiveTab("subscription")}
-              className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "subscription" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
+              type="button"
+              data-testid="new-property-cta"
+              onClick={startNewListing}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gold text-gold-ink text-sm font-bold shadow-card hover:brightness-110 cursor-pointer transition"
             >
-              {isRtl ? "الاشتراك" : "Subscription"}
+              <Plus size={18} strokeWidth={2.5} aria-hidden />
+              <span>{isRtl ? "عقار جديد" : "New property"}</span>
             </button>
-          )}
-          <button
-            data-tour="agent-reviews-tab"
-            onClick={() => setActiveTab("reviews")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "reviews" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "التقييمات" : "Reviews"}
-          </button>
-          <button
-            data-tour="agent-profile-tab"
-            onClick={() => setActiveTab("profile")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors shrink-0 ${activeTab === "profile" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "الحساب" : "My Profile"}
-          </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
+
+      <WorkspaceShell
+        groups={navGroups}
+        active={activeTab}
+        onSelect={(id) => setActiveTab(id as typeof activeTab)}
+        identity={{
+          image: agent.avatarUrl,
+          initial: agent.fullName || "?",
+          title: agent.fullName,
+          subtitle: (
+            <>
+              <span className="block truncate">
+                {effectiveAgentType === AgentType.INDEPENDENT_AGENT
+                  ? (isRtl ? "وكيل مستقل" : "Independent agent")
+                  : (agencyOrg?.name || (isRtl ? "وكيل مكتب عقاري" : "Agency agent"))}
+              </span>
+              {agent.verificationStatus === VerificationStatus.APPROVED ? (
+                <span className="mt-1 inline-flex items-center gap-1 font-semibold text-success">
+                  <ShieldCheck size={12} aria-hidden />
+                  {getVerifiedBadgeLabel(agent, agencyOrg?.name, isRtl)}
+                </span>
+              ) : (
+                <span className="mt-1 inline-flex items-center gap-1 font-semibold text-warning">
+                  <AlertTriangle size={12} aria-hidden />
+                  {isRtl ? "غير موثّق بعد" : "Not verified yet"}
+                </span>
+              )}
+            </>
+          )
+        }}
+        isRtl={isRtl}
+      >
 
       {/* AGENCY_AGENT: access is governed live by the agency's subscription, not a static
           per-user field - show a non-blocking banner (not a full-screen block) when it lapses. */}
@@ -1399,8 +1433,16 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         </div>
       )}
 
+      {activeTab === "verification" && (
+        <SectionHeader icon={ShieldCheck} accent="teal" title={isRtl ? "التوثيق" : "Verification"} description={isRtl ? "ارفع مستنداتك. الوكلاء الموثّقون يظهرون أولاً ويكسبون ثقة أكبر." : "Upload your documents. Verified agents are shown first and win more trust."} />
+      )}
+
       {/* VERIFICATION TAB */}
       {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} agent={agent} onSaved={onRefreshAll} />}
+
+      {activeTab === "subscription" && effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
+        <SectionHeader icon={CreditCard} accent="violet" title={isRtl ? "الاشتراك" : "Subscription"} description={isRtl ? "خطتك وحالتها وموعد تجديدها." : "Your plan, its status and when it renews."} />
+      )}
 
       {/* SUBSCRIPTION TAB (INDEPENDENT_AGENT only) */}
       {activeTab === "subscription" && effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
@@ -1491,6 +1533,16 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           {effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
             <SubscriptionAlertBanner expiry={agent.subscriptionExpiry} isRtl={isRtl} onOpen={() => setActiveTab("subscription")} />
           )}
+          <QuickActions
+            isRtl={isRtl}
+            actions={[
+              { id: "new", icon: Plus, accent: "sky", label: { en: "Add a property", ar: "أضف عقاراً" }, hint: { en: "Photos, price, map pin", ar: "صور وسعر وموقع على الخريطة" }, onClick: startNewListing },
+              { id: "leads", icon: Inbox, accent: "emerald", label: { en: "Reply to enquiries", ar: "الرد على الاستفسارات" }, hint: waitingCount > 0 ? { en: `${waitingCount} waiting`, ar: `${waitingCount} بانتظار الرد` } : { en: "You are up to date", ar: "لا شيء ينتظرك" }, onClick: () => setActiveTab("leads") },
+              { id: "desk", icon: Briefcase, accent: "amber", label: { en: "Sales Desk", ar: "مكتب المبيعات" }, hint: { en: "Clients, tasks, follow-ups", ar: "العملاء والمهام والمتابعات" }, onClick: () => setActiveTab("salesdesk") },
+              { id: "profile", icon: UserCircle, accent: "fuchsia", label: { en: "Improve my profile", ar: "حسّن ملفي" }, hint: { en: "Bio, languages, WhatsApp", ar: "النبذة واللغات وواتساب" }, onClick: () => setActiveTab("profile") }
+            ]}
+          />
+          <AttentionPanel items={attention} onGo={(tab) => setActiveTab(tab as typeof activeTab)} isRtl={isRtl} />
           <ReadinessCard
             checklist={agentChecklist(agent, { listings: properties.length, published: activeListings })}
             isRtl={isRtl}
@@ -1584,6 +1636,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             <DashboardChart data={leadsPerDaySeries} valueLabel={isRtl ? "عملاء محتملون" : "Leads"} isRtl={isRtl} />
           </div>
 
+          <TopListingsPanel properties={topListings(properties, 3)} isRtl={isRtl} onOpenAll={() => setActiveTab("properties")} />
+
           {/* Quick-access listings grid */}
           <div className="bg-surface rounded-xl border border-border overflow-hidden">
             <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between">
@@ -1661,107 +1715,84 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {/* LEADS TAB */}
       {activeTab === "salesdesk" && <SalesDesk isRtl={isRtl} />}
 
-      {activeTab === "leads" && (
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <div className="p-4 bg-ink-inverse border-b border-border flex items-center justify-between gap-3 flex-wrap">
-            <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
-              <Users size={14} className="text-gold" />
-              <span>{isRtl ? "إدارة وتتبع تواصل العملاء" : "Assigned Lead Lifecycle Funnel"}</span>
-            </h4>
-            <button
-              type="button"
-              onClick={() => setShowArchivedLeads(prev => !prev)}
-              className="text-[10px] font-semibold text-ink-muted hover:text-ink underline cursor-pointer"
-            >
-              {showArchivedLeads
-                ? (isRtl ? "إخفاء العملاء المؤرشفين" : "Hide archived leads")
-                : (isRtl ? "عرض العملاء المؤرشفين" : "Show archived leads")}
-            </button>
-          </div>
-          <div className="divide-y divide-surface-2 text-xs">
-            {(() => {
-              const visibleLeads = leads.filter(l => (showArchivedLeads ? !!l.isArchived : !l.isArchived));
-              if (visibleLeads.length === 0) {
-                return (
-                  <p className="text-center py-8 text-ink-muted">
-                    {showArchivedLeads
-                      ? (isRtl ? "لا يوجد عملاء مؤرشفون." : "No archived leads.")
-                      : (isRtl ? "لا توجد أي طلبات تواصل مسجلة." : "No leads assigned to you yet.")}
-                  </p>
-                );
+      {activeTab === "leads" && (() => {
+        const nowMs = Date.now();
+        const open = leads.filter(l => !l.isArchived);
+        const visibleLeads = leads
+          .filter(l => (showArchivedLeads ? !!l.isArchived : !l.isArchived))
+          .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
+        return (
+          <div className="space-y-5">
+            <SectionHeader
+              icon={Inbox}
+              accent="emerald"
+              title={isRtl ? "العملاء المحتملون" : "Leads"}
+              description={isRtl ? "كل استفسار يصلك، وتتبّع كل عميل حتى إتمام الصفقة. الرد السريع يكسب العميل." : "Every enquiry that reaches you, tracked until the deal closes. The fastest reply wins the client."}
+              action={
+                <button
+                  type="button"
+                  onClick={() => setShowArchivedLeads(prev => !prev)}
+                  className="px-3.5 py-2 rounded-xl border border-border bg-surface text-[13px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 cursor-pointer transition-colors"
+                >
+                  {showArchivedLeads
+                    ? (isRtl ? "عرض العملاء الحاليين" : "Show active leads")
+                    : (isRtl ? "عرض المؤرشفين" : "Show archived")}
+                </button>
               }
-              const waPhone = (lead: Lead) => (lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "");
-              return visibleLeads.map(lead => (
-                <div key={lead.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <button
-                        type="button"
-                        onClick={() => { setSelectedLeadId(lead.id); markLeadRead(lead.id); }}
-                        className="font-bold text-ink text-sm hover:text-gold cursor-pointer underline decoration-dotted"
-                      >
-                        {lead.visitorName}
-                      </button>
-                      {lead.readByRecipient === false && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-danger shrink-0" title={isRtl ? "غير مقروء" : "Unread"} />
-                      )}
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                        lead.status === LeadStatus.NEW ? "bg-red-50 text-red-700 border border-red-200" :
-                        lead.status === LeadStatus.CONTACTED || lead.status === LeadStatus.VIEWING_REQUESTED || lead.status === LeadStatus.VIEWING_SCHEDULED ? "bg-yellow-50 text-yellow-700 border border-yellow-200" :
-                        lead.status === LeadStatus.LOST ? "bg-gray-100 text-gray-500 border border-gray-200" : "bg-green-50 text-green-700 border border-green-200"
-                      }`}>
-                        {lead.status}
-                      </span>
-                    </div>
-                    <div className="text-ink-muted space-y-0.5">
-                      <div className="flex items-center gap-3">
-                        <a
-                          href={`https://wa.me/${waPhone(lead)}?text=${encodeURIComponent(isRtl ? `مرحباً ${lead.visitorName}، بخصوص استفساركم العقاري.` : `Hello ${lead.visitorName}, regarding your property inquiry.`)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold"
+            />
+            <StatStrip
+              items={[
+                { label: isRtl ? "عملاء حاليون" : "Active leads", value: open.length, icon: Users, accent: "indigo" },
+                { label: isRtl ? "بانتظار ردك" : "Waiting for you", value: waitingCount, icon: Inbox, accent: "rose" },
+                { label: isRtl ? "طلبات معاينة" : "Viewings", value: open.filter(l => l.status === LeadStatus.VIEWING_REQUESTED || l.status === LeadStatus.VIEWING_SCHEDULED).length, icon: CalendarCheck, accent: "amber" },
+                { label: isRtl ? "صفقات تمت" : "Deals won", value: leads.filter(l => l.status === LeadStatus.CONVERTED).length, icon: CheckCircle2, accent: "emerald" }
+              ]}
+            />
+            {visibleLeads.length === 0 ? (
+              <EmptyState
+                icon={<Inbox size={20} />}
+                title={showArchivedLeads ? (isRtl ? "لا يوجد عملاء مؤرشفون" : "No archived leads") : (isRtl ? "لا توجد استفسارات بعد" : "No enquiries yet")}
+                description={showArchivedLeads ? undefined : (isRtl ? "عندما يتواصل زائر بخصوص أحد عقاراتك سيظهر هنا فوراً." : "When a visitor contacts you about one of your listings, it appears here straight away.")}
+              />
+            ) : (
+              <div className="space-y-3">
+                {visibleLeads.map(lead => (
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    isRtl={isRtl}
+                    now={nowMs}
+                    unread={lead.readByRecipient === false}
+                    onOpen={() => { setSelectedLeadId(lead.id); markLeadRead(lead.id); }}
+                    onViewProperty={lead.propertyId ? () => handleViewLeadProperty(lead.propertyId!) : undefined}
+                    controls={
+                      <>
+                        <select
+                          value={lead.status}
+                          onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
+                          aria-label={isRtl ? "حالة العميل" : "Lead status"}
+                          className="px-3 py-2 bg-surface border border-border rounded-xl text-[13px] font-semibold text-ink cursor-pointer"
                         >
-                          <MessageSquare size={12} /> {lead.visitorPhone}
-                        </a>
-                        {lead.visitorEmail && (
-                          <a href={`mailto:${lead.visitorEmail}`} className="flex items-center gap-1 text-ink hover:text-gold font-semibold">
-                            <Mail size={12} /> {lead.visitorEmail}
-                          </a>
-                        )}
-                      </div>
-                      <p className="italic">"{lead.message}"</p>
-                      {lead.propertyId && (
-                        <button type="button" onClick={() => handleViewLeadProperty(lead.propertyId!)} className="text-[10px] text-gold underline cursor-pointer">
-                          {isRtl ? "عرض العقار المرتبط" : "View related property"}
+                          {Object.values(LeadStatus).map(st => (
+                            <option key={st} value={st}>{leadStatusLabel(st, isRtl)}</option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => handleArchiveLead(lead.id, !lead.isArchived)}
+                          className="px-3.5 py-2 rounded-xl border border-border bg-surface hover:bg-surface-2 text-[13px] font-semibold text-ink-muted hover:text-ink cursor-pointer transition-colors"
+                        >
+                          {lead.isArchived ? (isRtl ? "إعادة فتح" : "Reopen") : (isRtl ? "أرشفة" : "Archive")}
                         </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap shrink-0">
-                    <select
-                      value={lead.status}
-                      onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value as LeadStatus)}
-                      className="px-2 py-1.5 bg-surface border border-border rounded text-[10px] font-semibold text-ink"
-                    >
-                      {Object.values(LeadStatus).map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => handleArchiveLead(lead.id, !lead.isArchived)}
-                      className="px-2.5 py-1.5 bg-surface hover:bg-surface-2 border border-border text-ink font-medium rounded cursor-pointer"
-                    >
-                      {lead.isArchived ? (isRtl ? "إعادة فتح" : "Reopen") : (isRtl ? "أرشفة" : "Archive")}
-                    </button>
-                  </div>
-                </div>
-              ));
-            })()}
+                      </>
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* FIX 2: lead detail modal - full record, notes, and quick actions */}
       {selectedLeadId && (() => {
@@ -1853,36 +1884,32 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {/* PROPERTIES TAB (Listing Manager) */}
       {activeTab === "properties" && (
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
-              <Building size={14} className="text-gold" />
-              <span>{isRtl ? "إدارة مخزون العقارات المعروضة" : "Active Exclusive Listings"}</span>
-            </h4>
-            <button
-              onClick={() => {
-                // Opening fresh (not currently mid-edit) must not carry over a previously
-                // edited/cancelled listing's field values into a brand-new listing.
-                if (!isAddingListing && editingPropertyId) {
-                  setListingTitle("");
-                  setListingPrice("");
-                  setListingArea("");
-                  setListingDesc("");
-                  setListingImages([]);
-                  setSelectedMunicipality("");
-                  setSelectedArea("");
-                  setListingAmenities("Pool, Gym, Parking");
-                  setListingVideoUrl("");
-                  setWizardStep(1);
-                }
-                setEditingPropertyId(null);
-                setIsAddingListing(!isAddingListing);
-              }}
-              className="px-3 py-1.5 bg-chrome hover:bg-gold hover:text-gold-ink text-white text-xs font-semibold rounded-lg flex items-center gap-1 cursor-pointer"
-            >
-              <Plus size={14} />
-              <span>{isRtl ? "إضافة عقار جديد" : "New Property"}</span>
-            </button>
-          </div>
+          <SectionHeader
+            icon={Building}
+            accent="sky"
+            title={isRtl ? "عقاراتي" : "My Listings"}
+            description={isRtl ? "أدر إعلاناتك: الحالة، التوفر، الترقية، والأداء في مكان واحد." : "Manage your listings: status, availability, boosts and performance in one place."}
+            action={
+              <button
+                type="button"
+                onClick={() => {
+                  if (isAddingListing) { setEditingPropertyId(null); setIsAddingListing(false); } else { startNewListing(); }
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-chrome hover:bg-chrome-hover text-white text-sm font-semibold cursor-pointer transition-colors"
+              >
+                {isAddingListing ? <X size={16} aria-hidden /> : <Plus size={16} aria-hidden />}
+                <span>{isAddingListing ? (isRtl ? "إغلاق النموذج" : "Close form") : (isRtl ? "إضافة عقار جديد" : "New Property")}</span>
+              </button>
+            }
+          />
+          <StatStrip
+            items={[
+              { label: isRtl ? "إجمالي العقارات" : "Total listings", value: properties.length, icon: Building, accent: "sky" },
+              { label: isRtl ? "منشورة" : "Live", value: activeListings, icon: CheckCircle2, accent: "emerald" },
+              { label: isRtl ? "تحتاج تأكيد التوفر" : "Need reconfirming", value: properties.filter(p => p.listingStatus === ListingStatus.PUBLISHED && getAvailabilityStaleDays(p.lastConfirmedAvailableDate || p.createdDate) >= AVAILABILITY_CONFIRM_DUE_DAYS).length, icon: AlertTriangle, accent: "amber" },
+              { label: isRtl ? "مشاهدات هذا الشهر" : "Views this month", value: viewsThisMonth.toLocaleString(), icon: Eye, accent: "violet" }
+            ]}
+          />
 
           {/* Qatar regulation gate: INDEPENDENT_AGENT listings cannot go live until their
               Agency Authorization Letter is APPROVED. Warn proactively, before submission,
@@ -2753,8 +2780,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               }
             />
           ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {properties.map(prop => {
+          <div className="grid grid-cols-1 gap-4">
+            {properties.slice(0, listingLimit).map(prop => {
               // Availability refresh cycle: staleness is computed live from
               // lastConfirmedAvailableDate (falling back to createdDate for pre-existing
               // records), never stored - see getAvailabilityStaleDays() in types.ts.
@@ -2766,129 +2793,122 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               const isConfirming = confirmingAvailabilityId === prop.id;
 
               return (
-                <div key={prop.id} className="p-4 bg-surface border border-border rounded-xl flex gap-4">
-                  <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden shrink-0">
-                    <img src={prop.images[0]} alt={prop.title} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="space-y-1 min-w-0 flex-1">
+                <ListingCard
+                  key={prop.id}
+                  property={prop}
+                  isRtl={isRtl}
+                  notice={
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] font-bold text-slate-500">{prop.listingId}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${
-                        prop.verificationStatus === VerificationStatus.APPROVED ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                      }`}>
-                        {prop.verificationStatus}
-                      </span>
+                      <Badge tone={prop.verificationStatus === VerificationStatus.APPROVED ? "success" : "warning"} className="!normal-case">
+                        {prop.verificationStatus === VerificationStatus.APPROVED ? (isRtl ? "موثّق" : "Verified") : (isRtl ? "بانتظار التوثيق" : "Pending verification")}
+                      </Badge>
                       {isPausedForStaleness ? (
-                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-red-50 text-red-700 border border-red-200">
-                          {isRtl ? "متوقف - يتطلب تأكيد التوفر" : "Paused - Needs Confirmation"}
-                        </span>
+                        <Badge tone="danger" className="!normal-case">{isRtl ? "متوقف - يتطلب تأكيد التوفر" : "Paused - needs confirmation"}</Badge>
                       ) : isUnconfirmed ? (
-                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                          {isRtl ? "التوفر غير مؤكد" : "Availability Unconfirmed"}
-                        </span>
+                        <Badge tone="warning" className="!normal-case">{isRtl ? "التوفر غير مؤكد" : "Availability unconfirmed"}</Badge>
                       ) : isDueSoon ? (
-                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-surface-2 text-ink-muted border border-border">
-                          {isRtl ? "يستحق التأكيد قريباً" : "Confirmation Due Soon"}
-                        </span>
+                        <Badge tone="neutral" className="!normal-case">{isRtl ? "يستحق التأكيد قريباً" : "Confirmation due soon"}</Badge>
                       ) : null}
                     </div>
-                    <h5 className="text-xs font-bold text-ink truncate">{isRtl ? prop.titleAr : prop.title}</h5>
-                    <p className="text-[10px] text-ink-muted">{prop.district}, {prop.city}</p>
-                    <p className="text-xs font-bold text-gold">{prop.price.toLocaleString()} QAR</p>
-                    {/* FIX 8: real view counts (total / unique) for this listing */}
-                    <p className="text-[9px] text-ink-muted flex items-center gap-1">
-                      <Eye size={10} /> {prop.views || 0} {isRtl ? "مشاهدة" : "views"} • {prop.uniqueViews || 0} {isRtl ? "فريدة" : "unique"}
-                    </p>
-
-                    {/* FIX 1: listing status control - Sold/Rented removes it from public search
-                        immediately but it stays here with full history; can be reverted anytime. */}
-                    <div className="flex items-center gap-1.5 pt-0.5">
-                      <select
-                        value={prop.listingStatus}
-                        disabled={updatingStatusId === prop.id}
-                        onChange={(e) => handleUpdateListingStatus(prop.id, e.target.value as ListingStatus)}
-                        className="px-2 py-1 bg-ink-inverse border border-border rounded text-[10px] font-semibold text-ink disabled:opacity-50"
-                      >
-                        <option value={ListingStatus.PUBLISHED}>{isRtl ? "متاح" : "Active/Available"}</option>
-                        <option value={ListingStatus.PAUSED}>{isRtl ? "غير متاح" : "Unavailable"}</option>
-                        <option value={ListingStatus.SOLD}>{isRtl ? "مباع" : "Sold"}</option>
-                        <option value={ListingStatus.RENTED}>{isRtl ? "مؤجر" : "Rented"}</option>
-                        <option value={ListingStatus.DRAFT}>{isRtl ? "مسودة" : "Draft"}</option>
-                      </select>
-                      {updatingStatusId === prop.id && <Loader2 size={10} className="animate-spin text-ink-muted" />}
-                      {prop.statusChangedDate && (
-                        <span className="text-[9px] text-ink-muted">
-                          {isRtl ? "منذ " : "since "}{new Date(prop.statusChangedDate).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-
+                  }
+                >
+                  {/* FIX 1: listing status control - Sold/Rented removes it from public search
+                      immediately but it stays here with full history; can be reverted anytime. */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={prop.listingStatus}
+                      disabled={updatingStatusId === prop.id}
+                      onChange={(e) => handleUpdateListingStatus(prop.id, e.target.value as ListingStatus)}
+                      aria-label={isRtl ? "حالة العقار" : "Listing status"}
+                      className="px-3 py-2 bg-surface border border-border rounded-xl text-[13px] font-semibold text-ink disabled:opacity-50 cursor-pointer"
+                    >
+                      <option value={ListingStatus.PUBLISHED}>{isRtl ? "متاح" : "Active/Available"}</option>
+                      <option value={ListingStatus.PAUSED}>{isRtl ? "غير متاح" : "Unavailable"}</option>
+                      <option value={ListingStatus.SOLD}>{isRtl ? "مباع" : "Sold"}</option>
+                      <option value={ListingStatus.RENTED}>{isRtl ? "مؤجر" : "Rented"}</option>
+                      <option value={ListingStatus.DRAFT}>{isRtl ? "مسودة" : "Draft"}</option>
+                    </select>
+                    {updatingStatusId === prop.id && <Loader2 size={14} className="animate-spin text-ink-muted" />}
+                    {prop.statusChangedDate && (
+                      <span className="text-[12px] text-ink-faint">
+                        {isRtl ? "منذ " : "since "}{new Date(prop.statusChangedDate).toLocaleDateString()}
+                      </span>
+                    )}
                     {/* AGENCY_AGENT never self-triggers a boost - their agency admin does it on
                         their behalf from AgencyWorkspace, billed to the agency ledger. */}
                     {effectiveAgentType !== AgentType.AGENCY_AGENT && (
                       <BoostButton property={prop} isRtl={isRtl} bonusBoostCredits={agent.bonusBoostCredits} />
                     )}
-
-                    {/* One-click "Confirm Still Available" - shown prominently when confirmation
-                        is due soon/overdue or the listing was auto-paused for staleness, and
-                        unobtrusively (small text link) otherwise. */}
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => handleConfirmAvailable(prop.id)}
-                        disabled={isConfirming}
-                        className={
-                          confirmationDue
-                            ? "mt-1 px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold rounded flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                            : "mt-1 px-1.5 py-0.5 text-[9px] text-ink-muted hover:text-ink underline flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                        }
-                      >
-                        {isConfirming ? <Loader2 size={10} className="animate-spin" /> : <CheckCircle2 size={10} />}
-                        <span>{isRtl ? "تأكيد أن العقار لا يزال متاحاً" : "Confirm Still Available"}</span>
-                      </button>
-                      {prop.lastConfirmedAvailableDate && (
-                        <p className="text-[9px] text-ink-muted mt-0.5">
-                          {isRtl
-                            ? staleDays <= 0 ? "آخر تأكيد: اليوم" : `آخر تأكيد: منذ ${staleDays} يوم`
-                            : `Confirmed ${staleDays <= 0 ? "today" : `${staleDays}d ago`}`}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Edit / Delete - edit reopens the same wizard pre-filled, submitting
-                        the same id so POST /api/properties updates in place; delete calls
-                        the scoped DELETE /api/properties/:id behind a ConfirmDialog. */}
-                    <div className="flex items-center gap-2 pt-2 border-t border-surface-2 mt-1">
-                      <button
-                        type="button"
-                        onClick={() => setPerformanceListingId(prop.id)}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
-                      >
-                        <TrendingUp size={11} />
-                        <span>{isRtl ? "الأداء" : "Performance"}</span>
-                      </button>
-                      <CmaReportButton property={prop} agent={agent} orgName={agencyOrg?.name} isRtl={isRtl} />
-                      <button
-                        type="button"
-                        onClick={() => startEditListing(prop)}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
-                      >
-                        <Edit2 size={11} />
-                        <span>{isRtl ? "تعديل" : "Edit"}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeletingListingId(prop.id)}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-red-50 rounded cursor-pointer"
-                      >
-                        <Trash2 size={11} />
-                        <span>{isRtl ? "حذف" : "Delete"}</span>
-                      </button>
-                    </div>
                   </div>
-                </div>
+
+                  {/* One-click "Confirm Still Available" - shown prominently when confirmation
+                      is due soon/overdue or the listing was auto-paused for staleness, and
+                      quietly otherwise. */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => handleConfirmAvailable(prop.id)}
+                      disabled={isConfirming}
+                      className={
+                        confirmationDue
+                          ? "px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-[13px] font-bold rounded-xl flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                          : "px-3 py-1.5 text-[12px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded-lg flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                      }
+                    >
+                      {isConfirming ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                      <span>{isRtl ? "تأكيد أن العقار لا يزال متاحاً" : "Confirm still available"}</span>
+                    </button>
+                    {prop.lastConfirmedAvailableDate && (
+                      <span className="text-[12px] text-ink-faint">
+                        {isRtl
+                          ? staleDays <= 0 ? "آخر تأكيد: اليوم" : `آخر تأكيد: منذ ${staleDays} يوم`
+                          : `Confirmed ${staleDays <= 0 ? "today" : `${staleDays}d ago`}`}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Edit / Delete - edit reopens the same wizard pre-filled, submitting
+                      the same id so POST /api/properties updates in place; delete calls
+                      the scoped DELETE /api/properties/:id behind a ConfirmDialog. */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-3 border-t border-border">
+                    <button
+                      type="button"
+                      onClick={() => setPerformanceListingId(prop.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <TrendingUp size={14} />
+                      <span>{isRtl ? "الأداء" : "Performance"}</span>
+                    </button>
+                    <CmaReportButton property={prop} agent={agent} orgName={agencyOrg?.name} isRtl={isRtl} />
+                    <button
+                      type="button"
+                      onClick={() => startEditListing(prop)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <Edit2 size={14} />
+                      <span>{isRtl ? "تعديل" : "Edit"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingListingId(prop.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-danger hover:bg-danger-soft rounded-lg cursor-pointer transition-colors ms-auto"
+                    >
+                      <Trash2 size={14} />
+                      <span>{isRtl ? "حذف" : "Delete"}</span>
+                    </button>
+                  </div>
+                </ListingCard>
               );
             })}
+            {properties.length > listingLimit && (
+              <button
+                type="button"
+                onClick={() => setListingLimit(n => n + 20)}
+                className="w-full py-3 rounded-2xl border border-border bg-surface text-[13px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 cursor-pointer transition-colors"
+              >
+                {isRtl ? `عرض المزيد (${properties.length - listingLimit})` : `Show more (${properties.length - listingLimit} left)`}
+              </button>
+            )}
           </div>
           )}
 
@@ -2912,13 +2932,22 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         </div>
       )}
 
+      {activeTab === "reviews" && (
+        <SectionHeader icon={Star} accent="rose" title={isRtl ? "التقييمات" : "Reviews"} description={isRtl ? "ما يقوله العملاء عنك. الرد العلني يُظهر اهتمامك." : "What clients say about you. Reply in public to show you care."} />
+      )}
+
       {/* REVIEWS & RATINGS TAB (FIX 10) */}
       {activeTab === "reviews" && (
         <div className="space-y-4">
           <div className="bg-surface p-5 rounded-xl border border-border flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="text-center sm:text-left">
-              <p className="text-3xl font-serif font-bold text-gold">{myReviewSummary?.average.toFixed(1) || "0.0"}</p>
-              <p className="text-[10px] text-ink-muted">{myReviewSummary?.count || 0} {isRtl ? "تقييم" : "reviews"}</p>
+              <p className="text-5xl font-serif font-bold text-gold-active leading-none">{myReviewSummary?.average.toFixed(1) || "0.0"}</p>
+              <div className="flex items-center justify-center sm:justify-start gap-0.5 mt-2" aria-hidden>
+                {[1, 2, 3, 4, 5].map(st => (
+                  <Star key={st} size={16} className={st <= Math.round(myReviewSummary?.average || 0) ? "fill-gold text-gold" : "text-gray-200"} />
+                ))}
+              </div>
+              <p className="text-[12px] text-ink-muted mt-1">{myReviewSummary?.count || 0} {isRtl ? "تقييم" : "reviews"}</p>
             </div>
             <div className="flex-1 space-y-1">
               {[5, 4, 3, 2, 1].map(star => {
@@ -2991,6 +3020,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === "profile" && (
+        <SectionHeader icon={UserCircle} accent="fuchsia" title={isRtl ? "الحساب" : "My Profile"} description={isRtl ? "بياناتك العامة وصورتك وكلمة المرور." : "Your public details, photo and password."} />
       )}
 
       {/* PROFILE TAB */}
@@ -3174,6 +3207,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           </button>
         </div>
       )}
+
+      </WorkspaceShell>
 
       {/* Toast Notification */}
       {toastMessage && (

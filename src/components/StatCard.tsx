@@ -107,11 +107,11 @@ export default function StatCard({
         </span>
         {Icon && (
           <span
-            className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${
-              dark ? "bg-white/10 text-gold" : "bg-gold-soft text-gold-active"
+            className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center ${
+              dark ? "bg-white/10 text-gold" : "bg-chrome text-gold"
             }`}
           >
-            <Icon size={15} />
+            <Icon size={20} />
           </span>
         )}
       </div>

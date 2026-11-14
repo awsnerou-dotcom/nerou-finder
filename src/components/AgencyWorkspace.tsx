@@ -21,7 +21,7 @@ import {
   Zap,
   TrendingUp,
   Award,
-  UserCheck,
+
   Camera,
   Lock,
   Loader2,
@@ -34,7 +34,14 @@ import {
   ArrowUpDown,
   UserPlus,
   Edit2,
-  Trash2
+  Trash2,
+  LayoutDashboard,
+  Inbox,
+  Shuffle,
+  Megaphone,
+  Receipt,
+  ShieldCheck,
+  AlertTriangle
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -46,6 +53,11 @@ import { compressImage } from "../lib/image.js";
 import { getActingUserId } from "../lib/auth.js";
 import StatCard from "./StatCard.js";
 import { SubscriptionAlertBanner } from "./WorkspaceWidgets.js";
+import WorkspaceShell, { AttentionPanel, QuickActions, TopListingsPanel, WorkspaceHero } from "./WorkspaceShell.js";
+import type { NavGroup } from "./WorkspaceShell.js";
+import { agencyAttention, topListings, waitingLeads } from "../lib/workspaceAttention.js";
+import { SectionHeader, StatStrip, LeadCard, ListingCard } from "./WorkspaceParts.js";
+
 import DashboardChart from "./DashboardChart.js";
 import { Badge } from "./ui/Badge.js";
 import { buildDailySumSeries, datesToDayRecord, isThisMonth, listingStatusTone } from "../lib/dashboardMetrics.js";
@@ -97,6 +109,11 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   const [invitations, setInvitations] = useState<any[]>([]);
   const [orgLeads, setOrgLeads] = useState<Lead[]>([]);
   const [orgProperties, setOrgProperties] = useState<Property[]>([]);
+  // The leads and listings pages can hold hundreds of rows: filter, search and show them a page at a time.
+  const [leadFilter, setLeadFilter] = useState<"all" | "unassigned" | "waiting">("all");
+  const [leadLimit, setLeadLimit] = useState<number>(30);
+  const [listingSearch, setListingSearch] = useState<string>("");
+  const [listingLimit, setListingLimit] = useState<number>(20);
   // FIX 2: inline property preview - AgencyWorkspace has no "properties" tab/route of its own.
   const [leadPropertyPreview, setLeadPropertyPreview] = useState<Property | null>(null);
   const [adCharges, setAdCharges] = useState<any[]>([]);
@@ -831,99 +848,106 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
     [datesToDayRecord(orgLeads.map(l => l.createdDate))]
   );
 
+  const waitingCount = waitingLeads(orgLeads).length;
+  const attention = agencyAttention({
+    leads: orgLeads,
+    properties: orgProperties,
+    agentsWithoutListings: agents.filter(a => !orgProperties.some(p => p.agentId === a.id)).length,
+    pendingInvitations: pendingInvitationsCount,
+    now: Date.now()
+  });
+  const clock = new Date();
+  const hour = clock.getHours();
+  const firstName = (currentUser.fullName || "").split(" ")[0];
+  const greeting = isRtl
+    ? `${hour < 12 ? "صباح الخير" : hour < 18 ? "مساء الخير" : "مساء النور"}، ${firstName}`
+    : `${hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"}, ${firstName}`;
+
+  const navGroups: NavGroup[] = [
+    {
+      id: "overview",
+      label: { en: "Overview", ar: "نظرة عامة" },
+      items: [{ id: "dashboard", label: { en: "Dashboard", ar: "لوحة القيادة" }, icon: LayoutDashboard, accent: "indigo", tourId: "agency-dashboard-tab" }]
+    },
+    {
+      id: "business",
+      label: { en: "Business", ar: "العمل" },
+      items: [
+        { id: "team", label: { en: "Agents Team", ar: "فريق العمل" }, icon: Users, accent: "violet", badge: pendingInvitationsCount, tourId: "agency-team-tab" },
+        { id: "listings", label: { en: "Listings", ar: "العقارات المدرجة" }, icon: Building2, accent: "sky", tourId: "agency-listings-tab" },
+        { id: "leads", label: { en: "Leads", ar: "إدارة العملاء" }, icon: Inbox, accent: "emerald", badge: waitingCount, tourId: "agency-leads-tab" },
+        { id: "salesdesk", label: { en: "Sales Desk", ar: "مكتب المبيعات" }, icon: Briefcase, accent: "amber", tourId: "agency-salesdesk-tab" },
+        { id: "routing", label: { en: "Lead Routing", ar: "توزيع العملاء" }, icon: Shuffle, accent: "fuchsia" }
+      ]
+    },
+    {
+      id: "growth",
+      label: { en: "Growth", ar: "النمو" },
+      items: [{ id: "campaigns", label: { en: "Ad Campaigns", ar: "الحملات الإعلانية" }, icon: Megaphone, accent: "rose", tourId: "agency-campaigns-tab" }]
+    },
+    {
+      id: "account",
+      label: { en: "Account", ar: "الحساب" },
+      items: [
+        { id: "subscription", label: { en: "Billing", ar: "الاشتراك والفواتير" }, icon: Receipt, accent: "teal" },
+        { id: "verification", label: { en: "Verification", ar: "التوثيق" }, icon: ShieldCheck, accent: "indigo", tourId: "agency-verification-tab" },
+        { id: "profile", label: { en: "Settings", ar: "الإعدادات" }, icon: Settings, accent: "gold", tourId: "agency-profile-tab" }
+      ]
+    }
+  ];
+
   return (
     <div className="ws space-y-6" dir={isRtl ? "rtl" : "ltr"}>
-      {/* Agency Header Banner */}
-      <div className="bg-surface p-6 rounded-xl border border-border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-xl border border-border overflow-hidden bg-gray-50">
-            <img src={agency.logoUrl} alt={agency.name} className="w-full h-full object-cover" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-xl font-serif font-medium text-ink">
-              {isRtl ? agency.nameAr : agency.name}
-            </h3>
-            <p className="text-xs text-ink-muted">
-              {isRtl ? `الرخصة العقارية رقم: RE-202611 • الحساب الفضي` : `Licence No: RE-202611 • Silver Agency Class Account`}
-            </p>
-          </div>
-        </div>
+      {/* Header */}
+      <WorkspaceHero
+        eyebrow={greeting}
+        title={isRtl ? "مساحة عمل المكتب العقاري" : "Agency Workspace"}
+        subtitle={isRtl ? agency.nameAr || agency.name : agency.name}
+        actions={
+          <>
+            <NotificationBell isRtl={isRtl} onClick={() => setActiveTab("leads")} />
+            <button
+              type="button"
+              data-testid="invite-agent-cta"
+              onClick={() => setActiveTab("team")}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gold text-gold-ink text-sm font-bold shadow-card hover:brightness-110 cursor-pointer transition"
+            >
+              <UserPlus size={18} strokeWidth={2.5} aria-hidden />
+              <span>{isRtl ? "دعوة وسيط" : "Invite agent"}</span>
+            </button>
+          </>
+        }
+      />
 
-        {/* Workspace tabs navigator */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <NotificationBell isRtl={isRtl} onClick={() => setActiveTab("leads")} />
-          <div className="flex flex-wrap bg-surface-2/70 p-1 gap-0.5 rounded-xl border border-border/60 text-[13px] font-semibold">
-          <button
-            data-tour="agency-dashboard-tab"
-            onClick={() => setActiveTab("dashboard")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "dashboard" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "لوحة القيادة" : "Dashboard"}
-          </button>
-          <button
-            data-tour="agency-team-tab"
-            onClick={() => setActiveTab("team")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "team" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "فريق العمل" : "Agents Team"}
-          </button>
-          <button
-            data-tour="agency-listings-tab"
-            onClick={() => setActiveTab("listings")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "listings" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "العقارات المدرجة" : "Listings"}
-          </button>
-          <button
-            data-tour="agency-leads-tab"
-            onClick={() => setActiveTab("leads")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "leads" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "إدارة العملاء" : "Leads Panel"}
-          </button>
-          <button
-            data-tour="agency-salesdesk-tab"
-            onClick={() => setActiveTab("salesdesk")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "salesdesk" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "مكتب المبيعات" : "Sales Desk"}
-          </button>
-          <button
-            onClick={() => setActiveTab("routing")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "routing" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "توزيع العملاء" : "Lead Routing"}
-          </button>
-          <button
-            data-tour="agency-campaigns-tab"
-            onClick={() => setActiveTab("campaigns")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "campaigns" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "الحملات الإعلانية" : "Ad Campaigns"}
-          </button>
-          <button
-            onClick={() => setActiveTab("subscription")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "subscription" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "الاشتراكات SaaS" : "SaaS Billing"}
-          </button>
-          <button
-            data-tour="agency-verification-tab"
-            onClick={() => setActiveTab("verification")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "verification" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "التوثيق" : "Verification"}
-          </button>
-          <button
-            data-tour="agency-profile-tab"
-            onClick={() => setActiveTab("profile")}
-            className={`px-4 py-2 rounded-lg cursor-pointer transition-colors ${activeTab === "profile" ? "bg-chrome text-white shadow-sm" : "text-ink-muted hover:text-ink"}`}
-          >
-            {isRtl ? "الإعدادات" : "Profile"}
-          </button>
-          </div>
-        </div>
-      </div>
+      <WorkspaceShell
+        groups={navGroups}
+        active={activeTab}
+        onSelect={(id) => setActiveTab(id as typeof activeTab)}
+        identity={{
+          image: agency.logoUrl,
+          initial: agency.name || "?",
+          title: isRtl ? agency.nameAr || agency.name : agency.name,
+          subtitle: (
+            <>
+              {plans.find(p => p.id === agency.subscriptionPlanId)?.name && (
+                <span className="block truncate">{plans.find(p => p.id === agency.subscriptionPlanId)?.name}</span>
+              )}
+              {agency.verificationStatus === "APPROVED" ? (
+                <span className="mt-1 inline-flex items-center gap-1 font-semibold text-success">
+                  <ShieldCheck size={12} aria-hidden />
+                  {isRtl ? "مكتب موثّق" : "Verified agency"}
+                </span>
+              ) : (
+                <span className="mt-1 inline-flex items-center gap-1 font-semibold text-warning">
+                  <AlertTriangle size={12} aria-hidden />
+                  {isRtl ? "غير موثّق بعد" : "Not verified yet"}
+                </span>
+              )}
+            </>
+          )
+        }}
+        isRtl={isRtl}
+      >
 
       {/* DASHBOARD TAB */}
       {activeTab === "dashboard" && (
@@ -958,39 +982,16 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
           {/* Referral Program: "Invite & Earn" */}
           <ReferralPanel user={currentUser} isRtl={isRtl} />
 
-          {/* Quick actions */}
-          <div className="bg-surface rounded-xl border border-border p-4">
-            <h4 className="font-serif text-sm font-semibold text-ink mb-3 flex items-center gap-1.5">
-              <Zap size={14} className="text-gold" />
-              <span>{isRtl ? "إجراءات سريعة" : "Quick Actions"}</span>
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => setActiveTab("team")}
-                className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg cursor-pointer transition-colors"
-              >
-                <UserCheck size={16} className="text-gold shrink-0" />
-                <span className="text-xs font-bold text-ink">{isRtl ? "دعوة وسيط" : "Invite Agent"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("campaigns")}
-                className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg cursor-pointer transition-colors"
-              >
-                <Zap size={16} className="text-gold shrink-0" />
-                <span className="text-xs font-bold text-ink">{isRtl ? "رفع أي إعلان" : "Boost Any Team Listing"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("subscription")}
-                className="flex items-center gap-2 p-3 bg-canvas hover:bg-surface-2 border border-border rounded-lg cursor-pointer transition-colors"
-              >
-                <CreditCard size={16} className="text-gold shrink-0" />
-                <span className="text-xs font-bold text-ink">{isRtl ? "عرض الاشتراك" : "View Subscription"}</span>
-              </button>
-            </div>
-          </div>
+          <QuickActions
+            isRtl={isRtl}
+            actions={[
+              { id: "invite", icon: UserPlus, accent: "violet", label: { en: "Invite an agent", ar: "ادعُ وسيطاً" }, hint: { en: "Grow your team", ar: "وسّع فريقك" }, onClick: () => setActiveTab("team") },
+              { id: "leads", icon: Inbox, accent: "emerald", label: { en: "Team enquiries", ar: "استفسارات الفريق" }, hint: waitingCount > 0 ? { en: `${waitingCount} waiting`, ar: `${waitingCount} بانتظار الرد` } : { en: "All answered", ar: "تم الرد على الجميع" }, onClick: () => setActiveTab("leads") },
+              { id: "boost", icon: Megaphone, accent: "rose", label: { en: "Boost a listing", ar: "رقّ إعلاناً" }, hint: { en: "Reach more buyers", ar: "الوصول إلى مشترين أكثر" }, onClick: () => setActiveTab("campaigns") },
+              { id: "billing", icon: Receipt, accent: "teal", label: { en: "Billing", ar: "الاشتراك والفواتير" }, hint: { en: "Plan and ad ledger", ar: "الخطة وسجل الإعلانات" }, onClick: () => setActiveTab("subscription") }
+            ]}
+          />
+          <AttentionPanel items={attention} onGo={(tab) => setActiveTab(tab as typeof activeTab)} isRtl={isRtl} />
 
           {/* Leads + views trend chart */}
           <div className="bg-surface rounded-xl border border-border p-4">
@@ -1005,6 +1006,8 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
               isRtl={isRtl}
             />
           </div>
+
+          <TopListingsPanel properties={topListings(orgProperties, 3)} isRtl={isRtl} onOpenAll={() => setActiveTab("listings")} />
 
           {/* Sortable team performance table */}
           <div className="bg-surface rounded-xl border border-border overflow-hidden">
@@ -1099,8 +1102,16 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
         </div>
       )}
 
+      {activeTab === "verification" && (
+        <SectionHeader icon={ShieldCheck} accent="indigo" title={isRtl ? "التوثيق" : "Verification"} description={isRtl ? "ارفع مستندات مكتبك. المكاتب الموثّقة تظهر أولاً وتكسب الثقة." : "Upload your agency documents. Verified agencies are shown first and earn trust."} />
+      )}
+
       {/* VERIFICATION TAB */}
       {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} />}
+
+      {activeTab === "profile" && (
+        <SectionHeader icon={Settings} accent="gold" title={isRtl ? "الإعدادات" : "Settings"} description={isRtl ? "بيانات مكتبك العامة وشعاره والأمان." : "Your agency's public details, logo and security."} />
+      )}
 
       {/* PROFILE / SETTINGS TAB */}
       {activeTab === "profile" && (
@@ -1268,16 +1279,29 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
           the listing's orgId, so no new backend logic is needed beyond the scoped DELETE
           route added alongside this UI. */}
       {activeTab === "listings" && (
-        <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
-          <div className="p-4 bg-ink-inverse border-b border-border flex justify-between items-center">
-            <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
-              <Building2 size={14} className="text-gold" />
-              <span>{isRtl ? "جميع عقارات المكتب" : "All Agency Listings"}</span>
-            </h4>
-            <span className="px-2.5 py-1 bg-chrome text-white text-[10px] font-bold rounded-full">
-              {orgProperties.length} {isRtl ? "عقار" : "listings"}
-            </span>
-          </div>
+        <div className="space-y-5">
+          <SectionHeader
+            icon={Building2}
+            accent="sky"
+            title={isRtl ? "العقارات المدرجة" : "Listings"}
+            description={isRtl ? "كل عقارات المكتب ووسطائه: عدّل، تابع الأداء، أو احذف." : "Every listing across your agency: edit, check performance or remove."}
+          />
+          <StatStrip
+            items={[
+              { label: isRtl ? "إجمالي العقارات" : "Total listings", value: orgProperties.length, icon: Building2, accent: "sky" },
+              { label: isRtl ? "منشورة" : "Live", value: orgProperties.filter(p => p.listingStatus === "PUBLISHED").length, icon: CheckCircle, accent: "emerald" },
+              { label: isRtl ? "غير منشورة" : "Not live", value: orgProperties.filter(p => p.listingStatus !== "PUBLISHED").length, icon: AlertTriangle, accent: "amber" },
+              { label: isRtl ? "وسطاء" : "Agents", value: agents.length, icon: Users, accent: "violet" }
+            ]}
+          />
+          <input
+            type="search"
+            value={listingSearch}
+            onChange={(e) => { setListingSearch(e.target.value); setListingLimit(20); }}
+            placeholder={isRtl ? "ابحث بالعنوان أو الرقم أو المنطقة أو الوسيط..." : "Search by title, reference, area or agent..."}
+            aria-label={isRtl ? "بحث في العقارات" : "Search listings"}
+            className="w-full px-4 py-3 bg-surface border border-border rounded-xl"
+          />
 
           {orgProperties.length === 0 ? (
             <EmptyState
@@ -1286,46 +1310,53 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
               description={isRtl ? "ستظهر هنا عقارات وسطائكم بمجرد إضافتها." : "Listings added by your agents will appear here."}
             />
           ) : (
-            <div className="divide-y divide-surface-2">
-              {orgProperties.map(prop => (
-                <div key={prop.id} className="p-4 space-y-3">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] font-bold text-slate-500">{prop.listingId}</span>
-                        <Badge tone={listingStatusTone(prop.listingStatus)}>{prop.listingStatus.replace(/_/g, " ")}</Badge>
-                      </div>
-                      <p className="font-bold text-ink truncate">{isRtl ? prop.titleAr : prop.title}</p>
-                      <p className="text-[10px] text-ink-muted">{prop.district}, {prop.city} • {agents.find(a => a.id === prop.agentId)?.fullName || "—"}</p>
-                      <p className="text-xs font-bold text-gold">{prop.price?.toLocaleString()} QAR</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setPerformanceListingId(prop.id)}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
-                      >
-                        <TrendingUp size={11} />
-                        <span>{isRtl ? "الأداء" : "Performance"}</span>
-                      </button>
-                      <CmaReportButton property={prop} agent={currentUser} orgName={agency.name} isRtl={isRtl} />
-                      <button
-                        type="button"
-                        onClick={() => (editingListingId === prop.id ? cancelEditListing() : startEditListing(prop))}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded cursor-pointer"
-                      >
-                        <Edit2 size={11} />
-                        <span>{editingListingId === prop.id ? (isRtl ? "إغلاق" : "Close") : (isRtl ? "تعديل" : "Edit")}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeletingListingId(prop.id)}
-                        className="flex items-center gap-1 px-2 py-1 text-[10px] font-semibold text-red-600 hover:bg-red-50 rounded cursor-pointer"
-                      >
-                        <Trash2 size={11} />
-                        <span>{isRtl ? "حذف" : "Delete"}</span>
-                      </button>
-                    </div>
+            <div className="grid grid-cols-1 gap-4">
+              {(() => {
+                const q = listingSearch.trim().toLowerCase();
+                const matches = q
+                  ? orgProperties.filter(p => [p.title, p.titleAr, p.listingId, p.district, p.city, agents.find(a => a.id === p.agentId)?.fullName].some(v => (v || "").toLowerCase().includes(q)))
+                  : orgProperties;
+                const page = matches.slice(0, listingLimit);
+                return (
+                  <>
+                    {matches.length === 0 && <p className="text-center text-ink-muted py-8">{isRtl ? "لا نتائج مطابقة." : "No listings match your search."}</p>}
+                    {page.map(prop => (
+                <ListingCard
+                  key={prop.id}
+                  property={prop}
+                  isRtl={isRtl}
+                  notice={
+                    <p className="text-[12px] text-ink-muted">
+                      {isRtl ? "الوسيط: " : "Agent: "}<span className="font-semibold text-ink">{agents.find(a => a.id === prop.agentId)?.fullName || "—"}</span>
+                    </p>
+                  }
+                >
+                  <div className="flex items-center gap-1.5 flex-wrap pt-3 border-t border-border">
+                    <button
+                      type="button"
+                      onClick={() => setPerformanceListingId(prop.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <TrendingUp size={14} />
+                      <span>{isRtl ? "الأداء" : "Performance"}</span>
+                    </button>
+                    <CmaReportButton property={prop} agent={currentUser} orgName={agency.name} isRtl={isRtl} />
+                    <button
+                      type="button"
+                      onClick={() => (editingListingId === prop.id ? cancelEditListing() : startEditListing(prop))}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 rounded-lg cursor-pointer transition-colors"
+                    >
+                      <Edit2 size={14} />
+                      <span>{editingListingId === prop.id ? (isRtl ? "إغلاق" : "Close") : (isRtl ? "تعديل" : "Edit")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeletingListingId(prop.id)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold text-danger hover:bg-danger-soft rounded-lg cursor-pointer transition-colors ms-auto"
+                    >
+                      <Trash2 size={14} />
+                      <span>{isRtl ? "حذف" : "Delete"}</span>
+                    </button>
                   </div>
 
                   {editingListingId === prop.id && (
@@ -1407,8 +1438,20 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                       </div>
                     </form>
                   )}
-                </div>
-              ))}
+                </ListingCard>
+                    ))}
+                    {matches.length > listingLimit && (
+                      <button
+                        type="button"
+                        onClick={() => setListingLimit(n => n + 20)}
+                        className="w-full py-3 rounded-2xl border border-border bg-surface text-[13px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 cursor-pointer transition-colors"
+                      >
+                        {isRtl ? `عرض المزيد (${matches.length - listingLimit})` : `Show more (${matches.length - listingLimit} left)`}
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -1430,6 +1473,10 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
             isRtl={isRtl}
           />
         </div>
+      )}
+
+      {activeTab === "team" && (
+        <SectionHeader icon={Users} accent="violet" title={isRtl ? "فريق العمل" : "Agents Team"} description={isRtl ? "وسطاؤك، وما يتولاه كل منهم، ومن دعوتَه." : "Your brokers, what each one is handling, and who you have invited."} />
       )}
 
       {/* TEAM TAB */}
@@ -1470,25 +1517,28 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                 const agentLeadCount = orgLeads.filter(l => l.agentId === agent.id).length;
                 return (
                   <div key={agent.id} className="p-4 flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-surface-2 font-bold text-xs flex items-center justify-center text-ink">
-                        {agent.fullName.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm text-ink">{agent.fullName}</p>
-                        <p className="text-[10px] text-ink-muted">{agent.email} | Specialties: {agent.specialties?.join(", ")}</p>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {agent.avatarUrl ? (
+                        <img src={agent.avatarUrl} alt="" className="w-11 h-11 rounded-2xl object-cover shrink-0" />
+                      ) : (
+                        <span className="w-11 h-11 rounded-2xl bg-violet-100 text-violet-700 font-serif font-bold text-lg flex items-center justify-center shrink-0">
+                          {agent.fullName.charAt(0)}
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[15px] text-ink truncate">{agent.fullName}</p>
+                        <p className="text-[12px] text-ink-muted truncate">{agent.email}</p>
+                        {!!agent.specialties?.length && <p className="text-[12px] text-ink-faint truncate">{agent.specialties.join(" · ")}</p>}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 bg-surface-2 text-ink border border-border text-[9px] font-bold rounded" title={isRtl ? "عدد العقارات" : "Listings"}>
-                        {agentListingCount} {isRtl ? "عقار" : "listings"}
-                      </span>
-                      <span className="px-2 py-0.5 bg-surface-2 text-ink border border-border text-[9px] font-bold rounded" title={isRtl ? "عدد العملاء المحتملين" : "Leads"}>
-                        {agentLeadCount} {isRtl ? "عميل" : "leads"}
-                      </span>
-                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold uppercase rounded">
-                        {isRtl ? "نشط" : "Online"}
-                      </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge tone="info" className="!normal-case" title={isRtl ? "عدد العقارات" : "Listings"}>
+                        <Building2 size={12} aria-hidden /> {agentListingCount} {isRtl ? "عقار" : "listings"}
+                      </Badge>
+                      <Badge tone="gold" className="!normal-case" title={isRtl ? "عدد العملاء المحتملين" : "Leads"}>
+                        <Inbox size={12} aria-hidden /> {agentLeadCount} {isRtl ? "عميل" : "leads"}
+                      </Badge>
+                      <Badge tone="success" dot className="!normal-case">{isRtl ? "نشط" : "Active"}</Badge>
                     </div>
                   </div>
                 );
@@ -1512,9 +1562,7 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                         {isRtl ? "تاريخ الإرسال: " : "Sent: "} {new Date(inv.createdDate).toLocaleDateString()} • {isRtl ? "تنتهي في: " : "Expires: "} {new Date(inv.expiresDate).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className="px-2 py-0.5 bg-yellow-50 text-yellow-700 border border-yellow-200 text-[9px] font-bold uppercase rounded">
-                      {inv.status}
-                    </span>
+                    <Badge tone="warning" dot className="!normal-case">{inv.status === "PENDING" ? (isRtl ? "بانتظار القبول" : "Pending") : inv.status}</Badge>
                   </div>
                 ))
               )}
@@ -1562,6 +1610,10 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
             </form>
           </div>
         </div>
+      )}
+
+      {activeTab === "routing" && (
+        <SectionHeader icon={Shuffle} accent="fuchsia" title={isRtl ? "توزيع العملاء" : "Lead Routing"} description={isRtl ? "حدّد كيف تُوزَّع الاستفسارات الجديدة على وسطائك." : "Decide how new enquiries are shared among your agents."} />
       )}
 
       {/* LEAD ROUTING TAB */}
@@ -1625,6 +1677,10 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
             {isRtl ? "حفظ سياسة التوجيه" : "Save Routing Setup"}
           </button>
         </div>
+      )}
+
+      {activeTab === "campaigns" && (
+        <SectionHeader icon={Megaphone} accent="rose" title={isRtl ? "الحملات الإعلانية" : "Ad Campaigns"} description={isRtl ? "رقِّ إعلاناتك للوصول إلى مشترين أكثر وتابع ما تنفقه." : "Boost your listings to reach more buyers and track what you spend."} />
       )}
 
       {/* AD CAMPAIGNS TAB */}
@@ -1823,174 +1879,82 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
       {activeTab === "salesdesk" && <SalesDesk isRtl={isRtl} />}
 
       {/* LEADS PANEL TAB */}
-      {activeTab === "leads" && (
-        <div className="bg-surface rounded-xl border border-border overflow-hidden text-xs">
-          <div className="p-4 bg-ink-inverse border-b border-border flex justify-between items-center">
-            <div>
-              <h4 className="font-serif text-sm font-semibold text-ink flex items-center gap-1.5">
-                <MessageSquare size={14} className="text-gold" />
-                <span>{isRtl ? "إدارة وتوزيع العملاء المحتملين" : "Leads Management Suite"}</span>
-              </h4>
-              <p className="text-[11px] text-ink-muted mt-0.5">{isRtl ? "عرض وإعادة تعيين العملاء المحتملين لوسطاء الوكالة يدوياً." : "Oversee team leads and reassign clients to optimize representative response times."}</p>
-            </div>
-            <span className="px-2.5 py-1 bg-chrome text-white text-[10px] font-bold rounded-full">
-              {orgLeads.length} {isRtl ? "عملاء كلي" : "Total Leads"}
-            </span>
-          </div>
-
-          {orgLeads.length === 0 ? (
-            <p className="p-8 text-center text-ink-muted italic">
-              {isRtl ? "لا يوجد عملاء متاحين حالياً في هذا المكتب." : "No leads registered under this organization yet."}
-            </p>
-          ) : (
-            <>
-              {/* Desktop/tablet: full data table */}
-              <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-canvas border-b border-border text-[10px] text-ink-muted uppercase tracking-wider">
-                      <th className="p-4 font-semibold">{isRtl ? "العميل" : "Client / Contact"}</th>
-                      <th className="p-4 font-semibold">{isRtl ? "العقار المستهدف" : "Target Property / Message"}</th>
-                      <th className="p-4 font-semibold">{isRtl ? "الوسيط الحالي" : "Assigned Representative"}</th>
-                      <th className="p-4 font-semibold">{isRtl ? "إعادة تعيين" : "Manual Reassignment"}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-surface-2">
-                    {orgLeads.map((lead) => (
-                      <tr key={lead.id} className="hover:bg-canvas/50 transition-colors cursor-pointer" onClick={() => markLeadRead(lead.id)}>
-                        <td className="p-4">
-                          <div className="font-bold text-sm text-ink flex items-center gap-1.5">
-                            {lead.visitorName}
-                            {lead.readByRecipient === false && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-danger shrink-0" title={isRtl ? "غير مقروء" : "Unread"} />
-                            )}
-                          </div>
-                          <div className="text-[10px] mt-0.5 flex items-center gap-2">
-                            <a href={`https://wa.me/${(lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold">
-                              <MessageSquare size={10} /> {lead.visitorPhone}
-                            </a>
-                            {lead.visitorEmail && (
-                              <a href={`mailto:${lead.visitorEmail}`} className="flex items-center gap-1 text-ink hover:text-gold">
-                                <Mail size={10} /> {lead.visitorEmail}
-                              </a>
-                            )}
-                          </div>
-                          <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-700 text-[9px] rounded font-mono">
-                            {lead.contactMethod}
-                          </span>
-                        </td>
-                        <td className="p-4 max-w-xs">
-                          {lead.propertyId ? (
-                            <button
-                              type="button"
-                              onClick={() => setLeadPropertyPreview(orgProperties.find(p => p.id === lead.propertyId) || null)}
-                              className="font-semibold text-xs text-gold underline cursor-pointer"
-                            >
-                              {orgProperties.find(p => p.id === lead.propertyId)?.title || `ID: ${lead.propertyId}`}
-                            </button>
-                          ) : (
-                            <p className="font-semibold text-xs text-gold">{isRtl ? "استفسار عام" : "General Inquiry"}</p>
-                          )}
-                          <p className="text-ink-muted mt-1 line-clamp-2 leading-relaxed">{lead.message}</p>
-                          <span className="text-[9px] text-ink-muted block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
-                        </td>
-                        <td className="p-4 font-medium text-ink">
-                          {agents.find((a) => a.id === lead.agentId)?.fullName || (
-                            <span className="text-rose-500 font-bold italic">{isRtl ? "غير معين" : "Unassigned"}</span>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <select
-                            value={lead.agentId || ""}
-                            onChange={(e) => handleReassignLead(lead.id, e.target.value)}
-                            className="px-2 py-1.5 bg-ink-inverse border border-border rounded-lg focus:outline-none focus:border-gold text-xs font-semibold cursor-pointer text-ink"
-                          >
-                            <option value="">-- {isRtl ? "اختر وكيلاً" : "Assign Broker"} --</option>
-                            {agents.map((ag) => (
-                              <option key={ag.id} value={ag.id}>
-                                {ag.fullName}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile: stacked cards instead of a horizontally-scrolling table */}
-              <div className="md:hidden divide-y divide-surface-2">
-                {orgLeads.map((lead) => (
-                  <div key={lead.id} className="p-4 space-y-3 cursor-pointer" onClick={() => markLeadRead(lead.id)}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="font-bold text-sm text-ink flex items-center gap-1.5">
-                          {lead.visitorName}
-                          {lead.readByRecipient === false && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-danger shrink-0" title={isRtl ? "غير مقروء" : "Unread"} />
-                          )}
-                        </div>
-                        <div className="text-[11px] mt-0.5 flex flex-wrap items-center gap-2">
-                          <a href={`https://wa.me/${(lead.visitorWhatsapp || lead.visitorPhone || "").replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-semibold">
-                            <MessageSquare size={11} /> {lead.visitorPhone}
-                          </a>
-                          {lead.visitorEmail && (
-                            <a href={`mailto:${lead.visitorEmail}`} className="flex items-center gap-1 text-ink hover:text-gold">
-                              <Mail size={11} /> {lead.visitorEmail}
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                      <span className="shrink-0 px-2 py-0.5 bg-gray-100 text-gray-700 text-[9px] rounded font-mono">
-                        {lead.contactMethod}
-                      </span>
-                    </div>
-
-                    <div className="bg-canvas border border-surface-2 rounded-lg p-2.5">
-                      {lead.propertyId ? (
-                        <button
-                          type="button"
-                          onClick={() => setLeadPropertyPreview(orgProperties.find(p => p.id === lead.propertyId) || null)}
-                          className="font-semibold text-xs text-gold underline cursor-pointer"
-                        >
-                          {orgProperties.find(p => p.id === lead.propertyId)?.title || `ID: ${lead.propertyId}`}
-                        </button>
-                      ) : (
-                        <p className="font-semibold text-xs text-gold">{isRtl ? "استفسار عام" : "General Inquiry"}</p>
-                      )}
-                      <p className="text-ink-muted mt-1 line-clamp-2 leading-relaxed">{lead.message}</p>
-                      <span className="text-[9px] text-ink-muted block mt-1">{new Date(lead.createdDate || new Date()).toLocaleString()}</span>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="text-ink-muted">{isRtl ? "الوسيط الحالي:" : "Assigned to:"}</span>
-                      <span className="font-medium text-ink">
-                        {agents.find((a) => a.id === lead.agentId)?.fullName || (
-                          <span className="text-rose-500 font-bold italic">{isRtl ? "غير معين" : "Unassigned"}</span>
+      {activeTab === "leads" && (() => {
+        const nowMs = Date.now();
+        const waitingIds = new Set(waitingLeads(orgLeads).map(l => l.id));
+        const unassignedCount = orgLeads.filter(l => !l.agentId).length;
+        const shown = orgLeads
+          .filter(l => (leadFilter === "unassigned" ? !l.agentId : leadFilter === "waiting" ? waitingIds.has(l.id) : true))
+          .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
+        return (
+          <div className="space-y-5">
+            <SectionHeader
+              icon={Inbox}
+              accent="emerald"
+              title={isRtl ? "إدارة العملاء" : "Leads"}
+              description={isRtl ? "راقب استفسارات فريقك وأعد توزيعها على الوسطاء لتسريع الرد." : "Oversee your team's enquiries and reassign them to speed up replies."}
+            />
+            <StatStrip
+              items={[
+                { label: isRtl ? "كل الاستفسارات" : "All enquiries", value: orgLeads.length, icon: Inbox, accent: "indigo", onClick: () => { setLeadFilter("all"); setLeadLimit(30); }, active: leadFilter === "all" },
+                { label: isRtl ? "بانتظار الرد" : "Waiting for a reply", value: waitingIds.size, icon: AlertTriangle, accent: "rose", onClick: () => { setLeadFilter("waiting"); setLeadLimit(30); }, active: leadFilter === "waiting" },
+                { label: isRtl ? "بلا وسيط" : "Unassigned", value: unassignedCount, icon: Shuffle, accent: "amber", onClick: () => { setLeadFilter("unassigned"); setLeadLimit(30); }, active: leadFilter === "unassigned" }
+              ]}
+            />
+            {shown.length === 0 ? (
+              <EmptyState
+                icon={<Inbox size={20} />}
+                title={orgLeads.length === 0 ? (isRtl ? "لا توجد استفسارات بعد" : "No enquiries yet") : (isRtl ? "لا شيء هنا" : "Nothing here")}
+                description={orgLeads.length === 0 ? (isRtl ? "ستظهر هنا استفسارات عقارات مكتبكم." : "Enquiries about your agency's listings will appear here.") : undefined}
+              />
+            ) : (
+              <div className="space-y-3">
+                {shown.slice(0, leadLimit).map(lead => (
+                  <LeadCard
+                    key={lead.id}
+                    lead={lead}
+                    isRtl={isRtl}
+                    now={nowMs}
+                    unread={lead.readByRecipient === false}
+                    onOpen={() => markLeadRead(lead.id)}
+                    onViewProperty={lead.propertyId ? () => setLeadPropertyPreview(orgProperties.find(p => p.id === lead.propertyId) || null) : undefined}
+                    footer={
+                      <p className="text-[12px] text-ink-muted">
+                        {isRtl ? "الوسيط الحالي: " : "Assigned to: "}
+                        {agents.find(a => a.id === lead.agentId)?.fullName || (
+                          <span className="text-danger font-semibold">{isRtl ? "غير معيّن" : "Unassigned"}</span>
                         )}
-                      </span>
-                    </div>
-
-                    <select
-                      value={lead.agentId || ""}
-                      onChange={(e) => handleReassignLead(lead.id, e.target.value)}
-                      className="w-full px-3 py-2.5 bg-ink-inverse border border-border rounded-lg focus:outline-none focus:border-gold text-base font-semibold cursor-pointer text-ink"
-                    >
-                      <option value="">-- {isRtl ? "اختر وكيلاً" : "Assign Broker"} --</option>
-                      {agents.map((ag) => (
-                        <option key={ag.id} value={ag.id}>
-                          {ag.fullName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      </p>
+                    }
+                    controls={
+                      <select
+                        value={lead.agentId || ""}
+                        onChange={(e) => handleReassignLead(lead.id, e.target.value)}
+                        aria-label={isRtl ? "إعادة تعيين" : "Reassign"}
+                        className="px-3 py-2 bg-surface border border-border rounded-xl text-[13px] font-semibold text-ink cursor-pointer max-w-[220px]"
+                      >
+                        <option value="">{isRtl ? "اختر وسيطاً" : "Assign broker"}</option>
+                        {agents.map(ag => (
+                          <option key={ag.id} value={ag.id}>{ag.fullName}</option>
+                        ))}
+                      </select>
+                    }
+                  />
                 ))}
+                {shown.length > leadLimit && (
+                  <button
+                    type="button"
+                    onClick={() => setLeadLimit(n => n + 30)}
+                    className="w-full py-3 rounded-2xl border border-border bg-surface text-[13px] font-semibold text-ink-muted hover:text-ink hover:bg-surface-2 cursor-pointer transition-colors"
+                  >
+                    {isRtl ? `عرض المزيد (${shown.length - leadLimit})` : `Show more (${shown.length - leadLimit} left)`}
+                  </button>
+                )}
               </div>
-            </>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        );
+      })()}
 
       {/* FIX 2: inline property preview - no client-side router exists to deep-link into a
           property detail page from here, so this fetches/shows it directly instead. */}
@@ -2009,6 +1973,10 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === "subscription" && (
+        <SectionHeader icon={Receipt} accent="teal" title={isRtl ? "الاشتراك والفواتير" : "Billing"} description={isRtl ? "خطتك ورسوم الإعلانات وسجل المدفوعات." : "Your plan, ad charges and payment ledger."} />
       )}
 
       {/* SUBSCRIPTION SaaS BILLING TAB */}
@@ -2111,6 +2079,8 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
           </div>
         </div>
       )}
+
+      </WorkspaceShell>
 
       {/* Toast Notification */}
       {toastMessage && (

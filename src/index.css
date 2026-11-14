@@ -369,3 +369,27 @@ table, .font-mono {
 .ws .rounded-xl { border-radius: 1rem; }
 .ws h2.font-serif, .ws h3.font-serif { letter-spacing: -0.012em; }
 [dir="rtl"].ws h2.font-serif, [dir="rtl"].ws h3.font-serif, [dir="rtl"] .ws h2.font-serif, [dir="rtl"] .ws h3.font-serif { letter-spacing: 0; }
+
+/* Inside the workspaces: form fields and cards get the same finish as the new section headers - roomier fields with a
+   clear gold focus ring, and cards that sit above the page instead of lying flat on it. */
+.ws input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
+.ws select,
+.ws textarea {
+  font-size: 14px;
+  border-radius: 0.75rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.ws input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):hover,
+.ws select:hover,
+.ws textarea:hover {
+  border-color: var(--color-border-strong, var(--color-border));
+}
+.ws input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):focus,
+.ws select:focus,
+.ws textarea:focus {
+  outline: none;
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-gold) 25%, transparent);
+}
+.ws label.block { font-weight: 600; }
+.ws .bg-surface.rounded-xl.border { box-shadow: var(--shadow-card); }
