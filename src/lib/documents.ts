@@ -4,10 +4,17 @@
 // shown from a temporary in-memory blob URL, inside the app (see DocumentViewer) - never in a bare
 // browser tab, which has no way back.
 
-export async function fetchVerificationDocument(docId: string): Promise<{ ok: true; blob: Blob } | { ok: false; error: string }> {
+export const verificationDocumentUrl = (docId: string) => `/api/verification-documents/${encodeURIComponent(docId)}/file`;
+
+export function fetchVerificationDocument(docId: string) {
+  return fetchPrivateFile(verificationDocumentUrl(docId));
+}
+
+// Any private file the server only hands to a signed-in person (verification documents, the admin's client contracts).
+export async function fetchPrivateFile(url: string): Promise<{ ok: true; blob: Blob } | { ok: false; error: string }> {
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch(`/api/verification-documents/${encodeURIComponent(docId)}/file`, {
+    const res = await fetch(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
     if (!res.ok) {

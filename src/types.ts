@@ -1116,6 +1116,28 @@ export interface Prospect {
   wonAt?: string;
   lastReminderAt?: string;
   reminderCount?: number; // stale-prospect nudges sent since the last activity
+  contracts?: ProspectContract[]; // signed agreements on file (the files themselves are private, admin-only)
+}
+
+// A signed agreement attached to a prospect who subscribed. The scan/PDF sits in private storage; `fileRef` is the
+// opaque reference to it and is never sent to the browser (the file is opened through an admin-only download route).
+export type ContractKind = "SUBSCRIPTION" | "RENEWAL" | "ADDENDUM" | "OTHER";
+export interface ProspectContract {
+  id: string;
+  title: string;
+  kind: ContractKind;
+  planId?: string;
+  signedDate?: string; // YYYY-MM-DD
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
+  monthlyValue?: number; // QAR per month
+  notes?: string;
+  fileRef?: string; // server-side only
+  fileName: string;
+  mimeType: string;
+  size: number;
+  uploadedBy: string;
+  uploadedAt: string;
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -98,6 +98,7 @@ import {
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
 import { homeTitle, listingTitle } from "../lib/pageTitle.js";
+import { areaOptions, areaListingCount, withDescendants } from "../lib/locations.js";
 import { priceDrop, listedDaysAgo, isNewListing, listedLabel, NEW_LISTING_DAYS } from "../lib/propertySearch.js";
 import { isBelowMarket } from "../lib/marketPosition.js";
 import type { AgentPerformance } from "../lib/agentPerformance.js";
@@ -561,8 +562,8 @@ export default function VisitorExperience({
       
       // If area is chosen, translate to database district filter
       if (selectedArea) {
-        const area = locations.find(l => l.id === selectedArea);
-        if (area) params.append("district", area.name);
+        // an area also covers the districts under it (The Pearl: Porto Arabia, Viva Bahriya...)
+        for (const place of withDescendants(locations, selectedArea)) params.append("district", place.name);
       }
 
       if (propType) params.append("propertyType", propType);
@@ -927,7 +928,7 @@ export default function VisitorExperience({
   // Find municipality choices
   const municipalities = locations.filter(l => l.type === "MUNICIPALITY" && l.isActive);
   // Find area choices belonging to selected municipality
-  const filteredAreas = locations.filter(l => l.parentId === selectedMunicipality && l.isActive);
+  const filteredAreas = areaOptions(locations, selectedMunicipality);
 
   // Resolved display name for the currently-selected Area/District filter (if any) - passed to
   // MarketPriceIndex so its "selected district" mode matches whatever the visitor has actually
@@ -1203,9 +1204,9 @@ export default function VisitorExperience({
                 className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-base md:text-sm focus:outline-none focus:border-gold text-ink disabled:opacity-50"
               >
                 <option value="">{isRtl ? "كل المناطق" : "All Areas"}</option>
-                {filteredAreas.map(area => (
+                {filteredAreas.map(({ loc: area, depth }) => (
                   <option key={area.id} value={area.id}>
-                    {isRtl ? area.nameAr : area.name}{(() => { const m = locations.find(l => l.id === selectedMunicipality); const c = m ? districtCount(m.name, area.name) : undefined; return c ? ` (${c})` : ""; })()}
+                    {depth === 1 ? "   – " : ""}{isRtl ? area.nameAr : area.name}{(() => { const m = locations.find(l => l.id === selectedMunicipality); const c = m ? areaListingCount(locations, area.id, m.name, districtCount) : 0; return c ? ` (${c})` : ""; })()}
                   </option>
                 ))}
               </select>

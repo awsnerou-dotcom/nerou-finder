@@ -48,6 +48,7 @@ import {
 } from "./src/types.js";
 import { NEW_LEGAL_DOCUMENTS, upgradeSeededLegalDocuments } from "./src/data/legalTexts.js";
 import { DEFAULT_SUB_PLANS, upgradeSeededPlans } from "./src/data/plans.js";
+import { ADDED_LOCATIONS, withCoords } from "./src/data/qatarLocations.js";
 
 export interface DatabaseState {
   users: User[];
@@ -592,7 +593,7 @@ const DEFAULT_AUDIT_LOGS: AuditLog[] = [
   }
 ];
 
-export const DEFAULT_LOCATIONS: LocationItem[] = [
+const BASE_LOCATIONS: LocationItem[] = [
   // Country
   { id: "loc-qatar", name: "Qatar", nameAr: "قطر", type: "COUNTRY", isActive: true, seoSlug: "qatar" },
   
@@ -713,6 +714,9 @@ export const DEFAULT_LOCATIONS: LocationItem[] = [
   { id: "a-al-jamilas", name: "Al Jamilas", nameAr: "الجميلية", type: "AREA", parentId: "m-shahaniya", isActive: true, seoSlug: "al-jamilas" },
   { id: "a-karaana", name: "Al Karaana", nameAr: "الكرعانة", type: "AREA", parentId: "m-shahaniya", isActive: true, seoSlug: "al-karaana" }
 ];
+
+// The full built-in list: the places above, the neighbourhoods added later, each with an approximate map centre (see qatarLocations.ts).
+export const DEFAULT_LOCATIONS: LocationItem[] = [...BASE_LOCATIONS, ...ADDED_LOCATIONS].map(withCoords);
 
 const DEFAULT_SYSTEM_HEALTH: SystemHealthStatus = {
   api: "OPERATIONAL",
@@ -1023,8 +1027,13 @@ export function ensureStateDefaults(db: DatabaseState): void {
     db.locations = DEFAULT_LOCATIONS;
   } else {
     for (const loc of DEFAULT_LOCATIONS) {
-      if (!db.locations.some(existing => existing.id === loc.id)) {
+      const existing = db.locations.find(e => e.id === loc.id);
+      if (!existing) {
         db.locations.push(loc);
+      } else if (existing.latitude === undefined && existing.longitude === undefined && loc.latitude !== undefined) {
+        // places saved before map centres existed get one; a centre an admin has set is never touched
+        existing.latitude = loc.latitude;
+        existing.longitude = loc.longitude;
       }
     }
   }

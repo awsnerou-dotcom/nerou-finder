@@ -70,7 +70,10 @@ import {
   X,
   Calendar,
   MapPin,
-  Search
+  Search,
+  PanelLeft,
+  PanelLeftClose,
+  Maximize2
 } from "lucide-react";
 import StatCard from "./StatCard.js";
 import DashboardChart from "./DashboardChart.js";
@@ -120,6 +123,19 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     | "seo"
     | "showcase"
   >("overview");
+
+  // How much of the side menu to show: all of it, only the icons (tabs open in a small flyout), or none, which gives the
+  // working area the whole screen (handy for the sales board). Remembered between visits.
+  type SidebarMode = "full" | "icons" | "hidden";
+  const [sidebarMode, setSidebarModeState] = useState<SidebarMode>(() => {
+    try { const v = localStorage.getItem("cc-sidebar-mode"); return v === "icons" || v === "hidden" ? v : "full"; } catch { return "full"; }
+  });
+  const setSidebarMode = (m: SidebarMode) => {
+    setSidebarModeState(m);
+    setFlyoutGroup(null);
+    try { localStorage.setItem("cc-sidebar-mode", m); } catch { /* private mode: it just will not be remembered */ }
+  };
+  const [flyoutGroup, setFlyoutGroup] = useState<string | null>(null);
 
   // Collapsible sidebar navigation: which grouped sections are expanded
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({ overview_group: true });
@@ -1743,7 +1759,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     <div className="space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Control Center Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
+        <div className={sidebarMode === "hidden" ? "hidden" : ""}>
           <h2 className="text-2xl font-serif text-ink font-medium flex items-center gap-2">
             <ShieldAlert className="text-gold" size={26} />
             <span>{isRtl ? "منصة التحكم وإدارة التشغيل المركزي" : "Platform Central Control Center"}</span>
@@ -1752,7 +1768,31 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
             {isRtl ? "مستوى الصلاحيات: مشرف عمليات رئيسي • تشغيل كامل لبلدان الخليج" : "Authorization tier: Operations Superuser • Regional cluster oversight (Qatar, GCC)"}
           </p>
         </div>
-
+        {sidebarMode === "hidden" && (
+          <p className="text-sm font-serif font-semibold text-ink flex items-center gap-2 min-w-0">
+            <ShieldAlert className="text-gold shrink-0" size={18} />
+            <span className="truncate">{navGroups.flatMap(g => g.tabs).find(tab => tab.id === activeSubTab)?.label[isRtl ? "ar" : "en"] || ""}</span>
+          </p>
+        )}
+        <div role="group" aria-label={isRtl ? "عرض القائمة الجانبية" : "Side menu display"} className="inline-flex self-start sm:self-auto rounded-lg border border-border bg-surface-2 p-0.5 shrink-0" data-testid="sidebar-mode">
+          {([
+            ["full", PanelLeft, isRtl ? "القائمة كاملة" : "Full menu"],
+            ["icons", PanelLeftClose, isRtl ? "أيقونات فقط" : "Icons only"],
+            ["hidden", Maximize2, isRtl ? "إخفاء القائمة (شاشة كاملة)" : "Hide menu (full screen)"]
+          ] as const).map(([mode, Icon, label]) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => setSidebarMode(mode)}
+              aria-pressed={sidebarMode === mode}
+              aria-label={label}
+              title={label}
+              className={`w-8 h-8 inline-flex items-center justify-center rounded-md cursor-pointer transition-colors ${sidebarMode === mode ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink"}`}
+            >
+              <Icon size={15} className={isRtl && mode !== "hidden" ? "-scale-x-100" : ""} />
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Floating Toast Notification */}
@@ -1775,13 +1815,57 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Collapsible grouped sidebar navigation (FIX 2) */}
-        <aside className="w-full lg:w-64 lg:shrink-0">
-          <nav className="bg-surface-2 rounded-xl p-2 space-y-1 text-xs font-medium lg:sticky lg:top-4">
+        {sidebarMode !== "hidden" && (
+        <aside className={`w-full lg:shrink-0 ${sidebarMode === "icons" ? "lg:w-14" : "lg:w-64"}`}>
+          <nav
+            aria-label={isRtl ? "أقسام لوحة التحكم" : "Control center sections"}
+            className={`bg-surface-2 rounded-xl p-2 text-xs font-medium lg:sticky lg:top-4 ${sidebarMode === "icons" ? "flex flex-row flex-wrap lg:flex-col gap-1 items-center" : "space-y-1"}`}
+          >
             {navGroups.map(group => {
               const isExpanded = !!expandedGroups[group.id];
               const groupHasActive = group.tabs.some(t => t.id === activeSubTab);
               const GroupIcon = group.icon;
               const groupBadgeTotal = group.tabs.reduce((sum, t) => sum + (t.badge || 0), 0);
+              const groupLabel = isRtl ? group.label.ar : group.label.en;
+
+              if (sidebarMode === "icons") {
+                const open = flyoutGroup === group.id;
+                return (
+                  <div key={group.id} className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setFlyoutGroup(open ? null : group.id)}
+                      aria-label={groupLabel}
+                      aria-expanded={open}
+                      title={groupLabel}
+                      className={`relative w-10 h-10 inline-flex items-center justify-center rounded-lg cursor-pointer transition-colors ${groupHasActive ? "bg-surface text-ink shadow-sm" : "text-ink-muted hover:text-ink hover:bg-white/50"}`}
+                    >
+                      <GroupIcon size={17} className={groupHasActive ? "text-gold" : ""} />
+                      {groupBadgeTotal > 0 && <span className="absolute -top-0.5 -end-0.5 min-w-[16px] h-4 px-1 rounded-full bg-gold text-black text-[9px] font-bold leading-4 text-center">{groupBadgeTotal}</span>}
+                    </button>
+                    {open && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setFlyoutGroup(null)} aria-hidden />
+                        <div role="menu" aria-label={groupLabel} className="absolute z-40 top-full start-0 mt-1 lg:top-0 lg:start-full lg:ms-2 lg:mt-0 w-56 bg-surface border border-border rounded-xl shadow-xl p-1.5 space-y-0.5">
+                          <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-ink-muted">{groupLabel}</p>
+                          {group.tabs.map(tab => (
+                            <button
+                              key={tab.id}
+                              role="menuitem"
+                              onClick={() => { setActiveSubTab(tab.id as any); setFlyoutGroup(null); }}
+                              className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors text-start ${activeSubTab === tab.id ? "bg-surface-2 text-ink" : "text-ink-muted hover:text-ink hover:bg-surface-2"}`}
+                            >
+                              <span>{isRtl ? tab.label.ar : tab.label.en}</span>
+                              {!!tab.badge && <span className="bg-gold text-black text-[9px] px-1.5 py-0.2 rounded-full font-bold">{tab.badge}</span>}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <div key={group.id}>
                   <button
@@ -1790,7 +1874,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   >
                     <span className="flex items-center gap-2">
                       <GroupIcon size={14} className={groupHasActive ? "text-gold" : ""} />
-                      {isRtl ? group.label.ar : group.label.en}
+                      {groupLabel}
                     </span>
                     <span className="flex items-center gap-1.5">
                       {groupBadgeTotal > 0 && (
@@ -1824,6 +1908,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
             })}
           </nav>
         </aside>
+        )}
 
         {/* Active tab content */}
         <div className="flex-1 min-w-0">

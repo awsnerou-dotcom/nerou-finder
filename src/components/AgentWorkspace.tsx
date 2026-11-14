@@ -9,6 +9,7 @@ import { agentChecklist } from "../lib/workspaceReadiness.js";
 import { cleanTourUrl } from "../lib/virtualTour.js";
 import { hasExactPin, type Pin } from "../lib/mapPin.js";
 import PinPicker from "./PinPicker.js";
+import { areaOptions, locationCenter, municipalityOf } from "../lib/locations.js";
 import { SubscriptionAlertBanner, ReadinessCard } from "./WorkspaceWidgets.js";
 import React, { useState, useEffect } from "react";
 import {
@@ -97,6 +98,8 @@ interface AgentWorkspaceProps {
 // A listing may carry at most this many photos - enforced client-side here and
 // server-side in POST /api/properties.
 const MAX_LISTING_IMAGES = 14;
+// value of the Area select when the agent's place is not in the list and they type its name instead
+const OTHER_AREA = "__other";
 
 export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWorkspaceProps) {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -316,6 +319,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [selectedMunicipality, setSelectedMunicipality] = useState<string>("");
   const [selectedArea, setSelectedArea] = useState<string>("");
+  // the agent's own place name when the area is not in the list (selectedArea is then OTHER_AREA)
+  const [customArea, setCustomArea] = useState<string>("");
 
   // "Link to a developer project" (optional) - lets an agent attach this unit to an existing
   // developer Project, or enter a brand-new one inline for a real-world developer that has no
@@ -400,6 +405,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       setListingTenureType(draft.listingTenureType || "");
       setSelectedMunicipality(draft.selectedMunicipality || "");
       setSelectedArea(draft.selectedArea || "");
+      setCustomArea(draft.customArea || "");
       setListingDesc(draft.listingDesc || "");
       setListingDescAr(draft.listingDescAr || "");
       setListingImages(draft.listingImages || []);
@@ -425,7 +431,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
         listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
         listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
-        selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingNearby, listingVideoUrl
+        selectedMunicipality, selectedArea, customArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingNearby, listingVideoUrl
       };
       localStorage.setItem(listingDraftKey, JSON.stringify(draft));
     } catch (e) {
@@ -435,7 +441,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     isAddingListing, editingPropertyId, wizardStep, listingTitle, listingPrice, listingType, listingTrans, listingArea, listingBeds, listingBaths,
     listingCompletionYear, listingFurnishingStatus, listingMetroStation, listingMetroWalkingMinutes,
     listingUtilitiesIncluded, listingParkingType, listingParkingSpaces, listingTenureType,
-    selectedMunicipality, selectedArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingNearby, listingVideoUrl, listingDraftKey
+    selectedMunicipality, selectedArea, customArea, listingDesc, listingDescAr, listingImages, listingAmenities, listingNearby, listingVideoUrl, listingDraftKey
   ]);
 
   useEffect(() => {
@@ -859,8 +865,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   // 5-step "Add Listing" wizard: names + per-step validation. Validation checks mirror exactly
   // what the original single-page form already enforced (via `required` attributes and the
   // guard at the top of handleAddListing) - just moved to fire on "Next" instead of only at
-  // final submit. Location (step 2) and Photos (step 4) carry no hard requirement in the
-  // original form either (location silently falls back to Doha/West Bay), so none is added here.
+  // final submit. Location (step 2) used to carry no requirement and silently fell back to Doha/West Bay, which put
+  // listings in the wrong place; it now needs a municipality and an area (or a typed area name). Photos (step 4) still carry none.
   const LISTING_WIZARD_STEPS: { step: number; en: string; ar: string }[] = [
     { step: 1, en: "Type & Purpose", ar: "النوع والغرض" },
     { step: 2, en: "Location", ar: "الموقع" },
@@ -875,6 +881,11 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         if (!listingTitle.trim()) return isRtl ? "يرجى إدخال عنوان الإعلان." : "Please enter a listing title.";
         if (!listingType) return isRtl ? "يرجى اختيار نوع العقار." : "Please select a property type.";
         if (!listingTrans) return isRtl ? "يرجى اختيار نوع المعاملة." : "Please select a transaction type.";
+        return null;
+      case 2:
+        if (!selectedMunicipality) return isRtl ? "يرجى اختيار البلدية." : "Please choose the municipality.";
+        if (!selectedArea) return isRtl ? "يرجى اختيار الحي / المنطقة، أو اختر «منطقة غير مدرجة» واكتب اسمها." : "Please choose the area, or pick \"My area is not listed\" and type its name.";
+        if (selectedArea === OTHER_AREA && customArea.trim().length < 2) return isRtl ? "اكتب اسم المنطقة." : "Please type the name of the area.";
         return null;
       case 3:
         if (!listingPrice || Number(listingPrice) < 0) return isRtl ? "يرجى إدخال سعر صالح." : "Please enter a valid price.";
@@ -923,8 +934,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     // Resolve city & district names from selected location IDs
     const muniItem = locations.find(l => l.id === selectedMunicipality);
     const areaItem = locations.find(l => l.id === selectedArea);
+    // step 2 now insists on a place, so these are what the agent picked (or typed), never a silent default
     const finalCity = muniItem ? muniItem.name : "Doha";
-    const finalDistrict = areaItem ? areaItem.name : "West Bay";
+    const finalDistrict = selectedArea === OTHER_AREA ? customArea.trim() : areaItem ? areaItem.name : "West Bay";
 
     setProjectAuthError(null);
 
@@ -1153,8 +1165,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     setListingTenureType(prop.tenureType || "");
     const muni = locations.find(l => l.type === "MUNICIPALITY" && l.name === prop.city);
     setSelectedMunicipality(muni?.id || "");
-    const area = locations.find(l => l.parentId === muni?.id && l.name === prop.district);
-    setSelectedArea(area?.id || "");
+    // an area or a district under one; a name that is not in the list comes back as the agent's own typed area
+    const area = locations.find(l => (l.type === "AREA" || l.type === "DISTRICT") && l.name === prop.district && municipalityOf(locations, l.id)?.id === muni?.id);
+    setSelectedArea(area?.id || (prop.district ? OTHER_AREA : ""));
+    setCustomArea(area ? "" : prop.district || "");
     setListingDesc(prop.description || "");
     // Pre-fill the Arabic field only with a *genuine* Arabic description. Every listing
     // created before this field existed (and any listing whose agent simply left it blank)
@@ -2053,6 +2067,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       onChange={(e) => {
                         setSelectedMunicipality(e.target.value);
                         setSelectedArea("");
+                        setCustomArea("");
                       }}
                       className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
                     >
@@ -2071,11 +2086,22 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       onChange={(e) => setSelectedArea(e.target.value)}
                       className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg disabled:opacity-50"
                     >
-                      <option value="">Select Area / District</option>
-                      {locations.filter(l => l.parentId === selectedMunicipality && l.isActive).map(area => (
-                        <option key={area.id} value={area.id}>{area.name}</option>
+                      <option value="">{isRtl ? "اختر الحي / المنطقة" : "Select Area / District"}</option>
+                      {areaOptions(locations, selectedMunicipality).map(({ loc: area, depth }) => (
+                        <option key={area.id} value={area.id}>{depth === 1 ? "   – " : ""}{isRtl && area.nameAr ? area.nameAr : area.name}</option>
                       ))}
+                      <option value={OTHER_AREA}>{isRtl ? "منطقة غير مدرجة…" : "My area is not listed…"}</option>
                     </select>
+                    {selectedArea === OTHER_AREA && (
+                      <input
+                        type="text"
+                        value={customArea}
+                        onChange={(e) => setCustomArea(e.target.value.slice(0, 80))}
+                        placeholder={isRtl ? "اكتب اسم المنطقة" : "Type the area name"}
+                        aria-label={isRtl ? "اسم المنطقة" : "Area name"}
+                        className="mt-2 w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg"
+                      />
+                    )}
                   </div>
 
                   <div className="sm:col-span-2">
@@ -2083,10 +2109,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                       value={listingPin}
                       onChange={setListingPin}
                       isRtl={isRtl}
-                      center={(() => {
-                        const area = locations.find(l => l.id === selectedArea) || locations.find(l => l.id === selectedMunicipality);
-                        return area && area.latitude && area.longitude ? { latitude: area.latitude, longitude: area.longitude } : null;
-                      })()}
+                      center={locationCenter(locations, selectedArea && selectedArea !== OTHER_AREA ? selectedArea : selectedMunicipality)}
                     />
                   </div>
                 </div>
@@ -2613,7 +2636,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                           <div className="flex justify-between sm:block">
                             <span className="text-ink-muted">{isRtl ? "الموقع" : "Location"}</span>
                             <span className="font-bold text-ink sm:block">
-                              {(muniItem?.name || "Doha")}{areaItem ? ` › ${areaItem.name}` : ""}
+                              {(muniItem?.name || "Doha")}{selectedArea === OTHER_AREA ? (customArea.trim() ? ` › ${customArea.trim()}` : "") : areaItem ? ` › ${areaItem.name}` : ""}
                             </span>
                           </div>
                           <div className="flex justify-between sm:block">

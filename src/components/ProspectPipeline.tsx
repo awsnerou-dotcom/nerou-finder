@@ -10,7 +10,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  BellRing, Download, Mail, MessageCircle, Phone, Plus, RefreshCw, Search, Trash2, TrendingUp, Upload, UserCheck, Users, Banknote, CalendarClock, Pencil, Settings
+  BellRing, Download, FileText, Mail, MessageCircle, Phone, Plus, RefreshCw, Search, Trash2, TrendingUp, Upload, UserCheck, Users, Banknote, CalendarClock, Pencil, Settings
 } from "lucide-react";
 import type { Prospect, ProspectActivity, ProspectKind, ProspectSource, ProspectStage } from "../types.js";
 import {
@@ -18,6 +18,9 @@ import {
 } from "../lib/prospects.js";
 import type { ProspectStats } from "../lib/prospects.js";
 import { addDaysToDate, qatarDate } from "../lib/crm.js";
+import { contractNeedsRenewal, contractState, currentContract, needsContract } from "../lib/contracts.js";
+import type { ContractStats } from "../lib/contracts.js";
+import ContractsSection from "./ProspectContracts.js";
 import { Button } from "./ui/Button.js";
 import { Modal } from "./ui/Modal.js";
 import { Input } from "./ui/FormField.js";
@@ -35,8 +38,10 @@ interface Overview {
   owners: { id: string; fullName: string }[];
   plans: { id: string; name: string; priceMonthly: number }[];
   stats: ProspectStats;
+  contractStats: ContractStats;
   reminderEmail: { custom: string; login: string };
 }
+type ContractFilter = "all" | "missing" | "ending";
 type View = "board" | "followups" | "insights";
 
 const STAGE_ACCENT: Record<ProspectStage, string> = {
@@ -66,6 +71,7 @@ export default function ProspectPipeline({ isRtl, currentUserId }: { isRtl: bool
   const [search, setSearch] = useState("");
   const [ownerFilter, setOwnerFilter] = useState("all");
   const [sourceFilter, setSourceFilter] = useState("all");
+  const [contractFilter, setContractFilter] = useState<ContractFilter>("all");
   const [formCtx, setFormCtx] = useState<{ prospect: ProspectRow | null } | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [lostCtx, setLostCtx] = useState<ProspectRow | null>(null);
@@ -96,11 +102,15 @@ export default function ProspectPipeline({ isRtl, currentUserId }: { isRtl: bool
   const all = useMemo(() => data?.prospects ?? [], [data]);
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const now = Date.now();
     return all.filter(p =>
       (ownerFilter === "all" || p.ownerId === ownerFilter) &&
       (sourceFilter === "all" || p.source === sourceFilter) &&
+      (contractFilter === "all"
+        || (contractFilter === "missing" && needsContract(p))
+        || (contractFilter === "ending" && contractNeedsRenewal(p, now))) &&
       (!q || [p.name, p.company, p.email, p.phone, p.whatsapp].some(v => !!v && v.toLowerCase().includes(q))));
-  }, [all, search, ownerFilter, sourceFilter]);
+  }, [all, search, ownerFilter, sourceFilter, contractFilter]);
   const detail = detailId ? all.find(p => p.id === detailId) || null : null;
 
   const moveStage = (p: ProspectRow, stage: ProspectStage) => {
@@ -156,12 +166,14 @@ export default function ProspectPipeline({ isRtl, currentUserId }: { isRtl: bool
       </div>
 
       {/* numbers */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         <Kpi icon={<Users size={15} />} label={t("Open prospects", "عملاء محتملون مفتوحون")} value={String(s.open)} />
         <Kpi icon={<BellRing size={15} />} label={t("Follow-ups due", "متابعات مستحقة")} value={String(s.dueNow)} warn={s.dueNow > 0} onClick={() => setView("followups")} />
         <Kpi icon={<Banknote size={15} />} label={t("Pipeline value / month", "قيمة الخط شهريًا")} value={money(s.pipelineMonthly, isRtl)} />
         <Kpi icon={<UserCheck size={15} />} label={t("Subscribed this month", "اشتركوا هذا الشهر")} value={`${s.wonThisMonth} · ${money(s.wonThisMonthMonthly, isRtl)}`} />
         <Kpi icon={<TrendingUp size={15} />} label={t("Win rate", "نسبة النجاح")} value={s.conversionPercent === null ? "—" : `${s.conversionPercent}%`} />
+        <Kpi icon={<FileText size={15} />} label={t("Subscribed, no contract", "اشتركوا بدون عقد")} value={`${data.contractStats.missing} / ${data.contractStats.subscribed}`}
+          warn={data.contractStats.missing > 0} onClick={data.contractStats.missing > 0 ? () => { setView("board"); setContractFilter("missing"); } : undefined} />
       </div>
 
       {/* tabs + filters */}
@@ -186,6 +198,11 @@ export default function ProspectPipeline({ isRtl, currentUserId }: { isRtl: bool
           <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} className="px-2 py-1.5 bg-surface border border-border rounded-lg text-xs" aria-label={t("Source", "المصدر")}>
             <option value="all">{t("All sources", "كل المصادر")}</option>
             {PROSPECT_SOURCES.map(x => <option key={x} value={x}>{isRtl ? SOURCE_TEXT[x].ar : SOURCE_TEXT[x].en}</option>)}
+          </select>
+          <select value={contractFilter} onChange={e => setContractFilter(e.target.value as ContractFilter)} className="px-2 py-1.5 bg-surface border border-border rounded-lg text-xs" aria-label={t("Contracts", "العقود")}>
+            <option value="all">{t("All contracts", "كل العقود")}</option>
+            <option value="missing">{t(`Subscribed, no contract (${data.contractStats.missing})`, `اشتركوا بدون عقد (${data.contractStats.missing})`)}</option>
+            <option value="ending">{t(`Contract ending or ended (${data.contractStats.endingSoon + data.contractStats.expired})`, `عقد ينتهي أو انتهى (${data.contractStats.endingSoon + data.contractStats.expired})`)}</option>
           </select>
         </div>
       </div>
@@ -241,7 +258,7 @@ export default function ProspectPipeline({ isRtl, currentUserId }: { isRtl: bool
       )}
       {detail && (
         <ProspectDetail
-          p={detail} isRtl={isRtl} t={t} data={data} today={today}
+          p={detail} isRtl={isRtl} t={t} data={data} today={today} onReload={reload} say={say}
           onClose={() => setDetailId(null)}
           onEdit={() => setFormCtx({ prospect: detail })}
           onDelete={() => setDeleteCtx(detail)}
@@ -309,6 +326,9 @@ function ProspectCard({ p, isRtl, t, today, onOpen, onMove }: { p: ProspectRow; 
         <span className="px-1.5 py-0.5 rounded bg-surface-2 text-ink-muted text-[10px] font-bold">{isRtl ? KIND_TEXT[p.kind].ar : KIND_TEXT[p.kind].en}</span>
         <span className="px-1.5 py-0.5 rounded bg-surface-2 text-ink-muted text-[10px]">{isRtl ? SOURCE_TEXT[p.source].ar : SOURCE_TEXT[p.source].en}</span>
         {p.signedUp && <span className="px-1.5 py-0.5 rounded bg-success-soft text-success text-[10px] font-bold">{t("Has an account", "لديه حساب")}</span>}
+        {p.stage === "WON" && (needsContract(p)
+          ? <span className="px-1.5 py-0.5 rounded bg-warning-soft text-warning text-[10px] font-bold">{t("No contract", "بدون عقد")}</span>
+          : <span className="px-1.5 py-0.5 rounded bg-success-soft text-success text-[10px] font-bold">{t("Contract on file", "العقد محفوظ")}</span>)}
       </div>
       {followUpChip(p, today, t)}
       {p.followUpNote && isOpenProspect(p) && <p className="text-[11px] text-ink-muted line-clamp-2">{p.followUpNote}</p>}
@@ -485,8 +505,9 @@ function ProspectForm({ isRtl, t, data, initial, currentUserId, onClose, onSave 
 
 const ACTIVITY_ICON: Record<string, string> = { created: "＋", note: "✎", call: "☎", whatsapp: "💬", email: "✉", meeting: "👥", stage: "➜", followup: "⏰", edit: "✎" };
 
-function ProspectDetail({ p, isRtl, t, data, today, onClose, onEdit, onDelete, onMove, onSetFollowUp, onOwner, onLog }: {
-  p: ProspectRow; isRtl: boolean; t: T; data: Overview; today: string; onClose: () => void; onEdit: () => void; onDelete: () => void;
+function ProspectDetail({ p, isRtl, t, data, today, onReload, say, onClose, onEdit, onDelete, onMove, onSetFollowUp, onOwner, onLog }: {
+  p: ProspectRow; isRtl: boolean; t: T; data: Overview; today: string; onReload: () => Promise<void>; say: (text: string, bad?: boolean) => void;
+  onClose: () => void; onEdit: () => void; onDelete: () => void;
   onMove: (p: ProspectRow, s: ProspectStage) => void; onSetFollowUp: (p: ProspectRow, date: string) => void;
   onOwner: (id: string) => void; onLog: (payload: Record<string, unknown>) => Promise<boolean>;
 }) {
@@ -537,6 +558,7 @@ function ProspectDetail({ p, isRtl, t, data, today, onClose, onEdit, onDelete, o
               <p className="text-ink">{t("Application", "الطلب")}: {p.signedUp.applicationStatus} · {t("Verification", "التوثيق")}: {p.signedUp.verificationStatus} · {t("Subscription", "الاشتراك")}: {p.signedUp.subscriptionStatus ? `${p.signedUp.planName || ""} ${p.signedUp.subscriptionStatus}` : t("none yet", "لا يوجد بعد")}</p>
             </div>
           )}
+          <ContractsSection p={p} plans={data.plans} isRtl={isRtl} t={t} onChanged={onReload} say={say} />
           <div className="grid grid-cols-2 gap-3">
             <Label text={t("Stage", "المرحلة")}>
               <select value={p.stage} onChange={e => onMove(p, e.target.value as ProspectStage)} className={select}>{PROSPECT_STAGES.map(s => <option key={s} value={s}>{isRtl ? STAGE_TEXT[s].ar : STAGE_TEXT[s].en}</option>)}</select>

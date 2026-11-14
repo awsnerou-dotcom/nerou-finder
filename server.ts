@@ -35,6 +35,7 @@ import {
   Deal,
   Task,
   Prospect,
+  ProspectContract,
   ProspectActivity,
   ProspectStage,
   ShowcaseEntry,
@@ -113,6 +114,8 @@ import {
   ProspectDue,
   ProspectInput
 } from "./src/lib/prospects.js";
+import { withDescendants } from "./src/lib/locations.js";
+import { validateContractInput, contractStats, MAX_CONTRACTS_PER_CLIENT } from "./src/lib/contracts.js";
 import { validateShowcaseInput, sortShowcase } from "./src/lib/showcase.js";
 import { validatePlanRequest, describePlanRequest } from "./src/lib/planRequest.js";
 import { compareWithMarket } from "./src/lib/marketComparison.js";
@@ -1977,7 +1980,9 @@ app.get("/api/properties", (req, res) => {
     properties = properties.filter(p => (p.city || "").toLowerCase() === (city as string).toLowerCase());
   }
   if (district) {
-    properties = properties.filter(p => (p.district || "").toLowerCase() === (district as string).toLowerCase());
+    // one district, or several (an area together with the districts under it: ?district=The Pearl&district=Porto Arabia)
+    const wanted = (Array.isArray(district) ? district : [district]).map(d => String(d).toLowerCase());
+    properties = properties.filter(p => wanted.includes((p.district || "").toLowerCase()));
   }
   if (propertyType) {
     properties = properties.filter(p => p.propertyType === propertyType);
@@ -3030,12 +3035,11 @@ async function checkAndIncrementSavedSearches(property: Property) {
 
       if (filters.selectedArea) {
         const db = readDb();
-        const area = db.locations?.find(l => l.id === filters.selectedArea);
-        if (area) {
-          const aName = area.name.toLowerCase();
-          const aNameAr = area.nameAr.toLowerCase();
-          const pDistrict = property.district.toLowerCase();
-          if (pDistrict !== aName && pDistrict !== aNameAr) {
+        // an area also means the districts under it (The Pearl: Porto Arabia, Viva Bahriya...)
+        const places = withDescendants(db.locations || [], filters.selectedArea);
+        if (places.length > 0) {
+          const wanted = places.flatMap(l => [l.name.toLowerCase(), (l.nameAr || "").toLowerCase()]);
+          if (!wanted.includes(property.district.toLowerCase())) {
             matches = false;
           }
         }
@@ -5261,7 +5265,9 @@ function prospectSignup(db: DatabaseState, p: Prospect) {
 }
 
 function prospectView(db: DatabaseState, p: Prospect) {
-  return { ...p, ownerName: db.users.find(u => u.id === p.ownerId)?.fullName || "—", signedUp: prospectSignup(db, p) || null };
+  // the private file reference never leaves the server: contracts are opened through the admin-only download route
+  const contracts = (p.contracts || []).map(({ fileRef: _fileRef, ...c }) => c);
+  return { ...p, contracts, ownerName: db.users.find(u => u.id === p.ownerId)?.fullName || "—", signedUp: prospectSignup(db, p) || null };
 }
 
 function addProspectActivity(p: Prospect, by: string, type: ProspectActivity["type"], text: string, now = new Date()) {
@@ -5380,6 +5386,7 @@ app.get("/api/admin/prospects", (req, res) => {
     owners: platformAdmins(db).map(u => ({ id: u.id, fullName: u.fullName })),
     plans: db.subscriptionPlans.map(pl => ({ id: pl.id, name: pl.name, priceMonthly: pl.priceMonthly })),
     stats: prospectStats(prospects, Date.now()),
+    contractStats: contractStats(prospects, Date.now()),
     reminderEmail: { custom: me?.prospectReminderEmail || "", login: me?.email || "" }
   });
 });
@@ -5535,9 +5542,122 @@ app.delete("/api/admin/prospects/:id", (req, res) => {
   const idx = (db.prospects || []).findIndex(x => x.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: "Prospect not found." });
   const [gone] = db.prospects!.splice(idx, 1);
+  for (const c of gone.contracts || []) deletePrivateDocFile(c.fileRef); // their signed papers go with them
   writeDb(db);
   logAudit(actor.id, actor.name, actor.role, "DELETE_PROSPECT", gone.id, "Prospect", { name: gone.name });
   res.json({ success: true });
+});
+
+// ---------------------------------------------------------------------------------------------
+// Signed contracts kept against a client (platform admin only; /api/admin is already behind that check).
+// The scan goes to the same private folder as verification documents - never served statically, content-sniffed,
+// opened only through the download route below.
+// ---------------------------------------------------------------------------------------------
+
+// multer hands the file name over as latin1; Arabic names need turning back into UTF-8 before they are shown.
+function cleanUploadName(name: string): string {
+  let n = name;
+  try { n = Buffer.from(name, "latin1").toString("utf8"); if (n.includes("�")) n = name; } catch { n = name; }
+  const printable = Array.from(n).map(ch => (ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127 ? " " : ch)).join("");
+  return printable.replace(/[<>:"/\\|?*]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 120) || "contract";
+}
+
+app.post("/api/admin/prospects/:id/contracts", uploadRateLimiter, (req, res) => {
+  const actor = getAuditActor(req);
+  privateDocUpload.single("file")(req, res, (err: any) => {
+    const file = (req as any).file as Express.Multer.File | undefined;
+    const filePath = file ? path.join(privateDocsDir, file.filename) : "";
+    const drop = () => { if (filePath) { try { fs.unlinkSync(filePath); } catch {} } };
+    if (err) return res.status(400).json({ error: err.code === "LIMIT_FILE_SIZE" ? "The file is larger than 10 MB." : (err.message || "File upload failed.") });
+    if (!file) return res.status(400).json({ error: "Choose the signed contract file (PDF or a clear photo/scan)." });
+
+    const db = readDb();
+    const p = (db.prospects || []).find(x => x.id === req.params.id);
+    if (!p) { drop(); return res.status(404).json({ error: "Client not found." }); }
+    if ((p.contracts || []).length >= MAX_CONTRACTS_PER_CLIENT) { drop(); return res.status(400).json({ error: `At most ${MAX_CONTRACTS_PER_CLIENT} contracts per client.` }); }
+
+    // the declared Content-Type is attacker controlled, the leading bytes are not
+    const head = Buffer.alloc(12);
+    const fd = fs.openSync(filePath, "r");
+    fs.readSync(fd, head, 0, 12, 0);
+    fs.closeSync(fd);
+    if (!fileMatchesDeclaredType(head, file.mimetype)) { drop(); return res.status(400).json({ error: "The file does not match its declared file type." }); }
+
+    const checked = validateContractInput((req.body || {}) as Record<string, unknown>);
+    if (checked.ok === false) { drop(); return res.status(400).json({ error: checked.error }); }
+
+    const now = new Date();
+    const contract: ProspectContract = {
+      id: `ct-${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`,
+      ...checked.value,
+      fileRef: PRIVATE_DOCS_PREFIX + file.filename,
+      fileName: cleanUploadName(file.originalname),
+      mimeType: file.mimetype,
+      size: file.size,
+      uploadedBy: actor.name,
+      uploadedAt: now.toISOString()
+    };
+    p.contracts = [...(p.contracts || []), contract];
+    addProspectActivity(p, actor.name, "edit", `Contract attached: ${contract.title}.`, now);
+    p.updatedAt = now.toISOString();
+    writeDb(db);
+    logAudit(actor.id, actor.name, actor.role, "ATTACH_CONTRACT", p.id, "Prospect", { contract: contract.id, title: contract.title });
+    res.status(201).json({ prospect: prospectView(db, p) });
+  });
+});
+
+function findContract(db: DatabaseState, prospectId: string, contractId: string) {
+  const p = (db.prospects || []).find(x => x.id === prospectId);
+  const c = p?.contracts?.find(x => x.id === contractId);
+  return p && c ? { p, c } : null;
+}
+
+app.get("/api/admin/prospects/:id/contracts/:cid/file", (req, res) => {
+  const found = findContract(readDb(), req.params.id, req.params.cid);
+  if (!found) return res.status(404).json({ error: "Contract not found." });
+  const filePath = privateDocPath(found.c.fileRef);
+  if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ error: "The file for this contract is no longer available." });
+  res.setHeader("Content-Type", PRIVATE_DOC_MIME_BY_EXT[path.extname(filePath).toLowerCase()] || "application/octet-stream");
+  res.setHeader("Content-Disposition", "inline");
+  res.setHeader("Cache-Control", "private, no-store");
+  res.sendFile(filePath);
+});
+
+// Fix the details of a contract already on file (a renewal moves the end date, a typo in the title) without re-uploading.
+app.patch("/api/admin/prospects/:id/contracts/:cid", (req, res) => {
+  const actor = getAuditActor(req);
+  const db = readDb();
+  const found = findContract(db, req.params.id, req.params.cid);
+  if (!found) return res.status(404).json({ error: "Contract not found." });
+  const body = (req.body || {}) as Record<string, unknown>;
+  const keys = ["title", "kind", "planId", "signedDate", "startDate", "endDate", "monthlyValue", "notes"] as const;
+  const merged: Record<string, unknown> = {};
+  for (const k of keys) merged[k] = k in body ? body[k] : (found.c as any)[k];
+  const checked = validateContractInput(merged);
+  if (checked.ok === false) return res.status(400).json({ error: checked.error });
+  for (const k of keys) delete (found.c as any)[k];
+  Object.assign(found.c, checked.value);
+  const now = new Date();
+  addProspectActivity(found.p, actor.name, "edit", `Contract updated: ${found.c.title}.`, now);
+  found.p.updatedAt = now.toISOString();
+  writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "UPDATE_CONTRACT", found.p.id, "Prospect", { contract: found.c.id });
+  res.json({ prospect: prospectView(db, found.p) });
+});
+
+app.delete("/api/admin/prospects/:id/contracts/:cid", (req, res) => {
+  const actor = getAuditActor(req);
+  const db = readDb();
+  const found = findContract(db, req.params.id, req.params.cid);
+  if (!found) return res.status(404).json({ error: "Contract not found." });
+  deletePrivateDocFile(found.c.fileRef);
+  found.p.contracts = (found.p.contracts || []).filter(x => x.id !== found.c.id);
+  const now = new Date();
+  addProspectActivity(found.p, actor.name, "edit", `Contract removed: ${found.c.title}.`, now);
+  found.p.updatedAt = now.toISOString();
+  writeDb(db);
+  logAudit(actor.id, actor.name, actor.role, "DELETE_CONTRACT", found.p.id, "Prospect", { contract: found.c.id, title: found.c.title });
+  res.json({ prospect: prospectView(db, found.p) });
 });
 
 // Bulk add from a spreadsheet the browser has already parsed into rows.

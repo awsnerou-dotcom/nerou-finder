@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, Download, ExternalLink, FileText, X } from "lucide-react";
-import { documentKind, fetchVerificationDocument } from "../lib/documents.js";
+import { documentKind, fetchPrivateFile, verificationDocumentUrl } from "../lib/documents.js";
 import type { DocumentKind } from "../lib/documents.js";
 import { Spinner } from "./ui/Spinner.js";
 
 // Shows a private verification document inside the app, on top of the current screen, with a way
 // back (Back button, X, Escape, or a tap outside). Opening the raw file in a new browser tab left
 // people with no button to return, especially on a phone.
-export default function DocumentViewer({ docId, title, isRtl, onClose }: {
-  docId: string;
+export default function DocumentViewer({ docId, fileUrl, title, isRtl, onClose }: {
+  /** a verification document id... */
+  docId?: string;
+  /** ...or the API path of any other private file (for example a client's contract) */
+  fileUrl?: string;
   title: string;
   isRtl: boolean;
   onClose: () => void;
@@ -21,7 +24,7 @@ export default function DocumentViewer({ docId, title, isRtl, onClose }: {
     let revoke = "";
     let cancelled = false;
     setUrl(""); setError("");
-    fetchVerificationDocument(docId).then(r => {
+    fetchPrivateFile(fileUrl || verificationDocumentUrl(docId || "")).then(r => {
       if (cancelled) return;
       if (r.ok === false) { setError(r.error); return; }
       revoke = URL.createObjectURL(r.blob);
@@ -29,7 +32,7 @@ export default function DocumentViewer({ docId, title, isRtl, onClose }: {
       setUrl(revoke);
     });
     return () => { cancelled = true; if (revoke) URL.revokeObjectURL(revoke); };
-  }, [docId]);
+  }, [docId, fileUrl]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
