@@ -22,6 +22,7 @@ interface Overview {
   landingPages: number;
   duplicatePages: number;
   sitemapUrls: number;
+  autoIndexNow?: { on: boolean; lastRun: string | null; lastSubmitted: number; lastNote: string };
   pages: { path: string; arPath: string; label: string; labelAr: string; listings: number; indexable: boolean; canonicalPath: string }[];
 }
 
@@ -103,9 +104,19 @@ export default function SeoCenter({ isRtl }: { isRtl: boolean }) {
           </li>
           <li>
             <strong>{t("Bing, Yandex and others:", "Bing وYandex وغيرها:")}</strong>{" "}
-            {t("press the button to send all page addresses at once. Do it again after publishing new listings.", "اضغط الزر لإرسال كل الروابط دفعة واحدة. كرّر ذلك بعد نشر إعلانات جديدة.")}
+            {data.autoIndexNow?.on
+              ? t("automatic: new and changed pages (listings, area pages, reports, guides, agents) are sent every few hours, once each. Nothing for you to do.",
+                  "تلقائي: الصفحات الجديدة والمعدّلة (إعلانات وصفحات مناطق وتقارير وأدلة ووكلاء) تُرسل كل بضع ساعات مرة واحدة لكل صفحة. لا يلزمك فعل شيء.")
+              : t("press the button to send all page addresses at once.", "اضغط الزر لإرسال كل الروابط دفعة واحدة.")}
+            {data.autoIndexNow?.on && (
+              <span className="block mt-1 text-ink-muted">
+                {data.autoIndexNow.lastRun
+                  ? t(`Last check: ${new Date(data.autoIndexNow.lastRun).toLocaleString()} - ${data.autoIndexNow.lastNote}.`, `آخر فحص: ${new Date(data.autoIndexNow.lastRun).toLocaleString("ar")} - ${data.autoIndexNow.lastNote}.`)
+                  : t("The first check runs a few minutes after the server starts.", "أول فحص يجري بعد دقائق من تشغيل الخادم.")}
+              </span>
+            )}
             <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-              <Button size="sm" leftIcon={<Send size={13} />} loading={busy} onClick={submit}>{t("Send all pages (IndexNow)", "إرسال كل الصفحات (IndexNow)")}</Button>
+              <Button size="sm" leftIcon={<Send size={13} />} loading={busy} onClick={submit}>{data.autoIndexNow?.on ? t("Send everything again now", "أعد إرسال كل شيء الآن") : t("Send all pages (IndexNow)", "إرسال كل الصفحات (IndexNow)")}</Button>
               <a href="https://www.bing.com/webmasters" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-gold-active underline"><ExternalLink size={12} />Bing Webmaster Tools</a>
             </div>
           </li>

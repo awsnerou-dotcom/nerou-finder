@@ -76,6 +76,8 @@ import { AREA_GUIDES, getAreaGuideBySlug } from "./src/data/areaGuides.js";
 import { SPA_PATHS, normalizePath } from "./src/routes.js";
 import { GUIDES, GUIDES_PATH, guidePath, guideText, guideTitleTag, hubText, parseGuidePath } from "./src/lib/guides.js";
 import { guideBodyHtml, guideJsonLd, hubBodyHtml, hubJsonLd } from "./src/lib/guidesHtml.js";
+import { changedPaths, inBatches, isPublicOrigin, parseStamps, urlsFor } from "./src/lib/indexNow.js";
+import type { Stamps } from "./src/lib/indexNow.js";
 import { getVideoEmbedUrl } from "./src/lib/video.js";
 import { firstUsableNumber } from "./src/lib/phone.js";
 import {
@@ -10462,6 +10464,7 @@ app.get("/api/admin/seo/overview", (req, res) => {
     origin,
     sitemap: `${origin}/sitemap.xml`,
     indexNowKeyFile: `${origin}/${indexNowKey()}.txt`,
+    autoIndexNow: { on: process.env.NODE_ENV === "production" && process.env.INDEXNOW_AUTO !== "off", ...indexNowStatus },
     pages: landings.map(l => ({
       path: l.path,
       arPath: withLang(l.path, "ar"),
@@ -10474,25 +10477,88 @@ app.get("/api/admin/seo/overview", (req, res) => {
   });
 });
 
+/**
+ * Every public page we have, with a stamp that changes when the page's content does (a listing's last edit, how many listings a
+ * landing page or report shows, a guide's updated date). The automatic IndexNow sweep compares these with what it sent last time.
+ */
+export function seoPathStamps(db: DatabaseState): Stamps {
+  const out: Stamps = {};
+  const live = db.properties.filter(isPublishedListing);
+  for (const p of Object.keys(SEO_PAGES)) out[p] = "static-1";
+  for (const g of AREA_GUIDES) out[`/areas/${g.slug}`] = "static-1";
+  out[GUIDES_PATH] = GUIDES.map(g => g.updated).sort().pop() || "static-1";
+  for (const g of GUIDES) out[guidePath(g.slug)] = g.updated;
+  for (const p of live) out[`/properties/${p.id}`] = (p.updatedDate || p.createdDate || "1").slice(0, 19);
+  for (const l of buildLandingPages(db.properties)) {
+    if (!l.indexable) continue;
+    const newest = l.listings.map(p => (p.updatedDate || p.createdDate || "").slice(0, 19)).filter(Boolean).sort().pop() || "";
+    out[l.path] = `${l.listings.length}|${newest}`;
+  }
+  for (const r of buildPriceReports(db.properties, db.locations)) out[reportPath(r.deal, r.slug)] = `${r.count}|${r.updated || ""}`;
+  for (const u of db.users) {
+    if (u.role !== UserRole.AGENT || !isPublicAgent(u, db)) continue;
+    const mine = live.filter(p => p.agentId === u.id);
+    if (mine.length) out[`/agents/${agentSlug(u)}`] = `${mine.length}`;
+  }
+  for (const o of db.organizations) {
+    if (!isPublicOrg(o, db)) continue;
+    const mine = live.filter(p => p.orgId === o.id);
+    if (mine.length) out[`/agencies/${orgSlug(o)}`] = `${mine.length}`;
+  }
+  return out;
+}
+
+export const indexNowStatus = { lastRun: null as string | null, lastSubmitted: 0, lastNote: "" };
+
+/**
+ * The automatic version of the "send all pages" button: tells Bing, Yandex and the other IndexNow engines about pages that are new or
+ * changed since the last successful submission, and nothing else. What was sent is remembered in a small file on the persistent disk,
+ * so a restart does not repeat it. A failed send changes nothing, so the next sweep tries again. Never runs for a development address.
+ */
+export async function runIndexNowSweep(opts: { origin?: string; send?: typeof fetch; stateFile?: string; db?: DatabaseState } = {}): Promise<{ submitted: number; note: string }> {
+  const origin = opts.origin || process.env.APP_URL || "https://neroufinder.com";
+  const stateFile = opts.stateFile || path.join(uploadsDir, ".seo-indexnow.json");
+  const done = (submitted: number, note: string) => {
+    indexNowStatus.lastRun = new Date().toISOString();
+    indexNowStatus.lastSubmitted = submitted;
+    indexNowStatus.lastNote = note;
+    return { submitted, note };
+  };
+  if (!isPublicOrigin(origin)) return done(0, "not a public address");
+  try {
+    const current = seoPathStamps(opts.db || readDb());
+    let previous: Stamps = {};
+    try { previous = parseStamps(fs.readFileSync(stateFile, "utf-8")); } catch { /* nothing sent yet */ }
+    const changed = changedPaths(previous, current);
+    if (changed.length === 0) return done(0, "nothing new");
+    const host = new URL(origin).host;
+    const send = opts.send || fetch;
+    let sent = 0;
+    for (const batch of inBatches(urlsFor(changed, origin))) {
+      const r = await send("https://api.indexnow.org/indexnow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({ host, key: indexNowKey(), keyLocation: `${origin}/${indexNowKey()}.txt`, urlList: batch })
+      });
+      if (r.status !== 200 && r.status !== 202) return done(sent, `search engines answered ${r.status}`);
+      sent += batch.length;
+    }
+    try { fs.writeFileSync(stateFile, JSON.stringify(current)); } catch (err) { console.error("Could not save the IndexNow state:", err); }
+    console.log(`IndexNow: told the search engines about ${changed.length} new or changed page(s).`);
+    return done(sent, `sent ${changed.length} page(s)`);
+  } catch (err) {
+    console.error("IndexNow sweep failed:", err);
+    return done(0, "could not reach the search engines");
+  }
+}
+
 // Tell Bing, Yandex and the other IndexNow engines about every public URL we have.
 app.post("/api/admin/seo/indexnow", async (req, res) => {
   const db = readDb();
   const origin = requestOrigin(req);
   const host = new URL(origin).host;
   if (/^(localhost|127\.|0\.0\.0\.0)/.test(host)) return res.status(400).json({ error: "IndexNow only works on the live site (not localhost)." });
-  const paths = new Set<string>(Object.keys(SEO_PAGES));
-  db.properties.filter(isPublishedListing).forEach(p => paths.add(`/properties/${p.id}`));
-  AREA_GUIDES.forEach(g => paths.add(`/areas/${g.slug}`));
-  paths.add(GUIDES_PATH);
-  GUIDES.forEach(g => paths.add(guidePath(g.slug)));
-  buildLandingPages(db.properties).filter(l => l.indexable).forEach(l => paths.add(l.path));
-  // the price reports, and the public pages of agents and agencies that have something live
-  buildPriceReports(db.properties, db.locations).forEach(r => paths.add(reportPath(r.deal, r.slug)));
-  const liveNow = db.properties.filter(isPublishedListing);
-  db.users.forEach(u => { if (u.role === UserRole.AGENT && isPublicAgent(u, db) && liveNow.some(p => p.agentId === u.id)) paths.add(`/agents/${agentSlug(u)}`); });
-  db.organizations.forEach(o => { if (isPublicOrg(o, db) && liveNow.some(p => p.orgId === o.id)) paths.add(`/agencies/${orgSlug(o)}`); });
-  const urlList: string[] = [];
-  for (const p of paths) { urlList.push(`${origin}${p === "/" ? "/" : p}`); urlList.push(`${origin}${withLang(p, "ar")}`); }
+  const urlList = urlsFor(Object.keys(seoPathStamps(db)), origin);
   try {
     const r = await fetch("https://api.indexnow.org/indexnow", {
       method: "POST",
@@ -10931,6 +10997,13 @@ async function startServer() {
   // Agents' own connected listing feeds: read again every six hours (the first pass waits a few minutes after boot).
   setTimeout(runAgentFeedSweep, 5 * 60 * 1000);
   setInterval(runAgentFeedSweep, 6 * 60 * 60 * 1000);
+
+  // Search engines are told about new and changed pages by themselves: a few minutes after boot (so a deploy that adds pages is
+  // announced) and then every three hours. Only the live site; INDEXNOW_AUTO=off switches it off.
+  if (process.env.NODE_ENV === "production" && process.env.INDEXNOW_AUTO !== "off") {
+    setTimeout(() => { void runIndexNowSweep(); }, 4 * 60 * 1000);
+    setInterval(() => { void runIndexNowSweep(); }, 3 * 60 * 60 * 1000);
+  }
 
   // Dynamic SEO meta tags for properties
   app.get("/properties/:id", (req, res, next) => {
