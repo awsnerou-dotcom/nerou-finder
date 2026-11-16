@@ -69,7 +69,8 @@ import {
   Briefcase,
   Newspaper,
   Handshake,
-  Scale
+  Scale,
+  BookOpen
 } from "lucide-react";
 
 // Enterprise & Public Sub-Pages
@@ -96,6 +97,8 @@ import {
   PublicProfileView,
   PriceCheckView,
   PriceReportView,
+  GuidesView,
+  GuideArticleView,
   preloadDirectorySearch
 } from "./lazyViews.js";
 import { parseReportPath } from "../lib/priceReports.js";
@@ -103,7 +106,7 @@ import { profileSlug } from "../lib/profiles.js";
 import { isAgentVerified } from "../lib/agentVerification.js";
 import type { ProfileKind } from "../lib/profiles.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
-import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
+import { stripLang, withLang, parseLandingPath, areaSlug, TYPE_GROUPS } from "../lib/seo.js";
 import { homeTitle, listingTitle } from "../lib/pageTitle.js";
 import { areaOptions, areaListingCount, withDescendants } from "../lib/locations.js";
 import { priceDrop, listedDaysAgo, isNewListing, listedLabel, NEW_LISTING_DAYS } from "../lib/propertySearch.js";
@@ -281,6 +284,8 @@ export default function VisitorExperience({
   const [profileOpenReview, setProfileOpenReview] = useState(false);
   // An open price report ("Average rent in Lusail"), by its address: /average-rent-in-lusail, /property-prices-in-lusail
   const [priceReportPath, setPriceReportPath] = useState<string | null>(null);
+  // An open guide (/guides/<slug>); the list of guides itself is the "GUIDES" tab
+  const [guideSlug, setGuideSlug] = useState<string | null>(null);
   const setSelectedAgentProfile = (u: User | null) =>
     setProfileView(u ? { kind: "agents", slug: profileSlug("agents", { id: u.id, name: u.fullName }) } : null);
   const setSelectedOrgProfile = (o: Organization | null) =>
@@ -405,6 +410,15 @@ export default function VisitorExperience({
     if (match) setSelectedAreaGuideSlug(match[1]);
   }, []);
 
+  // And for a guide: /guides/<slug> (the guides list is a static tab, below)
+  const guideDeepLinkConsumedRef = React.useRef(false);
+  useEffect(() => {
+    if (guideDeepLinkConsumedRef.current) return;
+    guideDeepLinkConsumedRef.current = true;
+    const match = appPath().match(/^\/guides\/([^/]+)\/?$/);
+    if (match) setGuideSlug(match[1]);
+  }, []);
+
   // Same deep-link pattern for the static full-page tabs (see STATIC_TAB_PATHS). Without
   // this, a direct hit on /plans-pricing rendered the marketplace and the sync effect below
   // then rewrote the address bar to "/", so the URL couldn't be refreshed or shared.
@@ -432,7 +446,7 @@ export default function VisitorExperience({
     let areaLoc: LocationItem | undefined;
     if (spec.area) {
       if (locations.length === 0) return; // wait for the location list, then apply
-      areaLoc = locations.find(l => l.type !== "COUNTRY" && l.type !== "MUNICIPALITY" && slugify(l.name) === spec.area);
+      areaLoc = locations.find(l => l.type !== "COUNTRY" && l.type !== "MUNICIPALITY" && areaSlug(l.name) === spec.area);
     }
     landingConsumedRef.current = true;
     setTransType(spec.tx === "rent" ? "FOR_RENT" : "FOR_SALE");
@@ -453,6 +467,7 @@ export default function VisitorExperience({
   const lastSyncedPathRef = React.useRef<string | null>(
     appPath().match(/^\/properties\/[^/]+\/?$/) ||
     appPath().match(/^\/areas\/[^/]+\/?$/) ||
+    appPath().match(/^\/guides\/[^/]+\/?$/) ||
     appPath().match(/^\/(agents|agencies)\/[^/]+\/?$/) ||
     parseReportPath(appPath()) ||
     staticTabForPath(appPath()) ||
@@ -468,6 +483,8 @@ export default function VisitorExperience({
       ? `/properties/${selectedProperty.id}`
       : selectedAreaGuideSlug
       ? `/areas/${selectedAreaGuideSlug}`
+      : guideSlug
+      ? `/guides/${guideSlug}`
       : profileView
       ? `/${profileView.kind}/${profileView.slug}`
       : priceReportPath
@@ -486,7 +503,7 @@ export default function VisitorExperience({
     if (window.location.pathname !== fullPath) {
       window.history.pushState(null, "", fullPath);
     }
-  }, [selectedProperty, selectedAreaGuideSlug, profileView, priceReportPath, currentTab, isRtl]);
+  }, [selectedProperty, selectedAreaGuideSlug, guideSlug, profileView, priceReportPath, currentTab, isRtl]);
 
   // Browser-tab title follows the open listing (the server wrote the right one for the first page
   // load; this covers opening a listing from inside the app).
@@ -501,6 +518,16 @@ export default function VisitorExperience({
     }
   }, [selectedProperty, isRtl]);
 
+  // The guides set the tab title themselves; once the visitor has left them, the home title comes back.
+  const titledByGuidesRef = React.useRef(false);
+  useEffect(() => {
+    if (guideSlug || currentTab === "GUIDES") titledByGuidesRef.current = true;
+    else if (titledByGuidesRef.current) {
+      titledByGuidesRef.current = false;
+      if (!selectedProperty) document.title = homeTitle(isRtl);
+    }
+  }, [guideSlug, currentTab, selectedProperty, isRtl]);
+
   // Back/forward support for the above: e.g. Property A -> Property B -> Back should reopen A,
   // Area Guide X -> Property A -> Back should reopen Area Guide X, and either -> Back from the
   // first overlay should return to the marketplace list, not leave the app stuck.
@@ -510,7 +537,15 @@ export default function VisitorExperience({
       const areaMatch = appPath().match(/^\/areas\/([^/]+)\/?$/);
       const profileMatch = appPath().match(/^\/(agents|agencies)\/([^/]+)\/?$/);
       const reportMatch = parseReportPath(appPath().replace(/\/+$/, ""));
-      if (reportMatch) {
+      const guideMatch = appPath().match(/^\/guides\/([^/]+)\/?$/);
+      setGuideSlug(guideMatch ? guideMatch[1] : null);
+      if (guideMatch) {
+        lastSyncedPathRef.current = `/guides/${guideMatch[1]}`;
+        setSelectedProperty(null);
+        setSelectedAreaGuideSlug(null);
+        setProfileView(null);
+        setPriceReportPath(null);
+      } else if (reportMatch) {
         const rp = appPath().replace(/\/+$/, "");
         lastSyncedPathRef.current = rp;
         setSelectedProperty(null);
@@ -991,6 +1026,30 @@ export default function VisitorExperience({
   };
   const closeAreaGuide = () => setSelectedAreaGuideSlug(null);
 
+  // Guides (/guides, /guides/<slug>): the list is a tab, one guide is an overlay on top of it.
+  const openGuide = (slug: string) => {
+    setSelectedProperty(null);
+    setSelectedAreaGuideSlug(null);
+    setProfileView(null);
+    setPriceReportPath(null);
+    setGuideSlug(slug);
+  };
+  const closeGuide = () => { setGuideSlug(null); setCurrentTab("GUIDES"); };
+  // a guide's "next step" buttons: each is a page that always exists
+  const goFromGuide = (path: string) => {
+    setGuideSlug(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (path === "/") setCurrentTab("MARKETPLACE");
+    else if (path === "/price-check") setCurrentTab("PRICE_CHECK");
+    else if (path === "/property-valuation") setCurrentTab("VALUATION");
+    else if (path === "/area-guides") setCurrentTab("AREA_GUIDES");
+    else if (path === "/plans-pricing") setCurrentTab("PLANS");
+    else {
+      const area = path.match(/^\/areas\/([^/]+)$/);
+      if (area) setSelectedAreaGuideSlug(area[1]);
+    }
+  };
+
   // "View X listings in {area}" CTA (AreaGuideView.tsx): reuses the exact same Municipality ->
   // Area select-driven filter mechanism a manual user selection would produce, rather than
   // building a parallel filtering path. `districtName` must match a LocationItem.name exactly
@@ -1085,6 +1144,7 @@ export default function VisitorExperience({
       ["CAREERS", isRtl ? "وظائف" : "Careers", Briefcase],
       ["PRESS", isRtl ? "الصحافة" : "Press", Newspaper],
       ["PARTNERSHIPS", isRtl ? "شركاؤنا" : "Our Partners", Handshake],
+      ["GUIDES", isRtl ? "الأدلة" : "Guides", BookOpen],
       ["PRICE_CHECK", isRtl ? "هل السعر عادل؟" : "Price check", Scale],
       ["VALUATION", isRtl ? "قيّم عقارك" : "Valuation", Calculator],
               ["LEGAL", isRtl ? "الوثائق القانونية" : "Legal Policies", Scale]
@@ -1967,6 +2027,18 @@ export default function VisitorExperience({
         />
       )}
 
+      {/* One guide, full page like the area guide above */}
+      {guideSlug && (
+        <GuideArticleView
+          isRtl={isRtl}
+          slug={guideSlug}
+          onClose={closeGuide}
+          onOpenGuide={openGuide}
+          onGo={goFromGuide}
+        />
+      )}
+
+      {currentTab === "GUIDES" && <GuidesView isRtl={isRtl} onOpenGuide={openGuide} guideOpen={!!guideSlug} />}
       {currentTab === "PROJECTS" && <ProjectsView isRtl={isRtl} organizations={organizations} users={users} />}
       {currentTab === "PRICE_CHECK" && (
         <PriceCheckView

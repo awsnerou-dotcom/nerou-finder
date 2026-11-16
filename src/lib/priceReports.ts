@@ -9,7 +9,7 @@ import type { LocationItem, Property } from "../types.js";
 import { dealOf } from "./marketComparison.js";
 import type { Deal } from "./marketComparison.js";
 import { monthlyPrice } from "./priceCheck.js";
-import { areaNameFor, slugify } from "./seo.js";
+import { areaNameFor, areaSlug } from "./seo.js";
 import type { Lang } from "./seo.js";
 import { percentile } from "./valuation.js";
 
@@ -114,14 +114,15 @@ export function buildPriceReports(properties: Property[], locations: LocationIte
     }
     const groups = new Map<string, Property[]>();
     for (const p of ofDeal) {
-      const slug = slugify(norm(p.district));
+      const slug = areaSlug(norm(p.district));
       if (!slug || slug === COUNTRY_SLUG) continue;
       groups.set(slug, [...(groups.get(slug) || []), p]);
     }
     for (const [slug, list] of groups) {
       if (list.length < REPORT_MIN_LISTINGS) continue;
-      const district = mostCommon(list.map(p => norm(p.district)));
-      out.push(makeReport(deal, list, { scope: "area", slug, district, districtAr: areaNameFor(district, locations).ar, city: mostCommon(list.map(p => norm(p.city))) }));
+      const typed = mostCommon(list.map(p => norm(p.district)));
+      const name = areaNameFor(typed, locations); // the listed spelling when there is one ("Al Waab" for "Alwaab")
+      out.push(makeReport(deal, list, { scope: "area", slug, district: name.en, districtAr: name.ar, city: mostCommon(list.map(p => norm(p.city))) }));
     }
   }
   return out;

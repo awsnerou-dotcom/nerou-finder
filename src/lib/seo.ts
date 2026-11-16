@@ -45,6 +45,16 @@ export function slugify(s: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+/**
+ * The slug of an area. People type the same place several ways ("Alwaab", "Al Waab", "al-waab"), and each spelling used to get its own
+ * landing page and report, competing with each other for the same search. "Al" glued to the name is the same area as "Al" apart.
+ */
+export function areaSlug(name: string): string {
+  const s = slugify(name);
+  const glued = /^al([a-z]{3,})$/.exec(s);
+  return glued ? `al-${glued[1]}` : s;
+}
+
 export interface TypeGroup {
   slug: string; // plural, used in URLs: "apartments"
   en: string; // "Apartments"
@@ -87,8 +97,11 @@ export interface AreaName { slug: string; en: string; ar: string }
 
 export function areaNameFor(name: string, locations: LocationItem[] = []): AreaName {
   const key = name.trim().toLowerCase();
-  const loc = locations.find(l => l.name?.trim().toLowerCase() === key);
-  return { slug: slugify(name), en: name.trim(), ar: loc?.nameAr?.trim() || AR_FALLBACK[key] || name.trim() };
+  const slug = areaSlug(name);
+  // the listed place by its exact name, else by the same slug ("Alwaab" is the listed "Al Waab")
+  const loc = locations.find(l => l.name?.trim().toLowerCase() === key)
+    || locations.find(l => l.type !== "COUNTRY" && l.type !== "MUNICIPALITY" && !!l.name && areaSlug(l.name) === slug);
+  return { slug, en: loc?.name?.trim() || name.trim(), ar: loc?.nameAr?.trim() || AR_FALLBACK[key] || name.trim() };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -133,7 +146,7 @@ function matches(p: Property, spec: LandingSpec): boolean {
     const g = TYPE_GROUPS.find(x => x.slug === spec.type);
     if (!g || !g.types.includes(p.propertyType as unknown as string)) return false;
   }
-  if (spec.area && slugify(p.district || "") !== spec.area) return false;
+  if (spec.area && areaSlug(p.district || "") !== spec.area) return false;
   return true;
 }
 
@@ -164,7 +177,7 @@ function specificity(s: LandingSpec): number {
  */
 export function buildLandingPages(properties: Property[]): Landing[] {
   const live = properties.filter(isPublishedListing);
-  const areas = new Set(live.map(p => slugify(p.district || "")).filter(Boolean));
+  const areas = new Set(live.map(p => areaSlug(p.district || "")).filter(Boolean));
   const out: Landing[] = [];
   for (const tx of ["rent", "sale"] as Tx[]) {
     const specs: LandingSpec[] = [{ tx }];

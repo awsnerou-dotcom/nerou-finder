@@ -74,6 +74,8 @@ import {
 } from "./src/types.js";
 import { AREA_GUIDES, getAreaGuideBySlug } from "./src/data/areaGuides.js";
 import { SPA_PATHS, normalizePath } from "./src/routes.js";
+import { GUIDES, GUIDES_PATH, guidePath, guideText, guideTitleTag, hubText, parseGuidePath } from "./src/lib/guides.js";
+import { guideBodyHtml, guideJsonLd, hubBodyHtml, hubJsonLd } from "./src/lib/guidesHtml.js";
 import { getVideoEmbedUrl } from "./src/lib/video.js";
 import { firstUsableNumber } from "./src/lib/phone.js";
 import {
@@ -146,6 +148,7 @@ import {
   stripLang,
   withLang,
   slugify,
+  areaSlug as canonicalAreaSlug,
   parseLandingPath,
   landingPath,
   buildLandingPages,
@@ -2395,7 +2398,7 @@ app.post("/api/price-check", priceCheckRateLimiter, (req, res) => {
   if ("error" in checked) return res.status(400).json({ error: checked.error });
   const db = readDb();
   const result = checkPrice(checked.value, db.properties);
-  const slug = slugify(checked.value.district);
+  const slug = canonicalAreaSlug(checked.value.district);
   const report = findReport(buildPriceReports(db.properties, db.locations), checked.value.deal, slug);
   res.json({ result, reportPath: report ? reportPath(checked.value.deal, slug) : null });
 });
@@ -9932,7 +9935,7 @@ function seoPopularSearches(db: DatabaseState, lang: SeoLang, limit = 12) {
 const specificityOf = (l: Landing) => (l.spec.area ? 2 : 0) + (l.spec.type ? 1 : 0);
 
 function seoAreaGuideFor(areaSlug?: string) {
-  return areaSlug ? AREA_GUIDES.find(g => slugify(g.district) === areaSlug) : undefined;
+  return areaSlug ? AREA_GUIDES.find(g => canonicalAreaSlug(g.district) === areaSlug) : undefined;
 }
 
 /** Everything a landing page says, in one place: used for the HTML search engines get AND for the text the app shows people. */
@@ -10009,6 +10012,7 @@ function seoPageHtml(db: DatabaseState, pagePath: string, lang: SeoLang, origin:
     { path: "/plans-pricing", label: SEO_PAGES["/plans-pricing"][lang].h1 },
     { path: "/help-center", label: SEO_PAGES["/help-center"][lang].h1 },
     { path: "/area-guides", label: SEO_PAGES["/area-guides"][lang].h1 },
+    { path: GUIDES_PATH, label: hubText(lang).h1 },
     { path: "/property-valuation", label: SEO_PAGES["/property-valuation"][lang].h1 },
     { path: "/price-check", label: SEO_PAGES["/price-check"][lang].h1 },
     { path: reportPath("RENT", COUNTRY_SLUG), label: lang === "ar" ? "متوسط الإيجار في قطر" : "Average rent in Qatar" },
@@ -10071,7 +10075,13 @@ app.use((req, res, next) => {
   const db = readDb();
   const parsed = parseLandingPath(raw);
   if (parsed) {
-    const landing = buildLandingPages(db.properties).find(l => l.path === landingPath(parsed.spec));
+    const pages = buildLandingPages(db.properties);
+    // An old spelling of an area ("alwaab") has one address now ("al-waab"): send people and search engines there for good.
+    if (parsed.spec.area && canonicalAreaSlug(parsed.spec.area) !== parsed.spec.area) {
+      const target = landingPath({ ...parsed.spec, area: canonicalAreaSlug(parsed.spec.area) });
+      if (pages.some(l => l.path === target)) return res.redirect(301, withLang(target, parsed.lang));
+    }
+    const landing = pages.find(l => l.path === landingPath(parsed.spec));
     if (!landing) return next(); // nothing to show here: a genuine 404
     return res.type("html").set("Cache-Control", "no-cache").send(renderLandingPage(db, landing, parsed.lang, origin, shell));
   }
@@ -10080,8 +10090,32 @@ app.use((req, res, next) => {
   if (wanted) {
     const reports = buildPriceReports(db.properties, db.locations);
     const report = findReport(reports, wanted.deal, wanted.slug);
-    if (!report) return next(); // not enough listings for a page: a genuine 404
+    if (!report) {
+      // an old spelling of an area: one address now
+      const current = canonicalAreaSlug(wanted.slug);
+      if (current !== wanted.slug && findReport(reports, wanted.deal, current)) return res.redirect(301, withLang(reportPath(wanted.deal, current), lang));
+      return next(); // not enough listings for a page: a genuine 404
+    }
     return res.type("html").set("Cache-Control", "no-cache").send(renderReportPage(db, reports, report, lang, origin, shell));
+  }
+
+  // The guides: /guides and /guides/<slug> (and /ar/...), written once for both languages, never depending on live listings.
+  const guideRoute = parseGuidePath(p);
+  if (guideRoute) {
+    const thisPath = guideRoute.kind === "hub" ? GUIDES_PATH : guidePath(guideRoute.guide.slug);
+    const alternates = { en: `${origin}${thisPath}`, ar: `${origin}${withLang(thisPath, "ar")}` };
+    const canonical = lang === "ar" ? alternates.ar : alternates.en;
+    let html: string;
+    if (guideRoute.kind === "hub") {
+      const t = hubText(lang);
+      html = applyHead(shell, { lang, title: t.title, description: t.description, canonical, alternates, jsonLd: hubJsonLd(lang, origin) });
+      html = applyRootContent(html, hubBodyHtml(lang));
+    } else {
+      const g = guideRoute.guide;
+      html = applyHead(shell, { lang, title: guideTitleTag(g, lang), description: guideText(g, lang).description, canonical, alternates, jsonLd: guideJsonLd(g, lang, origin) });
+      html = applyRootContent(html, guideBodyHtml(g, lang));
+    }
+    return res.type("html").set("Cache-Control", "no-cache").send(html);
   }
 
   if (SEO_PAGES[p]) {
@@ -10165,6 +10199,8 @@ app.get("/sitemap.xml", (req, res) => {
   const entries: Entry[] = [];
   for (const p of Object.keys(SEO_PAGES)) entries.push({ path: p, hasAr: true });
   entries.push({ path: "/area-guides", hasAr: true });
+  entries.push({ path: GUIDES_PATH, hasAr: true, lastmod: GUIDES.map(g => g.updated).sort().pop() });
+  for (const g of GUIDES) entries.push({ path: guidePath(g.slug), hasAr: true, lastmod: g.updated });
   const live = db.properties.filter(isPublishedListing);
   for (const prop of live) {
     entries.push({ path: `/properties/${prop.id}`, lastmod: (prop.updatedDate || prop.createdDate || "").slice(0, 10) || undefined, hasAr: true });
@@ -10221,6 +10257,7 @@ app.get("/llms.txt", (req, res) => {
 - [Home](${origin}/): search properties for rent, for sale and off-plan
 - [Plans for agents, companies and developers](${origin}/plans-pricing): unlimited listings and every feature; request a plan, or start a 60-day free trial
 - [Area guides](${origin}/area-guides): neighbourhood guides for Doha and Qatar
+- [Qatar property guides](${origin}${GUIDES_PATH}): renting, buying, investing and living in Qatar
 - [Help Center](${origin}/help-center)
 - [Is this price fair? Free price check](${origin}/price-check): compare a rent or price with the live listings in the same area
 - [Average rent in Qatar](${origin}${reportPath("RENT", COUNTRY_SLUG)}) and [property prices in Qatar](${origin}${reportPath("SALE", COUNTRY_SLUG)}): live figures by area, bedrooms and type
@@ -10233,6 +10270,9 @@ ${popular.map(p => `- [${p.label}](${origin}${p.path})`).join("\n") || "- (no li
 
 ## Area guides
 ${AREA_GUIDES.map(g => `- [${g.title}](${origin}/areas/${g.slug})`).join("\n")}
+
+## Guides: renting, buying and investing in Qatar
+${GUIDES.map(g => `- [${g.title.en}](${origin}${guidePath(g.slug)}): ${g.description.en}`).join("\n")}
 
 ## Operator
 - Nerou Technology Services Trading, Commercial Registration (CR) No. 209013, Al Muntazah Commercial Center, Tower B, Doha, Qatar
@@ -10408,7 +10448,7 @@ function seoAudit(db: DatabaseState) {
     issues: issues.slice(0, 100),
     landingPages: landings.filter(l => l.indexable).length,
     duplicatePages: landings.filter(l => !l.indexable).length,
-    sitemapUrls: (Object.keys(SEO_PAGES).length + live.length + AREA_GUIDES.length + landings.filter(l => l.indexable).length) * 2,
+    sitemapUrls: (Object.keys(SEO_PAGES).length + live.length + AREA_GUIDES.length + 1 + GUIDES.length + landings.filter(l => l.indexable).length) * 2,
     languages: ["en", "ar"]
   };
 }
@@ -10443,6 +10483,8 @@ app.post("/api/admin/seo/indexnow", async (req, res) => {
   const paths = new Set<string>(Object.keys(SEO_PAGES));
   db.properties.filter(isPublishedListing).forEach(p => paths.add(`/properties/${p.id}`));
   AREA_GUIDES.forEach(g => paths.add(`/areas/${g.slug}`));
+  paths.add(GUIDES_PATH);
+  GUIDES.forEach(g => paths.add(guidePath(g.slug)));
   buildLandingPages(db.properties).filter(l => l.indexable).forEach(l => paths.add(l.path));
   // the price reports, and the public pages of agents and agencies that have something live
   buildPriceReports(db.properties, db.locations).forEach(r => paths.add(reportPath(r.deal, r.slug)));
@@ -10993,7 +11035,7 @@ async function startServer() {
         // Arabic variant / alternates and a readable body for crawlers.
         const own = buildLandingPages(db.properties).filter(l => l.indexable && l.listings.some(x => x.id === property.id));
         const propDeal = dealOf(property.transactionType);
-        const propReport = propDeal ? findReport(buildPriceReports(db.properties, db.locations), propDeal, slugify(property.district || "")) : undefined;
+        const propReport = propDeal ? findReport(buildPriceReports(db.properties, db.locations), propDeal, canonicalAreaSlug(property.district || "")) : undefined;
         const linksFor = (l: SeoLang) => [
           ...(propReport ? [{ path: reportPath(propReport.deal, propReport.slug), label: l === "ar" ? (propReport.deal === "RENT" ? `متوسط الإيجار في ${propReport.districtAr}` : `أسعار العقارات في ${propReport.districtAr}`) : (propReport.deal === "RENT" ? `Average rent in ${propReport.district}` : `Property prices in ${propReport.district}`) }] : []),
           ...own
@@ -11065,7 +11107,7 @@ async function startServer() {
           : html + jsonLdScript;
 
         const areaDb = readDb();
-        const areaSlug = slugify(guide.district);
+        const areaSlug = canonicalAreaSlug(guide.district);
         const areaLinks = (l: SeoLang) => buildLandingPages(areaDb.properties)
           .filter(x => x.indexable && x.spec.area === areaSlug)
           .map(x => ({ path: x.path, label: landingLabel(x, l, areaDb.locations) }));
