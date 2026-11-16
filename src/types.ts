@@ -135,6 +135,8 @@ export interface User {
   languages?: string[];
   specialties?: string[]; // e.g. areas or property types
   verificationStatus: VerificationStatus;
+  /** an admin approved this account by hand: the document checklist no longer takes the approval back */
+  verifiedByAdmin?: boolean;
   createdDate: string;
   password?: string;
   isExpat?: boolean; // Determines whether PASSPORT is a required verification document for AGENT role
@@ -258,6 +260,8 @@ export interface Organization {
   whatsapp?: string;
   website?: string;
   verificationStatus: VerificationStatus;
+  /** an admin approved this organisation by hand: the document checklist no longer takes the approval back */
+  verifiedByAdmin?: boolean;
   subscriptionPlanId: string;
   subscriptionExpiry: string;
   createdDate: string;

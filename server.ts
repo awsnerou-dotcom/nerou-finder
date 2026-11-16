@@ -6483,6 +6483,9 @@ app.post("/api/admin/verify-org", (req, res) => {
   if (idx === -1) return res.status(404).json({ error: "Organization not found" });
 
   db.organizations[idx].verificationStatus = status;
+  // A hand approval is the admin's own decision: remember it so the document checklist does not quietly undo it the next time someone
+  // opens their Verification page. Any other status set by hand ends it.
+  db.organizations[idx].verifiedByAdmin = status === VerificationStatus.APPROVED ? true : undefined;
   notifyAccountUpdated(db, orgAdminUserIds(db, orgId), "Verification updated", `Your organization's verification status is now ${String(status)}.`);
   writeDb(db);
 
@@ -6507,6 +6510,7 @@ app.post("/api/admin/verify-user", (req, res) => {
   if (idx === -1) return res.status(404).json({ error: "User not found" });
 
   db.users[idx].verificationStatus = status;
+  db.users[idx].verifiedByAdmin = status === VerificationStatus.APPROVED ? true : undefined;
   notifyAccountUpdated(db, [userId], "Verification updated", `Your account verification status is now ${String(status)}.`);
   writeDb(db);
 
@@ -6555,14 +6559,16 @@ function getDocumentOwnerContact(db: DatabaseState, doc: VerificationDocument): 
 function recomputeAccountVerification(db: DatabaseState, context: VerificationContext, userId?: string, orgId?: string) {
   if (!db.verificationDocuments) db.verificationDocuments = [];
   const isAgent = context === "AGENT";
-  const owner: { verificationStatus: VerificationStatus; isExpat?: boolean } | undefined =
+  const owner: { verificationStatus: VerificationStatus; isExpat?: boolean; verifiedByAdmin?: boolean } | undefined =
     isAgent ? db.users.find(u => u.id === userId) : db.organizations.find(o => o.id === orgId);
   if (!owner) return;
   if (owner.verificationStatus === VerificationStatus.SUSPENDED) return;
 
   const required = getRequiredDocumentTypes(context, isAgent ? owner.isExpat : undefined);
   const ownDocs = db.verificationDocuments.filter(d => (isAgent ? d.userId === userId : d.orgId === orgId));
-  const allApproved = required.every(type => ownDocs.some(d => d.documentType === type && d.status === DocumentStatus.APPROVED));
+  // approved by hand by an admin: the checklist never takes that back (an admin changes it by setting another status)
+  const heldByAdmin = owner.verifiedByAdmin === true && owner.verificationStatus === VerificationStatus.APPROVED;
+  const allApproved = heldByAdmin || required.every(type => ownDocs.some(d => d.documentType === type && d.status === DocumentStatus.APPROVED));
 
   owner.verificationStatus = allApproved ? VerificationStatus.APPROVED : VerificationStatus.PENDING;
 
