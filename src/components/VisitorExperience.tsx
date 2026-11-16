@@ -100,6 +100,7 @@ import {
 } from "./lazyViews.js";
 import { parseReportPath } from "../lib/priceReports.js";
 import { profileSlug } from "../lib/profiles.js";
+import { isAgentVerified } from "../lib/agentVerification.js";
 import type { ProfileKind } from "../lib/profiles.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 import { stripLang, withLang, parseLandingPath, slugify, TYPE_GROUPS } from "../lib/seo.js";
@@ -1796,7 +1797,7 @@ export default function VisitorExperience({
                       {/* verified agent / company, clickable to the public profile without leaving the results */}
                       {(() => {
                         const listingAgent = users.find(u => u.id === property.agentId);
-                        if (!listingAgent || listingAgent.verificationStatus !== VerificationStatus.APPROVED) return null;
+                        if (!listingAgent || !isAgentVerified(listingAgent, organizations)) return null;
                         return (
                           <div className="flex items-center gap-2 flex-wrap min-w-0">
                             <button

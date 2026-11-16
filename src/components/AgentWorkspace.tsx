@@ -20,6 +20,7 @@ import AddListingsHub from "./AddListingsHub.js";
 const GuideView = React.lazy(() => import("./GuideView.js"));
 import type { ParsedListing } from "../lib/listingFromText.js";
 import { profileSlug } from "../lib/profiles.js";
+import { isAgentVerified } from "../lib/agentVerification.js";
 import { leadStatusLabel } from "../lib/statusLabels.js";
 import { agentAttention, topListings, waitingLeads } from "../lib/workspaceAttention.js";
 import React, { useState, useEffect } from "react";
@@ -1321,6 +1322,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const leadsPerDaySeries = buildDailyCountSeries(leads.map(l => l.createdDate), 30, isRtl);
 
   const waitingCount = waitingLeads(leads).length;
+  // verified on their own documents, or because the agency they work for is verified
+  const isVerifiedAgent = isAgentVerified(agent, agencyOrg ? [agencyOrg] : []);
   const attention = agentAttention({ leads, properties, now: now.getTime() });
   const hour = now.getHours();
   const greeting = isRtl
@@ -1441,7 +1444,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                   ? (isRtl ? "وكيل مستقل" : "Independent agent")
                   : (agencyOrg?.name || (isRtl ? "وكيل مكتب عقاري" : "Agency agent"))}
               </span>
-              {agent.verificationStatus === VerificationStatus.APPROVED ? (
+              {isVerifiedAgent ? (
                 <span className="mt-1 inline-flex items-center gap-1 font-semibold text-success">
                   <ShieldCheck size={12} aria-hidden />
                   {getVerifiedBadgeLabel(agent, agencyOrg?.name, isRtl)}
@@ -1477,7 +1480,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             persona={effectiveAgentType === AgentType.INDEPENDENT_AGENT ? "independent" : "agencyAgent"}
             userId={agent.id}
             isRtl={isRtl}
-            facts={{ verified: agent.verificationStatus === VerificationStatus.APPROVED, listings: properties.length, waitingLeads: waitingCount, profileFilled: !!(agent.avatarUrl && agent.bio) }}
+            facts={{ verified: isVerifiedAgent, listings: properties.length, waitingLeads: waitingCount, profileFilled: !!(agent.avatarUrl && agent.bio) }}
             onGo={(tab) => { setActiveTab(tab as typeof activeTab); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             onStartTour={() => { setTourMode("full"); setShowTour(true); setActiveTab("dashboard"); }}
           />
@@ -1489,7 +1492,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       )}
 
       {/* VERIFICATION TAB */}
-      {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} agent={agent} onSaved={onRefreshAll} />}
+      {activeTab === "verification" && <VerificationDocumentsPanel isRtl={isRtl} agent={agent} vouchedBy={isVerifiedAgent && agent.verificationStatus !== VerificationStatus.APPROVED ? agencyOrg?.name : undefined} onSaved={onRefreshAll} />}
 
       {activeTab === "subscription" && effectiveAgentType === AgentType.INDEPENDENT_AGENT && (
         <SectionHeader icon={CreditCard} accent="violet" title={isRtl ? "الاشتراك" : "Subscription"} description={isRtl ? "خطتك وحالتها وموعد تجديدها." : "Your plan, its status and when it renews."} />
@@ -1545,7 +1548,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
       {activeTab === "dashboard" && (
         <div className="space-y-6">
           {/* Verification status banner - links straight into the existing document upload flow. */}
-          {agent.verificationStatus !== VerificationStatus.APPROVED && (
+          {!isVerifiedAgent && (
             <button
               type="button"
               onClick={() => setActiveTab("verification")}
@@ -1596,7 +1599,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           <AttentionPanel items={attention} onGo={(tab) => setActiveTab(tab as typeof activeTab)} isRtl={isRtl} />
           <PublicPagePanel isRtl={isRtl} name={agent.fullName} />
           <ReadinessCard
-            checklist={agentChecklist(agent, { listings: properties.length, published: activeListings })}
+            checklist={agentChecklist(agent, { listings: properties.length, published: activeListings, verified: isVerifiedAgent })}
             isRtl={isRtl}
             onGo={(tab) => { setActiveTab(tab); }}
           />

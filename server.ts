@@ -125,6 +125,7 @@ import { cleanTourUrl } from "./src/lib/virtualTour.js";
 import { computeMarketPositions, isBelowMarket } from "./src/lib/marketPosition.js";
 import { estimateValue, validateValuationInput } from "./src/lib/valuation.js";
 import { publicAgentPerformance } from "./src/lib/agentPerformance.js";
+import { isAgentVerified } from "./src/lib/agentVerification.js";
 import { buildPublicProfile, isPublicAgent, isPublicOrg, agentSlug, orgSlug, profileSummary } from "./src/lib/publicProfile.js";
 import { bumpDay, profilePath } from "./src/lib/profiles.js";
 import type { ProfileKind } from "./src/lib/profiles.js";
@@ -1793,7 +1794,7 @@ app.get("/api/users", (req, res) => {
   const isPublic = (u: (typeof db.users)[number]) =>
     owners.has(u.id) ||
     (professionals.includes(u.role) &&
-      u.verificationStatus === VerificationStatus.APPROVED &&
+      (u.role === UserRole.AGENT ? isAgentVerified(u, db.organizations) : u.verificationStatus === VerificationStatus.APPROVED) &&
       (!u.applicationStatus || u.applicationStatus === ApplicationStatus.ACTIVE));
   const result = db.users
     .filter(u => u.id === me?.id || (myOrg && u.orgId === myOrg) || isPublic(u))
@@ -2367,7 +2368,7 @@ app.post("/api/valuation", publicWriteRateLimiter, (req, res) => {
   const agents = [...counts.entries()]
     .sort((a, b) => b[1] - a[1])
     .map(([id, listings]) => ({ user: db.users.find(u => u.id === id), listings }))
-    .filter(x => x.user && x.user.role === UserRole.AGENT && x.user.verificationStatus === VerificationStatus.APPROVED)
+    .filter(x => x.user && x.user.role === UserRole.AGENT && isAgentVerified(x.user, db.organizations))
     .slice(0, 3)
     .map(({ user, listings }) => ({
       id: user!.id,
@@ -2428,7 +2429,7 @@ function computeAgentPerformance(db: ReturnType<typeof readDb>) {
   }
   const agents = db.users
     .filter(u => u.role === UserRole.AGENT)
-    .map(u => ({ id: u.id, verified: u.verificationStatus === VerificationStatus.APPROVED, liveListings: live.get(u.id) || 0 }));
+    .map(u => ({ id: u.id, verified: isAgentVerified(u, db.organizations), liveListings: live.get(u.id) || 0 }));
   // an enquiry a person added by hand is not one that came in through the platform
   return publicAgentPerformance(db.leads.filter(l => !l.addedManually), agents);
 }
@@ -2616,13 +2617,13 @@ app.get("/api/properties/:id/agent-info", (req, res) => {
     orgName: org ? org.name : null,
     phone: cleanedPhone,
     callNumber,
-    isVerifiedAgent: agent ? agent.verificationStatus === VerificationStatus.APPROVED : false,
+    isVerifiedAgent: agent ? isAgentVerified(agent, db.organizations) : false,
     hasAssignedAgent: !!agent,
     // FIX 4: real agency name instead of a generic "Nerou Verified Consultant" claim.
-    verifiedBadgeLabel: agent && agent.verificationStatus === VerificationStatus.APPROVED
+    verifiedBadgeLabel: agent && isAgentVerified(agent, db.organizations)
       ? getVerifiedBadgeLabel(agent, org?.name, false)
       : null,
-    verifiedBadgeLabelAr: agent && agent.verificationStatus === VerificationStatus.APPROVED
+    verifiedBadgeLabelAr: agent && isAgentVerified(agent, db.organizations)
       ? getVerifiedBadgeLabel(agent, org?.name, true)
       : null
   });
@@ -5969,7 +5970,8 @@ app.get("/api/directory", (req, res) => {
 
   if (type === "AGENT") {
     items = db.users
-      .filter(u => u.role === UserRole.AGENT && u.verificationStatus === VerificationStatus.APPROVED)
+      // verified on their own documents, or vouched for by a verified agency (src/lib/agentVerification.ts)
+      .filter(u => u.role === UserRole.AGENT && isAgentVerified(u, db.organizations))
       .filter(u => !query || u.fullName.toLowerCase().includes(query))
       .map(u => {
         const org = u.orgId ? db.organizations.find(o => o.id === u.orgId) : undefined;
@@ -6012,7 +6014,8 @@ app.get("/api/directory", (req, res) => {
         if (type === "AGENCY") {
           return {
             ...base,
-            teamSize: db.users.filter(u => u.orgId === o.id && (u.role === UserRole.AGENT || u.role === UserRole.AGENCY_ADMIN)).length,
+            // the agents a visitor will find on the agency's page: the same rule, so the number on the card matches the list
+            teamSize: db.users.filter(u => u.orgId === o.id && u.role === UserRole.AGENT && isPublicAgent(u, db)).length,
             listingCount: publishedListings.length
           };
         }

@@ -13,6 +13,8 @@ interface VerificationDocumentsPanelProps {
   // Only relevant in the AGENT context - lets an INDEPENDENT_AGENT declare the licensed
   // agency they operate under, alongside their AGENCY_AUTHORIZATION_LETTER upload.
   agent?: User;
+  /** the verified agency this agent works for: they appear as verified through it even before their own documents are approved */
+  vouchedBy?: string;
   onSaved?: () => void;
 }
 
@@ -53,7 +55,7 @@ function statusBadge(status: string | undefined, isRtl: boolean) {
   );
 }
 
-export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: VerificationDocumentsPanelProps) {
+export default function VerificationDocumentsPanel({ isRtl, agent, vouchedBy, onSaved }: VerificationDocumentsPanelProps) {
   const [data, setData] = useState<ChecklistResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
@@ -316,10 +318,10 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
 
   return (
     <div className="space-y-4" dir={isRtl ? "rtl" : "ltr"}>
-      <div className={`p-5 rounded-2xl border flex items-center justify-between gap-3 flex-wrap ${verificationStatus === "APPROVED" ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
+      <div className={`p-5 rounded-2xl border flex items-center justify-between gap-3 flex-wrap ${verificationStatus === "APPROVED" || vouchedBy ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200"}`}>
         <div className="flex items-center gap-3 min-w-0">
-          <span className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${verificationStatus === "APPROVED" ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"}`}>
-            {verificationStatus === "APPROVED" ? <ShieldCheck size={24} strokeWidth={2.25} /> : <Clock size={24} strokeWidth={2.25} />}
+          <span className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${verificationStatus === "APPROVED" || vouchedBy ? "bg-emerald-500 text-white" : "bg-amber-500 text-white"}`}>
+            {verificationStatus === "APPROVED" || vouchedBy ? <ShieldCheck size={24} strokeWidth={2.25} /> : <Clock size={24} strokeWidth={2.25} />}
           </span>
         <div>
           <p className="text-[15px] font-semibold text-ink">
@@ -328,6 +330,8 @@ export default function VerificationDocumentsPanel({ isRtl, agent, onSaved }: Ve
           <p className="text-[13px] text-ink-muted mt-0.5">
             {verificationStatus === "APPROVED"
               ? (isRtl ? "تم توثيق حسابك بنجاح. جميع المستندات المطلوبة معتمدة." : "Your account is fully verified. All required documents are approved.")
+              : vouchedBy
+              ? (isRtl ? `أنت تظهر موثّقاً لأن مكتبك (${vouchedBy}) موثّق. مستنداتك الشخصية تُراجَع أيضاً وتقوّي ملفك.` : `You appear as verified because your agency (${vouchedBy}) is verified. Your own documents are still reviewed and make your profile stronger.`)
               : (isRtl ? "يجب رفع واعتماد جميع المستندات المطلوبة لتوثيق الحساب." : "All required documents must be uploaded and approved to verify this account.")}
           </p>
         </div>

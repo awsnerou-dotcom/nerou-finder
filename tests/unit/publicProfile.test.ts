@@ -41,15 +41,24 @@ describe("an agent's public profile", () => {
     const d = db();
     expect(buildPublicProfile(d, "agents", "nobody-zzzzzz")).toBeNull();
     expect(buildPublicProfile(d, "agents", agentSlug((d as any).users[1]))).toBeNull(); // a registered visitor
-    const hidden = db({ users: [user({ verificationStatus: "PENDING" })], properties: [] });
+    // no agency to answer for them, and no documents approved
+    const hidden = db({ users: [user({ verificationStatus: "PENDING", orgId: undefined })], properties: [] });
     expect(buildPublicProfile(hidden, "agents", agentSlug((hidden as any).users[0]))).toBeNull();
   });
 
   it("still shows an unverified agent who has a live listing, without the verified label", () => {
-    const d = db({ users: [user({ verificationStatus: "PENDING" })] });
+    const d = db({ users: [user({ verificationStatus: "PENDING", orgId: undefined })] });
     const p = buildPublicProfile(d, "agents", agentSlug((d as any).users[0]))!;
     expect(p.verified).toBe(false);
     expect(p.verifiedLabel).toBeUndefined();
+  });
+
+  it("treats an agent of a verified agency as verified and listed, even before their own documents are approved", () => {
+    const d = db({ users: [user({ verificationStatus: "PENDING" })], properties: [] });
+    const p = buildPublicProfile(d, "agents", agentSlug((d as any).users[0]))!;
+    expect(p).not.toBeNull();
+    expect(p.verified).toBe(true);
+    expect(p.verifiedLabel).toContain("Verified");
   });
 
   it("labels an independent agent as such and carries the response badge", () => {

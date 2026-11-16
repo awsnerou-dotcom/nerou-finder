@@ -7,6 +7,7 @@ import { ApplicationStatus, getVerifiedBadgeLabel, OrganizationType, UserRole, V
 import type { Organization, Property, Review, User } from "../types.js";
 import { isPublishedListing } from "./seo.js";
 import { findBySlug, profileSlug, publicReviewerName } from "./profiles.js";
+import { isAgentVerified } from "./agentVerification.js";
 import type { ProfileKind } from "./profiles.js";
 import type { AgentPerformance } from "./agentPerformance.js";
 
@@ -72,11 +73,14 @@ function ratingAndReviews(db: ProfileSource, targetType: "AGENT" | "AGENCY", tar
   return { rating: { average: Math.round(average * 10) / 10, count: approved.length }, reviews };
 }
 
-/** An agent page exists for a verified, active professional, or for anyone with a live listing - the same people the public lists show. */
+/**
+ * An agent page exists for a verified, active professional, or for anyone with a live listing - the same people the public lists show.
+ * "Verified" includes an agent who works for a verified agency (see agentVerification.ts).
+ */
 export function isPublicAgent(u: User, db: ProfileSource): boolean {
   if (u.role !== UserRole.AGENT) return false;
   if (db.properties.some(p => p.agentId === u.id && isLiveListing(p))) return true;
-  return u.verificationStatus === VerificationStatus.APPROVED && (!u.applicationStatus || u.applicationStatus === ApplicationStatus.ACTIVE);
+  return isAgentVerified(u, db.organizations) && (!u.applicationStatus || u.applicationStatus === ApplicationStatus.ACTIVE);
 }
 
 export function isPublicOrg(o: Organization, db: ProfileSource): boolean {
@@ -99,7 +103,7 @@ export function buildPublicProfile(db: ProfileSource, kind: ProfileKind, slug: s
     if (!u || !isPublicAgent(u, db)) return null;
     const org = u.orgId ? db.organizations.find(o => o.id === u.orgId) : undefined;
     const live = db.properties.filter(p => p.agentId === u.id && isLiveListing(p));
-    const verified = u.verificationStatus === VerificationStatus.APPROVED;
+    const verified = isAgentVerified(u, db.organizations);
     return {
       kind,
       id: u.id,
@@ -135,7 +139,7 @@ export function buildPublicProfile(db: ProfileSource, kind: ProfileKind, slug: s
       slug: agentSlug(u),
       name: u.fullName,
       image: u.avatarUrl,
-      verified: u.verificationStatus === VerificationStatus.APPROVED,
+      verified: isAgentVerified(u, db.organizations),
       listings: live.filter(p => p.agentId === u.id).length
     }))
     .sort((a, b) => b.listings - a.listings || a.name.localeCompare(b.name))

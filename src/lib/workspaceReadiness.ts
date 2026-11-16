@@ -28,11 +28,12 @@ const MIN_BIO = 40;
 
 export function agentChecklist(
   agent: Pick<User, "verificationStatus" | "bio" | "languages" | "specialties" | "whatsapp">,
-  counts: { listings: number; published: number }
+  /** `verified` lets a caller say the agent counts as verified through their agency even if their own documents are not approved yet */
+  counts: { listings: number; published: number; verified?: boolean }
 ): Checklist {
   const bio = (agent.bio || "").trim();
   const items: ChecklistItem[] = [
-    { id: "verification", done: agent.verificationStatus === "APPROVED", tab: "verification",
+    { id: "verification", done: counts.verified ?? agent.verificationStatus === "APPROVED", tab: "verification",
       en: "Get your account verified", ar: "وثّق حسابك",
       hintEn: "Upload your documents. Verified agents are shown first and earn visitors' trust.", hintAr: "ارفع مستنداتك. الوكلاء الموثّقون يظهرون أولاً ويكسبون ثقة الزوار." },
     { id: "bio", done: bio.length >= MIN_BIO, tab: "profile",
