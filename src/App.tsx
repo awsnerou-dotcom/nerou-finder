@@ -1045,6 +1045,11 @@ export default function App() {
               <p>{companyCrLabel(isRtl)}</p>
               <p>{isRtl ? COMPANY.addressAr : COMPANY.addressEn}</p>
               <p>
+                <a href={COMPANY.googleProfile} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors underline-offset-2 hover:underline">
+                  {isRtl ? "موقعنا على خرائط جوجل" : "Find us on Google"}
+                </a>
+              </p>
+              <p>
                 <a href={`mailto:${COMPANY.email}`} dir="ltr" className="hover:text-white transition-colors underline-offset-2 hover:underline">
                   {COMPANY.email}
                 </a>
