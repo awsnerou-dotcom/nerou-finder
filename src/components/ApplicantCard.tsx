@@ -4,6 +4,7 @@ import type { SubscriptionPlan } from "../types.js";
 import { ApplicationStatus, VerificationStatus } from "../types.js";
 import type { ApplicantCardData, ApplicantDoc } from "../lib/applicants.js";
 import { DOC_LABELS } from "./VerificationDocumentsPanel.js";
+import { TRIAL_DAYS, defaultExpiryFor, isTrialPlan } from "../lib/onboarding.js";
 
 export interface SubscriptionForm {
   planId: string;
@@ -81,7 +82,9 @@ export default function ApplicantCard({ card, plans, isRtl, onViewDoc, onReviewD
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<SubscriptionForm>(() => ({
     planId: sub?.subscriptionPlanId || "",
-    expiryDate: (sub?.subscriptionExpiry || "").slice(0, 10) || new Date(Date.now() + 365 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+    // An active subscription keeps its date. Anything not activated yet gets the plan's own default: 60 days for the free trial
+    // (this used to show the 30 days a sign-up is stamped with, so a two-month trial read as one month), a year for a paid plan.
+    expiryDate: sub?.subscriptionStatus === "ACTIVE" && sub.subscriptionExpiry ? sub.subscriptionExpiry.slice(0, 10) : defaultExpiryFor(sub?.subscriptionPlanId),
     status: sub?.subscriptionStatus === "SUSPENDED" || sub?.subscriptionStatus === "CANCELLED" ? sub.subscriptionStatus : "ACTIVE",
     method: sub?.subscriptionActivationMethod || "MANUAL",
     notes: "",
@@ -170,7 +173,12 @@ export default function ApplicantCard({ card, plans, isRtl, onViewDoc, onReviewD
           ) : sub?.subscriptionStatus ? (
             <>
               <span className="font-semibold">{plan?.name || "—"}</span> · {sub.subscriptionStatus}
-              <br /><span className="text-ink-muted">{t("Until", "حتى")} {fmt(sub.subscriptionExpiry)}</span>
+              {sub.subscriptionStatus === "PENDING_APPROVAL" ? (
+                // not started yet: the stored date is only a placeholder, so say what will happen instead of showing it
+                <><br /><span className="text-ink-muted">{isTrialPlan(sub.subscriptionPlanId) ? t(`Free trial: ${TRIAL_DAYS} days (2 months) from activation`, `تجربة مجانية: ${TRIAL_DAYS} يوماً (شهران) من التفعيل`) : t("Starts when you confirm it", "تبدأ عند تأكيدك لها")}</span></>
+              ) : (
+                <><br /><span className="text-ink-muted">{t("Until", "حتى")} {fmt(sub.subscriptionExpiry)}{isTrialPlan(sub.subscriptionPlanId) && ` · ${t(`${TRIAL_DAYS}-day free trial`, `تجربة ${TRIAL_DAYS} يوماً`)}`}</span></>
+              )}
             </>
           ) : t("Not activated", "غير مفعّل")}
         </Info>
@@ -277,7 +285,7 @@ export default function ApplicantCard({ card, plans, isRtl, onViewDoc, onReviewD
           <div className="bg-canvas border border-border rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
             <label className="text-[10px] font-bold text-ink-muted space-y-1 block">
               {t("Plan", "الباقة")}
-              <select value={form.planId} onChange={e => setForm({ ...form, planId: e.target.value })} className={field}>
+              <select value={form.planId} onChange={e => setForm({ ...form, planId: e.target.value, expiryDate: defaultExpiryFor(e.target.value) })} className={field}>
                 <option value="">-- {t("Select plan", "اختر باقة")} --</option>
                 {plans.map(p => <option key={p.id} value={p.id}>{p.name} ({p.priceMonthly} QAR/mo)</option>)}
               </select>
@@ -285,6 +293,7 @@ export default function ApplicantCard({ card, plans, isRtl, onViewDoc, onReviewD
             <label className="text-[10px] font-bold text-ink-muted space-y-1 block">
               {t("Expiry date", "تاريخ الانتهاء")}
               <input type="date" value={form.expiryDate} onChange={e => setForm({ ...form, expiryDate: e.target.value })} className={`${field} font-mono`} />
+              {isTrialPlan(form.planId) && <span className="block font-normal text-gold-active" data-testid="trial-hint">{t(`Free trial: ${TRIAL_DAYS} days (2 months) from today`, `تجربة مجانية: ${TRIAL_DAYS} يوماً (شهران) من اليوم`)}</span>}
             </label>
             <label className="text-[10px] font-bold text-ink-muted space-y-1 block">
               {t("Status", "الحالة")}

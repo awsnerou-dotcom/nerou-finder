@@ -78,6 +78,19 @@ import { GUIDES, GUIDES_PATH, guidePath, guideText, guideTitleTag, hubText, pars
 import { guideBodyHtml, guideJsonLd, hubBodyHtml, hubJsonLd } from "./src/lib/guidesHtml.js";
 import { changedPaths, inBatches, isPublicOrigin, parseStamps, urlsFor } from "./src/lib/indexNow.js";
 import type { Stamps } from "./src/lib/indexNow.js";
+import { TRIAL_DAYS, dueSubscriptionReminder, isTrialPlan } from "./src/lib/onboarding.js";
+import type { SentReminders } from "./src/lib/onboarding.js";
+import {
+  accountVerifiedEmail,
+  adminDocumentsReadyEmail,
+  adminNewApplicationEmail,
+  applicationStatusEmail,
+  subscriptionActivatedEmail,
+  subscriptionReminderEmail,
+  verificationChangedEmail,
+  welcomeEmail
+} from "./src/lib/onboardingEmails.js";
+import type { ApplicantKind, EmailParts } from "./src/lib/onboardingEmails.js";
 import { getVideoEmbedUrl } from "./src/lib/video.js";
 import { firstUsableNumber } from "./src/lib/phone.js";
 import {
@@ -1016,6 +1029,41 @@ function notifyAccountUpdated(db: DatabaseState, userIds: string[], title: strin
   }
 }
 
+/** What kind of applicant an account is, for the onboarding emails. */
+function applicantKindOf(user: { role: string }): ApplicantKind {
+  if (user.role === UserRole.AGENCY_ADMIN) return "AGENCY";
+  if (user.role === UserRole.DEVELOPER_ADMIN) return "DEVELOPER";
+  if (user.role === UserRole.AGENT) return "AGENT";
+  return "OTHER";
+}
+
+/** Sends one of the onboarding emails (bilingual, from src/lib/onboardingEmails.ts). Does nothing when there is no address or no message. */
+function sendOnboardingEmail(to: string | undefined, name: string, parts: EmailParts | null, type: string): void {
+  if (!to || !parts) return;
+  sendMockEmail(to, `[Nerou Finder] ${parts.subject}`, generateNotificationEmailHtml(parts.title, name, parts.body), type);
+}
+
+/** The plan an account is on: its company's, or its own (an independent agent's). */
+function planIdOf(db: DatabaseState, user: { orgId?: string; subscriptionPlanId?: string }): string | undefined {
+  const org = user.orgId ? db.organizations.find(o => o.id === user.orgId) : undefined;
+  return org?.subscriptionPlanId || user.subscriptionPlanId;
+}
+
+/** Emails the applicant about the step their application just reached. */
+function sendApplicationStatusEmail(db: DatabaseState, user: { email: string; fullName: string; role: string; orgId?: string; subscriptionPlanId?: string }, status: string): void {
+  sendOnboardingEmail(
+    user.email,
+    user.fullName,
+    applicationStatusEmail(status, { kind: applicantKindOf(user), trial: isTrialPlan(planIdOf(db, user)) }),
+    `application_${status.toLowerCase()}`
+  );
+}
+
+/** Tells the platform team that something needs their attention (the address is the one that already gets subscription requests). */
+function sendAdminEmail(parts: EmailParts, type: string): void {
+  sendMockEmail(ADMIN_NOTIFICATION_EMAIL, `[Nerou Finder] ${parts.subject}`, generateNotificationEmailHtml(parts.title, "Admin", parts.body), type);
+}
+
 function orgAdminUserIds(db: DatabaseState, orgId: string): string[] {
   return db.users
     .filter(u => u.orgId === orgId && (u.role === UserRole.AGENCY_ADMIN || u.role === UserRole.DEVELOPER_ADMIN))
@@ -1263,14 +1311,12 @@ app.post("/api/auth/verify-otp", authRateLimiter, (req, res) => {
 
   logAudit(user.id, user.fullName, user.role, "VERIFY_EMAIL", user.id, "User", { email: user.email });
 
-  sendMockEmail(
+  // A professional's application goes through review (the welcome says what happens next); a buyer's account is simply ready.
+  const signupPlanId = (user.orgId ? db.organizations.find(o => o.id === user.orgId)?.subscriptionPlanId : undefined) || user.subscriptionPlanId;
+  sendOnboardingEmail(
     user.email,
-    "[Nerou Finder] Welcome to Nerou Finder",
-    generateNotificationEmailHtml(
-      "Welcome to Nerou Finder",
-      user.fullName,
-      `<p>Your account has been created successfully. You can now sign in to your dashboard.</p>`
-    ),
+    user.fullName,
+    welcomeEmail({ gated: !!user.applicationStatus && user.applicationStatus !== ApplicationStatus.ACTIVE, trial: isTrialPlan(signupPlanId) }),
     "welcome"
   );
 
@@ -1533,10 +1579,12 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
       email,
       phone,
       whatsapp: phone,
-      verificationStatus: VerificationStatus.APPROVED,
+      // A company is verified only once its documents are approved (or an admin approves it by hand), never just for signing up.
+      verificationStatus: VerificationStatus.PENDING,
       subscriptionPlanId: targetPlanId,
       subscriptionStatus: "PENDING_APPROVAL" as any,
-      subscriptionExpiry: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+      // the free trial is advertised as 60 days: record 60, not the 30 every other plan starts with
+      subscriptionExpiry: new Date(Date.now() + (isTrialPlan(targetPlanId) ? TRIAL_DAYS : 30) * 24 * 3600 * 1000).toISOString(),
       createdDate: new Date().toISOString()
     };
     db.organizations.push(newOrg);
@@ -1586,6 +1634,9 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
   // mailed to that exact address already proves inbox ownership, same reasoning as
   // provisionOrFindFeedAgent()'s auto-activation for org-vouched feed agents.
   const requiresEmailOtp = !consumedInvitation;
+  // An independent agent carries their own plan (the free trial is 60 days, like a company's). An agent invited by an agency is covered
+  // by the agency's plan, so records none of their own.
+  const agentPlan = agentType === AgentType.INDEPENDENT_AGENT && selectedPlanId ? db.subscriptionPlans.find(p => p.id === selectedPlanId) : undefined;
   const newUser = {
     id: userId,
     email,
@@ -1601,7 +1652,16 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
     bio: effectiveRole === UserRole.AGENT ? "Professional real estate specialist." : "Administrator account.",
     languages: ["English", "Arabic"],
     specialties: ["Pearl Qatar", "West Bay"],
-    verificationStatus: VerificationStatus.APPROVED,
+    // Professionals are verified only once their documents are approved (an agent invited by an agency is covered by the agency's
+    // verification instead: see isAgentVerified). Buyers have nothing to verify.
+    verificationStatus: effectiveRole === UserRole.AGENT || effectiveRole === UserRole.AGENCY_ADMIN || effectiveRole === UserRole.DEVELOPER_ADMIN
+      ? VerificationStatus.PENDING
+      : VerificationStatus.APPROVED,
+    ...(agentPlan ? {
+      subscriptionPlanId: agentPlan.id,
+      subscriptionStatus: "PENDING_APPROVAL" as const,
+      subscriptionExpiry: new Date(Date.now() + (isTrialPlan(agentPlan.id) ? TRIAL_DAYS : 30) * 24 * 3600 * 1000).toISOString()
+    } : {}),
     createdDate: new Date().toISOString(),
     referralCode: generateUniqueReferralCode(db),
     referredByCode,
@@ -1663,6 +1723,11 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
 
   logAudit(userId, fullName, effectiveRole, "USER_SIGNUP", userId, "User", { email, viaInvitation: !!consumedInvitation, referredByCode });
 
+  // An independent agent's application needs the team's review too (a company's request already emails the team above).
+  if (agentType === AgentType.INDEPENDENT_AGENT) {
+    sendAdminEmail(adminNewApplicationEmail({ name: fullName, kind: "AGENT", email, phone, planName: agentPlan?.name }), "application_agent");
+  }
+
   // Unverified accounts get no JWT and no welcome email yet - both happen once
   // POST /api/auth/verify-otp confirms the code, which is the real completion of signup.
   if (requiresEmailOtp) {
@@ -1671,16 +1736,7 @@ app.post("/api/auth/signup", authRateLimiter, (req, res) => {
 
   // FIX 9: welcome email to the new user themself - previously only admins were ever notified
   // (and only for org signups), the new user got nothing.
-  sendMockEmail(
-    email,
-    "[Nerou Finder] Welcome to Nerou Finder",
-    generateNotificationEmailHtml(
-      "Welcome to Nerou Finder",
-      fullName,
-      `<p>Your account has been created successfully. You can now sign in to your dashboard.</p>`
-    ),
-    "welcome"
-  );
+  sendOnboardingEmail(email, fullName, welcomeEmail({ gated: !!applicationStatus && applicationStatus !== ApplicationStatus.ACTIVE }), "welcome");
 
   // Issue JWT Token
   const token = jwt.sign(
@@ -6369,21 +6425,18 @@ app.post("/api/admin/organizations/subscription", (req, res) => {
   );
   writeDb(db);
 
-  // Trigger outbound mock email log if subscription is approved and active
+  // The company is told its plan is active, and what comes next (the documents). This used to say "Approved & Verified", but a plan
+  // being confirmed says nothing about the company's documents, so it no longer claims that: verification has its own email.
   const updatedOrg = db.organizations[idx];
   const planObj = db.subscriptionPlans.find(p => p.id === planId);
   if (status === "ACTIVE") {
-    const approvedEmailHtml = generateSubscriptionApprovedEmailHtml(
+    const orgAdmin = db.users.find(u => u.orgId === orgId && (u.role === UserRole.AGENCY_ADMIN || u.role === UserRole.DEVELOPER_ADMIN));
+    sendOnboardingEmail(
+      updatedOrg.email,
       updatedOrg.name,
-      planObj?.name || planId,
-      expiryDate,
-      {
-        properties: planObj?.propertyLimit || 15,
-        agents: planObj?.agentLimit || 1,
-        aiQuota: planObj?.aiLimit || 50
-      }
+      subscriptionActivatedEmail({ planName: planObj?.name || String(planId), expiry: expiryDate, trial: isTrialPlan(planId), needsDocuments: orgAdmin?.applicationStatus === ApplicationStatus.AWAITING_DOCUMENTS }),
+      "subscription_approval"
     );
-    sendMockEmail(updatedOrg.email, `[Welcome to Nerou Finder] SaaS Subscription Activated: ${updatedOrg.name}`, approvedEmailHtml, "subscription_approval");
   }
 
   logAudit(
@@ -6432,6 +6485,17 @@ app.post("/api/admin/users/:id/subscription", (req, res) => {
   );
   writeDb(db);
 
+  // same as for a company: the independent agent is told their plan is active and what comes next (previously silent)
+  if (status === "ACTIVE") {
+    const agentPlanObj = db.subscriptionPlans.find(p => p.id === planId);
+    sendOnboardingEmail(
+      user.email,
+      user.fullName,
+      subscriptionActivatedEmail({ planName: agentPlanObj?.name || String(planId), expiry: expiryDate, trial: isTrialPlan(planId), needsDocuments: user.applicationStatus === ApplicationStatus.AWAITING_DOCUMENTS }),
+      "subscription_approval"
+    );
+  }
+
   logAudit(
     actor.id,
     actor.name,
@@ -6462,9 +6526,12 @@ app.patch("/api/admin/users/:id/application-status", (req, res) => {
   const idx = db.users.findIndex(u => u.id === id);
   if (idx === -1) return res.status(404).json({ error: "User not found" });
 
+  const changed = db.users[idx].applicationStatus !== status;
   db.users[idx].applicationStatus = status;
   notifyAccountUpdated(db, [id], "Application status updated", `Your application is now: ${String(status).replace(/_/g, " ")}.`);
   writeDb(db);
+  // every step the applicant reaches is also emailed (a repeat of the same status is not)
+  if (changed) sendApplicationStatusEmail(db, db.users[idx], status);
 
   logAudit(
     authReq.user?.id || "admin",
@@ -6493,6 +6560,7 @@ app.post("/api/admin/verify-org", (req, res) => {
   db.organizations[idx].verifiedByAdmin = status === VerificationStatus.APPROVED ? true : undefined;
   notifyAccountUpdated(db, orgAdminUserIds(db, orgId), "Verification updated", `Your organization's verification status is now ${String(status)}.`);
   writeDb(db);
+  sendOnboardingEmail(db.organizations[idx].email, db.organizations[idx].name, verificationChangedEmail(String(status), { kind: db.organizations[idx].type === "DEVELOPER" ? "DEVELOPER" : "AGENCY" }), "verification_changed");
 
   logAudit(
     actor.id,
@@ -6518,6 +6586,7 @@ app.post("/api/admin/verify-user", (req, res) => {
   db.users[idx].verifiedByAdmin = status === VerificationStatus.APPROVED ? true : undefined;
   notifyAccountUpdated(db, [userId], "Verification updated", `Your account verification status is now ${String(status)}.`);
   writeDb(db);
+  sendOnboardingEmail(db.users[idx].email, db.users[idx].fullName, verificationChangedEmail(String(status), { kind: applicantKindOf(db.users[idx]) }), "verification_changed");
 
   logAudit(
     actor.id,
@@ -6561,13 +6630,16 @@ function getDocumentOwnerContact(db: DatabaseState, doc: VerificationDocument): 
 // Recomputes the owning User/Organization's overall verificationStatus from its
 // document checklist. Only flips between PENDING/APPROVED - a manually-set
 // SUSPENDED status (from the existing account-level verify endpoints) is left alone.
-function recomputeAccountVerification(db: DatabaseState, context: VerificationContext, userId?: string, orgId?: string) {
+function recomputeAccountVerification(db: DatabaseState, context: VerificationContext, userId?: string, orgId?: string): { becameVerified: boolean; becameActive: boolean } {
+  const nothing = { becameVerified: false, becameActive: false };
   if (!db.verificationDocuments) db.verificationDocuments = [];
   const isAgent = context === "AGENT";
   const owner: { verificationStatus: VerificationStatus; isExpat?: boolean; verifiedByAdmin?: boolean } | undefined =
     isAgent ? db.users.find(u => u.id === userId) : db.organizations.find(o => o.id === orgId);
-  if (!owner) return;
-  if (owner.verificationStatus === VerificationStatus.SUSPENDED) return;
+  if (!owner) return nothing;
+  if (owner.verificationStatus === VerificationStatus.SUSPENDED) return nothing;
+  const wasVerified = owner.verificationStatus === VerificationStatus.APPROVED;
+  let becameActive = false;
 
   const required = getRequiredDocumentTypes(context, isAgent ? owner.isExpat : undefined);
   const ownDocs = db.verificationDocuments.filter(d => (isAgent ? d.userId === userId : d.orgId === orgId));
@@ -6586,8 +6658,10 @@ function recomputeAccountVerification(db: DatabaseState, context: VerificationCo
       : db.users.find(u => u.orgId === orgId && (u.role === UserRole.AGENCY_ADMIN || u.role === UserRole.DEVELOPER_ADMIN));
     if (actingUser && actingUser.applicationStatus === ApplicationStatus.UNDER_VERIFICATION) {
       actingUser.applicationStatus = ApplicationStatus.ACTIVE;
+      becameActive = true;
     }
   }
+  return { becameVerified: !wasVerified && owner.verificationStatus === VerificationStatus.APPROVED, becameActive };
 }
 
 function generateDocumentReviewEmailHtml(name: string, documentType: string, status: string, rejectionReason?: string): string {
@@ -6783,7 +6857,8 @@ app.post("/api/verification-documents", authMiddleware, (req, res) => {
   const requiredForBump = getRequiredDocumentTypes(context, actor.isExpat);
   const ownDocsAfterSubmit = db.verificationDocuments.filter(d => (context === "AGENT" ? d.userId === userId : d.orgId === orgId));
   const allSubmitted = requiredForBump.every(type => ownDocsAfterSubmit.some(d => d.documentType === type));
-  if (allSubmitted && actor.applicationStatus === ApplicationStatus.AWAITING_DOCUMENTS) {
+  const movedToReview = allSubmitted && actor.applicationStatus === ApplicationStatus.AWAITING_DOCUMENTS;
+  if (movedToReview) {
     actor.applicationStatus = ApplicationStatus.UNDER_VERIFICATION;
   }
 
@@ -6803,6 +6878,13 @@ app.post("/api/verification-documents", authMiddleware, (req, res) => {
       ),
       "document_submitted"
     );
+  }
+
+  // The last required document is in: tell the applicant their review has started, and tell the team there is something to review.
+  if (movedToReview) {
+    sendApplicationStatusEmail(db, actor, ApplicationStatus.UNDER_VERIFICATION);
+    const orgOfActor = actor.orgId ? db.organizations.find(o => o.id === actor.orgId) : undefined;
+    sendAdminEmail(adminDocumentsReadyEmail({ name: context === "AGENT" ? actor.fullName : (orgOfActor?.name || actor.fullName), kind: applicantKindOf(actor), count: requiredForBump.length }), "documents_ready");
   }
 
   res.json({ success: true, document: doc });
@@ -6884,7 +6966,7 @@ app.post("/api/admin/verification-documents/review", (req, res) => {
   doc.reviewedDate = new Date().toISOString();
   doc.reviewedBy = actor.id;
 
-  recomputeAccountVerification(db, doc.context, doc.userId, doc.orgId);
+  const outcome = recomputeAccountVerification(db, doc.context, doc.userId, doc.orgId);
   const docOwnerIds = doc.context === "AGENT"
     ? (doc.userId ? [doc.userId] : [])
     : (doc.orgId ? orgAdminUserIds(db, doc.orgId) : []);
@@ -6915,6 +6997,17 @@ app.post("/api/admin/verification-documents/review", (req, res) => {
       html,
       "document_review"
     );
+    // The last required document approved is the moment the account becomes verified (and active): say so in its own email,
+    // so the applicant never has to guess whether the process is finished.
+    const docKind: ApplicantKind = doc.context === "AGENT" ? "AGENT" : doc.context === "DEVELOPER" ? "DEVELOPER" : "AGENCY";
+    if (outcome.becameVerified) {
+      sendOnboardingEmail(contact.email, contact.name, accountVerifiedEmail({ kind: docKind }), "account_verified");
+    } else if (outcome.becameActive) {
+      const ownerUser = doc.context === "AGENT"
+        ? db.users.find(u => u.id === doc.userId)
+        : db.users.find(u => u.orgId === doc.orgId && (u.role === UserRole.AGENCY_ADMIN || u.role === UserRole.DEVELOPER_ADMIN));
+      if (ownerUser) sendApplicationStatusEmail(db, ownerUser, ApplicationStatus.ACTIVE);
+    }
   }
 
   res.json({ success: true, document: doc });
@@ -6975,6 +7068,35 @@ export function checkDocumentExpiryAndReminders() {
   }
 
   if (changed) writeDb(db);
+}
+
+/**
+ * Tells a company or an independent agent that their trial or subscription is about to end (7 days, then the last day) or has just
+ * ended. Each message is sent once per expiry date. Only an ACTIVE subscription is reminded, and an expiry long past is left silent,
+ * so switching this on never emails old accounts. Agents of an agency are covered by the agency's own reminders.
+ */
+export function checkSubscriptionExpiryAndReminders(now: Date = new Date()): number {
+  const db = readDb();
+  let sent = 0;
+  const remind = (holder: { subscriptionStatus?: string; subscriptionExpiry?: string; subscriptionPlanId?: string; subscriptionReminders?: SentReminders }, to: string | undefined, name: string) => {
+    const due = dueSubscriptionReminder({ status: holder.subscriptionStatus, expiry: holder.subscriptionExpiry }, holder.subscriptionReminders, now);
+    if (!due || !holder.subscriptionExpiry) return;
+    const plan = db.subscriptionPlans.find(p => p.id === holder.subscriptionPlanId);
+    sendOnboardingEmail(
+      to,
+      name,
+      subscriptionReminderEmail(due, { planName: plan?.name || holder.subscriptionPlanId || "your plan", expiry: holder.subscriptionExpiry, trial: isTrialPlan(holder.subscriptionPlanId) }),
+      `subscription_${due}`
+    );
+    holder.subscriptionReminders = { ...(holder.subscriptionReminders || {}), [due]: holder.subscriptionExpiry };
+    sent++;
+  };
+  for (const org of db.organizations) remind(org, org.email, org.name);
+  for (const u of db.users) {
+    if (u.role === UserRole.AGENT && !u.orgId) remind(u, u.email, u.fullName);
+  }
+  if (sent > 0) writeDb(db);
+  return sent;
 }
 
 function generatePropertyStaleEmailHtml(name: string, propertyTitle: string, kind: "reminder" | "paused"): string {
@@ -10983,6 +11105,14 @@ async function startServer() {
   // Verification document expiry sweep: flags EXPIRED docs and sends 30/7-day reminder emails.
   checkDocumentExpiryAndReminders();
   setInterval(checkDocumentExpiryAndReminders, 24 * 60 * 60 * 1000);
+
+  // Trial / subscription ending: reminders 7 days and 1 day before, and a notice when it has ended. A few minutes after boot (so a
+  // restart never skips a day), then daily.
+  const subscriptionSweep = () => {
+    try { checkSubscriptionExpiryAndReminders(); } catch (err) { console.error("Subscription reminder sweep failed:", err); }
+  };
+  setTimeout(subscriptionSweep, 3 * 60 * 1000);
+  setInterval(subscriptionSweep, 24 * 60 * 60 * 1000);
 
   // Listing availability staleness sweep: 14-day "please confirm" reminder emails and 30-day
   // auto-pause. Same interval/pattern as the verification document expiry sweep above.

@@ -157,6 +157,8 @@ export interface User {
   subscriptionExpiry?: string;
   subscriptionStatus?: "ACTIVE" | "SUSPENDED" | "CANCELLED" | "PENDING_APPROVAL";
   subscriptionActivationMethod?: "MANUAL" | "BANK_TRANSFER" | "INVOICE" | "OTHER";
+  /** see Organization.subscriptionReminders */
+  subscriptionReminders?: { d7?: string; d1?: string; expired?: string };
   subscriptionNotes?: string;
   // First-time contextual onboarding tour (Agent/Agency Admin/Developer Admin dashboards) -
   // true once the user has dismissed/finished it, so it only auto-shows once. Undefined is
@@ -269,6 +271,8 @@ export interface Organization {
   subscriptionStatus?: "ACTIVE" | "SUSPENDED" | "CANCELLED" | "PENDING_APPROVAL";
   subscriptionNotes?: string;
   subscriptionActivationMethod?: "MANUAL" | "BANK_TRANSFER" | "INVOICE" | "OTHER";
+  /** which "your subscription is ending" emails were sent, each for the expiry date it was sent for (a new date starts over) */
+  subscriptionReminders?: { d7?: string; d1?: string; expired?: string };
   leadRoutingPolicy?: "ROUND_ROBIN" | "AREA_BASED" | "PERFORMANCE";
 }
 

@@ -80,6 +80,7 @@ import DashboardChart from "./DashboardChart.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Button } from "./ui/Button.js";
 import { buildDailyCountSeries, isThisMonth } from "../lib/dashboardMetrics.js";
+import { defaultExpiryFor } from "../lib/onboarding.js";
 import DocumentViewer from "./DocumentViewer.js";
 import ProspectPipeline from "./ProspectPipeline.js";
 import SeoCenter from "./SeoCenter.js";
@@ -2710,7 +2711,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               <label className="block text-[10px] font-bold text-ink-muted mb-1">{isRtl ? "الخطة" : "Plan"}</label>
                               <select
                                 value={appPlanId}
-                                onChange={(e) => setAppPlanId(e.target.value)}
+                                onChange={(e) => { setAppPlanId(e.target.value); setAppExpiryDate(defaultExpiryFor(e.target.value)); }}
                                 className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-xs"
                               >
                                 <option value="">-- {isRtl ? "اختر خطة" : "Select Plan"} --</option>
@@ -3669,7 +3670,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                           <select
                             required
                             value={selectedPlanId}
-                            onChange={(e) => setSelectedPlanId(e.target.value)}
+                            onChange={(e) => { setSelectedPlanId(e.target.value); setSubExpiryDate(defaultExpiryFor(e.target.value)); }}
                             className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg text-xs"
                           >
                             <option value="">-- Select Plan --</option>
