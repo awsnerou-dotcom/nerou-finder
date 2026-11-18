@@ -89,6 +89,7 @@ import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
 import BoostRecommendations from "./BoostRecommendations.js";
 import CmaReportButton from "./CmaReportButton.js";
+import TwinListingButton from "./TwinListingButton.js";
 import { compressImage } from "../lib/image.js";
 import StatCard from "./StatCard.js";
 import DashboardChart from "./DashboardChart.js";
@@ -2960,6 +2961,16 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
                     </button>
                     <ShareListingButton property={prop} isRtl={isRtl} agentName={agent.fullName} agentLine={agent.phone} />
                     <CmaReportButton property={prop} agent={agent} orgName={agencyOrg?.name} isRtl={isRtl} />
+                    <TwinListingButton
+                      property={prop}
+                      isRtl={isRtl}
+                      onCreated={() => {
+                        fetchLeadsAndProperties();
+                        onRefreshAll();
+                        setToastMessage(isRtl ? "تمت إضافة العرض الثاني لهذه الوحدة." : "The second offer for this unit was added.");
+                        setTimeout(() => setToastMessage(""), 5000);
+                      }}
+                    />
                     <button
                       type="button"
                       onClick={() => startEditListing(prop)}

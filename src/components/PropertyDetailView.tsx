@@ -78,6 +78,19 @@ export default function PropertyDetailView({
 }: PropertyDetailViewProps) {
   const { activeCurrency, formatPrice, convertPrice, getCurrencySymbol } = useCurrency();
 
+  // The same unit offered the other way (for sale and for rent): the other listing, when it is live, is one tap away.
+  const [twin, setTwin] = useState<Property | null>(null);
+  useEffect(() => {
+    setTwin(null);
+    if (!property.twinId) return;
+    let cancelled = false;
+    fetch(`/api/properties/${encodeURIComponent(property.twinId)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then((p: Property | null) => { if (!cancelled && p && p.listingStatus === "PUBLISHED") setTwin(p); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [property.twinId]);
+
   // Interactive Tools State
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportReason, setReportReason] = useState<string>("");
@@ -1143,6 +1156,23 @@ export default function PropertyDetailView({
                     <p className="text-[10px] text-ink-muted pt-1">
                       {isRtl ? "+ رسوم الخدمة" : "+ Service Charges"}: {property.serviceCharges.toLocaleString()} {currencySymbol}
                     </p>
+                  )}
+                  {twin && onSelectProperty && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectProperty(twin)}
+                      className="mt-2 w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-start text-[11px] text-white cursor-pointer transition-colors"
+                    >
+                      <span>
+                        {String(twin.transactionType).includes("RENT") || String(twin.transactionType).includes("LEASE")
+                          ? (isRtl ? "معروض أيضاً للإيجار" : "Also for rent")
+                          : (isRtl ? "معروض أيضاً للبيع" : "Also for sale")}
+                      </span>
+                      <strong className="text-gold tabular-nums">
+                        {convertPrice(twin.price).toLocaleString()} {currencySymbol}
+                        {(String(twin.transactionType).includes("RENT") || String(twin.transactionType).includes("LEASE")) && <span className="font-normal text-gray-300"> / {twin.rentalPeriod || "YR"}</span>}
+                      </strong>
+                    </button>
                   )}
                   {/* Public trust signal: honest freshness indicator, computed from
                       lastConfirmedAvailableDate rather than fabricated. */}

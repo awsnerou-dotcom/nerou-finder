@@ -58,6 +58,7 @@ import WorkspaceShell, { AttentionPanel, QuickActions, TopListingsPanel, Workspa
 import type { NavGroup } from "./WorkspaceShell.js";
 import { agencyAttention, topListings, waitingLeads } from "../lib/workspaceAttention.js";
 import { SectionHeader, StatStrip, LeadCard, ListingCard } from "./WorkspaceParts.js";
+import TwinListingButton from "./TwinListingButton.js";
 import { PublicPagePanel } from "./ReachPanel.js";
 const GuideView = React.lazy(() => import("./GuideView.js"));
 import ShareListingButton from "./ShareKit.js";
@@ -1331,6 +1332,15 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                     </button>
                     <ShareListingButton property={prop} isRtl={isRtl} agentName={agency.name} agentLine={agents.find(a => a.id === prop.agentId)?.fullName} />
                     <CmaReportButton property={prop} agent={currentUser} orgName={agency.name} isRtl={isRtl} />
+                    <TwinListingButton
+                      property={prop}
+                      isRtl={isRtl}
+                      onCreated={() => {
+                        onRefreshAll();
+                        setToastMessage(isRtl ? "تمت إضافة العرض الثاني لهذه الوحدة." : "The second offer for this unit was added.");
+                        setTimeout(() => setToastMessage(""), 5000);
+                      }}
+                    />
                     <button
                       type="button"
                       onClick={() => (editingListingId === prop.id ? cancelEditListing() : startEditListing(prop))}

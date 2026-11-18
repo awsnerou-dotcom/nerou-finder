@@ -433,6 +433,8 @@ export interface Property {
   importPhotos?: "PENDING" | "DONE" | "PARTIAL" | "FAILED";
   /** came in from a file or feed with something missing (size, bedrooms, a known area): stays a draft until the agent edits it */
   importIncomplete?: boolean;
+  /** the same unit offered the other way (for sale and for rent): the id of the other listing, set on both. See src/lib/twinListing.ts */
+  twinId?: string;
   recentViewers?: { fingerprint: string; ts: number }[];
   // ---------------------------------------------------------------------------
   // Partner Feed Import

@@ -98,9 +98,10 @@ export function matchType(f: string): string | undefined {
   return undefined;
 }
 
-function matchBedrooms(f: string, type: string | undefined): number | undefined {
+export function matchBedrooms(f: string, type: string | undefined): number | undefined {
   if (type === "STUDIO") return 0;
-  let m = /(\d{1,2})\s*(?:br\b|bhk|bd\b|beds?\b|bedrooms?|غرف|غرفه|غرفتين)/.exec(f);
+  // "2 bedrooms", "2-bedroom", "2br"
+  let m = /(\d{1,2})\s*-?\s*(?:br\b|bhk|bd\b|beds?\b|bedrooms?|غرف|غرفه|غرفتين)/.exec(f);
   if (m) return Number(m[1]);
   m = /(?:bedrooms?|beds?|غرف|غرفه)\s*[:=-]?\s*(\d{1,2})\b/.exec(f);
   if (m) return Number(m[1]);

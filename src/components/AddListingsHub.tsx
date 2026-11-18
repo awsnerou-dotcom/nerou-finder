@@ -4,9 +4,10 @@
  */
 
 import React, { useEffect, useRef, useState } from "react";
-import { AlertTriangle, Check, ClipboardPaste, Download, FileSpreadsheet, Link2, Loader2, PenLine, PlugZap, RefreshCw, Rocket, Unplug, UploadCloud } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, Check, ClipboardPaste, Download, FileSpreadsheet, Link2, Loader2, PenLine, PlugZap, RefreshCw, Rocket, Unplug, UploadCloud } from "lucide-react";
 import PasteAdPanel from "./PasteAdPanel.js";
 import type { ParsedListing, PlaceRef } from "../lib/listingFromText.js";
+import { adsToImportRecords } from "../lib/bulkPaste.js";
 import { importTemplateCsv, IMPORT_MAX_BYTES } from "../lib/listingImport.js";
 import { propertyTypeLabel } from "../lib/propertySpecs.js";
 
@@ -29,7 +30,7 @@ async function readError(res: Response, fallback: string): Promise<string> {
   try { const d = await res.json(); return d.error || fallback; } catch { return fallback; }
 }
 
-type Method = "paste" | "file" | "feed";
+type Method = "paste" | "file" | "feed" | "move";
 
 export default function AddListingsHub({
   isRtl, locations, onApplyPaste, onManual, onImported, draftsReady, onPublishDrafts
@@ -62,6 +63,23 @@ export default function AddListingsHub({
         <h3 className="font-serif text-xl font-semibold text-ink leading-tight">{t("Add your listings", "أضف عقاراتك")}</h3>
         <p className="text-[13px] text-ink-muted mt-0.5">{t("Choose the way that suits how you already work.", "اختر الطريقة التي تناسب طريقة عملك.")}</p>
       </div>
+
+      {/* The most common reason to be here: the agent already lists on another portal. */}
+      <button
+        type="button"
+        aria-pressed={method === "move"}
+        onClick={() => setMethod(method === "move" ? null : "move")}
+        className={`w-full text-start flex items-center gap-4 rounded-2xl border p-4 transition cursor-pointer ${method === "move" ? "border-gold bg-gold-soft/40 shadow-popover" : "border-gold/40 bg-gradient-to-r from-gold-soft/50 to-surface hover:border-gold"}`}
+      >
+        <span className="w-12 h-12 rounded-xl bg-gold text-gold-ink flex items-center justify-center shrink-0"><ArrowRightLeft size={24} strokeWidth={2.25} /></span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-[15px] font-semibold text-ink leading-snug">{t("Already list on another portal? Move your listings here", "تنشر في منصة عقارية أخرى؟ انقل عقاراتك إلى هنا")}</span>
+          <span className="block text-[12.5px] text-ink-muted mt-0.5 leading-snug">{t("Copy your ads once, or use the export or feed your portal or CRM gives you. Nothing is typed again.", "انسخ إعلاناتك مرة واحدة، أو استعمل الملف أو الخلاصة التي تعطيك إياها منصتك أو نظامك. لا تكتب شيئاً من جديد.")}</span>
+        </span>
+        <span className="hidden sm:inline-flex px-4 py-2 rounded-xl bg-chrome text-white text-[13px] font-semibold shrink-0">{method === "move" ? t("Close", "إغلاق") : t("Start", "ابدأ")}</span>
+      </button>
+
+      {method === "move" && <MoveListingsPanel isRtl={isRtl} locations={locations} onImported={onImported} onChoose={m => setMethod(m)} />}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {CARDS.map(c => {
@@ -385,6 +403,107 @@ function FeedLinkPanel({ isRtl, onImported }: { isRtl: boolean; onImported: () =
           <button type="button" onClick={() => setPreview(null)} className="text-[13px] font-semibold text-ink-muted hover:text-ink underline cursor-pointer">{t("Use a different link", "استخدم رابطاً آخر")}</button>
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Move from another portal
+// ---------------------------------------------------------------------------------------------
+
+function MoveListingsPanel({ isRtl, locations, onImported, onChoose }: { isRtl: boolean; locations: PlaceRef[]; onImported: () => void; onChoose: (m: Method) => void }) {
+  const t = (en: string, ar: string) => (isRtl ? ar : en);
+  const [text, setText] = useState("");
+  const [left, setLeft] = useState<{ index: number; reason: string }[]>([]);
+  const [content, setContent] = useState("");
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  // every ad in the pasted text becomes a row of the same kind a file holds, and goes through the same preview and checks
+  const readAds = async () => {
+    setError(""); setPreview(null); setResult(null);
+    const r = adsToImportRecords(text, locations);
+    setLeft(r.skipped);
+    if (r.records.length === 0) {
+      setError(r.found === 0
+        ? t("Paste the text of your ads first.", "الصق نص إعلاناتك أولاً.")
+        : t("We could not find an ad with a price or a kind of property in that text. Paste the ads themselves, separated by a blank line or a line of dashes.", "لم نجد إعلاناً فيه سعر أو نوع عقار في هذا النص. الصق الإعلانات نفسها، يفصل بينها سطر فارغ أو سطر شرطات."));
+      return;
+    }
+    const body = JSON.stringify(r.records);
+    setContent(body);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/listings/import/preview", { method: "POST", headers: { ...auth(), "Content-Type": "text/plain; charset=utf-8" }, body });
+      if (!res.ok) { setError(await readError(res, t("We could not read those ads.", "تعذّرت قراءة هذه الإعلانات."))); return; }
+      setPreview(await res.json());
+    } catch { setError(t("We could not reach the server. Please try again.", "تعذّر الاتصال بالخادم. حاول مرة أخرى.")); } finally { setBusy(false); }
+  };
+
+  const confirm = async (publish: boolean) => {
+    setBusy(true); setError("");
+    try {
+      const res = await fetch(`/api/listings/import/commit${publish ? "?publish=1" : ""}`, { method: "POST", headers: { ...auth(), "Content-Type": "text/plain; charset=utf-8" }, body: content });
+      if (!res.ok) { setError(await readError(res, t("The import failed.", "فشل الاستيراد."))); return; }
+      setResult(await res.json());
+      onImported();
+    } catch { setError(t("We could not reach the server. Please try again.", "تعذّر الاتصال بالخادم. حاول مرة أخرى.")); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="rounded-2xl border border-gold/50 bg-surface p-5 space-y-5">
+      <div>
+        <h4 className="font-serif text-lg font-semibold text-ink">{t("Move your listings from another portal", "انقل عقاراتك من منصة أخرى")}</h4>
+        <p className="text-[13px] text-ink-muted mt-0.5">{t("Pick the one that matches what you have. Either way, you check everything before it goes live.", "اختر ما يناسب ما لديك. وفي الحالتين تراجع كل شيء قبل نشره.")}</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="rounded-2xl border border-border p-4 space-y-3">
+          <p className="text-[14px] font-semibold text-ink">{t("1. I have an export file or a feed link", "1. لدي ملف تصدير أو رابط خلاصة")}</p>
+          <p className="text-[12.5px] text-ink-muted leading-relaxed">{t("Many portals and CRM systems can give you your listings as a file (CSV, XML or JSON) or a feed link. Ask your portal's account manager or your CRM provider for it: it carries the photos too, and a feed keeps your listings up to date by itself.", "كثير من المنصات وأنظمة CRM تعطيك عقاراتك كملف (CSV أو XML أو JSON) أو كرابط خلاصة. اطلبه من مدير حسابك في المنصة أو من مزوّد نظامك: يحمل الصور أيضاً، والخلاصة تُبقي عقاراتك محدَّثة وحدها.")}</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => onChoose("file")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-semibold cursor-pointer transition-colors"><FileSpreadsheet size={16} />{t("Upload the file", "ارفع الملف")}</button>
+            <button type="button" onClick={() => onChoose("feed")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-semibold cursor-pointer transition-colors"><Link2 size={16} />{t("Connect the feed link", "اربط رابط الخلاصة")}</button>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gold/50 bg-gold-soft/20 p-4 space-y-3">
+          <p className="text-[14px] font-semibold text-ink">{t("2. I only have my ads on a page, in posts or in messages", "2. لدي إعلاناتي فقط في صفحة أو منشورات أو رسائل")}</p>
+          <ol className="text-[12.5px] text-ink-muted leading-relaxed space-y-1 list-decimal ps-5">
+            <li>{t("Open your ads where they are (your portal's “my ads” page, your posts, WhatsApp).", "افتح إعلاناتك حيث هي (صفحة «إعلاناتي» في منصتك أو منشوراتك أو واتساب).")}</li>
+            <li>{t("Select all the text and copy it.", "حدد كل النص وانسخه.")}</li>
+            <li>{t("Paste it below. We split it into separate ads for you.", "الصقه أدناه. نقسمه إلى إعلانات منفصلة عنك.")}</li>
+          </ol>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <textarea
+          value={text}
+          onChange={e => { setText(e.target.value); setPreview(null); setResult(null); }}
+          rows={7}
+          aria-label={t("Paste all your ads here", "الصق كل إعلاناتك هنا")}
+          placeholder={t("Paste all your ads here. Separate them with a blank line or a line of dashes (---).", "الصق كل إعلاناتك هنا. افصل بينها بسطر فارغ أو بسطر شرطات (---).")}
+          className="w-full px-4 py-3 bg-canvas border border-border rounded-xl text-[14px] leading-relaxed"
+        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <button type="button" onClick={readAds} disabled={busy || text.trim().length < 15} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-chrome hover:bg-chrome-hover text-white text-sm font-semibold disabled:opacity-40 cursor-pointer transition-colors">
+            {busy && !preview ? <Loader2 size={16} className="animate-spin" /> : <ClipboardPaste size={16} className="text-gold" />}{t("Read my ads", "اقرأ إعلاناتي")}
+          </button>
+          <p className="text-[12px] text-ink-faint">{t("Copied text has no photos: you add them to each draft afterwards (or use a file or feed that carries photo links).", "النص المنسوخ لا يحمل الصور: تضيفها لكل مسودة بعد ذلك (أو استعمل ملفاً أو خلاصة فيها روابط الصور).")}</p>
+        </div>
+      </div>
+
+      {error && <p role="alert" className="text-[13px] text-danger bg-danger-soft border border-danger/30 rounded-xl px-4 py-3">{error}</p>}
+      {left.length > 0 && !result && (
+        <details className="rounded-xl border border-border bg-surface px-4 py-3">
+          <summary className="cursor-pointer text-[13px] font-semibold text-ink flex items-center gap-2"><AlertTriangle size={15} className="text-warning" />{t(`${left.length} part${left.length === 1 ? "" : "s"} of the text left out`, `استُبعد ${left.length} من أجزاء النص`)}</summary>
+          <ul className="mt-2 space-y-1 text-[12px] text-ink-muted">{left.map(s => <li key={s.index}>{t("Ad", "الإعلان")} {s.index}: {s.reason}</li>)}</ul>
+        </details>
+      )}
+      {preview && <ImportPreviewCard isRtl={isRtl} preview={preview} busy={busy} result={result} onConfirm={confirm} confirmLabel={t(`Import ${preview.counts.create + preview.counts.update} listing${preview.counts.create + preview.counts.update === 1 ? "" : "s"}`, `استورد ${preview.counts.create + preview.counts.update} عقاراً`)} />}
     </div>
   );
 }

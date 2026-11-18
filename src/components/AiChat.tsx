@@ -78,7 +78,7 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
     setSlow(false);
     const slowTimer = setTimeout(() => setSlow(true), 10_000);
     const abort = new AbortController();
-    const giveUp = setTimeout(() => abort.abort(), 70_000);
+    const giveUp = setTimeout(() => abort.abort(), 25_000); // the server answers in milliseconds, or within 8 seconds when it asks the model
     try {
       const res = await fetch("/api/ai/search", {
         method: "POST",
@@ -90,8 +90,11 @@ export default function AiChat({ isRtl, initialPrompt, onClose, onOpenProperty }
       if (!res.ok || data.error) throw new Error(data.error || "failed");
 
       const found: { propertyId: string; whyMatchEn: string; whyMatchAr: string }[] = Array.isArray(data.matches) ? data.matches.slice(0, 6) : [];
-      // the assistant names listings by id: fetch the live record of each to draw its card
+      // The answer carries the listings themselves, so the cards are drawn at once; only a listing it names without sending is fetched.
+      const inline = new Map<string, Property>((Array.isArray(data.properties) ? data.properties : []).map((p: Property) => [p.id, p] as const));
       const cards = (await Promise.all(found.map(async f => {
+        const known = inline.get(f.propertyId);
+        if (known) return { property: known, why: isRtl ? f.whyMatchAr : f.whyMatchEn } as Match;
         try {
           const r = await fetch(`/api/properties/${encodeURIComponent(f.propertyId)}`);
           if (!r.ok) return null;

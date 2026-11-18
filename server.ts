@@ -91,6 +91,9 @@ import {
   welcomeEmail
 } from "./src/lib/onboardingEmails.js";
 import type { ApplicantKind, EmailParts } from "./src/lib/onboardingEmails.js";
+import { ChatMemoryStore, answerInstantly } from "./src/lib/instantSearch.js";
+import { buildTwin, validateTwinRequest } from "./src/lib/twinListing.js";
+import type { PlaceRef } from "./src/lib/listingFromText.js";
 import { getVideoEmbedUrl } from "./src/lib/video.js";
 import { firstUsableNumber } from "./src/lib/phone.js";
 import {
@@ -2691,6 +2694,64 @@ app.get("/api/properties/:id/agent-info", (req, res) => {
 });
 
 // Create/Update Property (SaaS Agent/Agency Admin/Developer workspace action)
+/**
+ * Qatar regulation gate: an INDEPENDENT_AGENT must have the licensed agency's authorization letter approved before any listing of theirs
+ * goes live. Returns the reason publishing is blocked, or null when it is allowed. (An agent under an agency, an org admin or an admin
+ * is covered by the organization's own verification.) Used by creating a listing and by offering the same unit a second way.
+ */
+function independentAgentPublishBlock(db: DatabaseState, actor: { id: string; role: string; orgId?: string; agentType?: AgentType } | undefined): string | null {
+  if (!actor || actor.role !== UserRole.AGENT || getEffectiveAgentType(actor as never) !== AgentType.INDEPENDENT_AGENT) return null;
+  if (!db.verificationDocuments) db.verificationDocuments = [];
+  const authLetter = db.verificationDocuments.find(d => d.userId === actor.id && d.documentType === DocumentType.AGENCY_AUTHORIZATION_LETTER);
+  if (authLetter && authLetter.status === DocumentStatus.APPROVED) return null;
+  const currentState = !authLetter ? "NOT_SUBMITTED" : authLetter.status;
+  return `You must have your Agency Authorization Letter approved before publishing listings. Current status: ${currentState}.`;
+}
+
+// Offer the same unit the other way (for sale AND for rent): the listing is copied into a second one, linked to the first, and the agent
+// only gives the other price. Nothing is retyped, no photo is uploaded twice. See src/lib/twinListing.ts.
+app.post("/api/properties/:id/twin", authMiddleware, (req, res) => {
+  const db = readDb();
+  const authReq = req as AuthenticatedRequest;
+  const actorId = authReq.user?.id || "unknown";
+  const actorRole = authReq.user?.role || UserRole.AGENT;
+  const actor = db.users.find(u => u.id === actorId);
+  const source = db.properties.find(p => p.id === req.params.id);
+  if (!source) return res.status(404).json({ error: "Property not found" });
+
+  // same ownership rule as editing: the listing's own agent, an admin of its organization, or the platform admin
+  const isOwnAgent = actorId === source.agentId;
+  const isOrgAdmin = !!source.orgId && actor?.orgId === source.orgId && (actorRole === UserRole.AGENCY_ADMIN || actorRole === UserRole.DEVELOPER_ADMIN);
+  if (!isOwnAgent && !isOrgAdmin && actorRole !== UserRole.PLATFORM_ADMIN) {
+    return res.status(403).json({ error: "You do not have permission to change this listing." });
+  }
+
+  const problem = validateTwinRequest(source, req.body || {});
+  if (problem) return res.status(source.twinId ? 409 : 400).json({ error: problem });
+
+  // the second offer of a published listing is published too, so it passes the same gate as publishing a listing
+  if (source.listingStatus === ListingStatus.PUBLISHED) {
+    const blocked = independentAgentPublishBlock(db, db.users.find(u => u.id === source.agentId));
+    if (blocked) return res.status(403).json({ error: blocked });
+  }
+
+  let listingId = "";
+  do { listingId = `N-${Math.floor(10000 + Math.random() * 90000)}`; } while (db.properties.some(p => p.listingId === listingId));
+  const twin = buildTwin(source, {
+    price: Number(req.body.price),
+    rentalPeriod: req.body.rentalPeriod,
+    id: `prop-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    listingId,
+    now: new Date()
+  });
+  source.twinId = twin.id;
+  db.properties.unshift(twin);
+  writeDb(db);
+
+  logAudit(actorId, authReq.user?.fullName || "Agent", actorRole, "CREATE_TWIN_LISTING", twin.id, "Property", { sourceId: source.id, transactionType: twin.transactionType, price: twin.price });
+  res.json({ property: twin, source });
+});
+
 app.post("/api/properties", authMiddleware, (req, res) => {
   const db = readDb();
   const propData = req.body;
@@ -2744,22 +2805,9 @@ app.post("/api/properties", authMiddleware, (req, res) => {
   const requestedListingStatus = isEdit
     ? propData.listingStatus
     : (propData.listingStatus === ListingStatus.DRAFT ? ListingStatus.DRAFT : ListingStatus.PUBLISHED);
-  if (
-    actor &&
-    actor.role === UserRole.AGENT &&
-    getEffectiveAgentType(actor) === AgentType.INDEPENDENT_AGENT &&
-    requestedListingStatus === ListingStatus.PUBLISHED
-  ) {
-    if (!db.verificationDocuments) db.verificationDocuments = [];
-    const authLetter = db.verificationDocuments.find(
-      d => d.userId === actor.id && d.documentType === DocumentType.AGENCY_AUTHORIZATION_LETTER
-    );
-    if (!authLetter || authLetter.status !== DocumentStatus.APPROVED) {
-      const currentState = !authLetter ? "NOT_SUBMITTED" : authLetter.status;
-      return res.status(403).json({
-        error: `You must have your Agency Authorization Letter approved before publishing listings. Current status: ${currentState}.`
-      });
-    }
+  if (requestedListingStatus === ListingStatus.PUBLISHED) {
+    const blocked = independentAgentPublishBlock(db, actor);
+    if (blocked) return res.status(403).json({ error: blocked });
   }
 
   // Developer-project authorization gate: previously POST /api/properties accepted a
@@ -2852,6 +2900,8 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       // be overwritten from client-supplied propData (that's how a listing gets hijacked).
       agentId: existing.agentId,
       orgId: existing.orgId,
+      // the link to the other offer of the same unit is made and ended by the platform, never by a client
+      twinId: existing.twinId,
       price: Number.isFinite(newPrice) ? newPrice : existing.price,
       area: propData.area !== undefined ? Number(propData.area) : existing.area,
       bedrooms: propData.bedrooms !== undefined ? Number(propData.bedrooms) : existing.bedrooms,
@@ -3176,6 +3226,8 @@ app.delete("/api/properties/:id", authMiddleware, (req, res) => {
   }
 
   db.properties.splice(idx, 1);
+  // the other offer of the same unit (for sale / for rent) stays, but is no longer linked to one that is gone
+  for (const other of db.properties) if (other.twinId === property.id) other.twinId = undefined;
   writeDb(db);
 
   logAudit(actor.id, actor.fullName, actor.role, "DELETE_PROPERTY", property.id, "Property", { title: property.title });
@@ -8664,176 +8716,132 @@ app.post("/api/admin/ai-config", (req, res) => {
 });
 
 // -----------------------------------------------------------------------------
-const conversationSessions: Record<string, any[]> = {};
+// What each chat remembers between messages, so "cheaper" or "a different area" can be answered at once. Bounded and expiring.
+const chatMemory = new ChatMemoryStore();
 
-// AI NATURAL-LANGUAGE PROPERTY SEARCH (Server-side Gemini proxy)
-// -----------------------------------------------------------------------------
-app.post("/api/ai/search", aiSearchRateLimiter, async (req, res) => {
-  const { prompt, conversationId } = req.body;
-  if (!prompt || prompt.trim() === "") {
-    return res.status(400).json({ error: "Query prompt is required." });
-  }
+// AI NATURAL-LANGUAGE PROPERTY SEARCH
+//
+// Most searches name what the visitor wants ("2-bedroom apartment in Lusail under 12,000 QAR", "فيلا للبيع في الريان"). Those are read by rules
+// (src/lib/instantSearch.ts) and answered from the live listings in a few milliseconds: no waiting on a model, and nothing to fail.
+// Only open-ended chat that names no deal, type, place, size or budget goes to Gemini, and then with a short list of compact candidates
+// (not the whole catalogue, which made every answer slow and costly), a short deadline, and a clear question as the fallback.
+// The visitor never sees an error: a slow or missing model just means a plainer answer.
+const AI_MODEL_DEADLINE_MS = 8_000;
+const AI_MODEL_CANDIDATES = 40;
 
-  const db = readDb();
-  const cfg = db.aiConfig || {
-    aiName: "Nerou Find",
-    aiDescription: "AI-Powered Property Discovery",
-    aiPersonality: "Professional, precise technology discovery companion. Neutral, compliant, Qatar-focused, informative, helpful.",
-    aiRules: "Never invent listings. Clearly declare that Nerou Finder does NOT act as a brokerage or receive commissions. Ground matches in real platform data. Match user constraints closely.",
-    disclaimers: "Nerou Finder is a technology-first discovery marketplace. It does not provide real estate brokerage services, nor represent parties, nor receive commissions. The legal relationship remains between the relevant parties.",
-    modelConfiguration: {
-      model: "gemini-3.6-flash",
-      temperature: 0.1,
-      maxTokens: 1000
-    }
-  };
+const CLARIFYING_REPLY = {
+  replyEn: "Tell me what you are looking for and I will search the live listings straight away, for example: \"2-bedroom apartment for rent in Lusail under 12,000 QAR\". I can search by type, area, bedrooms and budget.",
+  replyAr: "أخبرني بما تبحث عنه وسأبحث في العقارات المتاحة فوراً، مثلاً: «شقة غرفتين للإيجار في لوسيل بأقل من 12,000 ريال». أستطيع البحث بالنوع والمنطقة وعدد الغرف والميزانية."
+};
 
-  // Filter active and published properties for visitors. Capped so prompt size/cost/latency
-  // don't scale unbounded with total catalog size - this is a simple recency cap, not real
-  // relevance filtering (a proper fix would pre-filter by extracted criteria or use vector
-  // search server-side before ever building the prompt; flagged as follow-up work).
-  const AI_SEARCH_CANDIDATE_CAP = 200;
-  const availableProperties = db.properties
-    .filter(p => p.listingStatus === ListingStatus.PUBLISHED && p.verificationStatus === VerificationStatus.APPROVED)
-    .sort((a, b) => new Date(b.updatedDate || b.createdDate).getTime() - new Date(a.updatedDate || a.createdDate).getTime())
-    .slice(0, AI_SEARCH_CANDIDATE_CAP);
-
-  try {
-    const ai = getGeminiClient();
-
-    const systemInstruction = `You are ${cfg.aiName}, the official AI-powered discovery and search intelligence engine of Nerou Finder (developed by Nerou Technology Services).
-
-${cfg.aiDescription}
-
-AI Personality & Tone:
-${cfg.aiPersonality}
-
-Rules & Compliance:
-- ${cfg.aiRules}
-- ${cfg.disclaimers}
-
-Strict Grounding Rules:
-- You must strictly only match properties that are present in the provided live database.
-- Never invent properties, IDs, prices, areas, features, or details.
-- Translate conversational criteria into structured criteria.
-- If a user asks you to negotiate, represent them, write a lease, or guarantee a sale, you MUST output a standard brand disclaimer in your "whyMatchEn" and "whyMatchAr" explanations. For example: "${cfg.disclaimers}"
-
-Response Schema Requirements:
-You must respond with a strictly valid JSON object matching the following structure:
-{
-  "replyEn": "string (your chat answer in English: 1-3 short, warm, professional sentences. Say what you found and why it fits; if the request is vague, ask ONE clarifying question such as budget, area, bedrooms or rent/buy. Never list property details the cards already show)",
-  "replyAr": "string (the same chat answer in natural Arabic)",
-  "matches": [
-    {
-      "propertyId": "string (the exact property ID)",
-      "whyMatchEn": "string (clear reason why this matches, with appropriate brand and compliance context in English)",
-      "whyMatchAr": "string (clear reason why this matches, with appropriate brand and compliance context in Arabic)"
-    }
-  ]
+function publicProperty(db: DatabaseState, ids: string[]) {
+  const byId = new Map(db.properties.map(p => [p.id, p] as const));
+  return ids.map(id => byId.get(id)).filter((p): p is Property => !!p);
 }
 
-If no properties logically match, return an empty "matches" array and, in the reply, say so kindly and suggest how to widen the search. If the user asks something unrelated to real estate discovery, return an empty "matches" array and politely steer them back. This is a chat: use the earlier turns of the conversation, so a follow-up such as "cheaper" or "with a pool" refines the previous request. Show at most 6 matches, best first.
+app.post("/api/ai/search", aiSearchRateLimiter, async (req, res) => {
+  const { prompt, conversationId } = req.body || {};
+  if (typeof prompt !== "string" || prompt.trim() === "") {
+    return res.status(400).json({ error: "Query prompt is required." });
+  }
+  const text = prompt.trim().slice(0, 600);
+  const convId = typeof conversationId === "string" && conversationId ? conversationId.slice(0, 80) : undefined;
+  const started = Date.now();
 
-Here is the live properties JSON database:
-${JSON.stringify(availableProperties, null, 2)}`;
+  const db = readDb();
+  const live = db.properties.filter(p => p.listingStatus === ListingStatus.PUBLISHED && p.verificationStatus === VerificationStatus.APPROVED);
+  const places = (db.locations || []) as unknown as PlaceRef[];
+  const log = (source: string, matchCount: number) => logAudit(
+    "visitor", "Nerou Find Visitor", UserRole.VISITOR, "AI_SEARCH", convId || "anonymous", "AISearch",
+    { promptLength: text.length, matchCount, source, ms: Date.now() - started }
+  );
 
-    let contents: any[] = [];
-    if (conversationId) {
-      if (!conversationSessions[conversationId]) {
-        conversationSessions[conversationId] = [];
-      }
-      contents = conversationSessions[conversationId];
-    }
+  // 1. Instant: the request names what the visitor wants.
+  const instant = answerInstantly(text, live, places, chatMemory.get(convId));
+  if (instant) {
+    chatMemory.set(convId, { criteria: instant.criteria, ids: instant.answer.matches.map(m => m.propertyId) });
+    log("instant", instant.answer.matches.length);
+    return res.json({ ...instant.answer, properties: publicProperty(db, instant.answer.matches.map(m => m.propertyId)), source: "instant" });
+  }
 
-    contents.push({
-      role: "user",
-      parts: [{ text: `Visitor Search Request: "${prompt}"` }]
-    });
+  // 2. Open-ended chat: ask the model, with a short list and a short deadline. Any failure falls back to a clarifying question.
+  const fallback = () => {
+    log("fallback", 0);
+    return res.json({ ...CLARIFYING_REPLY, matches: [], properties: [], source: "fallback" });
+  };
+  if (!process.env.GEMINI_API_KEY) return fallback();
 
-    const callModel = () => ai.models.generateContent({
-      model: cfg.modelConfiguration?.model || "gemini-3.6-flash",
-      contents,
-      config: {
-        systemInstruction,
-        temperature: cfg.modelConfiguration?.temperature ?? 0.1,
-        // room for the chat reply plus up to 6 matches in both languages; a cut-off reply is invalid JSON
-        maxOutputTokens: Math.max(cfg.modelConfiguration?.maxTokens ?? 1000, 2000),
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            replyEn: { type: Type.STRING },
-            replyAr: { type: Type.STRING },
-            matches: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  propertyId: { type: Type.STRING },
-                  whyMatchEn: { type: Type.STRING },
-                  whyMatchAr: { type: Type.STRING }
-                },
-                required: ["propertyId", "whyMatchEn", "whyMatchAr"]
+  try {
+    const cfg = db.aiConfig || {
+      aiName: "Nerou Find",
+      aiDescription: "AI-Powered Property Discovery",
+      aiPersonality: "Professional, precise technology discovery companion. Neutral, compliant, Qatar-focused, informative, helpful.",
+      aiRules: "Never invent listings. Clearly declare that Nerou Finder does NOT act as a brokerage or receive commissions. Ground matches in real platform data. Match user constraints closely.",
+      disclaimers: "Nerou Finder is a technology-first discovery marketplace. It does not provide real estate brokerage services, nor represent parties, nor receive commissions. The legal relationship remains between the relevant parties.",
+      modelConfiguration: { model: "gemini-3.6-flash", temperature: 0.1, maxTokens: 1000 }
+    };
+    const ai = getGeminiClient();
+    const candidates = [...live]
+      .sort((a, b) => new Date(b.updatedDate || b.createdDate).getTime() - new Date(a.updatedDate || a.createdDate).getTime())
+      .slice(0, AI_MODEL_CANDIDATES)
+      .map(p => `${p.id}|${String(p.transactionType).replace("FOR_", "").toLowerCase()}|${String(p.propertyType).toLowerCase()}|${p.bedrooms}bd|${Math.round(p.price)}${p.rentalPeriod ? `/${p.rentalPeriod.toLowerCase()}` : ""}|${p.district}|${(p.title || "").slice(0, 50)}`)
+      .join("\n");
+
+    const systemInstruction = `You are ${cfg.aiName}, the AI discovery assistant of Nerou Finder (Nerou Technology Services). ${cfg.aiDescription}
+Tone: ${cfg.aiPersonality}
+Rules: ${cfg.aiRules} ${cfg.disclaimers}
+Only recommend listings from the list below (id|deal|type|bedrooms|price|district|title). Never invent anything. Answer in short, warm, plain sentences.
+If the request is vague, ask ONE clarifying question (budget, area, bedrooms or rent/buy). If it is not about property, steer politely back. Up to 6 matches, best first, only if they truly fit.
+Reply as JSON: {"replyEn": string, "replyAr": string (same answer in natural Arabic), "matches": [{"propertyId": string, "whyMatchEn": string, "whyMatchAr": string}]}.
+Listings:
+${candidates}`;
+
+    const response = await Promise.race([
+      ai.models.generateContent({
+        model: cfg.modelConfiguration?.model || "gemini-3.6-flash",
+        contents: [{ role: "user", parts: [{ text }] }],
+        config: {
+          systemInstruction,
+          temperature: cfg.modelConfiguration?.temperature ?? 0.1,
+          maxOutputTokens: 900,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              replyEn: { type: Type.STRING },
+              replyAr: { type: Type.STRING },
+              matches: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: { propertyId: { type: Type.STRING }, whyMatchEn: { type: Type.STRING }, whyMatchAr: { type: Type.STRING } },
+                  required: ["propertyId", "whyMatchEn", "whyMatchAr"]
+                }
               }
-            }
-          },
-          required: ["replyEn", "replyAr", "matches"]
+            },
+            required: ["replyEn", "replyAr", "matches"]
+          }
         }
-      }
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("The AI model took too long to answer.")), AI_MODEL_DEADLINE_MS))
+    ]);
+
+    const parsed = JSON.parse(String(response.text || "").trim());
+    const liveIds = new Set(live.map(p => p.id));
+    const matches = (Array.isArray(parsed.matches) ? parsed.matches : [])
+      .filter((m: { propertyId?: string }) => m && typeof m.propertyId === "string" && liveIds.has(m.propertyId))
+      .slice(0, 6);
+    log("model", matches.length);
+    return res.json({
+      replyEn: String(parsed.replyEn || CLARIFYING_REPLY.replyEn),
+      replyAr: String(parsed.replyAr || CLARIFYING_REPLY.replyAr),
+      matches,
+      properties: publicProperty(db, matches.map((m: { propertyId: string }) => m.propertyId)),
+      source: "model"
     });
-
-    // The model usually answers in 4-5 seconds but now and then stalls for a minute. A visitor waiting in a
-    // chat should not sit through that: cut the slow attempt off and ask again once.
-    const withTimeout = <T,>(p: Promise<T>, ms: number) => new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error("The AI model took too long to answer.")), ms);
-      p.then(v => { clearTimeout(timer); resolve(v); }, e => { clearTimeout(timer); reject(e); });
-    });
-    let response: Awaited<ReturnType<typeof callModel>>;
-    try {
-      response = await withTimeout(callModel(), 18_000);
-    } catch (firstError: any) {
-      console.warn("AI search attempt failed or was slow, retrying once:", firstError?.message);
-      response = await withTimeout(callModel(), 25_000);
-    }
-
-    const textResult = response.text;
-    if (!textResult) {
-      throw new Error("AI returned empty text content.");
-    }
-
-    if (conversationId) {
-      contents.push({
-        role: "model",
-        parts: [{ text: textResult }]
-      });
-    }
-
-    const aiResponse = JSON.parse(textResult.trim());
-
-    // Lightweight AI usage logging (Platform Admin Overview "Nerou Find" stats): no dedicated
-    // aiSearchLog table exists in this schema, so - same pattern already used for boost
-    // recommendations - this reuses the existing AuditLog table rather than adding a new
-    // Prisma model/migration for what's currently just a monthly count + zero-result count.
-    logAudit(
-      "visitor",
-      "Nerou Find Visitor",
-      UserRole.VISITOR,
-      "AI_SEARCH",
-      conversationId || "anonymous",
-      "AISearch",
-      { promptLength: String(prompt).length, matchCount: Array.isArray(aiResponse.matches) ? aiResponse.matches.length : 0 }
-    );
-
-    res.json(aiResponse);
-
-
   } catch (error: any) {
-    console.error("Gemini API search failed:", error);
-    res.status(500).json({
-      error: "Gemini search failed",
-      details: error.message,
-      fallbackMatches: []
-    });
+    console.warn("AI search model unavailable, answered without it:", error?.message || error);
+    return fallback();
   }
 });
 
