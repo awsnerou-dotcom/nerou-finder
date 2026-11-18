@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { ShieldCheck, X, Check, Settings, ChevronRight, ChevronLeft } from "lucide-react";
+import { X, Check } from "lucide-react";
 import { initGA } from "../lib/analytics.js";
 
 interface CookieConsentProps {
@@ -73,19 +73,16 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
   if (!isVisible) return null;
 
   return (
-    <div id="cookie-consent-banner" className="fixed bottom-6 left-6 right-6 md:left-auto md:right-6 md:max-w-md bg-chrome text-[#f7f5f0] border border-gold/30 rounded-xl shadow-2xl p-5 z-50 animate-fade-in">
+    <div id="cookie-consent-banner" className="fixed bottom-4 left-4 right-4 md:right-auto md:bottom-6 md:left-6 md:max-w-sm bg-chrome text-[#f7f5f0] border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)] p-4 z-50 animate-fade-in">
       <div className="flex items-start gap-3">
-        <div className="bg-gold/10 p-2 rounded-lg text-gold shrink-0">
-          <ShieldCheck size={20} />
-        </div>
         <div className="flex-1 min-w-0">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-gold mb-1">
-            {isRtl ? "إعدادات الخصوصية وملفات التعريف" : "Cookie Privacy & Analytics"}
+          <h4 className="text-sm font-semibold text-white mb-1">
+            {isRtl ? "ملفات تعريف الارتباط" : "Cookies"}
           </h4>
-          <p className="text-[11px] text-border leading-relaxed">
-            {isRtl 
-              ? "نحن نستخدم ملفات تعريف الارتباط لتحسين تجربتك ومراقبة أداء المنصة الفاخر. يرجى تحديد تفضيلاتك." 
-              : "We use cookies and telemetry to analyze visitor patterns, customize premium features, and ensure the platform runs securely. Select your options below."}
+          <p className="text-[13px] text-white/75 leading-relaxed">
+            {isRtl
+              ? "نستخدمها لإبقائك مسجّلاً الدخول وحفظ تفضيلاتك وقياس استخدام الموقع. اختر ما تسمح به."
+              : "We use them to keep you signed in, remember your preferences and measure how the site is used. Choose what you allow."}
           </p>
         </div>
         <button
@@ -104,7 +101,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               <p className="text-[10px] font-bold text-gold">
                 {isRtl ? "ملفات التعريف الأساسية (إجباري)" : "Essential Cookies (Required)"}
               </p>
-              <p className="text-[9px] text-ink-muted">
+              <p className="text-[11px] text-white/60">
                 {isRtl ? "ضرورية لعمليات المصادقة وجلسات الأمان." : "Necessary for account sign-in and session security."}
               </p>
             </div>
@@ -118,7 +115,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               <p className="text-[10px] font-bold text-white">
                 {isRtl ? "ملفات التفضيلات الوظيفية" : "Functional Preferences"}
               </p>
-              <p className="text-[9px] text-ink-muted">
+              <p className="text-[11px] text-white/60">
                 {isRtl ? "تذكر تفضيلات اللغة والوضع وعمليات البحث." : "Remember language, view options, and recent searches."}
               </p>
             </div>
@@ -135,7 +132,7 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
               <p className="text-[10px] font-bold text-white">
                 {isRtl ? "التحليلات والمراقبة (GA4)" : "Performance & Analytics (GA4)"}
               </p>
-              <p className="text-[9px] text-ink-muted">
+              <p className="text-[11px] text-white/60">
                 {isRtl ? "تساعدنا على فهم كيفية استخدام الزوار لمنصتنا." : "Anonymized usage analytics via Google Analytics."}
               </p>
             </div>
@@ -163,25 +160,24 @@ export default function CookieConsent({ isRtl }: CookieConsentProps) {
           </div>
         </div>
       ) : (
-        <div className="mt-4 flex flex-wrap gap-2 justify-end">
-          <button
-            onClick={() => setShowPreferences(true)}
-            className="flex items-center gap-1 px-3 py-2.5 md:py-1.5 bg-chrome-hover hover:bg-[#4d483e] text-xs text-white rounded-md transition-colors cursor-pointer"
-          >
-            <Settings size={12} />
-            <span className="text-xs md:text-[10px] uppercase tracking-wider">{isRtl ? "تخصيص" : "Customize"}</span>
-          </button>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             onClick={handleAcceptAll}
-            className="px-4 py-2.5 md:py-1.5 bg-gold hover:bg-gold-hover text-black font-bold rounded-md text-xs md:text-[10px] uppercase tracking-wider transition-colors cursor-pointer"
+            className="px-4 py-2 bg-gold hover:bg-gold-hover text-black font-semibold rounded-lg text-sm transition-colors cursor-pointer"
           >
-            {isRtl ? "قبول الكل" : "Accept All"}
+            {isRtl ? "قبول الكل" : "Accept all"}
           </button>
           <button
             onClick={handleDeclineAll}
-            className="px-3 py-2.5 md:py-1.5 bg-transparent border border-ink-faint/30 hover:bg-[#2c2924] text-xs md:text-[10px] text-ink-muted hover:text-white uppercase tracking-wider rounded-md transition-all cursor-pointer"
+            className="px-4 py-2 bg-transparent border border-white/25 hover:bg-white/10 text-sm font-semibold text-white rounded-lg transition-colors cursor-pointer"
           >
-            {isRtl ? "رفض الكل" : "Decline All"}
+            {isRtl ? "رفض الكل" : "Decline all"}
+          </button>
+          <button
+            onClick={() => setShowPreferences(true)}
+            className="px-2 py-2 text-sm text-white/75 hover:text-white underline underline-offset-2 transition-colors cursor-pointer"
+          >
+            {isRtl ? "تخصيص" : "Customize"}
           </button>
         </div>
       )}

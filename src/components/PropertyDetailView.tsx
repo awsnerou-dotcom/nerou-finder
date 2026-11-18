@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import { hasRooms, bedsText, bathsText } from "../lib/propertyFacts.js";
 import {
   Property,
   NearbyPlace,
@@ -353,11 +354,11 @@ export default function PropertyDetailView({
         { label: "Listing ID", val: property.listingId },
         { label: "Property Type", val: property.propertyType },
         { label: "Transaction", val: property.transactionType },
-        { label: "Bedrooms", val: `${property.bedrooms} Beds` },
-        { label: "Bathrooms", val: `${property.bathrooms} Baths` },
+        ...(bedsText(property.bedrooms, property.propertyType, false) ? [{ label: "Bedrooms", val: bedsText(property.bedrooms, property.propertyType, false) }] : []),
+        ...(bathsText(property.bathrooms, property.propertyType, false) ? [{ label: "Bathrooms", val: bathsText(property.bathrooms, property.propertyType, false) }] : []),
         { label: "Total Area", val: `${property.area} SQM` },
-        { label: "Rera Permit", val: property.verificationStatus === "APPROVED" ? "Approved (RERA-2026)" : "Verified" },
-        { label: "Completion", val: property.constructionStatus || "Ready to Move" }
+        { label: "Verification", val: property.verificationStatus === "APPROVED" ? "Verified listing" : "Not yet verified" },
+        ...(property.constructionStatus ? [{ label: "Completion", val: property.constructionStatus }] : [])
       ];
 
       let yPos = 97;
@@ -872,7 +873,7 @@ export default function PropertyDetailView({
               <MarketComparisonCard propertyId={property.id} isRtl={isRtl} formatPrice={formatPrice} />
 
               {/* MAIN DETAILS GRID (BEDS, BATHS, SIZE) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className={`grid grid-cols-2 gap-4 ${hasRooms(property.propertyType) ? "sm:grid-cols-4" : "sm:grid-cols-2"}`}>
                 <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
                   <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
                     {isRtl ? "المساحة الكلية" : "TOTAL SIZE"}
@@ -888,42 +889,44 @@ export default function PropertyDetailView({
                   </button>
                 </div>
 
-                <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
-                  <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
-                    {isRtl ? "غرف النوم" : "BEDROOMS"}
-                  </span>
-                  <strong className="font-serif text-xl font-medium text-ink block">
-                    {property.bedrooms} {isRtl ? "غرف" : "Rooms"}
-                  </strong>
-                  <span className="text-[10px] text-ink-muted">
-                    {property.maidRoom ? `+ ${isRtl ? "غرفة خادمة" : "Maid Room"}` : isRtl ? "لا توجد غرفة خادمة" : "Standard"}
-                  </span>
-                </div>
+                {/* Only facts the listing really states. No bedrooms for a warehouse, no invented
+                    "guest toilets" or "move-in ready" lines. */}
+                {bedsText(property.bedrooms, property.propertyType, isRtl) && (
+                  <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
+                    <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
+                      {isRtl ? "غرف النوم" : "BEDROOMS"}
+                    </span>
+                    <strong className="font-serif text-xl font-medium text-ink block">
+                      {bedsText(property.bedrooms, property.propertyType, isRtl)}
+                    </strong>
+                    {property.maidRoom && (
+                      <span className="text-[10px] text-ink-muted">{`+ ${isRtl ? "غرفة خادمة" : "Maid room"}`}</span>
+                    )}
+                  </div>
+                )}
 
-                <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
-                  <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
-                    {isRtl ? "الحمامات" : "BATHROOMS"}
-                  </span>
-                  <strong className="font-serif text-xl font-medium text-ink block">
-                    {property.bathrooms} {isRtl ? "حمامات" : "Baths"}
-                  </strong>
-                  <span className="text-[10px] text-ink-muted">
-                    {isRtl ? `+ حمام ضيوف` : "Guest Toilets"}
-                  </span>
-                </div>
+                {bathsText(property.bathrooms, property.propertyType, isRtl) && (
+                  <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
+                    <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
+                      {isRtl ? "الحمامات" : "BATHROOMS"}
+                    </span>
+                    <strong className="font-serif text-xl font-medium text-ink block">
+                      {bathsText(property.bathrooms, property.propertyType, isRtl)}
+                    </strong>
+                  </div>
+                )}
 
-                <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
-                  <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
-                    {isRtl ? "حالة التأثيث" : "FURNISHED"}
-                  </span>
-                  <strong className="font-serif text-xl font-medium text-ink block">
-                    {property.furnished === "YES" ? (isRtl ? "مؤثث بالكامل" : "Fully Furnished") :
-                     property.furnished === "NO" ? (isRtl ? "غير مؤثث" : "Unfurnished") : (isRtl ? "شبه مؤثث" : "Partly Furnished")}
-                  </strong>
-                  <span className="text-[10px] text-ink-muted">
-                    {isRtl ? "متاح فورا" : "Move-in Ready"}
-                  </span>
-                </div>
+                {hasRooms(property.propertyType) && (
+                  <div className="bg-surface p-5 rounded-2xl border border-border text-center space-y-1.5">
+                    <span className="text-[10px] font-semibold text-ink-muted tracking-[0.14em] uppercase block">
+                      {isRtl ? "حالة التأثيث" : "FURNISHED"}
+                    </span>
+                    <strong className="font-serif text-xl font-medium text-ink block">
+                      {property.furnished === "YES" ? (isRtl ? "مؤثث بالكامل" : "Fully furnished") :
+                       property.furnished === "NO" ? (isRtl ? "غير مؤثث" : "Unfurnished") : (isRtl ? "شبه مؤثث" : "Partly furnished")}
+                    </strong>
+                  </div>
+                )}
               </div>
 
               <AboutCard text={isRtl ? property.descriptionAr || property.description : property.description} isRtl={isRtl} />
@@ -1119,11 +1122,14 @@ export default function PropertyDetailView({
                             </div>
 
                             <div className="flex justify-between items-center text-[10px] text-ink-muted border-t border-surface-2 pt-2 mt-1">
-                              <span>{sim.bedrooms} {isRtl ? "غرف" : "Beds"}</span>
-                              <span>•</span>
-                              <span>{sim.bathrooms} {isRtl ? "حمامات" : "Baths"}</span>
-                              <span>•</span>
-                              <span>{sim.area} {isRtl ? "م٢" : "SQM"}</span>
+                              {[bedsText(sim.bedrooms, sim.propertyType, isRtl), bathsText(sim.bathrooms, sim.propertyType, isRtl), `${sim.area} ${isRtl ? "م٢" : "SQM"}`]
+                                .filter(Boolean)
+                                .map((part, i) => (
+                                  <React.Fragment key={i}>
+                                    {i > 0 && <span>•</span>}
+                                    <span>{part}</span>
+                                  </React.Fragment>
+                                ))}
                             </div>
                           </div>
                         </div>

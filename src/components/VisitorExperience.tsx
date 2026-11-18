@@ -104,6 +104,7 @@ import {
 import { parseReportPath } from "../lib/priceReports.js";
 import { profileSlug } from "../lib/profiles.js";
 import { isAgentVerified } from "../lib/agentVerification.js";
+import { bedsText, bathsText } from "../lib/propertyFacts.js";
 import type { ProfileKind } from "../lib/profiles.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
 import { stripLang, withLang, parseLandingPath, areaSlug, TYPE_GROUPS } from "../lib/seo.js";
@@ -1088,8 +1089,8 @@ export default function VisitorExperience({
 
   const t = {
     searchPlaceholder: isRtl ? "ابحث عن منطقة، مجمع، أو مبنى عقاري..." : "Search by area, tower, or community...",
-    aiTitle: isRtl ? "البحث بذكاء نيرو فايند" : "Search with Nerou Find AI",
-    aiSubtitle: isRtl ? "محرك الاكتشاف الذكي التفاعلي لمنصة نيرو فايندر" : "Discover your next property with the Nerou Find intelligence engine",
+    aiTitle: isRtl ? "اكتب ما تبحث عنه" : "Tell us what you are looking for",
+    aiSubtitle: isRtl ? "اعثر على عقارك القادم في قطر" : "Find your next property in Qatar",
     aiPlaceholder: isRtl ? "مثال: شقة غرفتين في لوسيل بإطلالة بحرية بأقل من ١٢,٠٠٠ ريال قطري..." : "e.g. Find me a 2-bedroom in Lusail with a sea view under 12,000 QAR...",
     allProperties: isRtl ? "العقارات المتاحة" : "Available Properties",
     noProperties: isRtl ? "لم يتم العثور على عقارات مطابقة للبحث." : "No properties found matching your search.",
@@ -1755,7 +1756,14 @@ export default function VisitorExperience({
 
                     <div className="absolute bottom-3 left-3 right-3 flex justify-between items-center gap-1.5">
                       <div className="flex items-center gap-1.5">
-                        {property.verificationStatus === VerificationStatus.APPROVED && (
+                        {/* One quiet status pill: verified, and when its availability was last confirmed.
+                            It used to be two pills on every single photo. */}
+                        {property.verificationStatus === VerificationStatus.APPROVED && isAvailabilityConfirmed(property.lastConfirmedAvailableDate) ? (
+                          <div className="bg-[#0e1b2e]/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide text-white flex items-center gap-1.5 border border-white/15">
+                            <CheckCircle size={12} className="text-[#d4b878]" />
+                            <span>{t.verified} · {formatConfirmedDate(property.lastConfirmedAvailableDate, isRtl)}</span>
+                          </div>
+                        ) : property.verificationStatus === VerificationStatus.APPROVED && (
                           <div className="bg-[#0e1b2e]/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide text-white flex items-center gap-1.5 border border-white/15">
                             <CheckCircle size={12} className="text-[#d4b878]" />
                             <span>{t.verified}</span>
@@ -1770,7 +1778,7 @@ export default function VisitorExperience({
                             as a verdict against a listing sitting next to a badge calling it
                             verified. */}
                         {isAvailabilityConfirmed(property.lastConfirmedAvailableDate) ? (
-                          <div className="bg-[#0e1b2e]/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide text-emerald-200 flex items-center gap-1.5 border border-emerald-300/30">
+                          property.verificationStatus === VerificationStatus.APPROVED ? null : <div className="bg-[#0e1b2e]/80 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide text-emerald-200 flex items-center gap-1.5 border border-emerald-300/30">
                             <CheckCircle size={12} />
                             <span>
                               {t.availabilityConfirmed} · {formatConfirmedDate(property.lastConfirmedAvailableDate, isRtl)}
@@ -1851,7 +1859,7 @@ export default function VisitorExperience({
                           {isNewListing(listedDays) && (
                             <span className="px-2 py-0.5 rounded-full bg-gold-soft text-gold-active font-semibold uppercase tracking-wide text-[10px]">{isRtl ? "جديد" : "New"}</span>
                           )}
-                          <span>{listedLabel(listedDays, isRtl)}</span>
+                          {!(isNewListing(listedDays) && listedDays === 0) && <span>{listedLabel(listedDays, isRtl)}</span>}
                         </div>
                       )}
                       {/* verified agent / company, clickable to the public profile without leaving the results */}
@@ -1877,14 +1885,18 @@ export default function VisitorExperience({
                     </div>
 
                     <div className="flex items-center gap-5 text-[13px] font-medium text-ink pt-3.5 border-t border-border">
-                      <div className="flex items-center gap-1.5">
-                        <Bed size={15} className="text-gold" />
-                        <span>{property.bedrooms} <span className="font-normal text-ink-muted">{t.beds}</span></span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Bath size={15} className="text-gold" />
-                        <span>{property.bathrooms} <span className="font-normal text-ink-muted">{t.baths}</span></span>
-                      </div>
+                      {bedsText(property.bedrooms, property.propertyType, isRtl) && (
+                        <div className="flex items-center gap-1.5">
+                          <Bed size={15} className="text-gold" />
+                          <span>{bedsText(property.bedrooms, property.propertyType, isRtl)}</span>
+                        </div>
+                      )}
+                      {bathsText(property.bathrooms, property.propertyType, isRtl) && (
+                        <div className="flex items-center gap-1.5">
+                          <Bath size={15} className="text-gold" />
+                          <span>{bathsText(property.bathrooms, property.propertyType, isRtl)}</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5">
                         <Maximize2 size={14} className="text-gold" />
                         <span>{property.area} <span className="font-normal text-ink-muted">{t.sqm}</span></span>
@@ -2481,17 +2493,11 @@ export default function VisitorExperience({
         <button
           type="button"
           onClick={() => openAiChat()}
-          aria-label={isRtl ? "اسأل مساعد نيرو الذكي" : "Ask Nerou AI"}
-          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-14 min-w-14 justify-center sm:ps-4 sm:pe-5 rounded-full text-white bg-[#0e1b2e] ring-1 ring-[#d9c58b]/55 border border-white/15 shadow-[0_12px_32px_rgba(0,0,0,0.45)] hover:ring-[#d4b878] hover:-translate-y-1 active:translate-y-0 transition-all duration-200 cursor-pointer"
+          aria-label={isRtl ? "اسأل نيرو" : "Ask Nerou"}
+          className="group fixed z-40 bottom-5 end-5 flex items-center gap-2.5 h-12 min-w-12 justify-center sm:ps-4 sm:pe-5 rounded-full text-white bg-[#0e1b2e] border border-white/15 shadow-[0_6px_20px_rgba(0,0,0,0.30)] hover:bg-[#1b2d48] active:translate-y-px transition-colors duration-200 cursor-pointer"
         >
-          <span className="relative flex">
-            <NerouAiMark size={24} strokeWidth={2.2} className="transition-transform duration-300 group-hover:scale-110" />
-            <span className="absolute -top-1 -end-1 flex h-2.5 w-2.5">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-[#d4b878] opacity-70 animate-ping" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#d4b878]" />
-            </span>
-          </span>
-          <span className="hidden sm:inline text-sm font-bold whitespace-nowrap">{isRtl ? "اسأل نيرو AI" : "Ask Nerou AI"}</span>
+          <NerouAiMark size={22} strokeWidth={2.1} />
+          <span className="hidden sm:inline text-sm font-semibold whitespace-nowrap">{isRtl ? "اسأل نيرو" : "Ask Nerou"}</span>
         </button>
       )}
     </div>

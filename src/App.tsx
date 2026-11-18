@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import NerouAiMark from "./components/NerouAiMark.js";
 import { COMPANY, companyCrLabel } from "./companyInfo.js";
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from "react";
 import VisitorExperience from "./components/VisitorExperience.js";
@@ -710,7 +709,7 @@ export default function App() {
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
 
-          {/* Brand Logo + AI badge */}
+          {/* Brand logo */}
           <div className="flex items-center gap-3">
             <div
               dir="ltr"
@@ -719,16 +718,6 @@ export default function App() {
             >
               <span className={`font-serif text-lg tracking-[0.2em] font-semibold transition-colors duration-300 ${heroTransparent ? "text-white" : "text-ink"}`}>NEROU</span>
               <span className={`font-serif text-lg tracking-wider font-bold transition-colors duration-300 ${heroTransparent ? "text-[#dcc48e]" : "text-gold"}`}>FINDER</span>
-            </div>
-            <div
-              className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide transition-colors duration-300 ${
-                heroTransparent
-                  ? "bg-white/10 backdrop-blur-sm border border-white/30 text-white"
-                  : "bg-gold-soft border border-gold/40 text-gold-active"
-              }`}
-            >
-              <NerouAiMark size={12} className="text-gold animate-pulse" />
-              <span>{isRtl ? "الذكاء الاصطناعي نشط" : "AI-Powered Search"}</span>
             </div>
           </div>
 

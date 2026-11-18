@@ -6,7 +6,6 @@
 import React, { useEffect, useState } from "react";
 import { BarChart3, TrendingUp } from "lucide-react";
 import StatCard from "./StatCard.js";
-import DashboardChart, { DashboardChartDatum } from "./DashboardChart.js";
 import { useCurrency } from "../currencyContext.js";
 
 // Shape returned by GET /api/market-index's `groups` array (see server.ts's
@@ -108,20 +107,22 @@ export default function MarketPriceIndex({ isRtl, selectedDistrict }: MarketPric
   // Overview mode: blend each district's RENT+SALE groups into one weighted average QAR/sqm
   // (weighted by listing count, ignoring groups with no computable average), then chart the
   // top 5 districts by total listing count.
-  const byDistrict = new Map<string, { listingCount: number; weightedSum: number; weightedCount: number }>();
+  // "Alwaab" and "Al waab" are one district: group by the name without spaces or case.
+  const byDistrict = new Map<string, { name: string; listingCount: number; weightedSum: number; weightedCount: number }>();
   for (const g of groups) {
-    const entry = byDistrict.get(g.district) || { listingCount: 0, weightedSum: 0, weightedCount: 0 };
+    const key = g.district.toLowerCase().replace(/[\s'’-]+/g, "");
+    const entry = byDistrict.get(key) || { name: g.district, listingCount: 0, weightedSum: 0, weightedCount: 0 };
     entry.listingCount += g.listingCount;
     if (g.avgPricePerSqm != null) {
       entry.weightedSum += g.avgPricePerSqm * g.listingCount;
       entry.weightedCount += g.listingCount;
     }
-    byDistrict.set(g.district, entry);
+    byDistrict.set(key, entry);
   }
 
-  const top5 = Array.from(byDistrict.entries())
-    .map(([district, v]) => ({
-      district,
+  const top5 = Array.from(byDistrict.values())
+    .map((v) => ({
+      district: v.name,
       listingCount: v.listingCount,
       avgPricePerSqm: v.weightedCount > 0 ? v.weightedSum / v.weightedCount : null
     }))
@@ -131,24 +132,40 @@ export default function MarketPriceIndex({ isRtl, selectedDistrict }: MarketPric
 
   if (top5.length === 0) return null;
 
-  const chartData: DashboardChartDatum[] = top5.map(d => ({
-    label: d.district,
-    value: Math.round(d.avgPricePerSqm)
-  }));
+  // A ranked list with the figure written out beats an axis-only bar chart: every number is
+  // readable at a glance, in either language, with no hidden tooltip.
+  const maxValue = Math.max(...top5.map(d => d.avgPricePerSqm));
 
   return (
-    <div className="bg-surface p-4 rounded-xl border border-border space-y-3">
-      <h4 className="text-xs font-bold text-ink-muted uppercase tracking-wider flex items-center gap-1.5">
-        <BarChart3 size={13} className="text-gold" />
-        <span>{isRtl ? "مؤشر أسعار الأحياء — الأكثر نشاطاً" : "District Price Index — Most Active Areas"}</span>
-      </h4>
-      <DashboardChart
-        data={chartData}
-        type="bar"
-        height={180}
-        valueLabel={isRtl ? "متوسط ريال قطري / م²" : "Avg QAR/sqm"}
-        isRtl={isRtl}
-      />
+    <div className="bg-surface p-4 sm:p-5 rounded-xl border border-border space-y-3">
+      <div>
+        <h4 className="text-sm font-semibold text-ink flex items-center gap-1.5">
+          <BarChart3 size={14} className="text-gold" />
+          <span>{isRtl ? "متوسط سعر المتر المربع في الأحياء الأكثر نشاطاً" : "Average price per sqm in the busiest areas"}</span>
+        </h4>
+        <p className="text-xs text-ink-muted mt-0.5">
+          {isRtl ? "من الإعلانات المعروضة حالياً على المنصة" : "From the listings live on the platform now"}
+        </p>
+      </div>
+      <ul className="space-y-2.5">
+        {top5.map(d => (
+          <li key={d.district}>
+            <div className="flex items-baseline justify-between gap-3 text-sm">
+              <span className="font-medium text-ink truncate">{d.district}</span>
+              <span className="tabular-nums text-ink shrink-0">
+                {formatPrice(Math.round(d.avgPricePerSqm), isRtl)}
+                <span className="text-xs text-ink-muted"> {isRtl ? "/ م²" : "/ sqm"}</span>
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 rounded-full bg-surface-2 overflow-hidden" aria-hidden="true">
+              <div className="h-full rounded-full bg-gold" style={{ width: `${Math.max(6, Math.round((d.avgPricePerSqm / maxValue) * 100))}%` }} />
+            </div>
+            <p className="text-[11px] text-ink-faint mt-0.5">
+              {isRtl ? `${d.listingCount} إعلان` : `${d.listingCount} ${d.listingCount === 1 ? "listing" : "listings"}`}
+            </p>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
