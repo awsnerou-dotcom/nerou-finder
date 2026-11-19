@@ -24,16 +24,22 @@ const body = (over: Record<string, unknown> = {}) => ({
   city: "Doha", district: `Agencyville ${tag}`, description: "A listing made from the agency's own workspace.", images: ["/assets/uploads/a.jpg"], ...over
 });
 
+// The test builds its own agency (an admin and two agents) and an agent of another agency, so it
+// depends on no one else's data.
 function people() {
   const db = readDb();
-  const admin = db.users.find(u => u.role === "AGENCY_ADMIN" && u.orgId)!;
-  const inside = db.users.find(u => u.role === "AGENT" && u.orgId === admin.orgId)!;
-  const outsiderId = `user-out-${tag}`;
-  if (!db.users.some(u => u.id === outsiderId)) {
-    db.users.push({ id: outsiderId, email: `${outsiderId}@test.local`, fullName: "Outside Agent", role: "AGENT", orgId: "org-someone-else", verificationStatus: "APPROVED" } as never);
-    writeDb(db);
-  }
-  return { admin, inside, outsiderId };
+  const org = `org-${tag}`;
+  const make = (id: string, role: string, orgId: string) => ({
+    id, email: `${id}@test.local`, password: "x", fullName: id, phone: "+974 5000 0000", role, orgId, verificationStatus: "APPROVED",
+    createdDate: new Date().toISOString(), emailVerified: true
+  });
+  const wanted = [
+    make(`adm-${tag}`, "AGENCY_ADMIN", org), make(`in1-${tag}`, "AGENT", org), make(`in2-${tag}`, "AGENT", org), make(`out-${tag}`, "AGENT", `org-else-${tag}`)
+  ];
+  let added = false;
+  for (const u of wanted) if (!db.users.some(x => x.id === u.id)) { db.users.push(u as never); added = true; }
+  if (added) writeDb(db);
+  return { admin: wanted[0], inside: wanted[1], colleague: wanted[2], outsiderId: wanted[3].id };
 }
 
 describe("an agency listing in its own name, or for one of its agents", () => {
@@ -68,9 +74,8 @@ describe("an agency listing in its own name, or for one of its agents", () => {
 
   it("an agent cannot list on behalf of a colleague", async (ctx) => {
     if (!dbReady) return ctx.skip();
-    const { admin, inside } = people();
-    const other = readDb().users.find(u => u.role === "AGENT" && u.orgId === admin.orgId && u.id !== inside.id);
-    await request(app).post("/api/properties").set(as(inside.id, "AGENT")).send(body({ assignToAgentId: other?.id ?? admin.id })).expect(403);
+    const { inside, colleague } = people();
+    await request(app).post("/api/properties").set(as(inside.id, "AGENT")).send(body({ assignToAgentId: colleague.id })).expect(403);
   });
 
   it("the organization is the account's own: a client cannot attach a listing to another agency", async (ctx) => {
