@@ -2954,6 +2954,21 @@ app.post("/api/properties", authMiddleware, (req, res) => {
     return res.json(updatedProp);
   } else {
     // New property listing
+    // An agency admin may list on behalf of one of its own agents: the listing is then that agent's
+    // (it shows in their workspace and their enquiries), under the agency. Anyone else, or an agent
+    // who is not this agency's, is refused.
+    let listingAgentId = actorId;
+    if (propData.assignToAgentId) {
+      const target = db.users.find(u => u.id === propData.assignToAgentId);
+      const mayAssign = actorRole === UserRole.AGENCY_ADMIN && !!actor?.orgId;
+      if (!mayAssign || !target || target.role !== UserRole.AGENT || target.orgId !== actor?.orgId) {
+        return res.status(403).json({ error: "You can only list on behalf of an agent who works under your agency." });
+      }
+      listingAgentId = target.id;
+    }
+    // The organization is the account's own, never what the client says: a platform admin is the only
+    // one who may name another (a client could otherwise attach a listing to any agency).
+    const listingOrgId = actorRole === UserRole.PLATFORM_ADMIN ? (propData.orgId || actor?.orgId || undefined) : (actor?.orgId || undefined);
     const id = `prop-${Date.now()}`;
     const listingId = `N-${Math.floor(10000 + Math.random() * 90000)}`;
     const nowIso = new Date().toISOString();
@@ -2991,10 +3006,10 @@ app.post("/api/properties", authMiddleware, (req, res) => {
       ],
       videoUrl: propData.videoUrl || undefined,
       virtualTourUrl: cleanTourUrl(propData.virtualTourUrl),
-      agentId: actorId, // Link automatically to logged-in user
+      agentId: listingAgentId, // the logged-in user, or the agent an agency admin listed it for
       // An INDEPENDENT_AGENT has no orgId by design - do not fall back to a hardcoded
       // organization, or every independently-listed property would be silently misattributed.
-      orgId: propData.orgId || actor?.orgId || undefined,
+      orgId: listingOrgId,
       projectId: propData.projectId,
       // No more manual per-listing review step to leave this PENDING - a published listing
       // is auto-approved at the property level; admin retains suspend/flag/remove as

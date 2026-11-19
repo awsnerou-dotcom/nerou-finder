@@ -112,7 +112,14 @@ interface AgentWorkspaceProps {
   agent: User;
   onRefreshAll: () => void;
   isRtl: boolean;
+  /** Embedded in an agency's workspace: shows only the add-listing tools (no menu, no header, no list). */
+  listingsOnly?: boolean;
+  /** An agency can list on behalf of one of its agents: the agents it may pick from. */
+  assignableAgents?: User[];
 }
+
+// Used in place of the workspace menu when this component is embedded in the agency's workspace.
+const PassThrough = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
 
 // A listing may carry at most this many photos - enforced client-side here and
 // server-side in POST /api/properties.
@@ -120,7 +127,7 @@ const MAX_LISTING_IMAGES = 14;
 // value of the Area select when the agent's place is not in the list and they type its name instead
 const OTHER_AREA = "__other";
 
-export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWorkspaceProps) {
+export default function AgentWorkspace({ agent, onRefreshAll, isRtl, listingsOnly = false, assignableAgents }: AgentWorkspaceProps) {
   const [leads, setLeads] = useState<Lead[]>([]);
   // FIX 10: Reviews & Ratings tab
   const [myReviews, setMyReviews] = useState<any[]>([]);
@@ -183,7 +190,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
   const [showArchivedLeads, setShowArchivedLeads] = useState<boolean>(false);
   const [leadPropertyPreview, setLeadPropertyPreview] = useState<Property | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "salesdesk" | "properties" | "verification" | "subscription" | "profile" | "reviews" | "guide">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "leads" | "salesdesk" | "properties" | "verification" | "subscription" | "profile" | "reviews" | "guide">(listingsOnly ? "properties" : "dashboard");
+  // Agency only: the agent a new listing is made for ("" = the agency itself).
+  const [assignAgentId, setAssignAgentId] = useState<string>("");
 
   // FIX1: derive the agent's effective type defensively - existing accounts created before
   // AgentType existed have agentType === undefined, so fall back to orgId-based inference
@@ -1076,6 +1085,8 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           pin: listingPin,
           agentId: agent.id,
           orgId: agent.orgId,
+          // agency only: make the listing for one of the agency's agents (the server checks they are its agents)
+          assignToAgentId: !editingPropertyId && assignAgentId ? assignAgentId : undefined,
           projectId: resolvedProjectId,
           actorId: agent.id,
           actorName: agent.fullName,
@@ -1440,10 +1451,12 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
     }
   ];
 
+  const Shell: React.ElementType = listingsOnly ? PassThrough : WorkspaceShell;
+
   return (
     <div className="ws space-y-6" dir={isRtl ? "rtl" : "ltr"}>
       {/* Workspace Header */}
-      <WorkspaceHero
+      {!listingsOnly && <WorkspaceHero
         eyebrow={greeting}
         title={isRtl ? "مساحة عمل الوكيل العقاري" : "Agent Workspace"}
         subtitle={isRtl ? `الوكيل النشط: ${agent.fullName}` : `Active Representative: ${agent.fullName}`}
@@ -1461,9 +1474,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             </button>
           </>
         }
-      />
+      />}
 
-      <WorkspaceShell
+      <Shell
         groups={navGroups}
         active={activeTab}
         onSelect={(id) => setActiveTab(id as typeof activeTab)}
@@ -1976,8 +1989,10 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
           <SectionHeader
             icon={Building}
             accent="sky"
-            title={isRtl ? "عقاراتي" : "My Listings"}
-            description={isRtl ? "أدر إعلاناتك: الحالة، التوفر، الترقية، والأداء في مكان واحد." : "Manage your listings: status, availability, boosts and performance in one place."}
+            title={listingsOnly ? (isRtl ? "إضافة عقارات" : "Add listings") : (isRtl ? "عقاراتي" : "My Listings")}
+            description={listingsOnly
+              ? (isRtl ? "أضف عقاراً باسم المكتب أو باسم أحد وكلائه، أو انقل عقارات من منصة أخرى." : "Add a listing in the agency's name or for one of its agents, or move listings from another portal.")
+              : (isRtl ? "أدر إعلاناتك: الحالة، التوفر، الترقية، والأداء في مكان واحد." : "Manage your listings: status, availability, boosts and performance in one place.")}
             action={
               <button
                 type="button"
@@ -2012,14 +2027,14 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               }}
             />
           )}
-          <StatStrip
+          {!listingsOnly && <StatStrip
             items={[
               { label: isRtl ? "إجمالي العقارات" : "Total listings", value: properties.length, icon: Building, accent: "sky" },
               { label: isRtl ? "منشورة" : "Live", value: activeListings, icon: CheckCircle2, accent: "emerald" },
               { label: isRtl ? "تحتاج تأكيد التوفر" : "Need reconfirming", value: properties.filter(p => p.listingStatus === ListingStatus.PUBLISHED && getAvailabilityStaleDays(p.lastConfirmedAvailableDate || p.createdDate) >= AVAILABILITY_CONFIRM_DUE_DAYS).length, icon: AlertTriangle, accent: "amber" },
               { label: isRtl ? "مشاهدات هذا الشهر" : "Views this month", value: viewsThisMonth.toLocaleString(), icon: Eye, accent: "violet" }
             ]}
-          />
+          />}
 
           {/* Qatar regulation gate: INDEPENDENT_AGENT listings cannot go live until their
               Agency Authorization Letter is APPROVED. Warn proactively, before submission,
@@ -2139,6 +2154,24 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
               {/* STEP 1: Property Type & Purpose */}
               {wizardStep === 1 && (
                 <div className="space-y-4">
+                  {assignableAgents && !editingPropertyId && (
+                    <div>
+                      <label className="block font-medium text-ink-muted mb-1">{isRtl ? "الوكيل المسؤول عن العقار" : "Listing agent"}</label>
+                      <select
+                        value={assignAgentId}
+                        onChange={(e) => setAssignAgentId(e.target.value)}
+                        className="w-full px-3 py-2 bg-ink-inverse border border-border rounded-lg focus:outline-none focus:border-gold"
+                      >
+                        <option value="">{isRtl ? "المكتب نفسه (بدون وكيل محدد)" : "The agency itself (no specific agent)"}</option>
+                        {assignableAgents.map(a => (
+                          <option key={a.id} value={a.id}>{a.fullName}</option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-ink-muted mt-1">
+                        {isRtl ? "يظهر العقار في لوحة هذا الوكيل ويتصل به المهتمون." : "The listing appears in that agent's workspace and enquiries go to them."}
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label className="block font-medium text-ink-muted mb-1">{isRtl ? "عنوان الإعلان" : "Listing Title"}</label>
                     <input
@@ -2910,7 +2943,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
             </form>
           )}
 
-          {properties.length === 0 ? (
+          {listingsOnly ? null : properties.length === 0 ? (
             <EmptyState
               icon={<Building size={20} />}
               title={isRtl ? "لا توجد إعلانات بعد" : "No listings yet"}
@@ -3364,7 +3397,7 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
         </div>
       )}
 
-      </WorkspaceShell>
+      </Shell>
 
       {/* Toast Notification */}
       {toastMessage && (

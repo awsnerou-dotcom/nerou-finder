@@ -59,6 +59,7 @@ import type { NavGroup } from "./WorkspaceShell.js";
 import { agencyAttention, topListings, waitingLeads } from "../lib/workspaceAttention.js";
 import { SectionHeader, StatStrip, LeadCard, ListingCard } from "./WorkspaceParts.js";
 import TwinListingButton from "./TwinListingButton.js";
+import AgentWorkspace from "./AgentWorkspace.js";
 import { PublicPagePanel } from "./ReachPanel.js";
 const GuideView = React.lazy(() => import("./GuideView.js"));
 import ShareListingButton from "./ShareKit.js";
@@ -118,6 +119,8 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
   const [leadFilter, setLeadFilter] = useState<"all" | "unassigned" | "waiting">("all");
   const [leadLimit, setLeadLimit] = useState<number>(30);
   const [listingSearch, setListingSearch] = useState<string>("");
+  // the agency adds listings itself, or for one of its agents, with the same steps and photo tools agents have
+  const [addingListings, setAddingListings] = useState<boolean>(false);
   const [listingLimit, setListingLimit] = useState<number>(20);
   // FIX 2: inline property preview - AgencyWorkspace has no "properties" tab/route of its own.
   const [leadPropertyPreview, setLeadPropertyPreview] = useState<Property | null>(null);
@@ -1275,7 +1278,26 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
             accent="sky"
             title={isRtl ? "العقارات المدرجة" : "Listings"}
             description={isRtl ? "كل عقارات المكتب ووسطائه: عدّل، تابع الأداء، أو احذف." : "Every listing across your agency: edit, check performance or remove."}
+            action={
+              <button
+                type="button"
+                onClick={() => setAddingListings(v => !v)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-chrome hover:bg-chrome-hover text-white text-sm font-semibold cursor-pointer transition-colors"
+              >
+                {addingListings ? <X size={16} aria-hidden /> : <Plus size={16} aria-hidden />}
+                <span>{addingListings ? (isRtl ? "إغلاق" : "Close") : (isRtl ? "إضافة عقار" : "Add a listing")}</span>
+              </button>
+            }
           />
+          {addingListings && (
+            <AgentWorkspace
+              listingsOnly
+              agent={currentUser}
+              assignableAgents={agents.filter(a => a.role === UserRole.AGENT)}
+              isRtl={isRtl}
+              onRefreshAll={() => { fetchAgencyContext(); onRefreshAll(); }}
+            />
+          )}
           <StatStrip
             items={[
               { label: isRtl ? "إجمالي العقارات" : "Total listings", value: orgProperties.length, icon: Building2, accent: "sky" },
