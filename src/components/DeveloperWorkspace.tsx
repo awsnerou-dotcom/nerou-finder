@@ -32,7 +32,8 @@ import {
   Mail,
   X,
   Check,
-  UserCheck
+  UserCheck,
+  RefreshCw
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -553,6 +554,38 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
 
   const removeProjectImage = (index: number) => {
     setProjectImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Swap one photo for a new file, keeping its place in the list.
+  const [replacingProjectIndex, setReplacingProjectIndex] = useState<number | null>(null);
+  const replaceProjectImage = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setReplacingProjectIndex(index);
+    try {
+      let upload: File | Blob = file;
+      try { upload = await compressImage(file); } catch { /* upload the original */ }
+      const formData = new FormData();
+      formData.append("files", upload);
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/media/upload", { method: "POST", headers, body: formData });
+      const data = await res.json().catch(() => ({}));
+      const url = res.ok ? (data.fileUrls || data.urls || [])[0] : undefined;
+      if (url) {
+        setProjectImages(prev => prev.map((u, i) => (i === index ? url : u)));
+      } else {
+        setToastMessage(data.error || (isRtl ? "تعذر تغيير الصورة." : "Could not change the photo."));
+        setTimeout(() => setToastMessage(""), 4000);
+      }
+    } catch {
+      setToastMessage(isRtl ? "تعذر تغيير الصورة." : "Could not change the photo.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setReplacingProjectIndex(null);
+    }
   };
 
   const handleBrochureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1324,17 +1357,39 @@ export default function DeveloperWorkspace({ developer, currentUser, onRefreshAl
                   </div>
                 </div>
                 {projectImages.length > 0 && (
-                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 mt-3">
                     {projectImages.map((imgUrl, index) => (
-                      <div key={index} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-ink-inverse shadow-2xs">
-                        <img src={imgUrl} alt="" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => removeProjectImage(index)}
-                          className="absolute top-1 right-1 p-1 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-md cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                      <div key={index} className="rounded-lg overflow-hidden border border-border bg-surface shadow-2xs">
+                        <div className="relative aspect-square bg-ink-inverse">
+                          <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                          {replacingProjectIndex === index && (
+                            <div className="absolute inset-0 bg-black/45 flex items-center justify-center">
+                              <Loader2 className="animate-spin text-white" size={22} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-stretch divide-x divide-border rtl:divide-x-reverse text-xs">
+                          <label className="flex-1 flex items-center justify-center gap-1 py-2 font-semibold text-ink hover:bg-surface-2 cursor-pointer" title={isRtl ? "استبدال هذه الصورة" : "Replace this photo"}>
+                            <RefreshCw size={13} />
+                            <span>{isRtl ? "تغيير" : "Change"}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="sr-only"
+                              disabled={replacingProjectIndex !== null}
+                              onChange={(e) => replaceProjectImage(index, e)}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removeProjectImage(index)}
+                            className="flex-1 flex items-center justify-center gap-1 py-2 font-semibold text-danger hover:bg-danger-soft cursor-pointer"
+                            title={isRtl ? "حذف هذه الصورة" : "Delete this photo"}
+                          >
+                            <Trash2 size={13} />
+                            <span>{isRtl ? "حذف" : "Delete"}</span>
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

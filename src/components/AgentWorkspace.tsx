@@ -83,7 +83,8 @@ import {
   Inbox,
   UserCircle,
   CalendarCheck,
-  BookOpen
+  BookOpen,
+  RefreshCw
 } from "lucide-react";
 import VerificationDocumentsPanel from "./VerificationDocumentsPanel.js";
 import BoostButton from "./BoostButton.js";
@@ -867,6 +868,38 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
   const removeUploadedImage = (index: number) => {
     setListingImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Swap one photo for a new file, keeping its place (and so its cover position) in the list.
+  const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
+  const replaceListingImage = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setReplacingIndex(index);
+    try {
+      let upload: File | Blob = file;
+      try { upload = await compressImage(file); } catch { /* upload the original */ }
+      const formData = new FormData();
+      formData.append("files", upload);
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/media/upload", { method: "POST", headers, body: formData });
+      const data = await res.json().catch(() => ({}));
+      const url = res.ok ? (data.fileUrls || data.urls || [])[0] : undefined;
+      if (url) {
+        setListingImages(prev => prev.map((u, i) => (i === index ? url : u)));
+      } else {
+        setToastMessage(data.error || (isRtl ? "تعذر تغيير الصورة." : "Could not change the photo."));
+        setTimeout(() => setToastMessage(""), 4000);
+      }
+    } catch {
+      setToastMessage(isRtl ? "تعذر تغيير الصورة." : "Could not change the photo.");
+      setTimeout(() => setToastMessage(""), 4000);
+    } finally {
+      setReplacingIndex(null);
+    }
   };
 
   // Simple up/down reordering for the photo grid - no drag-and-drop library required.
@@ -2552,47 +2585,78 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl }: AgentWork
 
                   {listingImages.length > 0 && (
                     <>
-                      <p className="text-[10px] text-ink-muted mt-3">
+                      <p className="text-xs text-ink-muted mt-3">
                         {isRtl
-                          ? "استخدم الأسهم لإعادة ترتيب الصور - الصورة الأولى هي الصورة الرئيسية للإعلان."
-                          : "Use the arrows to reorder photos - the first photo is the listing's main cover image."}
+                          ? "تحت كل صورة: تغيير أو حذف. استخدم الأسهم لإعادة الترتيب - الصورة الأولى هي الرئيسية للإعلان."
+                          : "Under each photo: change or delete. Use the arrows to reorder - the first photo is the listing's cover."}
                       </p>
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-2">
+                      {/* The controls sit under each photo and are always visible: they used to appear
+                          only on mouse hover, so on a phone nobody could find delete or change. */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3 mt-2">
                         {listingImages.map((imgUrl, index) => (
-                          <div key={imgUrl + index} className="relative group aspect-square rounded-lg overflow-hidden border border-border bg-ink-inverse shadow-2xs">
-                            <img src={imgUrl} alt="" className="w-full h-full object-cover" />
-                            {index === 0 && (
-                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-chrome/80 text-white text-[8px] font-bold rounded">
-                                {isRtl ? "الرئيسية" : "COVER"}
-                              </span>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => removeUploadedImage(index)}
-                              className="absolute top-1 right-1 p-1 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-md cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                            <div className="absolute top-1 left-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <div key={imgUrl + index} className="rounded-lg overflow-hidden border border-border bg-surface shadow-2xs">
+                            <div className="relative aspect-square bg-ink-inverse">
+                              <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                              {index === 0 && (
+                                <span className="absolute top-1.5 start-1.5 px-2 py-0.5 bg-chrome/85 text-white text-[10px] font-semibold rounded">
+                                  {isRtl ? "الرئيسية" : "Cover"}
+                                </span>
+                              )}
+                              {replacingIndex === index && (
+                                <div className="absolute inset-0 bg-black/45 flex items-center justify-center">
+                                  <Loader2 className="animate-spin text-white" size={22} />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-stretch divide-x divide-border rtl:divide-x-reverse text-xs">
+                              <label
+                                className="flex-1 flex items-center justify-center gap-1 py-2 font-semibold text-ink hover:bg-surface-2 cursor-pointer"
+                                title={isRtl ? "استبدال هذه الصورة" : "Replace this photo"}
+                              >
+                                <RefreshCw size={13} />
+                                <span>{isRtl ? "تغيير" : "Change"}</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="sr-only"
+                                  disabled={replacingIndex !== null}
+                                  onChange={(e) => replaceListingImage(index, e)}
+                                />
+                              </label>
                               <button
                                 type="button"
-                                onClick={() => moveListingImage(index, -1)}
-                                disabled={index === 0}
-                                className="p-0.5 bg-white/90 hover:bg-white text-gray-900 rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                                title={isRtl ? "تحريك للأعلى" : "Move earlier"}
+                                onClick={() => removeUploadedImage(index)}
+                                className="flex-1 flex items-center justify-center gap-1 py-2 font-semibold text-danger hover:bg-danger-soft cursor-pointer"
+                                title={isRtl ? "حذف هذه الصورة" : "Delete this photo"}
                               >
-                                <ChevronUp size={12} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => moveListingImage(index, 1)}
-                                disabled={index === listingImages.length - 1}
-                                className="p-0.5 bg-white/90 hover:bg-white text-gray-900 rounded shadow-md cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                                title={isRtl ? "تحريك للأسفل" : "Move later"}
-                              >
-                                <ChevronDown size={12} />
+                                <Trash2 size={13} />
+                                <span>{isRtl ? "حذف" : "Delete"}</span>
                               </button>
                             </div>
+                            {listingImages.length > 1 && (
+                              <div className="flex items-stretch divide-x divide-border rtl:divide-x-reverse border-t border-border text-ink-muted">
+                                <button
+                                  type="button"
+                                  onClick={() => moveListingImage(index, -1)}
+                                  disabled={index === 0}
+                                  className="flex-1 flex items-center justify-center py-1.5 hover:bg-surface-2 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                  title={isRtl ? "تقديم" : "Move earlier"}
+                                  aria-label={isRtl ? "تقديم الصورة" : "Move photo earlier"}
+                                >
+                                  <ChevronUp size={14} className="-rotate-90 rtl:rotate-90" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveListingImage(index, 1)}
+                                  disabled={index === listingImages.length - 1}
+                                  className="flex-1 flex items-center justify-center py-1.5 hover:bg-surface-2 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                                  title={isRtl ? "تأخير" : "Move later"}
+                                  aria-label={isRtl ? "تأخير الصورة" : "Move photo later"}
+                                >
+                                  <ChevronDown size={14} className="-rotate-90 rtl:rotate-90" />
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
