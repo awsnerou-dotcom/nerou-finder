@@ -6360,6 +6360,30 @@ app.post("/api/organizations/:id/invite", authMiddleware, (req, res) => {
   res.json({ success: true, invitation });
 });
 
+// Cancel an invitation that has not been accepted (org admin or platform admin only) - e.g. it was
+// sent to a mistyped email. The same email can then be invited again.
+app.delete("/api/organizations/:id/invitations/:invId", authMiddleware, (req, res) => {
+  const { id, invId } = req.params;
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const actor = db.users.find(u => u.id === authReq.user?.id);
+  const isAdmin = actor?.role === UserRole.PLATFORM_ADMIN || actor?.role === UserRole.SUPER_ADMIN;
+  const isOrgAdmin = actor?.orgId === id && (actor.role === UserRole.AGENCY_ADMIN || actor.role === UserRole.DEVELOPER_ADMIN);
+  if (!actor || (!isAdmin && !isOrgAdmin)) {
+    return res.status(403).json({ error: "Only an organization admin may cancel invitations." });
+  }
+  if (!db.invitations) db.invitations = [];
+  const idx = db.invitations.findIndex(i => i.id === invId && i.orgId === id);
+  if (idx === -1) return res.status(404).json({ error: "Invitation not found." });
+  if (db.invitations[idx].status === "ACCEPTED") {
+    return res.status(409).json({ error: "This invitation was already accepted - the person is on your team now." });
+  }
+  const [removed] = db.invitations.splice(idx, 1);
+  writeDb(db);
+  logAudit(actor.id, actor.fullName, actor.role, "CANCEL_INVITATION", invId, "Invitation", { email: removed.email, orgId: id });
+  res.json({ success: true });
+});
+
 // Update lead routing policy (org admin or platform admin only)
 app.patch("/api/organizations/:id/routing", authMiddleware, (req, res) => {
   const { id } = req.params;
@@ -6575,6 +6599,58 @@ app.post("/api/admin/users/:id/subscription", (req, res) => {
 
   const { password: _pw1, ...safeUser } = user as any;
   res.json({ success: true, user: safeUser });
+});
+
+// DELETE ONE SUBSCRIBER'S ACCOUNT (platform admin). Removes the account itself, its own listings,
+// verification documents, notifications and any invitation sent to its email (so the email can sign
+// up again). If it is the last member of an agency/developer company, the empty company goes with it.
+// Refused for platform admins, for the admin's own account, and for a company admin whose company
+// still has other members (those need to be removed or moved first, so nobody is left orphaned).
+app.delete("/api/admin/users/:id", (req, res) => {
+  const { id } = req.params;
+  const authReq = req as AuthenticatedRequest;
+  const db = readDb();
+  const idx = db.users.findIndex(u => u.id === id);
+  if (idx === -1) return res.status(404).json({ error: "User not found" });
+  const user = db.users[idx];
+
+  if (user.id === authReq.user?.id) return res.status(400).json({ error: "You cannot delete your own account." });
+  if (user.role === UserRole.PLATFORM_ADMIN || user.role === UserRole.SUPER_ADMIN) {
+    return res.status(403).json({ error: "Platform admin accounts cannot be deleted from here." });
+  }
+
+  const orgId = user.orgId;
+  const othersInOrg = orgId ? db.users.filter(u => u.orgId === orgId && u.id !== id).length : 0;
+  if (orgId && othersInOrg > 0 && (user.role === UserRole.AGENCY_ADMIN || user.role === UserRole.DEVELOPER_ADMIN)) {
+    return res.status(409).json({ error: `This account runs a company that still has ${othersInOrg} other member(s). Remove them first.` });
+  }
+
+  const before = db.properties.length;
+  const removeOrg = !!orgId && othersInOrg === 0;
+  db.properties = db.properties.filter(p => p.agentId !== id && !(removeOrg && p.orgId === orgId));
+  const listingsRemoved = before - db.properties.length;
+
+  if (db.verificationDocuments) db.verificationDocuments = db.verificationDocuments.filter(d => d.userId !== id && !(removeOrg && d.orgId === orgId));
+  if (db.notifications) db.notifications = db.notifications.filter(n => n.userId !== id);
+  if (db.invitations) {
+    const email = String(user.email || "").toLowerCase();
+    db.invitations = db.invitations.filter(i => String(i.email || "").toLowerCase() !== email && !(removeOrg && i.orgId === orgId));
+  }
+  if (removeOrg) db.organizations = db.organizations.filter(o => o.id !== orgId);
+  db.users.splice(idx, 1);
+  writeDb(db);
+
+  logAudit(
+    authReq.user?.id || "unknown",
+    authReq.user?.fullName || "Admin",
+    (authReq.user?.role as UserRole) || UserRole.PLATFORM_ADMIN,
+    "DELETE_USER",
+    id,
+    "User",
+    { email: user.email, role: user.role, listingsRemoved, organizationRemoved: removeOrg }
+  );
+
+  res.json({ success: true, listingsRemoved, organizationRemoved: removeOrg });
 });
 
 // Manually nudge a user's onboarding applicationStatus (e.g. PENDING_APPROVAL -> AWAITING_PAYMENT).

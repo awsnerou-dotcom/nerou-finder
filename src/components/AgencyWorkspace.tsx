@@ -467,6 +467,39 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
     }
   };
 
+  // An invitation sent to a mistyped email just sits "pending": cancel it (then invite the right address),
+  // or send the same one again.
+  const handleCancelInvitation = async (invId: string) => {
+    try {
+      const res = await fetch(`/api/organizations/${agency.id}/invitations/${invId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      });
+      const data = await res.json().catch(() => ({}));
+      setToastMessage(res.ok ? (isRtl ? "تم إلغاء الدعوة." : "Invitation cancelled.") : (data.error || (isRtl ? "تعذر إلغاء الدعوة." : "Could not cancel the invitation.")));
+      if (res.ok) fetchAgencyContext();
+    } catch {
+      setToastMessage(isRtl ? "تعذر إلغاء الدعوة." : "Could not cancel the invitation.");
+    }
+    setTimeout(() => setToastMessage(""), 4000);
+  };
+
+  const handleResendInvitation = async (inv: { email: string; invitedRole?: string }) => {
+    try {
+      const res = await fetch(`/api/organizations/${agency.id}/invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` },
+        body: JSON.stringify({ email: inv.email, invitedRole: inv.invitedRole || UserRole.AGENT })
+      });
+      const data = await res.json().catch(() => ({}));
+      setToastMessage(res.ok ? (isRtl ? `أُعيد إرسال الدعوة إلى ${inv.email}` : `Invitation sent again to ${inv.email}`) : (data.error || (isRtl ? "تعذر إعادة الإرسال." : "Could not resend.")));
+      if (res.ok) fetchAgencyContext();
+    } catch {
+      setToastMessage(isRtl ? "تعذر إعادة الإرسال." : "Could not resend.");
+    }
+    setTimeout(() => setToastMessage(""), 4000);
+  };
+
   const handleReassignLead = async (leadId: string, targetAgentId: string) => {
     try {
       const res = await fetch(`/api/leads/${leadId}/assign`, {
@@ -1577,14 +1610,27 @@ export default function AgencyWorkspace({ agency, currentUser, onRefreshAll, isR
                 <p className="p-4 text-ink-muted italic">{isRtl ? "لا توجد دعوات معلقة" : "No pending broker invitations."}</p>
               ) : (
                 invitations.map((inv) => (
-                  <div key={inv.id} className="p-4 flex items-center justify-between">
-                    <div>
-                      <p className="font-bold text-ink">{inv.email}</p>
+                  <div key={inv.id} className="p-4 flex items-center justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="font-bold text-ink break-all">{inv.email}</p>
                       <p className="text-[10px] text-ink-muted">
                         {isRtl ? "تاريخ الإرسال: " : "Sent: "} {new Date(inv.createdDate).toLocaleDateString()} • {isRtl ? "تنتهي في: " : "Expires: "} {new Date(inv.expiresDate).toLocaleDateString()}
                       </p>
                     </div>
-                    <Badge tone="warning" dot className="!normal-case">{inv.status === "PENDING" ? (isRtl ? "بانتظار القبول" : "Pending") : inv.status}</Badge>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge tone="warning" dot className="!normal-case">{inv.status === "PENDING" ? (isRtl ? "بانتظار القبول" : "Pending") : inv.status}</Badge>
+                      {inv.status !== "ACCEPTED" && (
+                        <>
+                          <button type="button" onClick={() => handleResendInvitation(inv)} className="px-2.5 py-1 text-[11px] font-semibold text-ink hover:bg-surface-2 rounded-md cursor-pointer transition-colors">
+                            {isRtl ? "إعادة إرسال" : "Resend"}
+                          </button>
+                          <button type="button" onClick={() => handleCancelInvitation(inv.id)} className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-danger hover:bg-danger-soft rounded-md cursor-pointer transition-colors">
+                            <Trash2 size={12} aria-hidden />
+                            <span>{isRtl ? "إلغاء الدعوة" : "Cancel invite"}</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))
               )}

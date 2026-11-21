@@ -235,7 +235,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
 
   // Toast notifications (replaces window.alert for better visual UX and sandbox iframe compliance)
   const [toastMessage, setToastMessage] = useState<string>("");
-  const [pendingDelete, setPendingDelete] = useState<{ type: "REVIEW" | "PROPERTY" | "LEAD"; id: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ type: "REVIEW" | "PROPERTY" | "LEAD" | "USER"; id: string } | null>(null);
   const [deletingPending, setDeletingPending] = useState(false);
 
   // Plan Form State
@@ -988,12 +988,33 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     }
   };
 
+  const executeDeleteUser = async (userId: string) => {
+    try {
+      const token = localStorage.getItem("token") || "";
+      const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE", headers: { "Authorization": `Bearer ${token}` } });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showToast(isRtl
+          ? `تم حذف الحساب${d.listingsRemoved ? ` و${d.listingsRemoved} عقار` : ""}.`
+          : `Account deleted${d.listingsRemoved ? ` along with ${d.listingsRemoved} listing(s)` : ""}.`);
+        fetchControlContext();
+        onRefreshAll();
+      } else {
+        showToast(d.error || (isRtl ? "تعذر حذف الحساب." : "Failed to delete the account."));
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(isRtl ? "تعذر حذف الحساب." : "Failed to delete the account.");
+    }
+  };
+
   const confirmPendingDelete = async () => {
     if (!pendingDelete) return;
     setDeletingPending(true);
     try {
       if (pendingDelete.type === "REVIEW") await executeDeleteReview(pendingDelete.id);
       else if (pendingDelete.type === "PROPERTY") await executeDeleteProperty(pendingDelete.id);
+      else if (pendingDelete.type === "USER") await executeDeleteUser(pendingDelete.id);
       else await executeDeleteLead(pendingDelete.id);
     } finally {
       setDeletingPending(false);
@@ -1005,6 +1026,8 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     ? (isRtl ? "هل تريد حذف هذا التقييم؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this review? This cannot be undone.")
     : pendingDelete?.type === "PROPERTY"
     ? (isRtl ? "هل تريد حذف هذا العقار؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this property? This cannot be undone.")
+    : pendingDelete?.type === "USER"
+    ? (isRtl ? "هل تريد حذف هذا الحساب نهائياً مع عقاراته ومستنداته؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this account for good, with its listings and documents? This cannot be undone.")
     : (isRtl ? "هل تريد حذف هذا العميل المحتمل؟ لا يمكن التراجع عن هذا الإجراء." : "Delete this lead? This cannot be undone.");
 
   const handleVerifyOrg = async (orgId: string, status: VerificationStatus) => {
@@ -2930,6 +2953,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                       <th className="p-3">{isRtl ? "حالة الحساب" : "Account Status"}</th>
                       <th className="p-3">{isRtl ? "حالة التوثيق" : "Verification"}</th>
                       <th className="p-3">{isRtl ? "تاريخ التسجيل" : "Registered"}</th>
+                      <th className="p-3"><span className="sr-only">{isRtl ? "إجراءات" : "Actions"}</span></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-2">
@@ -2956,6 +2980,19 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                               </span>
                             </td>
                             <td className="p-3 text-ink-muted">{u.createdDate ? new Date(u.createdDate).toLocaleDateString() : "—"}</td>
+                            <td className="p-3">
+                              {u.id !== currentUser.id && u.role !== UserRole.PLATFORM_ADMIN && u.role !== UserRole.SUPER_ADMIN && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPendingDelete({ type: "USER", id: u.id })}
+                                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-danger hover:bg-danger-soft rounded-md cursor-pointer transition-colors whitespace-nowrap"
+                                  title={isRtl ? "حذف الحساب" : "Delete account"}
+                                >
+                                  <Trash2 size={13} aria-hidden />
+                                  <span>{isRtl ? "حذف" : "Delete"}</span>
+                                </button>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
