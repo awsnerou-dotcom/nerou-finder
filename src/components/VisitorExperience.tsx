@@ -64,6 +64,7 @@ import {
   Gem,
   SlidersHorizontal,
   Calculator,
+  Landmark,
   TrendingDown,
   LifeBuoy,
   Briefcase,
@@ -96,6 +97,7 @@ import {
   ValuationView,
   PublicProfileView,
   PriceCheckView,
+  CalculatorView,
   PriceReportView,
   GuidesView,
   GuideArticleView,
@@ -107,7 +109,7 @@ import { isAgentVerified } from "../lib/agentVerification.js";
 import { bedsText, bathsText } from "../lib/propertyFacts.js";
 import type { ProfileKind } from "../lib/profiles.js";
 import { STATIC_TAB_PATHS, staticTabForPath, type VisitorTab } from "../routes.js";
-import { stripLang, withLang, parseLandingPath, areaSlug, TYPE_GROUPS } from "../lib/seo.js";
+import { stripLang, withLang, parseLandingPath, areaSlug, TYPE_GROUPS, listingTitle as listingSeoTitle } from "../lib/seo.js";
 import { homeTitle, listingTitle } from "../lib/pageTitle.js";
 import { areaOptions, areaListingCount, withDescendants } from "../lib/locations.js";
 import { priceDrop, listedDaysAgo, isNewListing, listedLabel, NEW_LISTING_DAYS } from "../lib/propertySearch.js";
@@ -511,13 +513,16 @@ export default function VisitorExperience({
   const titledPropertyRef = React.useRef(false);
   useEffect(() => {
     if (selectedProperty) {
-      document.title = listingTitle(selectedProperty.title, isRtl);
+      // the same facts-based title the server writes (so a search engine that runs the page sees one title, not two)
+      document.title = (selectedProperty.propertyType && selectedProperty.district)
+        ? listingSeoTitle(selectedProperty, isRtl ? "ar" : "en", locations)
+        : listingTitle(selectedProperty.title, isRtl);
       titledPropertyRef.current = true;
     } else if (titledPropertyRef.current) {
       titledPropertyRef.current = false;
       document.title = homeTitle(isRtl);
     }
-  }, [selectedProperty, isRtl]);
+  }, [selectedProperty, isRtl, locations]);
 
   // The guides set the tab title themselves; once the visitor has left them, the home title comes back.
   const titledByGuidesRef = React.useRef(false);
@@ -1148,6 +1153,7 @@ export default function VisitorExperience({
       ["GUIDES", isRtl ? "الأدلة" : "Guides", BookOpen],
       ["PRICE_CHECK", isRtl ? "هل السعر عادل؟" : "Price check", Scale],
       ["VALUATION", isRtl ? "قيّم عقارك" : "Valuation", Calculator],
+      ["CALC_MORTGAGE", isRtl ? "حاسبات مجانية" : "Calculators", Landmark],
               ["LEGAL", isRtl ? "الوثائق القانونية" : "Legal Policies", Scale]
     ];
 
@@ -2052,6 +2058,15 @@ export default function VisitorExperience({
 
       {currentTab === "GUIDES" && <GuidesView isRtl={isRtl} onOpenGuide={openGuide} guideOpen={!!guideSlug} />}
       {currentTab === "PROJECTS" && <ProjectsView isRtl={isRtl} organizations={organizations} users={users} />}
+      {(currentTab === "CALC_MORTGAGE" || currentTab === "CALC_YIELD" || currentTab === "CALC_AFFORD") && (
+        <CalculatorView
+          isRtl={isRtl}
+          tool={currentTab === "CALC_YIELD" ? "yield" : currentTab === "CALC_AFFORD" ? "afford" : "mortgage"}
+          onSelectTool={(key) => { setCurrentTab(key === "yield" ? "CALC_YIELD" : key === "afford" ? "CALC_AFFORD" : "CALC_MORTGAGE"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onOpenPriceCheck={() => { setCurrentTab("PRICE_CHECK"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onSearch={() => { setCurrentTab("MARKETPLACE"); setSearchMode("PROPERTIES"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+        />
+      )}
       {currentTab === "PRICE_CHECK" && (
         <PriceCheckView
           isRtl={isRtl}

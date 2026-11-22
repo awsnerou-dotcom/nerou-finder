@@ -28,6 +28,7 @@ import type PriceCheckViewT from "./PriceCheckView.js";
 import type GuidesViewT from "./GuidesView.js";
 import type GuideArticleViewT from "./GuideArticleView.js";
 import type PriceReportViewT from "./PriceReportView.js";
+import type CalculatorViewT from "./CalculatorView.js";
 
 // Screens a visitor does not see when the home page first opens (a listing's detail page, the map,
 // the compare table, the plans page, help, careers...) are loaded only when they are opened. They
@@ -104,5 +105,6 @@ export const ValuationView = lazyView<typeof ValuationViewT>(() => import("./Val
 export const PublicProfileView = lazyView<typeof PublicProfileViewT>(() => import("./PublicProfileView.js"));
 export const PriceCheckView = lazyView<typeof PriceCheckViewT>(() => import("./PriceCheckView.js"));
 export const PriceReportView = lazyView<typeof PriceReportViewT>(() => import("./PriceReportView.js"));
+export const CalculatorView = lazyView<typeof CalculatorViewT>(() => import("./CalculatorView.js"));
 export const GuidesView = lazyView<typeof GuidesViewT>(() => import("./GuidesView.js"));
 export const GuideArticleView = lazyView<typeof GuideArticleViewT>(() => import("./GuideArticleView.js"), overlayLoading);

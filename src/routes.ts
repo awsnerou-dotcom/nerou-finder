@@ -18,6 +18,9 @@ export type VisitorTab =
   | "AREA_GUIDES"
   | "VALUATION"
   | "PRICE_CHECK"
+  | "CALC_MORTGAGE"
+  | "CALC_YIELD"
+  | "CALC_AFFORD"
   | "GUIDES";
 
 // Real URLs for the full-page tabs. Until these existed, robots.txt and sitemap.xml
@@ -40,6 +43,10 @@ export const STATIC_TAB_PATHS: Partial<Record<VisitorTab, string>> = {
   AREA_GUIDES: "/area-guides",
   VALUATION: "/property-valuation",
   PRICE_CHECK: "/price-check",
+  // the free calculators (paths and text live in lib/calculatorsContent.ts)
+  CALC_MORTGAGE: "/mortgage-calculator",
+  CALC_YIELD: "/rental-yield-calculator",
+  CALC_AFFORD: "/home-affordability-calculator",
   GUIDES: "/guides"
 };
 

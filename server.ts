@@ -197,6 +197,8 @@ import {
   reportBodyHtml,
   reportJsonLd
 } from "./src/lib/seoHtml.js";
+import { CALC_TOOLS, calcByPath, pick as calcPick } from "./src/lib/calculatorsContent.js";
+import { calcBodyHtml, calcJsonLd } from "./src/lib/calculatorsHtml.js";
 import { rateLimit } from "express-rate-limit";
 import crypto from "crypto";
 import * as Sentry from "@sentry/node";
@@ -10142,6 +10144,14 @@ const SEO_PAGES: Record<string, { en: SeoPageText; ar: SeoPageText }> = {
   }
 };
 
+// The free calculators (mortgage, rental yield, affordability): their text comes from one file shared with the app.
+for (const c of CALC_TOOLS) {
+  SEO_PAGES[c.path] = {
+    en: { title: c.title.en, description: c.description.en, h1: c.h1.en, intro: c.intro.en },
+    ar: { title: c.title.ar, description: c.description.ar, h1: c.h1.ar, intro: c.intro.ar }
+  };
+}
+
 function seoShell(): string | null {
   for (const p of [path.join(process.cwd(), "dist", "index.html"), path.join(process.cwd(), "index.html")]) {
     try { if (fs.existsSync(p)) return fs.readFileSync(p, "utf-8"); } catch { /* try the next one */ }
@@ -10233,7 +10243,11 @@ function seoPageHtml(db: DatabaseState, pagePath: string, lang: SeoLang, origin:
   if (!page) return null;
   const t = page[lang];
   const alternates = { en: `${origin}${pagePath === "/" ? "/" : pagePath}`, ar: `${origin}${withLang(pagePath, "ar")}` };
-  let html = applyHead(shell, { lang, title: t.title, description: t.description, canonical: lang === "ar" ? alternates.ar : alternates.en, alternates });
+  const calc = calcByPath(pagePath);
+  let html = applyHead(shell, {
+    lang, title: t.title, description: t.description, canonical: lang === "ar" ? alternates.ar : alternates.en, alternates,
+    jsonLd: calc ? calcJsonLd(calc, lang, origin) : undefined
+  });
   const pages = [
     { path: "/plans-pricing", label: SEO_PAGES["/plans-pricing"][lang].h1 },
     { path: "/help-center", label: SEO_PAGES["/help-center"][lang].h1 },
@@ -10241,6 +10255,7 @@ function seoPageHtml(db: DatabaseState, pagePath: string, lang: SeoLang, origin:
     { path: GUIDES_PATH, label: hubText(lang).h1 },
     { path: "/property-valuation", label: SEO_PAGES["/property-valuation"][lang].h1 },
     { path: "/price-check", label: SEO_PAGES["/price-check"][lang].h1 },
+    ...CALC_TOOLS.map(c => ({ path: c.path, label: calcPick(c.h1, lang) })),
     { path: reportPath("RENT", COUNTRY_SLUG), label: lang === "ar" ? "متوسط الإيجار في قطر" : "Average rent in Qatar" },
     { path: reportPath("SALE", COUNTRY_SLUG), label: lang === "ar" ? "أسعار العقارات في قطر" : "Property prices in Qatar" },
     { path: "/careers", label: SEO_PAGES["/careers"][lang].h1 },
@@ -10260,6 +10275,12 @@ function seoPageHtml(db: DatabaseState, pagePath: string, lang: SeoLang, origin:
       areas: AREA_GUIDES.map(g => ({ path: `/areas/${g.slug}`, label: lang === "ar" ? g.titleAr : g.title })),
       pages
     }));
+  } else if (calc) {
+    html = applyRootContent(html, calcBodyHtml(calc, lang, [
+      { path: "/price-check", label: SEO_PAGES["/price-check"][lang].h1 },
+      { path: "/property-valuation", label: SEO_PAGES["/property-valuation"][lang].h1 },
+      { path: "/", label: SEO_PAGES["/"][lang].h1 }
+    ]));
   } else {
     html = applyRootContent(html, simpleBodyHtml({ lang, h1: t.h1, intro: t.intro, links: [{ path: "/", label: SEO_PAGES["/"][lang].h1 }, ...(pagePath === "/area-guides" ? AREA_GUIDES.map(g => ({ path: `/areas/${g.slug}`, label: lang === "ar" ? g.titleAr : g.title })) : [])] }));
   }
@@ -10486,6 +10507,7 @@ app.get("/llms.txt", (req, res) => {
 - [Qatar property guides](${origin}${GUIDES_PATH}): renting, buying, investing and living in Qatar
 - [Help Center](${origin}/help-center)
 - [Is this price fair? Free price check](${origin}/price-check): compare a rent or price with the live listings in the same area
+${CALC_TOOLS.map(c => `- [${c.h1.en}](${origin}${c.path}): ${c.description.en}`).join("\n")}
 - [Average rent in Qatar](${origin}${reportPath("RENT", COUNTRY_SLUG)}) and [property prices in Qatar](${origin}${reportPath("SALE", COUNTRY_SLUG)}): live figures by area, bedrooms and type
 
 ## Rent and price reports by area (live figures, updated as listings change)
@@ -11450,7 +11472,7 @@ async function startServer() {
             .map(x => ({ path: x.path, label: landingLabel(x, l, areaDb.locations) }));
           return [
             { heading: ar ? "أسعار هذه المنطقة" : "Prices in this area", links: reportLinks },
-            { heading: ar ? "ابحث في كل قطر" : "Search all of Qatar", links: [...qatarWide, { path: "/price-check", label: ar ? "هل السعر عادل؟ افحصه مجاناً" : "Is this price fair? Check it for free" }] },
+            { heading: ar ? "ابحث في كل قطر" : "Search all of Qatar", links: [...qatarWide, { path: "/price-check", label: ar ? "هل السعر عادل؟ افحصه مجاناً" : "Is this price fair? Check it for free" }, ...CALC_TOOLS.map(c => ({ path: c.path, label: calcPick(c.h1, l) }))] },
             { heading: ar ? "مناطق أخرى" : "Other area guides", links: AREA_GUIDES.filter(g => g.slug !== guide.slug).map(g => ({ path: `/areas/${g.slug}`, label: ar ? g.titleAr : g.title })) },
             { heading: ar ? "أدلة قطر العقارية" : "Qatar property guides", links: [{ path: GUIDES_PATH, label: hubText(l).h1 }] }
           ];
