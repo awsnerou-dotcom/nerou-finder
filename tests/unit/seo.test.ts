@@ -211,9 +211,22 @@ describe("the page of one listing", () => {
   it("is real Arabic with the Arabic district, and falls back to Qatar without a district", () => {
     const ar = listingTitle(prop({ id: "a", propertyType: "APARTMENT", district: "West Bay", bedrooms: 2, price: 8000 }), "ar");
     expect(ar).toContain("شقة للإيجار في الخليج الغربي");
-    expect(ar).toContain("2 غرف نوم");
+    expect(ar).toContain("غرفتا نوم");
+    expect(listingTitle(prop({ id: "a1", district: "West Bay", bedrooms: 1, price: 5000 }), "ar")).toContain("غرفة نوم");
+    expect(listingTitle(prop({ id: "a3", district: "West Bay", bedrooms: 3, price: 5000 }), "ar")).toContain("3 غرف نوم");
     expect(ar).toContain("8,000 ر.ق شهريًا");
     expect(listingTitle(prop({ id: "n", district: "" }), "en")).toContain("in Qatar");
+  });
+
+  it("keeps Arabic letters out of an English title, and bedrooms off a room or a shop", () => {
+    const arabicDistrict = prop({ id: "d", propertyType: "VILLA", district: "الصخامة", city: "Doha", bedrooms: 4, price: 13000 });
+    expect(listingTitle(arabicDistrict, "en")).toBe("4-Bed Villa for Rent in Doha - QAR 13,000/mo | Nerou Finder");
+    expect(listingTitle(prop({ ...arabicDistrict, id: "d2", city: "قطر" }), "en")).toBe("4-Bed Villa for Rent in Qatar - QAR 13,000/mo | Nerou Finder");
+    // ...but the location table's English name is used when it has one, and the Arabic title keeps the Arabic district
+    const table = [{ id: "l", name: "Al Sakhama", nameAr: "الصخامة", type: "DISTRICT" }] as never;
+    expect(listingTitle(arabicDistrict, "en", table)).toContain("in Al Sakhama");
+    expect(listingTitle(arabicDistrict, "ar")).toContain("في الصخامة");
+    expect(listingTitle(prop({ id: "r", propertyType: "ROOM", transactionType: "FOR_SALE", district: "Umm Salal Mohammed", bedrooms: 4, price: 1200 }), "en")).toBe("Room for Sale in Umm Salal Mohammed - QAR 1,200 | Nerou Finder");
   });
 
   it("never grows past a search result's width", () => {

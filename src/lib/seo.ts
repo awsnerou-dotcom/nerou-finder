@@ -9,7 +9,6 @@
 // rent-doha), in both languages, each with its own title, text and listings in the HTML itself.
 
 import type { LocationItem, Property } from "../types.js";
-import { hasRooms } from "./propertyFacts.js";
 
 export type Lang = "en" | "ar";
 
@@ -344,15 +343,23 @@ export function listingTitle(p: Property, lang: Lang, locations: LocationItem[] 
   const group = TYPE_GROUPS.find(g => g.types.includes(p.propertyType as unknown as string));
   const isRent = TX_INFO.rent.types.includes(p.transactionType as unknown as string);
   const tx = isRent ? TX_INFO.rent : TX_INFO.sale;
-  const area = p.district?.trim() ? areaNameFor(p.district, locations) : null;
-  const beds = hasRooms(p.propertyType as unknown as string) && group?.slug !== "studios" && typeof p.bedrooms === "number" && p.bedrooms > 0 ? p.bedrooms : 0;
+  // a district an agent typed in Arabic has no English name in the table: say "Qatar" (or the Latin city) rather than put Arabic letters in an English title
+  const rawArea = p.district?.trim() || "";
+  const arabicLetters = /[؀-ۿ]/;
+  let area: AreaName | null = rawArea ? areaNameFor(rawArea, locations) : null;
+  if (area && arabicLetters.test(area.en)) {
+    const listed = locations.find(l => l.nameAr?.trim() === rawArea && l.name && !arabicLetters.test(l.name));
+    area = { ...area, en: listed ? listed.name.trim() : (p.city && !arabicLetters.test(p.city) && p.city.trim().toLowerCase() !== "qatar" ? p.city.trim() : "") };
+  }
+  // a "room" or a "shop" with bedrooms is a typing slip by the agent; only homes with bedrooms get the count
+  const beds = ["apartments", "villas", "townhouses", "penthouses", "compounds"].includes(group?.slug || "") && typeof p.bedrooms === "number" && p.bedrooms > 0 ? p.bedrooms : 0;
   const cur = (p.currency || "QAR") === "USD" ? (ar ? "دولار" : "USD") : (ar ? "ر.ق" : "QAR");
   const price = typeof p.price === "number" && p.price > 0
     ? (ar ? `${fmtNum(p.price)} ${cur}${isRent ? " شهريًا" : ""}` : `${cur} ${fmtNum(p.price)}${isRent ? "/mo" : ""}`)
     : "";
   const core = ar
-    ? `${group ? group.arSingular : "عقار"} ${tx.ar}${area ? ` في ${area.ar}` : " في قطر"}${beds ? ` - ${beds} غرف نوم` : ""}`
-    : `${beds ? `${beds}-Bed ` : ""}${group ? group.enSingular.replace(/^./, c => c.toUpperCase()) : "Property"} ${tx.enTitle}${area ? ` in ${area.en}` : " in Qatar"}`;
+    ? `${group ? group.arSingular : "عقار"} ${tx.ar}${area?.ar ? ` في ${area.ar}` : " في قطر"}${beds ? ` - ${beds === 1 ? "غرفة نوم" : beds === 2 ? "غرفتا نوم" : `${beds} غرف نوم`}` : ""}`
+    : `${beds ? `${beds}-Bed ` : ""}${group ? group.enSingular.replace(/^./, c => c.toUpperCase()) : "Property"} ${tx.enTitle}${area?.en ? ` in ${area.en}` : " in Qatar"}`;
   return fitTitle(price ? `${core} - ${price}` : core, ar ? SITE_NAME_AR : SITE_NAME);
 }
 
