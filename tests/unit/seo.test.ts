@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
-  slugify, stripLang, withLang, parseLandingPath, landingPath, buildLandingPages, landingText, relatedLandings, landingLabel, areaNameFor, listingMetaAr, listingsFor
+  slugify, stripLang, withLang, parseLandingPath, landingPath, buildLandingPages, landingText, relatedLandings, landingLabel, areaNameFor, listingMetaAr, listingsFor, listingTitle, listingCrumbs
 } from "../../src/lib/seo.js";
-import { applyHead, applyRootContent, landingBodyHtml, landingJsonLd, jsonLdScript, esc } from "../../src/lib/seoHtml.js";
+import { applyHead, applyRootContent, landingBodyHtml, landingJsonLd, jsonLdScript, esc, propertyBodyHtml, areaBodyHtml, breadcrumbJsonLd } from "../../src/lib/seoHtml.js";
 import type { Property } from "../../src/types.js";
 
-const prop = (o: Partial<Property> & { id: string }): Property => ({
+const prop = (o: Partial<Record<keyof Property, unknown>> & { id: string }): Property => ({
   title: "Nice flat", propertyType: "APARTMENT", transactionType: "FOR_RENT", district: "Lusail", city: "Lusail", price: 7000, currency: "QAR",
   rentalPeriod: "MONTHLY", bedrooms: 2, bathrooms: 2, area: 100, sizeUnit: "SQM", listingStatus: "PUBLISHED", images: ["/a.jpg"], ...o
 } as unknown as Property);
@@ -189,5 +189,86 @@ describe("the HTML a crawler receives", () => {
     expect(ld[0].mainEntity.itemListElement[0].url).toBe("https://x/properties/1");
     expect(jsonLdScript({ a: "</script><script>alert(1)" })).not.toContain("</script><script>");
     expect(esc("<&>")).toBe("&lt;&amp;&gt;");
+  });
+});
+
+describe("the page of one listing", () => {
+  it("is titled from its facts, not from the agent's headline", () => {
+    const villa = prop({ id: "v", title: "For Rent: Luxurious Standalone Villa in Al", propertyType: "VILLA", district: "Al Markhiya", city: "Doha", bedrooms: 5, price: 40000 });
+    const t = listingTitle(villa, "en");
+    expect(t).toBe("5-Bed Villa for Rent in Al Markhiya - QAR 40,000/mo");
+    expect(t).not.toContain("Luxurious");
+    expect(t.length).toBeLessThanOrEqual(62);
+  });
+
+  it("says nothing about bedrooms for a shop or a plot, and handles a sale and a studio", () => {
+    // the brand is added when it still fits in a search result, and dropped first when it does not
+    expect(listingTitle(prop({ id: "s", propertyType: "SHOP", bedrooms: 3, district: "Al Sadd", price: 9000 }), "en")).toBe("Shop for Rent in Al Sadd - QAR 9,000/mo | Nerou Finder");
+    expect(listingTitle(prop({ id: "l", propertyType: "LAND", transactionType: "FOR_SALE", district: "Lusail", price: 2500000, bedrooms: 0 }), "en")).toBe("Plot of land for Sale in Lusail - QAR 2,500,000 | Nerou Finder");
+    expect(listingTitle(prop({ id: "st", propertyType: "STUDIO", bedrooms: 0, district: "Lusail", price: 3500 }), "en")).toBe("Studio for Rent in Lusail - QAR 3,500/mo | Nerou Finder");
+  });
+
+  it("is real Arabic with the Arabic district, and falls back to Qatar without a district", () => {
+    const ar = listingTitle(prop({ id: "a", propertyType: "APARTMENT", district: "West Bay", bedrooms: 2, price: 8000 }), "ar");
+    expect(ar).toContain("شقة للإيجار في الخليج الغربي");
+    expect(ar).toContain("2 غرف نوم");
+    expect(ar).toContain("8,000 ر.ق شهريًا");
+    expect(listingTitle(prop({ id: "n", district: "" }), "en")).toContain("in Qatar");
+  });
+
+  it("never grows past a search result's width", () => {
+    const long = prop({ id: "x", propertyType: "COMPOUND", district: "Al Wukair Heights Extension", price: 123456789, bedrooms: 6 });
+    expect(listingTitle(long, "en").length).toBeLessThanOrEqual(62);
+  });
+
+  it("has a breadcrumb up to the most specific search page that lists it", () => {
+    const a = prop({ id: "1", propertyType: "VILLA", district: "Lusail" });
+    const b = prop({ id: "2", propertyType: "VILLA", district: "Lusail" });
+    const pages = buildLandingPages([a, b]).filter(l => l.indexable && l.listings.some(x => x.id === "1"));
+    const crumbs = listingCrumbs(a, pages, "en", [], "A villa");
+    expect(crumbs.map(c => c.name)).toEqual(["Home", "Villas for rent in Lusail", "A villa"]);
+    expect(crumbs[1].path).toBe("/villas-for-rent-in-lusail");
+    expect(listingCrumbs(a, [], "ar", [], "x").map(c => c.name)).toEqual(["الرئيسية", "x"]);
+  });
+
+  it("writes the breadcrumb as structured data with addresses in the page's language", () => {
+    const ld = breadcrumbJsonLd([{ name: "Home", path: "/" }, { name: "Villas", path: "/villas-for-rent-in-lusail" }], "ar", "https://x") as any;
+    expect(ld["@type"]).toBe("BreadcrumbList");
+    expect(ld.itemListElement[1]).toMatchObject({ position: 2, item: "https://x/ar/villas-for-rent-in-lusail" });
+  });
+
+  it("gives each photo its own alt text, and links up through the breadcrumb", () => {
+    const p = prop({ id: "9", title: "Garden villa", district: "Lusail", images: ["/1.jpg", "/2.jpg", "/3.jpg"] });
+    const html = propertyBodyHtml(p, "en", [], [{ name: "Home", path: "/" }, { name: "Villas for rent in Lusail", path: "/villas-for-rent-in-lusail" }, { name: "Garden villa", path: "/properties/9" }]);
+    expect(html).toContain('alt="Garden villa - Lusail"');
+    expect(html).toContain('alt="Garden villa - Lusail - photo 2"');
+    expect(html).toContain('alt="Garden villa - Lusail - photo 3"');
+    expect(html).toContain('href="/villas-for-rent-in-lusail"');
+    expect(propertyBodyHtml(p, "ar", [], []).includes("<nav")).toBe(false);
+  });
+});
+
+describe("an area guide page", () => {
+  it("leads on to prices, all-Qatar searches and other areas instead of ending", () => {
+    const html = areaBodyHtml({
+      title: "Lusail", overview: "A new city.", highlights: [], lang: "en", links: [],
+      crumbs: [{ name: "Home", path: "/" }, { name: "Area guides", path: "/area-guides" }, { name: "Lusail", path: "/areas/lusail-city" }],
+      sections: [
+        { heading: "Prices in this area", links: [{ path: "/average-rent-in-lusail", label: "Average rent in Lusail" }] },
+        { heading: "Empty group", links: [] },
+        { heading: "Other area guides", links: [{ path: "/areas/west-bay", label: "West Bay" }] }
+      ]
+    });
+    expect(html).toContain('href="/area-guides"');
+    expect(html).toContain("Prices in this area");
+    expect(html).toContain('href="/average-rent-in-lusail"');
+    expect(html).toContain('href="/areas/west-bay"');
+    expect(html).not.toContain("Empty group");
+    expect(html.match(/<h1>/g)?.length).toBe(1);
+  });
+
+  it("keeps its Arabic links on the Arabic site", () => {
+    const html = areaBodyHtml({ title: "لوسيل", overview: "x", highlights: [], lang: "ar", links: [], sections: [{ heading: "مناطق أخرى", links: [{ path: "/areas/west-bay", label: "الخليج الغربي" }] }] });
+    expect(html).toContain('href="/ar/areas/west-bay"');
   });
 });

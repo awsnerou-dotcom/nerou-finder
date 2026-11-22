@@ -9,6 +9,7 @@
 // rent-doha), in both languages, each with its own title, text and listings in the HTML itself.
 
 import type { LocationItem, Property } from "../types.js";
+import { hasRooms } from "./propertyFacts.js";
 
 export type Lang = "en" | "ar";
 
@@ -60,21 +61,22 @@ export interface TypeGroup {
   en: string; // "Apartments"
   enSingular: string;
   ar: string; // "شقق"
+  arSingular: string; // "شقة" - for the title of one listing
   types: string[]; // PropertyType values
 }
 
 export const TYPE_GROUPS: TypeGroup[] = [
-  { slug: "apartments", en: "Apartments", enSingular: "apartment", ar: "شقق", types: ["APARTMENT", "HOTEL_APARTMENT"] },
-  { slug: "studios", en: "Studios", enSingular: "studio", ar: "استوديوهات", types: ["STUDIO"] },
-  { slug: "villas", en: "Villas", enSingular: "villa", ar: "فلل", types: ["VILLA"] },
-  { slug: "townhouses", en: "Townhouses", enSingular: "townhouse", ar: "تاون هاوس", types: ["TOWNHOUSE"] },
-  { slug: "penthouses", en: "Penthouses", enSingular: "penthouse", ar: "بنتهاوس", types: ["PENTHOUSE"] },
-  { slug: "compounds", en: "Compound homes", enSingular: "compound home", ar: "وحدات في مجمعات سكنية", types: ["COMPOUND"] },
-  { slug: "offices", en: "Offices", enSingular: "office", ar: "مكاتب", types: ["OFFICE"] },
-  { slug: "shops", en: "Shops", enSingular: "shop", ar: "محلات تجارية", types: ["SHOP", "RETAIL"] },
-  { slug: "warehouses", en: "Warehouses", enSingular: "warehouse", ar: "مستودعات", types: ["WAREHOUSE"] },
-  { slug: "land", en: "Land", enSingular: "plot of land", ar: "أراضي", types: ["LAND"] },
-  { slug: "rooms", en: "Rooms", enSingular: "room", ar: "غرف", types: ["ROOM"] }
+  { slug: "apartments", en: "Apartments", enSingular: "apartment", ar: "شقق", arSingular: "شقة", types: ["APARTMENT", "HOTEL_APARTMENT"] },
+  { slug: "studios", en: "Studios", enSingular: "studio", ar: "استوديوهات", arSingular: "استوديو", types: ["STUDIO"] },
+  { slug: "villas", en: "Villas", enSingular: "villa", ar: "فلل", arSingular: "فيلا", types: ["VILLA"] },
+  { slug: "townhouses", en: "Townhouses", enSingular: "townhouse", ar: "تاون هاوس", arSingular: "تاون هاوس", types: ["TOWNHOUSE"] },
+  { slug: "penthouses", en: "Penthouses", enSingular: "penthouse", ar: "بنتهاوس", arSingular: "بنتهاوس", types: ["PENTHOUSE"] },
+  { slug: "compounds", en: "Compound homes", enSingular: "compound home", ar: "وحدات في مجمعات سكنية", arSingular: "وحدة في مجمع سكني", types: ["COMPOUND"] },
+  { slug: "offices", en: "Offices", enSingular: "office", ar: "مكاتب", arSingular: "مكتب", types: ["OFFICE"] },
+  { slug: "shops", en: "Shops", enSingular: "shop", ar: "محلات تجارية", arSingular: "محل تجاري", types: ["SHOP", "RETAIL"] },
+  { slug: "warehouses", en: "Warehouses", enSingular: "warehouse", ar: "مستودعات", arSingular: "مستودع", types: ["WAREHOUSE"] },
+  { slug: "land", en: "Land", enSingular: "plot of land", ar: "أراضي", arSingular: "أرض", types: ["LAND"] },
+  { slug: "rooms", en: "Rooms", enSingular: "room", ar: "غرف", arSingular: "غرفة", types: ["ROOM"] }
 ];
 
 export type Tx = "rent" | "sale";
@@ -238,7 +240,7 @@ function bedroomSummary(listings: Property[]) {
 }
 
 /** Title that stays near 60 characters: drops the brand before it drops the place. */
-function fitTitle(core: string, brand: string): string {
+export function fitTitle(core: string, brand: string): string {
   const full = `${core} | ${brand}`;
   return full.length <= 62 ? full : core.length <= 62 ? core : core.slice(0, 59).trimEnd() + "…";
 }
@@ -330,6 +332,38 @@ export function landingLabel(l: Landing, lang: Lang, locations: LocationItem[] =
   return lang === "ar"
     ? `${g ? g.ar : "عقارات"} ${TX_INFO[l.spec.tx].ar} في ${area ? area.ar : "قطر"}`
     : `${g ? g.en : "Properties"} ${TX_INFO[l.spec.tx].en} in ${area ? area.en : "Qatar"}`;
+}
+
+/**
+ * The <title> of one listing's page, built from its structured fields: "2-Bed Villa for Rent in Al Markhiya - QAR 40,000/mo".
+ * It used to be the agent's own headline, which is often cut short ("...Villa in Al"), padded with "For Rent:", or just
+ * "Office For Rent In Qatar" - none of which says what or where the listing is. Same wording rules as the landing pages.
+ */
+export function listingTitle(p: Property, lang: Lang, locations: LocationItem[] = []): string {
+  const ar = lang === "ar";
+  const group = TYPE_GROUPS.find(g => g.types.includes(p.propertyType as unknown as string));
+  const isRent = TX_INFO.rent.types.includes(p.transactionType as unknown as string);
+  const tx = isRent ? TX_INFO.rent : TX_INFO.sale;
+  const area = p.district?.trim() ? areaNameFor(p.district, locations) : null;
+  const beds = hasRooms(p.propertyType as unknown as string) && group?.slug !== "studios" && typeof p.bedrooms === "number" && p.bedrooms > 0 ? p.bedrooms : 0;
+  const cur = (p.currency || "QAR") === "USD" ? (ar ? "دولار" : "USD") : (ar ? "ر.ق" : "QAR");
+  const price = typeof p.price === "number" && p.price > 0
+    ? (ar ? `${fmtNum(p.price)} ${cur}${isRent ? " شهريًا" : ""}` : `${cur} ${fmtNum(p.price)}${isRent ? "/mo" : ""}`)
+    : "";
+  const core = ar
+    ? `${group ? group.arSingular : "عقار"} ${tx.ar}${area ? ` في ${area.ar}` : " في قطر"}${beds ? ` - ${beds} غرف نوم` : ""}`
+    : `${beds ? `${beds}-Bed ` : ""}${group ? group.enSingular.replace(/^./, c => c.toUpperCase()) : "Property"} ${tx.enTitle}${area ? ` in ${area.en}` : " in Qatar"}`;
+  return fitTitle(price ? `${core} - ${price}` : core, ar ? SITE_NAME_AR : SITE_NAME);
+}
+
+/** Where a listing sits in the site, for its breadcrumb: Home > the most specific search page that lists it > the listing. */
+export function listingCrumbs(p: Property, own: Landing[], lang: Lang, locations: LocationItem[], title: string): { name: string; path: string }[] {
+  const best = own.filter(l => l.indexable).sort((a, b) => specificity(b.spec) - specificity(a.spec) || b.listings.length - a.listings.length)[0];
+  return [
+    { name: lang === "ar" ? "الرئيسية" : "Home", path: "/" },
+    ...(best ? [{ name: landingLabel(best, lang, locations), path: best.path }] : []),
+    { name: title, path: `/properties/${p.id}` }
+  ];
 }
 
 /** Arabic search snippet for a listing page, built from its structured fields (never the agent's free text). */

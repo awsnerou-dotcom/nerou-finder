@@ -176,6 +176,8 @@ import {
   areaNameFor,
   isPublishedListing,
   listingMetaAr,
+  listingTitle,
+  listingCrumbs,
   SITE_NAME_AR
 } from "./src/lib/seo.js";
 import {
@@ -189,6 +191,7 @@ import {
   simpleBodyHtml,
   propertyBodyHtml,
   areaBodyHtml,
+  breadcrumbJsonLd,
   profileBodyHtml,
   profileJsonLd,
   reportBodyHtml,
@@ -10265,15 +10268,15 @@ function seoPageHtml(db: DatabaseState, pagePath: string, lang: SeoLang, origin:
 
 /** Final touches for the property and area-guide pages, whose English head the handlers already wrote. */
 function seoFinish(html: string, req: express.Request, res: express.Response, o: {
-  enPath: string; arTitle?: string; arDesc?: string; body?: { en: string; ar: string }; image?: string;
+  enPath: string; arTitle?: string; arDesc?: string; body?: { en: string; ar: string }; image?: string; noindex?: boolean;
 }): string {
   const lang: SeoLang = (res.locals.seoLang as SeoLang) || "en";
   const origin = requestOrigin(req);
   const alternates = { en: `${origin}${o.enPath}`, ar: o.arTitle ? `${origin}${withLang(o.enPath, "ar")}` : undefined };
   if (lang === "ar" && o.arTitle) {
-    html = applyHead(html, { lang: "ar", title: o.arTitle, description: o.arDesc || "", canonical: alternates.ar!, alternates, image: o.image });
+    html = applyHead(html, { lang: "ar", title: o.arTitle, description: o.arDesc || "", canonical: alternates.ar!, alternates, image: o.image, noindex: o.noindex });
   } else {
-    html = addAlternates(html, alternates, "index,follow,max-image-preview:large,max-snippet:-1");
+    html = addAlternates(html, alternates, o.noindex ? "noindex,follow" : "index,follow,max-image-preview:large,max-snippet:-1");
   }
   if (o.body) html = applyRootContent(html, o.body[lang]);
   return html;
@@ -11259,7 +11262,10 @@ async function startServer() {
         // .trim() because titles arrive with leading whitespace (the one live listing renders
         // as "<title> Office For Rent In Qatar | Nerou Finder").
         const rawTitle = (property.title || "Property").trim();
-        const title = escapeHtml(`${rawTitle} | Nerou Finder`);
+        // The tab title is built from the listing's facts ("2-Bed Villa for Rent in Al Markhiya - QAR 40,000/mo"), not the
+        // agent's headline, which is often cut short or generic. The page's own heading keeps the agent's words.
+        const lang: SeoLang = (res.locals.seoLang as SeoLang) || "en";
+        const title = escapeHtml(listingTitle(property, "en", db.locations));
         // Social cards can carry the agent's own prose; search snippets get the structured
         // line (see buildListingMetaDescription). Both are escaped.
         const socialDesc = escapeHtml(
@@ -11294,13 +11300,17 @@ async function startServer() {
         // advertise every one of these URLs and this route already computes everything the
         // JSON-LD block needs. Injected server-side (not just client-side) so it's present in
         // the very first response a crawler sees, with no JS execution required.
-        const permalink = `${origin}/properties/${property.id}`;
+        const permalink = `${origin}${withLang(`/properties/${property.id}`, lang)}`;
         html = applyCanonicalUrls(html, permalink);
+        // The search pages this listing belongs to: its breadcrumb, and crawlable links up to them.
+        const own = buildLandingPages(db.properties).filter(l => l.indexable && l.listings.some(x => x.id === property.id));
+        const crumbs = (l: SeoLang) => listingCrumbs(property, own, l, db.locations, listingTitle(property, l, db.locations).replace(/\s*[|]\s*(Nerou Finder|نيرو فايندر)$/, ""));
         const structuredData = {
           "@context": "https://schema.org",
           "@type": "RealEstateListing",
           name: rawTitle,
           description: (property.description || "").trim() || metaDesc,
+          inLanguage: lang,
           url: permalink,
           image: (property.images && property.images.length > 0 ? property.images : [absoluteCoverImage])
             .map(img => (img.startsWith("http") ? img : `${origin}${img}`)),
@@ -11315,7 +11325,7 @@ async function startServer() {
             "@type": "Offer",
             price: property.price,
             priceCurrency: property.currency || "QAR",
-            availability: "https://schema.org/InStock",
+            availability: isPublishedListing(property) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
             businessFunction: property.transactionType === "FOR_RENT"
               ? "http://purl.org/goodrelations/v1#LeaseOut"
               : "http://purl.org/goodrelations/v1#Sell"
@@ -11328,14 +11338,15 @@ async function startServer() {
             unitCode: property.sizeUnit === "SQFT" ? "FTK" : "MTK"
           }
         };
-        const jsonLdScript = `<script type="application/ld+json">${JSON.stringify(structuredData).replace(/</g, "\\u003c")}</script>`;
+        const jsonLdScript = [structuredData, breadcrumbJsonLd(crumbs(lang), lang, origin)]
+          .map(d => `<script type="application/ld+json">${JSON.stringify(d).replace(/</g, "\\u003c")}</script>`)
+          .join("");
         html = html.includes("</head>")
           ? html.replace("</head>", `${jsonLdScript}</head>`)
           : html + jsonLdScript;
 
         // Links up to the landing pages this listing belongs to (crawlable internal links), then the
         // Arabic variant / alternates and a readable body for crawlers.
-        const own = buildLandingPages(db.properties).filter(l => l.indexable && l.listings.some(x => x.id === property.id));
         const propDeal = dealOf(property.transactionType);
         const propReport = propDeal ? findReport(buildPriceReports(db.properties, db.locations), propDeal, canonicalAreaSlug(property.district || "")) : undefined;
         const linksFor = (l: SeoLang) => [
@@ -11347,10 +11358,12 @@ async function startServer() {
         ];
         return res.send(seoFinish(html, req, res, {
           enPath: `/properties/${property.id}`,
-          arTitle: `${rawTitle} | ${SITE_NAME_AR}`,
+          arTitle: listingTitle(property, "ar", db.locations),
           arDesc: listingMetaAr(property, db.locations),
           image: absoluteCoverImage,
-          body: { en: propertyBodyHtml(property, "en", linksFor("en")), ar: propertyBodyHtml(property, "ar", linksFor("ar")) }
+          // a paused, rented or removed listing stays reachable for people with the link, but is no longer offered to search engines
+          noindex: !isPublishedListing(property),
+          body: { en: propertyBodyHtml(property, "en", linksFor("en"), crumbs("en")), ar: propertyBodyHtml(property, "ar", linksFor("ar"), crumbs("ar")) }
         }));
       } catch (err) {
         console.error("SEO dynamic meta hydration failed:", err);
@@ -11388,13 +11401,21 @@ async function startServer() {
         html = html.replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/g, `<meta name="twitter:description" content="${desc}" />`);
         html = applyMetaDescription(html, rawDesc);
 
-        const permalink = `${requestOrigin(req)}/areas/${guide.slug}`;
+        const areaLang: SeoLang = (res.locals.seoLang as SeoLang) || "en";
+        const origin = requestOrigin(req);
+        const permalink = `${origin}${withLang(`/areas/${guide.slug}`, areaLang)}`;
         html = applyCanonicalUrls(html, permalink);
+        const areaCrumbs = (l: SeoLang) => [
+          { name: l === "ar" ? "الرئيسية" : "Home", path: "/" },
+          { name: l === "ar" ? "أدلة المناطق" : "Area guides", path: "/area-guides" },
+          { name: l === "ar" ? guide.titleAr : guide.title, path: `/areas/${guide.slug}` }
+        ];
         const structuredData = {
           "@context": "https://schema.org",
           "@type": "Place",
-          name: guide.title,
-          description: guide.overview,
+          name: areaLang === "ar" ? guide.titleAr : guide.title,
+          description: areaLang === "ar" ? guide.overviewAr : guide.overview,
+          inLanguage: areaLang,
           url: permalink,
           address: {
             "@type": "PostalAddress",
@@ -11403,7 +11424,9 @@ async function startServer() {
             addressCountry: "QA"
           }
         };
-        const jsonLdScript = `<script type="application/ld+json">${JSON.stringify(structuredData).replace(/</g, "\\u003c")}</script>`;
+        const jsonLdScript = [structuredData, breadcrumbJsonLd(areaCrumbs(areaLang), areaLang, origin)]
+          .map(d => `<script type="application/ld+json">${JSON.stringify(d).replace(/</g, "\\u003c")}</script>`)
+          .join("");
         html = html.includes("</head>")
           ? html.replace("</head>", `${jsonLdScript}</head>`)
           : html + jsonLdScript;
@@ -11413,14 +11436,33 @@ async function startServer() {
         const areaLinks = (l: SeoLang) => buildLandingPages(areaDb.properties)
           .filter(x => x.indexable && x.spec.area === areaSlug)
           .map(x => ({ path: x.path, label: landingLabel(x, l, areaDb.locations) }));
+        // Every area page also leads on: this area's price reports (only where the live listings back one up), the
+        // whole-Qatar searches, the other area guides and the guides. A guide with no listings used to be a dead end.
+        const areaReports = buildPriceReports(areaDb.properties, areaDb.locations);
+        const areaSections = (l: SeoLang) => {
+          const ar = l === "ar";
+          const reportLinks = (["RENT", "SALE"] as const)
+            .map(deal => findReport(areaReports, deal, areaSlug))
+            .filter((r): r is PriceReport => !!r)
+            .map(r => ({ path: reportPath(r.deal, r.slug), label: ar ? (r.deal === "RENT" ? `متوسط الإيجار في ${r.districtAr}` : `أسعار العقارات في ${r.districtAr}`) : (r.deal === "RENT" ? `Average rent in ${r.district}` : `Property prices in ${r.district}`) }));
+          const qatarWide = buildLandingPages(areaDb.properties)
+            .filter(x => x.indexable && !x.spec.area && !x.spec.type)
+            .map(x => ({ path: x.path, label: landingLabel(x, l, areaDb.locations) }));
+          return [
+            { heading: ar ? "أسعار هذه المنطقة" : "Prices in this area", links: reportLinks },
+            { heading: ar ? "ابحث في كل قطر" : "Search all of Qatar", links: [...qatarWide, { path: "/price-check", label: ar ? "هل السعر عادل؟ افحصه مجاناً" : "Is this price fair? Check it for free" }] },
+            { heading: ar ? "مناطق أخرى" : "Other area guides", links: AREA_GUIDES.filter(g => g.slug !== guide.slug).map(g => ({ path: `/areas/${g.slug}`, label: ar ? g.titleAr : g.title })) },
+            { heading: ar ? "أدلة قطر العقارية" : "Qatar property guides", links: [{ path: GUIDES_PATH, label: hubText(l).h1 }] }
+          ];
+        };
         const arOverview = guide.overviewAr.slice(0, 200).trim() + (guide.overviewAr.length > 200 ? "…" : "");
         return res.send(seoFinish(html, req, res, {
           enPath: `/areas/${guide.slug}`,
           arTitle: `${guide.titleAr} | ${SITE_NAME_AR}`,
           arDesc: arOverview,
           body: {
-            en: areaBodyHtml({ title: guide.title, overview: guide.overview, highlights: guide.highlights, lang: "en", links: areaLinks("en") }),
-            ar: areaBodyHtml({ title: guide.titleAr, overview: guide.overviewAr, highlights: guide.highlightsAr, lang: "ar", links: areaLinks("ar") })
+            en: areaBodyHtml({ title: guide.title, overview: guide.overview, highlights: guide.highlights, lang: "en", links: areaLinks("en"), crumbs: areaCrumbs("en"), sections: areaSections("en") }),
+            ar: areaBodyHtml({ title: guide.titleAr, overview: guide.overviewAr, highlights: guide.highlightsAr, lang: "ar", links: areaLinks("ar"), crumbs: areaCrumbs("ar"), sections: areaSections("ar") })
           }
         }));
       } catch (err) {

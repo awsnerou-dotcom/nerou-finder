@@ -207,7 +207,21 @@ export function linkList(items: { path: string; label: string }[], lang: Lang): 
   return `<ul>${items.map(i => `<li><a href="${esc(withLang(i.path, lang))}">${esc(i.label)}</a></li>`).join("")}</ul>`;
 }
 
-export function propertyBodyHtml(p: Property, lang: Lang, links: { path: string; label: string }[]): string {
+type Crumb = { name: string; path: string };
+
+const breadcrumbNav = (crumbs: Crumb[], lang: Lang) =>
+  crumbs.length < 2 ? "" : `<nav aria-label="${lang === "ar" ? "مسار التنقل" : "Breadcrumb"}"><ol style="list-style:none;display:flex;gap:8px;padding:0;flex-wrap:wrap">${crumbs.map(b => `<li><a href="${esc(withLang(b.path, lang))}">${esc(b.name)}</a></li>`).join("<li aria-hidden=\"true\">/</li>")}</ol></nav>`;
+
+/** schema.org breadcrumb trail; every step is a real page of this site. */
+export function breadcrumbJsonLd(crumbs: Crumb[], lang: Lang, origin: string): unknown {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: crumbs.map((b, idx) => ({ "@type": "ListItem", position: idx + 1, name: b.name, item: `${origin}${withLang(b.path, lang)}` }))
+  };
+}
+
+export function propertyBodyHtml(p: Property, lang: Lang, links: { path: string; label: string }[], crumbs: Crumb[] = []): string {
   const ar = lang === "ar";
   const specs = [
     money(p),
@@ -217,23 +231,31 @@ export function propertyBodyHtml(p: Property, lang: Lang, links: { path: string;
     [p.district, p.city].filter(Boolean).join(", ")
   ].filter(Boolean).join(" · ");
   const imgs = (p.images || []).slice(0, 6);
+  // each photo says which one it is, so a page of identical alt texts does not look stuffed
+  const altFor = (i: number) => `${(p.title || "").trim()} - ${p.district || ""}${i > 0 ? ` - ${ar ? "صورة" : "photo"} ${i + 1}` : ""}`;
   return wrap(lang, `
+    ${breadcrumbNav(crumbs, lang)}
     <h1>${esc((p.title || "").trim())}</h1>
     <p>${esc(specs)}</p>
-    ${imgs.map(src => `<img src="${esc(src)}" alt="${esc(`${(p.title || "").trim()} - ${p.district || ""}`)}" width="480" height="320" loading="lazy" />`).join("")}
+    ${imgs.map((src, i) => `<img src="${esc(src)}" alt="${esc(altFor(i))}" width="480" height="320" loading="lazy" />`).join("")}
     <p>${esc((p.description || "").replace(/\s+/g, " ").trim().slice(0, 1500))}</p>
     ${links.length ? `<h2>${ar ? "عقارات مشابهة" : "More like this"}</h2>${linkList(links, lang)}` : ""}`);
 }
 
 export function areaBodyHtml(i: {
   title: string; overview: string; highlights: string[]; lang: Lang; links: { path: string; label: string }[];
+  crumbs?: Crumb[];
+  /** further groups of links (prices here, search in all Qatar, other areas...), each under its own heading */
+  sections?: { heading: string; links: { path: string; label: string }[] }[];
 }): string {
   const ar = i.lang === "ar";
   return wrap(i.lang, `
+    ${breadcrumbNav(i.crumbs || [], i.lang)}
     <h1>${esc(i.title)}</h1>
     <p>${esc(i.overview)}</p>
     ${i.highlights.length ? `<h2>${ar ? "أبرز المعالم" : "Highlights"}</h2><ul>${i.highlights.map(h => `<li>${esc(h)}</li>`).join("")}</ul>` : ""}
-    ${i.links.length ? `<h2>${ar ? "العقارات المتاحة في هذه المنطقة" : "Properties in this area"}</h2>${linkList(i.links, i.lang)}` : ""}`);
+    ${i.links.length ? `<h2>${ar ? "العقارات المتاحة في هذه المنطقة" : "Properties in this area"}</h2>${linkList(i.links, i.lang)}` : ""}
+    ${(i.sections || []).filter(s => s.links.length).map(s => `<h2>${esc(s.heading)}</h2>${linkList(s.links, i.lang)}`).join("\n    ")}`);
 }
 
 export function homeBodyHtml(i: {
