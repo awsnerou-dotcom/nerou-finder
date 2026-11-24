@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type { Prospect, ProspectActivity, ProspectKind, ProspectSource, ProspectStage } from "../types.js";
 import {
-  KIND_TEXT, PROSPECT_KINDS, PROSPECT_SOURCES, PROSPECT_STAGES, SOURCE_TEXT, STAGE_TEXT, isOpenProspect, parseProspectsCsv, prospectsToCsv
+  KIND_TEXT, PROSPECT_KINDS, PROSPECT_SOURCES, PROSPECT_STAGES, SOURCE_TEXT, STAGE_TEXT, formatQatarDateTime, isOpenProspect, parseProspectsCsv, prospectsToCsv, stageSince
 } from "../lib/prospects.js";
 import type { ProspectStats } from "../lib/prospects.js";
 import { addDaysToDate, qatarDate } from "../lib/crm.js";
@@ -332,6 +332,7 @@ function ProspectCard({ p, isRtl, t, today, onOpen, onMove }: { p: ProspectRow; 
       </div>
       {followUpChip(p, today, t)}
       {p.followUpNote && isOpenProspect(p) && <p className="text-[11px] text-ink-muted line-clamp-2">{p.followUpNote}</p>}
+      <p className="text-[10px] text-ink-muted" data-testid="stage-since">{t("In this stage since ", "في هذه المرحلة منذ ")}<bdi dir="ltr">{formatQatarDateTime(stageSince(p))}</bdi></p>
       <div className="flex items-center justify-between gap-2 pt-0.5">
         <span className="text-[10px] text-ink-muted truncate">{p.ownerName}{p.expectedMonthly ? ` · ${Math.round(p.expectedMonthly).toLocaleString()}` : ""}</span>
         <select value={p.stage} onChange={e => onMove(p, e.target.value as ProspectStage)} aria-label={t("Move to stage", "نقل إلى مرحلة")}
@@ -546,8 +547,9 @@ function ProspectDetail({ p, isRtl, t, data, today, onReload, say, onClose, onEd
             <Fact label={t("Source", "المصدر")} value={isRtl ? SOURCE_TEXT[p.source].ar : SOURCE_TEXT[p.source].en} />
             <Fact label={t("Plan interest", "الباقة")} value={plan?.name} />
             <Fact label={t("Expected / month", "المتوقع شهريًا")} value={p.expectedMonthly ? money(p.expectedMonthly, isRtl) : undefined} />
-            <Fact label={t("Added", "أُضيف")} value={`${p.createdAt.slice(0, 10)} · ${p.createdBy}`} />
-            <Fact label={t("Last contact", "آخر تواصل")} value={p.lastContactAt?.slice(0, 10)} />
+            <Fact label={t("Added", "أُضيف")} value={`${formatQatarDateTime(p.createdAt)} · ${p.createdBy}`} />
+            <Fact label={t("In this stage since", "في هذه المرحلة منذ")} value={formatQatarDateTime(stageSince(p))} ltr />
+            <Fact label={t("Last contact", "آخر تواصل")} value={formatQatarDateTime(p.lastContactAt) || undefined} />
           </dl>
           {p.stage === "LOST" && p.lostReason && <p className="p-2.5 rounded-lg bg-danger-soft text-danger"><strong>{t("Lost: ", "السبب: ")}</strong>{p.lostReason}</p>}
           {p.notes && <p className="p-2.5 rounded-lg bg-canvas border border-border whitespace-pre-wrap text-ink">{p.notes}</p>}
@@ -603,7 +605,7 @@ function ProspectDetail({ p, isRtl, t, data, today, onReload, say, onClose, onEd
               {activity.map(a => (
                 <li key={a.id} className="flex gap-2.5">
                   <span className="w-6 h-6 shrink-0 rounded-full bg-surface-2 flex items-center justify-center text-[11px]" aria-hidden>{ACTIVITY_ICON[a.type] || "•"}</span>
-                  <div className="min-w-0"><p className="text-ink whitespace-pre-wrap break-words">{a.text}</p><p className="text-[10px] text-ink-muted">{a.by} · {a.at.slice(0, 16).replace("T", " ")}</p></div>
+                  <div className="min-w-0"><p className="text-ink whitespace-pre-wrap break-words">{a.text}</p><p className="text-[10px] text-ink-muted">{a.by} · <bdi dir="ltr">{formatQatarDateTime(a.at)}</bdi> {t("(Qatar time)", "(بتوقيت قطر)")}</p></div>
                 </li>
               ))}
             </ol>

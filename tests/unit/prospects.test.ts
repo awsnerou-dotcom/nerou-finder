@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  validateProspectInput, findDuplicateProspect, prospectsDueForReminder, prospectStats, rowsToProspects, prospectsToCsv, isOpenProspect
+  validateProspectInput, findDuplicateProspect, prospectsDueForReminder, prospectStats, rowsToProspects, prospectsToCsv, isOpenProspect, stageSince, formatQatarDateTime
 } from "../../src/lib/prospects.js";
 import { parseCsv } from "../../src/lib/crm.js";
 import type { Prospect } from "../../src/types.js";
@@ -10,6 +10,24 @@ const NOW = Date.parse("2026-11-10T08:00:00Z"); // 10 Nov, 11:00 in Qatar
 const prospect = (o: Partial<Prospect> = {}): Prospect => ({
   id: "p1", name: "Ali", kind: "AGENCY", source: "REFERRAL", stage: "NEW", ownerId: "admin-1", email: "ali@x.com",
   activity: [], createdAt: "2026-11-09T08:00:00Z", updatedAt: "2026-11-09T08:00:00Z", createdBy: "Admin", ...o
+});
+
+describe("when a prospect entered its stage", () => {
+  const act = (type: "stage" | "call" | "note", at: string) => ({ id: at + type, at, by: "Admin", type, text: "x" });
+  it("is the day it was added when it has never been moved", () => {
+    expect(stageSince(prospect())).toBe("2026-11-09T08:00:00Z");
+    expect(stageSince(prospect({ activity: [act("call", "2026-11-09T09:00:00Z")] }))).toBe("2026-11-09T08:00:00Z");
+  });
+  it("is the time of the last move, not of a call or note after it", () => {
+    const p = prospect({ activity: [act("stage", "2026-11-09T10:00:00Z"), act("stage", "2026-11-10T06:30:00Z"), act("note", "2026-11-10T07:00:00Z")] });
+    expect(stageSince(p)).toBe("2026-11-10T06:30:00Z");
+  });
+  it("shows Qatar time (three hours ahead of UTC) and nothing for a missing or bad date", () => {
+    expect(formatQatarDateTime("2026-11-10T06:30:00Z")).toBe("2026-11-10 09:30");
+    expect(formatQatarDateTime("2026-11-10T22:30:00.000Z")).toBe("2026-11-11 01:30");
+    expect(formatQatarDateTime(undefined)).toBe("");
+    expect(formatQatarDateTime("nonsense")).toBe("");
+  });
 });
 
 describe("validating a prospect", () => {

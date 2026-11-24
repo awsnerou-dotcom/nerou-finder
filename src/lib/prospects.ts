@@ -39,6 +39,21 @@ export const SOURCE_TEXT: Record<ProspectSource, { en: string; ar: string }> = {
 
 export const isOpenProspect = (p: Pick<Prospect, "stage">): boolean => OPEN_STAGES.includes(p.stage);
 
+// When the prospect arrived in the stage it is in now: the time of the last "stage" entry in its history,
+// or the day it was added if it has never been moved. Read from the history so old records get it too.
+export function stageSince(p: Pick<Prospect, "activity" | "createdAt">): string {
+  const moves = (p.activity || []).filter(a => a.type === "stage" && !Number.isNaN(new Date(a.at).getTime()));
+  return moves.length ? moves[moves.length - 1].at : p.createdAt;
+}
+
+// "2026-11-24 17:05" in Qatar time (UTC+3, no daylight saving), whatever the viewer's own clock says.
+export function formatQatarDateTime(iso: string | undefined | null): string {
+  if (!iso) return "";
+  const ms = new Date(iso).getTime();
+  if (Number.isNaN(ms)) return "";
+  return new Date(ms + 3 * 3600 * 1000).toISOString().slice(0, 16).replace("T", " ");
+}
+
 // ---------------------------------------------------------------------------------------------
 // Validating input
 // ---------------------------------------------------------------------------------------------
