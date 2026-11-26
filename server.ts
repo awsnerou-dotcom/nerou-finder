@@ -155,6 +155,7 @@ import { lookup as dnsLookup } from "node:dns/promises";
 import { fetchPublic, UnsafeUrlError } from "./src/lib/safeFetch.js";
 import type { Lookup } from "./src/lib/safeFetch.js";
 import { readImportContent, IMPORT_MAX_BYTES, IMPORT_MAX_IMAGES } from "./src/lib/listingImport.js";
+import { hasExpired, isCalendarDate } from "./src/lib/documentExpiry.js";
 import type { ImportedListing } from "./src/lib/listingImport.js";
 import { buildPriceReports, findReport, parseReportPath, reportPath, reportText, COUNTRY_SLUG } from "./src/lib/priceReports.js";
 import type { PriceReport } from "./src/lib/priceReports.js";
@@ -7018,6 +7019,11 @@ app.post("/api/verification-documents", authMiddleware, (req, res) => {
     return res.status(400).json({ error: "Please upload the document file again before submitting." });
   }
 
+  // A past date (often the issue date typed by mistake) would expire the document the moment it was approved.
+  if (expiryDate && (!isCalendarDate(expiryDate) || hasExpired(expiryDate))) {
+    return res.status(400).json({ error: "The expiry date has already passed. Enter the date this document EXPIRES (not the date it was issued), or leave it empty." });
+  }
+
   if (!db.verificationDocuments) db.verificationDocuments = [];
   const userId = context === "AGENT" ? actor.id : undefined;
   const orgId = context !== "AGENT" ? actor.orgId : undefined;
@@ -7180,6 +7186,22 @@ app.post("/api/admin/verification-documents/review", (req, res) => {
   if (idx === -1) return res.status(404).json({ error: "Document not found." });
 
   const doc = db.verificationDocuments[idx];
+  // The admin may correct the expiry date while approving: a date, or ""/null to record none.
+  if (status === DocumentStatus.APPROVED) {
+    const corrected = (req.body || {}).expiryDate;
+    if (corrected !== undefined && corrected !== null && corrected !== "" && !isCalendarDate(corrected)) {
+      return res.status(400).json({ error: "The expiry date must look like 2027-12-31." });
+    }
+    const expiry: string | undefined = corrected === undefined ? doc.expiryDate : corrected || undefined;
+    if (hasExpired(expiry)) {
+      return res.status(400).json({ error: `This document's expiry date (${expiry}) has passed. Correct the date from the document, or reject it.` });
+    }
+    if (expiry !== doc.expiryDate) {
+      doc.expiryDate = expiry;
+      doc.reminder30SentDate = undefined;
+      doc.reminder7SentDate = undefined;
+    }
+  }
   doc.status = status;
   doc.rejectionReason = status === DocumentStatus.REJECTED ? rejectionReason : undefined;
   doc.reviewedDate = new Date().toISOString();
@@ -7204,7 +7226,7 @@ app.post("/api/admin/verification-documents/review", (req, res) => {
     "REVIEW_VERIFICATION_DOCUMENT",
     documentId,
     "VerificationDocument",
-    { status, rejectionReason }
+    { status, rejectionReason, expiryDate: doc.expiryDate }
   );
 
   const contact = getDocumentOwnerContact(db, doc);

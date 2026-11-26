@@ -1092,7 +1092,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
     }
   };
 
-  const handleReviewDocument = async (documentId: string, status: "APPROVED" | "REJECTED", rejectionReason?: string) => {
+  const handleReviewDocument = async (documentId: string, status: "APPROVED" | "REJECTED", rejectionReason?: string, expiryDate?: string) => {
     if (status === "REJECTED" && !rejectionReason?.trim()) {
       showToast(isRtl ? "سبب الرفض مطلوب." : "A rejection reason is required.");
       return;
@@ -1109,6 +1109,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
           documentId,
           status,
           rejectionReason,
+          expiryDate,
           actorId: currentUser.id,
           actorName: currentUser.fullName,
           actorRole: "PLATFORM_ADMIN"

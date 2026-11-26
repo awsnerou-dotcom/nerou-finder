@@ -4,6 +4,7 @@ import type { SubscriptionPlan } from "../types.js";
 import { ApplicationStatus, VerificationStatus } from "../types.js";
 import type { ApplicantCardData, ApplicantDoc } from "../lib/applicants.js";
 import { DOC_LABELS } from "./VerificationDocumentsPanel.js";
+import { earliestExpiryDate, hasExpired } from "../lib/documentExpiry.js";
 import { TRIAL_DAYS, defaultExpiryFor, isTrialPlan } from "../lib/onboarding.js";
 
 export interface SubscriptionForm {
@@ -19,7 +20,8 @@ interface Props {
   plans: SubscriptionPlan[];
   isRtl: boolean;
   onViewDoc: (doc: ApplicantDoc, label: string) => void;
-  onReviewDoc: (docId: string, status: "APPROVED" | "REJECTED", reason?: string) => void;
+  /** `expiryDate` is sent only when the admin corrects it while approving ("" = record none) */
+  onReviewDoc: (docId: string, status: "APPROVED" | "REJECTED", reason?: string, expiryDate?: string) => void;
   onMoveToAwaitingPayment: (userId: string) => void;
   onSaveSubscription: (card: ApplicantCardData, form: SubscriptionForm) => Promise<boolean>;
   onVerifyOrg: (orgId: string, status: VerificationStatus) => void;
@@ -80,6 +82,7 @@ export default function ApplicantCard({ card, plans, isRtl, onViewDoc, onReviewD
   const [reason, setReason] = useState("");
   const [subOpen, setSubOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [newExpiry, setNewExpiry] = useState<Record<string, string>>({});
   const [form, setForm] = useState<SubscriptionForm>(() => ({
     planId: sub?.subscriptionPlanId || "",
     // An active subscription keeps its date. Anything not activated yet gets the plan's own default: 60 days for the free trial
@@ -192,6 +195,7 @@ export default function ApplicantCard({ card, plans, isRtl, onViewDoc, onReviewD
         ) : docs.map(doc => {
           const st = DOC_STATUS[doc.status] || DOC_STATUS.PENDING;
           const canReview = doc.status === "PENDING" || doc.status === "EXPIRED";
+          const datePassed = canReview && hasExpired(typeof doc.expiryDate === "string" ? doc.expiryDate : undefined);
           return (
             <div key={doc.id} className="p-3 rounded-lg bg-canvas border border-border space-y-2">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -216,10 +220,22 @@ export default function ApplicantCard({ card, plans, isRtl, onViewDoc, onReviewD
               {doc.status === "REJECTED" && typeof doc.rejectionReason === "string" && doc.rejectionReason && (
                 <p className="text-[11px] text-rose-600"><strong>{t("Reason: ", "السبب: ")}</strong>{doc.rejectionReason}</p>
               )}
+              {datePassed && (
+                <div role="alert" className="p-2.5 rounded-lg bg-orange-500/10 border border-orange-500/30 space-y-2">
+                  <p className="text-[11px] text-orange-700 font-semibold">
+                    {t("The date entered has already passed (often the issue date typed by mistake). Open the document, enter its real expiry date, then approve. Leave it empty if it has none.",
+                       "التاريخ المُدخل قد مضى (غالباً أُدخل تاريخ الإصدار خطأً). افتح المستند، وأدخل تاريخ انتهائه الصحيح ثم اعتمده. اتركه فارغاً إن لم يكن له تاريخ.")}
+                  </p>
+                  <label className="flex items-center gap-2 flex-wrap text-[11px] text-ink">
+                    <span>{t("Correct expiry date", "تاريخ الانتهاء الصحيح")}</span>
+                    <input type="date" min={earliestExpiryDate()} value={newExpiry[doc.id] || ""} onChange={e => setNewExpiry(prev => ({ ...prev, [doc.id]: e.target.value }))} className="px-2 py-1.5 bg-surface border border-border rounded-lg text-[11px]" />
+                  </label>
+                </div>
+              )}
               {canReview && (
                 <div className="flex items-center gap-2 flex-wrap">
-                  <button type="button" onClick={() => onReviewDoc(doc.id, "APPROVED")} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold cursor-pointer">
-                    <CheckCircle2 size={13} />{t("Approve", "اعتماد")}
+                  <button type="button" disabled={datePassed && hasExpired(newExpiry[doc.id])} onClick={() => onReviewDoc(doc.id, "APPROVED", undefined, datePassed ? newExpiry[doc.id] || "" : undefined)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-[11px] font-bold cursor-pointer">
+                    <CheckCircle2 size={13} />{datePassed ? t("Approve with this date", "اعتماد بهذا التاريخ") : t("Approve", "اعتماد")}
                   </button>
                   {rejectingId === doc.id ? (
                     <>

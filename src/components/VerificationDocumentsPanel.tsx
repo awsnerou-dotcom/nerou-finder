@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { VerificationDocument, User, DOCUMENT_DECLARATION } from "../types.js";
 import DocumentViewer from "./DocumentViewer.js";
+import { earliestExpiryDate, hasExpired } from "../lib/documentExpiry.js";
 import { UploadCloud, CheckCircle2, XCircle, Clock, AlertTriangle, Loader2, FileText, Building2, ShieldCheck } from "lucide-react";
 
 interface VerificationDocumentsPanelProps {
@@ -128,6 +129,10 @@ export default function VerificationDocumentsPanel({ isRtl, agent, vouchedBy, on
   const handleUpload = async (documentType: string, file: File) => {
     if (!declarationAccepted) {
       showToast(isRtl ? "يجب الموافقة على الإقرار أولاً قبل رفع المستندات." : "Please accept the declaration before uploading documents.");
+      return;
+    }
+    if (hasExpired(expiryDrafts[documentType])) {
+      showToast(isRtl ? "تاريخ الانتهاء قد مضى. أدخل تاريخ انتهاء المستند (وليس تاريخ إصداره)، أو اتركه فارغاً." : "That expiry date has passed. Enter the date the document EXPIRES (not the issue date), or leave it empty.");
       return;
     }
     setUploadingType(documentType);
@@ -257,14 +262,25 @@ export default function VerificationDocumentsPanel({ isRtl, agent, vouchedBy, on
           </div>
         )}
 
-        <div className="flex items-center gap-2 flex-wrap pt-1">
-          <input
-            type="date"
-            value={expiryDrafts[type] || ""}
-            onChange={(e) => setExpiryDrafts((prev) => ({ ...prev, [type]: e.target.value }))}
-            className="px-3 py-2 bg-ink-inverse border border-border rounded-xl text-[12px] text-ink-muted"
-            title={isRtl ? "تاريخ انتهاء الصلاحية (اختياري)" : "Expiry date (optional)"}
-          />
+        {(doc?.status === "EXPIRED" || hasExpired(expiryDrafts[type])) && (
+          <p role="alert" className="text-[12px] bg-rose-50 text-rose-700 border border-rose-200 rounded-lg p-2.5">
+            {hasExpired(expiryDrafts[type])
+              ? (isRtl ? "هذا التاريخ قد مضى. أدخل تاريخ انتهاء المستند وليس تاريخ إصداره." : "That date has passed. Enter when the document expires, not when it was issued.")
+              : (isRtl ? `المستند مسجَّل منتهياً${doc?.expiryDate ? ` بتاريخ ${doc.expiryDate}` : ""}. ارفعه من جديد مع تاريخ الانتهاء الصحيح.` : `This document is recorded as expired${doc?.expiryDate ? ` on ${doc.expiryDate}` : ""}. Upload it again with the correct expiry date.`)}
+          </p>
+        )}
+
+        <div className="flex items-end gap-2 flex-wrap pt-1">
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] font-semibold text-ink-muted">{isRtl ? "تاريخ انتهاء المستند (اختياري)" : "Document expiry date (optional)"}</span>
+            <input
+              type="date"
+              min={earliestExpiryDate()}
+              value={expiryDrafts[type] || ""}
+              onChange={(e) => setExpiryDrafts((prev) => ({ ...prev, [type]: e.target.value }))}
+              className="px-3 py-2 bg-ink-inverse border border-border rounded-xl text-[12px] text-ink-muted"
+            />
+          </label>
           <label className={`relative px-4 py-2 rounded-xl text-[12px] font-semibold border transition-colors ${isUploading || !declarationAccepted ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed" : "bg-chrome hover:bg-gold hover:text-gold-ink text-white border-transparent cursor-pointer"}`}
             title={!declarationAccepted ? (isRtl ? "وافق على الإقرار أعلاه أولاً" : "Accept the declaration above first") : undefined}>
             {isUploading ? (
