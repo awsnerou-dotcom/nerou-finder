@@ -1,4 +1,5 @@
 import type { GuideArticle, Persona } from "./guide.js";
+import { PF_IMPORT_STEPS } from "./pfImport.js";
 
 // Every article of the subscriber guide, in English and Arabic. Written from what the workspaces really do today:
 // when a feature changes, change its article here (tests fail if a language or a "take me there" target is missing).
@@ -166,6 +167,28 @@ export const GUIDE_ARTICLES: GuideArticle[] = [
     ],
     goTo: { agent: "properties" },
     related: ["add-listings", "paste-ad"]
+  },
+  {
+    id: "move-from-pf",
+    category: "listings",
+    audience: ALL,
+    accent: "emerald",
+    minutes: 4,
+    title: { en: "Move your listings from Property Finder", ar: "انقل عقاراتك من Property Finder" },
+    summary: { en: "Export your own listings from PF Expert and upload the file here. Nothing is typed again.", ar: "صدّر عقاراتك من PF Expert وارفع الملف هنا، دون إعادة كتابة شيء." },
+    why: {
+      en: "Your listings are already written. Moving the file takes minutes, and every listing you add is another way for clients to find you.",
+      ar: "عقاراتك مكتوبة أصلاً. نقل الملف يأخذ دقائق، وكل عقار تضيفه طريق آخر يصل به العميل إليك."
+    },
+    steps: PF_IMPORT_STEPS,
+    tips: [
+      { en: "More listings than one file allows? Export and upload them in several files.", ar: "عندك أكثر مما يتسع له ملف واحد؟ صدّرها وارفعها على عدة ملفات." },
+      { en: "If the file has no photo links, add the photos to each draft afterwards.", ar: "إن لم يكن في الملف روابط للصور فأضفها إلى كل مسودة بعد الرفع." },
+      { en: "Menu names in PF Expert may differ. If you cannot find the export, ask your Property Finder account manager.", ar: "قد تختلف أسماء القوائم في PF Expert. إن لم تجد التصدير فاسأل مدير حسابك لديهم." },
+      { en: "Remove owner or client details from the file before sharing it with anyone.", ar: "احذف بيانات الملاك والعملاء من الملف قبل مشاركته مع أي أحد." }
+    ],
+    goTo: { agent: "properties", agency: "listings" },
+    related: ["import-file", "agency-listings", "listing-quality"]
   },
   {
     id: "paste-ad",

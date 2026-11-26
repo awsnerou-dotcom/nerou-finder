@@ -217,7 +217,9 @@ export default function AgentWorkspace({ agent, onRefreshAll, isRtl, listingsOnl
   // "full" = the whole tour; "whatsnew" = only the new Sales Desk steps, for accounts that finished an older tour.
   const [tourMode, setTourMode] = useState<TourMode>(null);
   useEffect(() => {
-    const mode = tourModeFor(agent);
+    // Embedded in the agency's Listings page there is no tour: its Sales Desk step switched this panel away from
+    // "Add listings", so an agency pressing "Add a listing" was shown the Sales Desk instead.
+    const mode = listingsOnly ? null : tourModeFor(agent);
     if (mode) {
       setTourMode(mode);
       setShowTour(true);

@@ -9,6 +9,7 @@ import PasteAdPanel from "./PasteAdPanel.js";
 import type { ParsedListing, PlaceRef } from "../lib/listingFromText.js";
 import { adsToImportRecords } from "../lib/bulkPaste.js";
 import { importTemplateCsv, IMPORT_MAX_BYTES } from "../lib/listingImport.js";
+import { PF_IMPORT_STEPS } from "../lib/pfImport.js";
 import { propertyTypeLabel } from "../lib/propertySpecs.js";
 
 // One place to add listings, with every way there is: paste an ad, upload a file, connect a feed link, or fill the form by hand. The
@@ -73,7 +74,7 @@ export default function AddListingsHub({
       >
         <span className="w-12 h-12 rounded-xl bg-gold text-gold-ink flex items-center justify-center shrink-0"><ArrowRightLeft size={24} strokeWidth={2.25} /></span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[15px] font-semibold text-ink leading-snug">{t("Already list on another portal? Move your listings here", "تنشر في منصة عقارية أخرى؟ انقل عقاراتك إلى هنا")}</span>
+          <span className="block text-[15px] font-semibold text-ink leading-snug">{t("On Property Finder or another portal? Move your listings here", "تنشر في Property Finder أو منصة أخرى؟ انقل عقاراتك إلى هنا")}</span>
           <span className="block text-[12.5px] text-ink-muted mt-0.5 leading-snug">{t("Copy your ads once, or use the export or feed your portal or CRM gives you. Nothing is typed again.", "انسخ إعلاناتك مرة واحدة، أو استعمل الملف أو الخلاصة التي تعطيك إياها منصتك أو نظامك. لا تكتب شيئاً من جديد.")}</span>
         </span>
         <span className="hidden sm:inline-flex px-4 py-2 rounded-xl bg-chrome text-white text-[13px] font-semibold shrink-0">{method === "move" ? t("Close", "إغلاق") : t("Start", "ابدأ")}</span>
@@ -458,6 +459,28 @@ function MoveListingsPanel({ isRtl, locations, onImported, onChoose }: { isRtl: 
         <h4 className="font-serif text-lg font-semibold text-ink">{t("Move your listings from another portal", "انقل عقاراتك من منصة أخرى")}</h4>
         <p className="text-[13px] text-ink-muted mt-0.5">{t("Pick the one that matches what you have. Either way, you check everything before it goes live.", "اختر ما يناسب ما لديك. وفي الحالتين تراجع كل شيء قبل نشره.")}</p>
       </div>
+
+      {/* The agencies' most common case, step by step */}
+      <section className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 space-y-3" data-testid="pf-import-guide">
+        <p className="text-[15px] font-semibold text-ink">{t("From Property Finder (PF Expert): step by step", "من Property Finder (PF Expert): خطوة بخطوة")}</p>
+        <ol className="grid sm:grid-cols-2 gap-2.5">
+          {PF_IMPORT_STEPS.map((s, i) => (
+            <li key={i} className="flex gap-3 rounded-xl border border-border bg-surface p-3">
+              <span className="w-7 h-7 rounded-full bg-emerald-600 text-white text-[13px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+              <span className="min-w-0">
+                <span className="block text-[13px] font-semibold text-ink leading-snug">{isRtl ? s.title.ar : s.title.en}</span>
+                <span className="block text-[12.5px] text-ink-muted mt-0.5 leading-relaxed">{isRtl ? s.body.ar : s.body.en}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <div className="flex items-center gap-3 flex-wrap">
+          <button type="button" onClick={() => onChoose("file")} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[13px] font-semibold cursor-pointer transition-colors"><UploadCloud size={16} />{t("I have the file, upload it", "عندي الملف، ارفعه")}</button>
+          <p className="text-[12px] text-ink-muted">{t("Menu names in PF Expert may differ slightly.", "قد تختلف أسماء القوائم في PF Expert قليلاً.")}</p>
+        </div>
+      </section>
+
+      <p className="text-[13px] font-semibold text-ink-muted">{t("Coming from somewhere else?", "تنقلها من مكان آخر؟")}</p>
 
       <div className="grid md:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-border p-4 space-y-3">

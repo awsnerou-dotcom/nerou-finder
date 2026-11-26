@@ -82,6 +82,8 @@ describe("guide content", () => {
     expect(has("independent", "plan")).toBe(true);
     expect(has("agencyAgent", "plan")).toBe(false);
     expect(has("agencyAdmin", "billing")).toBe(true);
+    // everyone who lists can learn to move their listings across from Property Finder
+    for (const p of PERSONAS) expect(has(p, "move-from-pf"), p).toBe(true);
   });
 
   it("has a start path for each reader made only of articles they can see", () => {

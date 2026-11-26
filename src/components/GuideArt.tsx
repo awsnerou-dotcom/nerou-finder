@@ -314,6 +314,34 @@ function ImportFile({ t }: { t: T }) {
   );
 }
 
+function MoveFromPf({ t }: { t: T }) {
+  const rows = [
+    { n: 1, icon: Building, label: "PF Expert · Properties" },
+    { n: 2, icon: FileSpreadsheet, label: "Export Results" },
+    { n: 3, icon: FileText, label: "CSV UTF-8" }
+  ];
+  return (
+    <Shell active={3}>
+      <Title icon={Upload} tone="bg-emerald-100 text-emerald-700">{t("Move your listings", "انقل عقاراتك")}</Title>
+      <div className="flex gap-3 items-stretch">
+        <div className="flex-1 space-y-2">
+          {rows.map(r => (
+            <Card key={r.n} pin={r.n} className="p-2 flex items-center gap-2">
+              <Tile icon={r.icon} tone="bg-slate-100 text-slate-600" size={24} />
+              <span className="text-[10.5px] font-bold text-slate-700" dir="ltr">{r.label}</span>
+            </Card>
+          ))}
+        </div>
+        <Card pin={4} className="w-[170px] p-2.5 !border-dashed !border-2 !border-emerald-300 bg-emerald-50/60 flex flex-col items-center justify-center gap-2">
+          <Tile icon={Upload} tone="bg-emerald-100 text-emerald-700" size={34} />
+          <span className="text-[10.5px] font-bold text-slate-700">{t("Upload a file", "ارفع ملفاً")}</span>
+          <Btn pin={5}>{t("Import", "استورد")}</Btn>
+        </Card>
+      </div>
+    </Shell>
+  );
+}
+
 function Paste({ t }: { t: T }) {
   const f = [t("Rent", "إيجار"), t("Apartment", "شقة"), "QAR 6,500", t("2 beds", "غرفتان"), t("The Pearl", "اللؤلؤة")];
   return (
@@ -650,6 +678,7 @@ const SCENES: Record<string, (p: { t: T }) => React.ReactElement> = {
   "add-listings": Hub,
   "listing-form": Wizard,
   "import-file": ImportFile,
+  "move-from-pf": MoveFromPf,
   "paste-ad": Paste,
   "listing-quality": Quality,
   "agency-listings": AgencyListings,
