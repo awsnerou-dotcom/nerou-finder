@@ -1084,8 +1084,11 @@ function orgAdminUserIds(db: DatabaseState, orgId: string): string[] {
 export function sanitizeUser<T extends { password?: string; pendingEmailOtpHash?: string }>(
   user: T
 ): Omit<T, "password" | "pendingEmailOtpHash"> {
-  const { password, pendingEmailOtpHash, ...safe } = user;
-  return safe;
+  // anything that could be used to sign in as this person stays on the server - including a live
+  // password-reset token and the two-factor secret, which a company admin or platform admin
+  // would otherwise receive along with the rest of the account
+  const { password, pendingEmailOtpHash, passwordResetToken, passwordResetExpiresAt, twoFactorSecret, ...safe } = user as T & { passwordResetToken?: string; passwordResetExpiresAt?: string; twoFactorSecret?: string };
+  return safe as unknown as Omit<T, "password" | "pendingEmailOtpHash">;
 }
 
 // Email ownership verification (OTP). A short numeric code is emailed at signup and must be
@@ -6602,8 +6605,76 @@ app.post("/api/admin/users/:id/subscription", (req, res) => {
     { planId, status, activationMethod }
   );
 
-  const { password: _pw1, ...safeUser } = user as any;
-  res.json({ success: true, user: safeUser });
+  res.json({ success: true, user: sanitizeUser(user) });
+});
+
+// ADD ANOTHER PLATFORM ADMIN (platform admin only, via the /api/admin guard). No password is chosen
+// or seen by anyone here: the account is created without one (so it cannot be signed into) and the new
+// admin gets an emailed link to set their own. If that link expires, "Forgot password" sends another.
+const ADMIN_INVITE_TTL_MS = 24 * 60 * 60 * 1000;
+
+app.post("/api/admin/admins", (req, res) => {
+  const actor = getAuditActor(req);
+  const db = readDb();
+  // a token issued earlier is not enough: the person must still be a platform admin now
+  if (!db.users.some(u => u.id === actor.id && u.role === UserRole.PLATFORM_ADMIN)) {
+    return res.status(403).json({ error: "Forbidden: insufficient permissions." });
+  }
+  const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+  const fullName = typeof req.body?.fullName === "string" ? req.body.fullName.trim().replace(/[<>]/g, "").slice(0, 80) : "";
+  if (!/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(email) || email.length > 160) return res.status(400).json({ error: "Enter a valid email address." });
+  if (fullName.length < 2) return res.status(400).json({ error: "Enter the person's name." });
+  if (db.users.some(u => String(u.email || "").toLowerCase() === email)) {
+    return res.status(409).json({ error: "This email already has an account. Use a different email." });
+  }
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const newAdmin = {
+    id: `user-admin-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+    email,
+    fullName,
+    phone: "",
+    role: UserRole.PLATFORM_ADMIN,
+    verificationStatus: VerificationStatus.APPROVED,
+    createdDate: new Date().toISOString(),
+    emailVerified: true,
+    passwordResetToken: token,
+    passwordResetExpiresAt: new Date(Date.now() + ADMIN_INVITE_TTL_MS).toISOString()
+  };
+  const otherAdmins = platformAdmins(db).slice();
+  db.users.push(newAdmin as never);
+  writeDb(db);
+
+  logAudit(actor.id, actor.name, actor.role, "CREATE_ADMIN", newAdmin.id, "User", { email });
+
+  const appUrl = process.env.APP_URL || `${req.protocol}://${req.get("host")}`;
+  sendMockEmail(
+    email,
+    "[Nerou Finder] You have been added as an administrator",
+    generateNotificationEmailHtml(
+      "Set your administrator password",
+      fullName,
+      `<p>You have been added as a platform administrator. Click below to choose your own password - this link expires in 24 hours.</p>
+       <p><a href="${appUrl}/?resetToken=${token}" style="display: inline-block; padding: 12px 25px; background-color: #bf9b30; color: #000; font-weight: bold; text-decoration: none; border-radius: 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em;">Set Password</a></p>
+       <p>If the link has expired, use "Forgot password" on the sign-in screen. After signing in, turn on two-factor authentication.</p>`
+    ),
+    "admin_invite"
+  );
+  // every existing admin is told, so an admin account can never be added quietly
+  for (const a of otherAdmins) {
+    sendMockEmail(
+      a.email,
+      "[Nerou Finder] A new administrator was added",
+      generateNotificationEmailHtml(
+        "New Administrator",
+        a.fullName,
+        `<p>${escapeHtml(actor.name)} added a new platform administrator: ${escapeHtml(email)}.</p><p>If this was not expected, change your password now and contact support.</p>`
+      ),
+      "security_admin_added"
+    );
+  }
+
+  res.status(201).json({ success: true, user: sanitizeUser(newAdmin as never) });
 });
 
 // DELETE ONE SUBSCRIBER'S ACCOUNT (platform admin). Removes the account itself, its own listings,

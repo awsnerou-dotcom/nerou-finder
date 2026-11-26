@@ -79,6 +79,7 @@ import StatCard from "./StatCard.js";
 import DashboardChart from "./DashboardChart.js";
 import { EmptyState } from "./ui/EmptyState.js";
 import { Button } from "./ui/Button.js";
+import AddAdminDialog from "./AddAdminDialog.js";
 import { buildDailyCountSeries, isThisMonth } from "../lib/dashboardMetrics.js";
 import { defaultExpiryFor } from "../lib/onboarding.js";
 import DocumentViewer from "./DocumentViewer.js";
@@ -237,6 +238,7 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
   const [toastMessage, setToastMessage] = useState<string>("");
   const [pendingDelete, setPendingDelete] = useState<{ type: "REVIEW" | "PROPERTY" | "LEAD" | "USER"; id: string } | null>(null);
   const [deletingPending, setDeletingPending] = useState(false);
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
 
   // Plan Form State
   const [isAddingPlan, setIsAddingPlan] = useState<boolean>(false);
@@ -2912,6 +2914,18 @@ export default function ControlCenter({ onRefreshAll, isRtl, currentUser }: Cont
                   <Users size={14} className="text-gold" />
                   <span>{isRtl ? "كل المستخدمين" : "All Users"}</span>
                 </h4>
+                <Button size="sm" onClick={() => setIsAddAdminOpen(true)}>{isRtl ? "إضافة أدمن" : "Add admin"}</Button>
+                {isAddAdminOpen && (
+                  <AddAdminDialog
+                    isRtl={isRtl}
+                    onClose={() => setIsAddAdminOpen(false)}
+                    onAdded={email => {
+                      setIsAddAdminOpen(false);
+                      showToast(isRtl ? `تمت إضافة الأدمن. أُرسل رابط كلمة المرور إلى ${email}.` : `Admin added. A password link was emailed to ${email}.`);
+                      fetchControlContext();
+                    }}
+                  />
+                )}
                 <input
                   type="text"
                   value={userSearch}

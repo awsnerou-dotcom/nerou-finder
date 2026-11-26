@@ -123,7 +123,9 @@ describe("a Call or WhatsApp click is not a client", () => {
     expect(csv.text).not.toContain("Anonymous Visitor");
 
     // only the real inquiry earns a reminder (it has sat unanswered for days)
-    const r = runCrmReminders(Date.parse("2026-11-10T08:00:00Z") + 10 * 24 * 3600_000, { onlyAgentIds: [a.id] });
+    // 08:00 UTC is 11:00 in Qatar (outside quiet hours) on today's date, so the five-day-old leads stay five days old
+    // whenever the test runs (a fixed calendar date here stopped working once the real date passed it)
+    const r = runCrmReminders(new Date().setUTCHours(8, 0, 0, 0), { onlyAgentIds: [a.id] });
     expect(r.leads).toBe(1);
     expect(readDb().leads.filter(l => l.agentId === a.id && l.lastReminderAt).map(l => l.visitorName)).toEqual(["Real Inquiry"]);
   });
