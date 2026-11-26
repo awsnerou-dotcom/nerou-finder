@@ -26,6 +26,14 @@ export function propertyTypeLabel(type: string, isRtl: boolean): string {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+// What follows a rent: "/ month" unless the listing says otherwise. Rents on this platform are monthly figures, so a
+// listing with no period is monthly - several screens used to label those "/ YR", twelve times off.
+export function rentPeriodSuffix(period: string | undefined, isRtl: boolean): string {
+  const text: Record<string, [string, string]> = { MONTHLY: ["/ month", "/ شهر"], YEARLY: ["/ year", "/ سنة"], WEEKLY: ["/ week", "/ أسبوع"], DAILY: ["/ day", "/ يوم"] };
+  const [en, ar] = text[period || "MONTHLY"] || text.MONTHLY;
+  return isRtl ? ar : en;
+}
+
 export interface SpecFormat {
   area: (sqm: number) => string;
   money: (qar: number) => string;

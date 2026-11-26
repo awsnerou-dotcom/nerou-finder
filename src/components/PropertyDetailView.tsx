@@ -17,7 +17,7 @@ import {
   formatConfirmedDate
 } from "../types.js";
 import { useCurrency } from "../currencyContext.js";
-import { buildSpecRows } from "../lib/propertySpecs.js";
+import { buildSpecRows, propertyTypeLabel, rentPeriodSuffix } from "../lib/propertySpecs.js";
 import { AboutCard, SpecsCard, PaymentPlanCard, NearbyList, ListingRecordCard, InvestmentPlanner } from "./PropertyDetailSections.js";
 import PropertyGallery, { GalleryGroup } from "./PropertyGallery.js";
 import { getVideoEmbedUrl } from "../lib/video.js";
@@ -1067,7 +1067,7 @@ export default function PropertyDetailView({
               {finalSimilarListings.length > 0 && (
                 <div className="pt-6 border-t border-border space-y-4">
                   <h4 className="font-serif text-base font-bold text-ink">
-                    {isRtl ? "عقارات مشابهة قد تهمك" : "Similar Properties You Might Interest"}
+                    {isRtl ? "عقارات مشابهة قد تهمك" : "Similar properties you may like"}
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {finalSimilarListings.map((sim) => {
@@ -1091,37 +1091,35 @@ export default function PropertyDetailView({
                           }}
                           className="bg-surface rounded-xl border border-border hover:border-gold overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col h-full"
                         >
-                          <div className="relative h-28 overflow-hidden bg-stone-100">
+                          <div className="relative h-36 overflow-hidden bg-stone-100">
                             <img
                               src={simImg}
                               alt={sim.title}
                               referrerPolicy="no-referrer"
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                             />
-                            <div className="absolute top-2 right-2 bg-chrome/80 backdrop-blur-xs px-2 py-0.5 rounded text-[8px] text-white font-bold tracking-wider uppercase">
-                              {isRtl
-                                ? sim.propertyType === PropertyType.APARTMENT ? "شقة" : sim.propertyType === PropertyType.VILLA ? "فيلا" : "مكتب تجاري"
-                                : sim.propertyType
-                              }
+                            <div className="absolute top-2 end-2 bg-chrome/85 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] text-white font-semibold">
+                              {propertyTypeLabel(sim.propertyType, isRtl)}
                             </div>
                           </div>
 
                           <div className="p-3 flex-grow flex flex-col justify-between space-y-2">
                             <div>
-                              <strong className="text-xs text-gold font-bold block">
+                              <strong className="text-sm text-gold font-bold block">
                                 {formatPrice(sim.price, isRtl)}
-                                {isSimRent && <span className="text-[10px] text-ink-muted font-normal"> / {sim.rentalPeriod || "YR"}</span>}
+                                {isSimRent && <span className="text-[11px] text-ink-muted font-normal"> {rentPeriodSuffix(sim.rentalPeriod, isRtl)}</span>}
                               </strong>
-                              <h5 className="font-bold text-[11px] text-ink line-clamp-1 group-hover:text-gold transition-colors mt-0.5">
+                              {/* two lines, and dir="auto" so an Arabic headline on an English page is cut at its own end */}
+                              <h5 dir="auto" className="font-semibold text-[13px] leading-snug text-ink line-clamp-2 group-hover:text-gold transition-colors mt-1 text-start">
                                 {isRtl ? sim.titleAr || sim.title : sim.title}
                               </h5>
-                              <p className="text-[9px] text-ink-muted line-clamp-1 flex items-center gap-1 mt-1">
-                                <span className="w-1.5 h-1.5 bg-gold rounded-full"></span>
+                              <p className="text-[11px] text-ink-muted line-clamp-1 flex items-center gap-1 mt-1.5">
+                                <span className="w-1.5 h-1.5 bg-gold rounded-full shrink-0"></span>
                                 {sim.district}, {sim.city}
                               </p>
                             </div>
 
-                            <div className="flex justify-between items-center text-[10px] text-ink-muted border-t border-surface-2 pt-2 mt-1">
+                            <div className="flex justify-between items-center text-[11px] text-ink-muted border-t border-surface-2 pt-2 mt-1">
                               {[bedsText(sim.bedrooms, sim.propertyType, isRtl), bathsText(sim.bathrooms, sim.propertyType, isRtl), `${sim.area} ${isRtl ? "م٢" : "SQM"}`]
                                 .filter(Boolean)
                                 .map((part, i) => (
@@ -1155,7 +1153,7 @@ export default function PropertyDetailView({
                       {propertyPrice.toLocaleString()} {currencySymbol}
                     </strong>
                     {isRent && (
-                      <span className="text-xs text-gray-400"> / {property.rentalPeriod || "YR"}</span>
+                      <span className="text-xs text-gray-400"> {rentPeriodSuffix(property.rentalPeriod, isRtl)}</span>
                     )}
                   </div>
                   {property.serviceCharges != null && (
@@ -1176,7 +1174,7 @@ export default function PropertyDetailView({
                       </span>
                       <strong className="text-gold tabular-nums">
                         {convertPrice(twin.price).toLocaleString()} {currencySymbol}
-                        {(String(twin.transactionType).includes("RENT") || String(twin.transactionType).includes("LEASE")) && <span className="font-normal text-gray-300"> / {twin.rentalPeriod || "YR"}</span>}
+                        {(String(twin.transactionType).includes("RENT") || String(twin.transactionType).includes("LEASE")) && <span className="font-normal text-gray-300"> {rentPeriodSuffix(twin.rentalPeriod, isRtl)}</span>}
                       </strong>
                     </button>
                   )}
@@ -1384,7 +1382,7 @@ export default function PropertyDetailView({
             <span className="text-[10px] text-ink-muted font-medium block">{isRtl ? "السعر الكلي المقدر" : "ASKING PRICE"}</span>
             <strong className="text-gold text-lg font-bold">
               {propertyPrice.toLocaleString()} {currencySymbol}
-              {isRent && <span className="text-xs text-ink-muted"> / {property.rentalPeriod || "YR"}</span>}
+              {isRent && <span className="text-xs text-ink-muted"> {rentPeriodSuffix(property.rentalPeriod, isRtl)}</span>}
             </strong>
           </div>
 

@@ -4,6 +4,7 @@
  */
 
 import { Property, TransactionType, User } from "../types.js";
+import { rentPeriodSuffix } from "./propertySpecs.js";
 
 // Shape returned by GET /api/market-index's `groups` array (see server.ts's
 // computeMarketIndexGroups()) - duplicated here rather than imported since server.ts isn't
@@ -163,7 +164,7 @@ export async function generateCmaReportPdf(
     { label: "Bedrooms", val: `${property.bedrooms} Beds` },
     { label: "Bathrooms", val: `${property.bathrooms} Baths` },
     { label: "Total Area", val: `${property.area.toLocaleString()} SQM` },
-    { label: "Asking Price", val: `${property.price.toLocaleString()} ${property.currency || "QAR"}${isRent ? ` / ${property.rentalPeriod || "YR"}` : ""}` },
+    { label: "Asking Price", val: `${property.price.toLocaleString()} ${property.currency || "QAR"}${isRent ? ` ${rentPeriodSuffix(property.rentalPeriod, false)}` : ""}` },
     { label: "Price / SQM", val: `${pricePerSqm.toFixed(0)} ${property.currency || "QAR"}/sqm` }
   ]);
 

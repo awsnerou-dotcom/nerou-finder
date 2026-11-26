@@ -5,6 +5,7 @@
 
 import React, { useState } from "react";
 import { Property, TransactionType } from "../types.js";
+import { rentPeriodSuffix } from "../lib/propertySpecs.js";
 import { X, Check, Shield, Star, RefreshCw, Plus, MapPin, Bed, Bath } from "lucide-react";
 
 interface PropertyCompareViewProps {
@@ -173,7 +174,7 @@ export default function PropertyCompareView({
                   {prop && (
                     <span>
                       {prop.price.toLocaleString()} {prop.currency || "QAR"}
-                      {prop.transactionType === TransactionType.FOR_RENT && <span className="text-[10px] text-ink-muted font-normal"> / {prop.rentalPeriod || "YR"}</span>}
+                      {prop.transactionType === TransactionType.FOR_RENT && <span className="text-[10px] text-ink-muted font-normal"> {rentPeriodSuffix(prop.rentalPeriod, isRtl)}</span>}
                     </span>
                   )}
                 </div>
